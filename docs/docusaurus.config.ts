@@ -111,6 +111,11 @@ const config: Config = {
           position: 'left',
           label: 'Docs',
         },
+        {
+          href: 'https://github.com/veodyn/veodyn-ce',
+          label: 'GitHub',
+          position: 'right',
+        },
       ],
     },
     footer: {
@@ -139,6 +144,14 @@ const config: Config = {
           items: [
             { label: 'Deployment', to: '/operations/deployment' },
             { label: 'AI Provider', to: '/operations/ai-provider' },
+          ],
+        },
+        {
+          title: 'Project',
+          items: [
+            { label: 'Source (GitHub)', href: 'https://github.com/veodyn/veodyn-ce' },
+            { label: 'License (AGPL-3.0)', href: 'https://www.gnu.org/licenses/agpl-3.0.html' },
+            { label: 'veodyn.com', href: 'https://veodyn.com/' },
           ],
         },
       ],

@@ -11,8 +11,9 @@ The data substrate for regional transportation hubs and agencies.
 
 **A node is a complete Veodyn instance scoped to one agency.** It pulls from the
 systems that agency already runs, normalizes what arrives, stores it locally,
-serves it over an API, and draws it. It is open source, self-hosted, and it
-works standing alone.
+serves it over an API, and draws it. It is self-hosted, it works standing alone,
+and its source is [`veodyn/veodyn-ce`](https://github.com/veodyn/veodyn-ce) on
+GitHub, under the AGPL.
 
 ![A Veodyn dashboard showing rail ridership, active fleet vehicles, air quality, and traffic incidents](/img/screenshots/dashboard-view.png)
 

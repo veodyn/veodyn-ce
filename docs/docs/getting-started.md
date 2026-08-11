@@ -21,8 +21,11 @@ own machine rather than from a container.
 
 ## 1. Clone the repository
 
+The community edition is [`veodyn/veodyn-ce`](https://github.com/veodyn/veodyn-ce)
+on GitHub, and it is the whole of what this guide brings up:
+
 ```bash
-git clone <your-veodyn-repo-url> veodyn
+git clone https://github.com/veodyn/veodyn-ce.git veodyn
 cd veodyn
 ```
 

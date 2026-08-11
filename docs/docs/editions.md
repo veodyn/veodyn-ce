@@ -23,7 +23,7 @@ Crossing them gives four cells, three of which you can buy:
 
 | | Community | Enterprise |
 |---|---|---|
-| **Node** | Free and open source, under the AGPL. This repository, in full | Commercial. One agency, plus the management layer |
+| **Node** | Free and open source, under the AGPL. [`veodyn/veodyn-ce`](https://github.com/veodyn/veodyn-ce), in full | Commercial. One agency, plus the management layer |
 | **Hub** | Not offered | Commercial, self-operated or operated for you |
 
 There is no community hub. Federation is the whole of what a hub adds, and it
