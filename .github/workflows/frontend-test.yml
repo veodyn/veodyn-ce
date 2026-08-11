@@ -1,0 +1,97 @@
+# Port of ci/veodyn-de-test.yaml's `frontend-test`. Lint, type and test gate
+# for the Next.js app: a language runtime and this checkout, no docker, no
+# database, no service container of any kind.
+#
+# Read ci/veodyn-de-test.yaml for why each step exists. This file records only
+# what had to change between the two runners.
+name: frontend-test
+
+# GitLab ran this on every merge request and every branch pipeline, and not on
+# tags ($CI_COMMIT_BRANCH is unset there). `branches: ['**']` is the tag-free
+# form of that; a bare `push:` would also fire on tags.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-test:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: app
+    env:
+      # `corepack enable` is the GitLab job's install step verbatim. This var
+      # is the one addition: corepack refuses to fetch the version pinned in
+      # package.json's packageManager field when it thinks a human should
+      # confirm first, and a job that dies there has run no gate at all.
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      # Replaces `image: node:24`. Same major the app Dockerfile ships, and
+      # setup-node is a public action a fork resolves with no configuration,
+      # which is the property IMAGE_NODE was protecting.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+
+      # One warning fails this. Do not soften it.
+      - run: pnpm lint
+
+      # Separately, because `pnpm test` does not type-check.
+      - run: pnpm exec tsc --noEmit
+
+      # Fails if any of the 129 paths the enterprise pack owns has come back
+      # into this tree. Lint, tsc and the suite would all pass on one.
+      - run: node scripts/check-ce-tree.mjs
+
+      # CI=true is already set by Actions, which is what caps vitest's worker
+      # pool at 6 in vitest.config.ts.
+      - run: pnpm exec vitest run --coverage --reporter=default --reporter=junit --outputFile=junit.xml
+
+      # GitHub has no Tests tab and no first-party junit renderer, so the
+      # report is kept as an artifact instead. See the report next to this
+      # port for what that costs and what would close it.
+      #
+      # `if: always()` is `when: always`; retention-days 7 is `expire_in: 1
+      # week`. Paths are workspace-relative, NOT relative to the
+      # working-directory above.
+      #
+      # GitLab's `coverage:` regex and its cobertura MR annotations have no
+      # Actions equivalent at all. The cobertura file is still produced and
+      # still uploaded; nothing reads it here.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-test-reports
+          path: |
+            app/junit.xml
+            app/coverage/cobertura-coverage.xml
+          retention-days: 7
+          if-no-files-found: warn
+
+# NOT PORTED, deliberately: the `retry: max 2, when: script_failure`.
+#
+# The GitLab retry existed for one measured cause. GitLab packed several jobs
+# onto one shared host (17 in a 50 minute window on the worst of them) while
+# vitest sized its worker pool from that HOST's cpu count, so concurrent
+# frontend-test jobs each took about ten workers on the same box; passing runs
+# took 279-665s and starved ones 1609-2284s for the same test files.
+#
+# A GitHub-hosted runner is a fresh VM per job with nothing else scheduled on
+# it, so the co-tenancy that caused this does not exist here. Actions also has
+# no job-level retry primitive; carrying it across would mean wrapping every
+# step in a third-party action, which is a real dependency bought for a cause
+# that has not been observed on this runner.
+#
+# The diagnostic survives even though the retry does not: if this job goes red,
+# check the DURATION first. Over ~1600s means it starved and a re-run will
+# pass. If that turns out to happen here, the fix is to lower `maxWorkers` in
+# app/vitest.config.ts to the runner's vCPU count before reaching for a retry.

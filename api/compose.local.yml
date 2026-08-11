@@ -1,0 +1,38 @@
+# Local veodyn-api, joined to the network the Redash stack already runs on.
+#
+# Bring the Redash stack up first (`make up` in node/), then:
+#   docker compose -f api/compose.local.yml up -d --build
+#
+# The API is published on 8090 because 8080 is commonly taken. Point the
+# frontend at it with KPI_API_URL=http://localhost:8090 in app/.env.local.
+
+name: veodyn-api
+
+x-veodyn-common: &veodyn-common
+  build:
+    context: .
+  environment:
+    # In-network addresses: the Redash compose service is named `server` and
+    # listens on 5000 inside the network, whatever it publishes on the host.
+    VEODYN_REDASH_URL: "http://server:5000"
+    VEODYN_REDASH_SERVICE_API_KEY: "${VEODYN_REDASH_SERVICE_API_KEY:?set this to a Redash service account user API key}"
+    VEODYN_DATABASE_URL: "postgresql+psycopg://postgres@postgres/veodyn"
+    VEODYN_REDIS_URL: "redis://redis:6379/5"
+  networks:
+    - redash
+
+services:
+  api:
+    <<: *veodyn-common
+    ports:
+      - "8090:8000"
+    command: ["uv", "run", "uvicorn", "veodyn_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  worker:
+    <<: *veodyn-common
+    command: ["uv", "run", "python", "-m", "veodyn_api.worker"]
+
+networks:
+  redash:
+    external: true
+    name: redash_default

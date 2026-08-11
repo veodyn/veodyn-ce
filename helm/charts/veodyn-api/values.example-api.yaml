@@ -1,0 +1,57 @@
+# Overlay for the HTTP API release of the veodyn-api chart, which in a
+# community deployment is the only release from it. Combine with
+# values.example.yaml (see that file's header for the render command and for
+# what a real deployment must override). Everything here is FICTIONAL.
+#
+# This release owns the database schema: runMigrations runs
+# `alembic upgrade head` as a pre-install/pre-upgrade hook. Exactly one release
+# from this chart may set it, since every one shares a database and two
+# migrating releases would race on every deploy.
+#
+# runEnterpriseMigrations stays at its default of false here, because this is
+# the community example and the enterprise chain lives in a package this
+# repository does not contain. See values.yaml for what turning it on requires.
+app:
+  replicas:
+    default: 1
+  port: 8000
+  serviceType: ClusterIP
+  runMigrations: true
+  # Merged with the shared app.env in values.example.yaml. This is the release
+  # that serves the Data Catalog endpoints reading the warehouse.
+  env:
+    # A ClickHouse (or other OLAP) warehouse this service reads from. Optional:
+    # the Data Catalog routes 503 cleanly without it.
+    VEODYN_CLICKHOUSE_URL: "http://clickhouse.example.svc.cluster.local:8123"
+    VEODYN_CLICKHOUSE_USER: "default"
+    VEODYN_CLICKHOUSE_PASSWORD: "secret:VEODYN_CLICKHOUSE_PASSWORD"
+    VEODYN_CLICKHOUSE_DATABASE: "historical"
+    # --- The AI provider (/ai/*), optional ---
+    # Both keys are required together or the routes answer 503 by design: an
+    # instance that is half-configured must not become one with an open
+    # generation endpoint.
+    VEODYN_AI_RELAY_KEY: "secret:VEODYN_AI_RELAY_KEY"
+    VEODYN_AI_API_KEY: "secret:VEODYN_AI_API_KEY"
+    # The endpoint has to speak the Anthropic Messages API. This is not a
+    # neutral OpenAI-style client behind a configurable base URL: the service
+    # POSTs to `{VEODYN_AI_BASE_URL}/v1/messages` and sends `x-api-key` plus
+    # `anthropic-version` headers, so an OpenAI-shaped endpoint answers 404 and
+    # an OpenAI model id is never reached. Anything that implements Anthropic
+    # Messages works, including a gateway or proxy in front of another model.
+    #
+    # Both keys below are the service's own defaults, repeated here so the
+    # example is explicit; omit either to get the same value.
+    VEODYN_AI_BASE_URL: "https://api.anthropic.com"
+    # A model id the endpoint above accepts.
+    VEODYN_AI_MODEL: "claude-sonnet-5"
+  readnessProbe:
+    path: "/health"
+    port: "8000"
+    initialDelaySeconds: "10"
+  livenessProbe:
+    path: "/health"
+    port: "8000"
+    initialDelaySeconds: "10"
+  ingressHosts:
+    - name: api.example.com
+      host: api.example.com

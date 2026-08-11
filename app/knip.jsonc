@@ -1,0 +1,50 @@
+{
+  // Read docs/dead-code-audit.md (monorepo root) BEFORE acting on anything
+  // knip reports here. That report triages a full run of this tool and
+  // records which findings are false positives and why. The short version:
+  // this repo has two seams where "nothing imports it" is not evidence of
+  // dead code, and both of them are in the list below.
+  //
+  // knip's Next.js plugin already resolves App Router entry points
+  // (page/layout/route/template and friends) on its own, so routes are not
+  // reported and nothing here needs to restate them. Everything below exists
+  // to describe a seam knip cannot see.
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+
+  "entry": [
+    // SEAM 1: the visualization plugin API.
+    //
+    // src/lib/visualizations/index.ts is the barrel a tenant's visualization
+    // package imports from, and src/plugins/<name>/index.ts is the package
+    // itself. A pack is overlaid into src/plugins/ at image build time and is
+    // not in this tree, so its imports are invisible here and knip reports
+    // the whole plugin API as unused exports. It is not: the exports are the
+    // published contract. Listed as entry points so the contract is not
+    // reported as dead every time somebody runs this.
+    "src/lib/visualizations/index.ts",
+    "src/plugins/index.ts",
+    "src/plugins/*/index.ts",
+
+    // SEAM 2: the generated static import map.
+    //
+    // src/plugins/generated-registry.ts is emitted by
+    // scripts/generate-plugin-registry.mjs (run by `prebuild`), and an
+    // overlay build regenerates it to include the pack's packages. The
+    // committed copy therefore under-reports what a real image contains.
+    "src/plugins/generated-registry.ts"
+  ],
+
+  // A symbol that is exported only so a sibling `describe` block in the same
+  // file can use it is not dead code; the export keyword is just redundant.
+  // The test harness and fixture modules under src/ produce most of the
+  // "unused export" volume for this reason. Turning this on keeps the report
+  // focused on symbols with no reader at all.
+  "ignoreExportsUsedInFile": true,
+
+  "ignoreBinaries": [
+    // Invoked as a bare binary by package.json scripts that drive the Python
+    // sidecar in api/. It is a system tool, not an npm package, so it has no
+    // entry in package.json and knip reports it as an unlisted binary.
+    "uv"
+  ]
+}

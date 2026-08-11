@@ -1,0 +1,87 @@
+# Example values for the `veodyn-api` chart, holding what every release from
+# this chart shares. Every value below is FICTIONAL.
+#
+# Derived from a private deployment's real values, with every identifying
+# value replaced by a made-up one. Those per-environment values are specific
+# to that deployment and are not shipped here.
+#
+# It keeps the same two-file layering that deployment uses: a shared
+# values.yaml (this file) plus a per-release overlay
+# (values.example-api.yaml) that adds the port, probes, ingress, and any env
+# unique to that release.
+#
+# A community deployment has exactly one release from this chart, the HTTP API.
+# The background evaluation worker that used to be the second one is enterprise
+# (see values.yaml's header), so there is no values.example-worker.yaml and no
+# second render command here. An enterprise deployment renders that second
+# release from THIS file plus `deploy/values.worker.yaml` in veodyn-enterprise,
+# which is why the shared half stays here rather than being folded into the
+# API overlay.
+#
+# Render the API release with this file plus its overlay:
+#   helm template example-api helm/charts/veodyn-api -f helm/charts/veodyn-api/values.example.yaml -f helm/charts/veodyn-api/values.example-api.yaml
+#
+# `--set appName=app` and
+# `--set app.env.SERVICE_NAME=<namespace>-<service>-<app>` are expected at
+# deploy time; neither belongs in a values file. appName is included below so
+# these files render standalone.
+#
+# Keys a real deployment MUST override:
+#   image, imageTag                    - point at your own registry
+#   app.SharedSecretName               - a k8s Secret carrying every key
+#                                         referenced below with a `secret:`
+#                                         prefix
+#   app.env.VEODYN_REDASH_URL          - your Redash deployment's URL
+#   app.env.VEODYN_REDASH_SERVICE_API_KEY
+#                                       - a Redash API key for a non-admin
+#                                         service account (read/execute only;
+#                                         never an admin key)
+#   app.env.VEODYN_DATABASE_URL / VEODYN_REDIS_URL
+#                                       - this service's own database and
+#                                         Redis index (not Redash's)
+#
+# Keys that are optional and safe to omit entirely:
+#   app.env.VEODYN_POSTHOG_HOST / VEODYN_POSTHOG_KEY  - product analytics
+
+appName: app
+image: "example.com/veodyn-example/veodyn-api"
+imageTag: "example"
+registrySecretName: registry-harbor
+
+app:
+  replicas:
+    default: 1
+  limitsCpu: 0.5
+  limitsMemory: 512M
+  requestsCpu: 0.1
+  requestsMemory: 256M
+  strategyType: "RollingUpdate"
+
+  # Name of a k8s Secret you create yourself. Every `secret:<KEY>` value below
+  # resolves against this Secret's data, keyed by <KEY>.
+  SharedSecretName: "example-veodyn-api-secrets"
+
+  env:
+    # In-cluster (or external) Redash URL. This service resolves every
+    # caller's identity against it, so it must be reachable and stable.
+    #
+    # The Redash chart names its Service "<release>-redash", and the reference
+    # topology installs that release as "flow", which is where "flow-redash"
+    # below comes from; `example` is the namespace. Check the name your own
+    # install produced rather than assuming it.
+    VEODYN_REDASH_URL: "http://flow-redash.example.svc.cluster.local:80"
+    # A non-admin Redash service account key, used for the work that has no
+    # caller to borrow a credential from: arming and resyncing feed alerts, and
+    # assembling AI grounding. Keep it non-admin: a leak is read/execute access
+    # to whatever that account can see, and nothing more.
+    VEODYN_REDASH_SERVICE_API_KEY: "secret:VEODYN_REDASH_SERVICE_API_KEY"
+    # This service's own database, not Redash's metadata database.
+    VEODYN_DATABASE_URL: "secret:VEODYN_DATABASE_URL"
+    VEODYN_REDIS_URL: "secret:VEODYN_REDIS_URL"
+    # --- Telemetry (optional) ---
+    # Deliberately in the shared env rather than the API overlay: an unhandled
+    # error in a background release is exactly as invisible as one in a request,
+    # so every release from this chart wants it. Leave VEODYN_POSTHOG_KEY
+    # empty/unset to keep telemetry off entirely.
+    VEODYN_POSTHOG_HOST: "https://posthog.example.com"
+    VEODYN_POSTHOG_KEY: "phc_replace_with_your_own_project_key"

@@ -1,0 +1,23 @@
+apiVersion: v1
+name: redash
+version: 3.0.1
+appVersion: 10.0.0.b50633
+description: Redash is an open source tool built for teams to query, visualize and collaborate.
+keywords:
+  - redash
+  - analytics
+  - visualization
+home: https://redash.io/
+sources:
+  - https://github.com/getredash/redash
+icon: https://redash.io/assets/images/elements/redash-logo.svg
+maintainers:
+  - name: Owen Barton
+    email: owen.barton@civicactions.com
+engine: gotpl
+# NOTE: the upstream chart declares bitnami redis/postgresql dependencies here.
+# This deployment always runs with redis.enabled=false / postgresql.enabled=false
+# (external in-namespace Redis/Postgres provisioned by init-prod-pg-redis), and
+# `helm dependency build` in CI cannot resolve charts.bitnami.com (no repo
+# definition in the runner image, and bitnami pruned old chart versions), so the
+# unused dependencies are removed. Re-add them if you ever flip those flags on.

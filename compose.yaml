@@ -1,0 +1,460 @@
+# The whole product, from an empty Docker to a login screen, in one command:
+#
+#     docker compose up -d --build
+#     ./compose/smoke-test.sh          # asserts it actually came up
+#
+# It bootstraps itself: it creates both databases, runs both migration sets
+# (the fork's own schema creation and veodyn-api's Alembic), generates its own
+# secrets, seeds an admin and a KPI service account, and hands each service the
+# API key it needs. Nothing has to be prepared on the host first, and no
+# credential is committed here: everything secret is generated on first boot
+# into the `bootstrap` volume. `./compose/smoke-test.sh` runs that whole path
+# from `docker compose down -v`.
+#
+# Relationship to the two compose files that already existed, both of which are
+# left exactly as they are:
+#
+#   node/compose.yaml     the fork's own development stack. Bind-mounts the
+#                         source, runs Flask with the reloader, keeps no volume
+#                         for Postgres, and needs a node/.env that `make up`
+#                         writes. It is for working on Redash.
+#   api/compose.local.yml the sidecar, attached to that dev stack's network as
+#                         an external network named `redash_default`, which is
+#                         why node/compose.yaml pins `name: redash`.
+#
+# This file deliberately neither replaces nor `include:`s them. Two reasons.
+# They are development tooling and this is the product, so they want opposite
+# things (a reloader against your working tree, versus a built image with
+# durable volumes). And `include:` drops the included file's top-level `name:`,
+# which is precisely the pin keeping that network called `redash_default`;
+# including node/compose.yaml would therefore break the sidecar's external
+# network attachment silently, which is the failure that pin exists to prevent.
+# A separate project name means a separate network and separate containers, so
+# this stack and that one can run side by side.
+#
+# Host ports are overridable because of exactly that: the defaults collide with
+# the dev stack, so `VEODYN_REDASH_PORT=5011 docker compose up -d` gets out of
+# its way.
+#
+# Every published port is bound to 127.0.0.1 on purpose, and widening any of
+# them to 0.0.0.0 turns this stack into an account takeover. The short
+# "HOST:CONTAINER" form binds every interface, and the pieces compose: the mail
+# catcher has no authentication and shows every message it receives, Redash's
+# /forgot handler is unauthenticated and mails a working reset token, rate
+# limiting is off below, and the seeded admin address defaults to a documented
+# value. Anyone who can reach the Docker host can therefore walk that chain and
+# own the admin account. This is a development stack for one machine; nothing
+# in it wants to be on a network. Change the port numbers freely, leave the
+# 127.0.0.1 in front of them alone.
+
+# The project name decides the container, network and volume names, so two checkouts
+# that share it share one stack and one set of databases: `docker compose down -v` in a
+# worktree then deletes the other checkout's data with no warning. It is pinned rather
+# than left to default to the directory name because the pin is what keeps this stack off
+# node/compose.yaml's `redash` network, but a second checkout should override it.
+# VEODYN_PROJECT_NAME, COMPOSE_PROJECT_NAME and `-p` all work; this one is here so the
+# knob is visible in the file that creates the problem.
+name: ${VEODYN_PROJECT_NAME:-veodyn}
+
+x-redash: &redash
+  build:
+    context: ./node
+  restart: unless-stopped
+  # The image's ENTRYPOINT is replaced so the generated secrets can be sourced
+  # into the environment first; the last line still hands over to it.
+  entrypoint: ["/bin/bash", "-c"]
+  volumes:
+    # Only the cookie/data-source secret. Not the API keys: see the volume section.
+    - bootstrap-redash:/run/veodyn:ro
+
+x-redash-environment: &redash-environment
+  PYTHONUNBUFFERED: "1"
+  REDASH_LOG_LEVEL: "INFO"
+  REDASH_HOST: "http://localhost:${VEODYN_REDASH_PORT:-5001}"
+  REDASH_DATABASE_URL: "postgresql://postgres@postgres/redash"
+  REDASH_REDIS_URL: "redis://redis:6379/0"
+  REDASH_RATELIMIT_ENABLED: "false"
+  REDASH_ENFORCE_CSRF: "true"
+  REDASH_GUNICORN_TIMEOUT: "60"
+  REDASH_MAIL_SERVER: "email"
+  REDASH_MAIL_PORT: "1025"
+  REDASH_MAIL_DEFAULT_SENDER: "veodyn@example.com"
+  REDASH_HISTORICAL_CLICKHOUSE_URL: "http://clickhouse:8123"
+  REDASH_HISTORICAL_CLICKHOUSE_DATABASE: "historical"
+  # Every data source created from here on is attached to this group as well as to the
+  # builtin default one. Without it the KPI service account, which is deliberately not
+  # in the default group, would lose access to any data source added after the seed and
+  # every query it ran would answer 403. Set on all four Redash services because the
+  # server is where creation happens and the others share this block.
+  REDASH_ADDITIONAL_DATA_SOURCE_GROUPS: "${VEODYN_SERVICE_GROUP:-veodyn-service}"
+
+x-veodyn-api: &veodyn-api
+  build:
+    context: ./api
+  restart: unless-stopped
+  volumes:
+    # Only the service account's key. The admin key is not mounted here.
+    - bootstrap-service:/run/veodyn:ro
+    - ./compose:/opt/veodyn:ro
+
+x-veodyn-api-environment: &veodyn-api-environment
+  VEODYN_REDASH_URL: "http://server:5000"
+  VEODYN_DATABASE_URL: "postgresql+psycopg://postgres@postgres/veodyn"
+  VEODYN_REDIS_URL: "redis://redis:6379/5"
+  VEODYN_CLICKHOUSE_URL: "http://clickhouse:8123"
+  VEODYN_CLICKHOUSE_DATABASE: "historical"
+
+services:
+  # ── Datastores ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: redash
+      # No password, and no host port published: this database is reachable
+      # only from inside this compose network. The alternative for a public
+      # repository is a committed password, which is worse than no password on
+      # an unreachable port.
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      # postgres:18 sets PGDATA to /var/lib/postgresql/18/docker and declares
+      # the volume one level up, so the mount point is the parent.
+      - postgres-data:/var/lib/postgresql
+      - ./compose/postgres-init.sh:/docker-entrypoint-initdb.d/10-veodyn.sh:ro
+    healthcheck:
+      # Not pg_isready: during initdb the server is up on a unix socket with
+      # neither database created yet, and a TCP-level check goes green there
+      # and lets everything downstream start against a database that does not
+      # exist. Selecting through TCP from the second database is the first
+      # moment both facts are true.
+      test: ["CMD-SHELL", "psql -U postgres -h 127.0.0.1 -d veodyn -c 'SELECT 1' >/dev/null 2>&1"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.3
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: historical
+      # Required, and its absence is not a security default. With neither
+      # CLICKHOUSE_USER nor CLICKHOUSE_PASSWORD set, the image's entrypoint
+      # writes /etc/clickhouse-server/users.d/default-user.xml restricting the
+      # `default` user to ::1 and 127.0.0.1, so every client on this network is
+      # refused. That breaks historical capture and the Data Catalog while
+      # looking like a working stack: the healthcheck below runs INSIDE the
+      # container, so it connects from 127.0.0.1 and goes green, and the error
+      # the refused clients get says "password is incorrect" rather than naming
+      # the network allowlist. Skipping the setup leaves the image's stock
+      # users.xml, which is what this file has always assumed.
+      #
+      # No password, for the same reason POSTGRES_HOST_AUTH_METHOD is trust
+      # above: the alternative for a public repository is a committed one.
+      #
+      # BE CLEAR ABOUT WHAT THE PORT BINDING BUYS, because this comment used to
+      # say it was what protected the passwordless user, and it is not. Binding
+      # the published port to 127.0.0.1 stops another HOST reaching it. It stops
+      # nothing else. Any process on your machine can open 127.0.0.1:8123, and
+      # every container on this Compose network reaches `clickhouse:8123`
+      # directly without going near the published port at all, which is exactly
+      # how the services above connect. Skipping the user setup turns the
+      # network allowlist off, so the stock `default` user is open to all of
+      # them, unauthenticated.
+      #
+      # That is acceptable here and only here: this file is the development
+      # stack. A deployment sets a real password on the datastore and passes it
+      # through VEODYN_CLICKHOUSE_PASSWORD, which the Helm values do; see
+      # docs/docs/operations/deployment.md. Do not carry this arrangement into
+      # one, and do not "fix" it here by committing a password.
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
+    ports:
+      - "127.0.0.1:${VEODYN_CLICKHOUSE_PORT:-8123}:8123"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --database historical --query 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
+
+  email:
+    # Redash raises rather than shrugs when it cannot reach a mail server, so
+    # inviting a user or resetting a password needs one to exist. Mail is
+    # caught here and read at http://localhost:${VEODYN_MAILDEV_PORT:-1080};
+    # nothing leaves the machine.
+    image: maildev/maildev
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${VEODYN_MAILDEV_PORT:-1080}:1080"
+    healthcheck:
+      # The image bakes in this same probe against `localhost`, and it fails
+      # forever: maildev's web server binds 0.0.0.0, its SMTP server binds ::,
+      # and `localhost` inside the container resolves to ::1 first, so the
+      # image's own healthcheck gets ECONNREFUSED from a mail catcher that is
+      # working fine. Same probe, pinned to IPv4.
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:1080/api/healthz >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # ── Bootstrap (one-shot, in order) ──────────────────────────────────────
+  init-secrets:
+    image: alpine:3.21
+    restart: "no"
+    command: ["/bin/sh", "/opt/veodyn/init-secrets.sh"]
+    # The two bootstrap services are the only ones holding all three volumes at once,
+    # because they are the only ones that write them. Both are one-shot and both have
+    # exited before anything that serves a request starts.
+    volumes:
+      - bootstrap-redash:/run/veodyn/redash
+      - bootstrap-frontend:/run/veodyn/frontend
+      - bootstrap-service:/run/veodyn/service
+      - ./compose:/opt/veodyn:ro
+
+  redash-bootstrap:
+    <<: *redash
+    restart: "no"
+    volumes:
+      - bootstrap-redash:/run/veodyn/redash
+      - bootstrap-frontend:/run/veodyn/frontend
+      - bootstrap-service:/run/veodyn/service
+      - ./compose:/opt/veodyn:ro
+    command:
+      - |
+        set -a
+        . /run/veodyn/redash/redash-secrets.env
+        set +a
+        exec python /opt/veodyn/seed-redash.py
+    environment:
+      <<: *redash-environment
+      VEODYN_APP_URL: "http://localhost:${VEODYN_APP_PORT:-3000}"
+      VEODYN_ADMIN_EMAIL: "${VEODYN_ADMIN_EMAIL:-admin@example.com}"
+      VEODYN_SERVICE_EMAIL: "${VEODYN_SERVICE_EMAIL:-kpi-service@example.com}"
+      VEODYN_SERVICE_GROUP: "${VEODYN_SERVICE_GROUP:-veodyn-service}"
+      # Optional. Left unset, the first boot generates one and prints it to
+      # this container's log: `docker compose logs redash-bootstrap`.
+      VEODYN_ADMIN_PASSWORD: "${VEODYN_ADMIN_PASSWORD:-}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      init-secrets:
+        condition: service_completed_successfully
+
+  api-migrate:
+    <<: *veodyn-api
+    restart: "no"
+    command: ["uv", "run", "--no-dev", "alembic", "upgrade", "head"]
+    environment: *veodyn-api-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Redash ──────────────────────────────────────────────────────────────
+  server:
+    <<: *redash
+    command:
+      - |
+        set -a
+        . /run/veodyn/redash-secrets.env
+        set +a
+        exec /app/bin/docker-entrypoint server
+    environment: *redash-environment
+    ports:
+      - "127.0.0.1:${VEODYN_REDASH_PORT:-5001}:5000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:5000/ping >/dev/null"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 20s
+    depends_on:
+      redash-bootstrap:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  scheduler:
+    <<: *redash
+    command:
+      - |
+        set -a
+        . /run/veodyn/redash-secrets.env
+        set +a
+        exec /app/bin/docker-entrypoint scheduler
+    environment: *redash-environment
+    depends_on:
+      server:
+        condition: service_healthy
+
+  worker:
+    <<: *redash
+    command:
+      - |
+        set -a
+        . /run/veodyn/redash-secrets.env
+        set +a
+        exec /app/bin/docker-entrypoint worker
+    environment:
+      <<: *redash-environment
+      # QUEUES left unset on purpose: the fork then listens on default_queues
+      # (redash/worker.py), which is every queue including `historical`. One
+      # worker covers the lot on a laptop; the Helm charts split them.
+      WORKERS_COUNT: "1"
+    depends_on:
+      server:
+        condition: service_healthy
+
+  # ── veodyn-api ──────────────────────────────────────────────────────────
+  api:
+    <<: *veodyn-api
+    command:
+      - |
+        set -a
+        . /run/veodyn/service-account.env
+        set +a
+        exec uv run --no-dev uvicorn veodyn_api.main:app --host 0.0.0.0 --port 8000
+    entrypoint: ["/bin/sh", "-c"]
+    environment: *veodyn-api-environment
+    ports:
+      - "127.0.0.1:${VEODYN_API_PORT:-8090}:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
+    depends_on:
+      api-migrate:
+        condition: service_completed_successfully
+      redash-bootstrap:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  # There is no api-worker service here, and its absence is the correct shape
+  # rather than an omission. The only recurring job the tick has ever had
+  # evaluates KPIs, KPIs are enterprise, and the worker ships in the
+  # veodyn-enterprise pack as `veodyn_enterprise.worker`. A community stack
+  # starting one would run a process with no jobs against a database with no
+  # `kpi` table.
+  #
+  # An enterprise stack composes this file with `deploy/compose.enterprise.yaml`
+  # from that pack, on an image that has it installed:
+  #
+  #   docker compose -f compose.yaml -f <pack>/deploy/compose.enterprise.yaml up -d
+  #
+  # That overlay adds the worker and takes over `api` and `api-migrate` too,
+  # since a worker holding the pack beside an API that does not is the same
+  # half-install the chart's migrate hook refuses. Nothing here can check the
+  # overlay exists, so the pack asserts it from its side; before it existed,
+  # this paragraph pointed at a file nobody held.
+
+  # ── Frontend ────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: ./app
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -a
+        . /run/veodyn/frontend.env
+        set +a
+        exec node server.js
+    environment:
+      # Server-side only; the browser never sees these. All three API_URL vars
+      # are the same veodyn-api root, which is what app/.env.local.example
+      # documents.
+      REDASH_URL: "http://server:5000"
+      NEXT_PUBLIC_REDASH_URL: "1"
+      KPI_API_URL: "http://api:8000"
+      REPORTS_API_URL: "http://api:8000"
+      CATALOG_API_URL: "http://api:8000"
+    ports:
+      - "127.0.0.1:${VEODYN_APP_PORT:-3000}:3000"
+    volumes:
+      # Only the admin key. The service account's key is not mounted here.
+      - bootstrap-frontend:/run/veodyn:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/api/health_check >/dev/null"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 15s
+    depends_on:
+      server:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+  # ── Verification (not started by `up`) ──────────────────────────────────
+  verify-seed:
+    <<: *veodyn-api
+    profiles: ["verify"]
+    restart: "no"
+    entrypoint: ["python"]
+    command: ["/opt/veodyn/verify-seed.py"]
+    environment:
+      <<: *veodyn-api-environment
+      VEODYN_ADMIN_EMAIL: "${VEODYN_ADMIN_EMAIL:-admin@example.com}"
+      VEODYN_SERVICE_EMAIL: "${VEODYN_SERVICE_EMAIL:-kpi-service@example.com}"
+    # Checking both keys means holding both, which is the one thing no serving
+    # container is allowed to do, so this is its own service rather than a
+    # `compose exec api`. Read-only, behind a profile so `docker compose up` never
+    # starts it, and it exits as soon as it has printed its verdict.
+    volumes:
+      - bootstrap-frontend:/run/veodyn/frontend:ro
+      - bootstrap-service:/run/veodyn/service:ro
+      - ./compose:/opt/veodyn:ro
+
+volumes:
+  postgres-data:
+  redis-data:
+  clickhouse-data:
+  # Three volumes, one per consumer, because one shared volume made the separation
+  # this stack claims impossible. Every service used to mount the whole thing at
+  # /run/veodyn, so the frontend container could read the KPI service account's key
+  # and the KPI worker could read the admin's, and both run as root. The comment
+  # saying otherwise was worse than no comment: it is exactly the sort of claim a
+  # reader stops checking.
+  #
+  # Now each serving container mounts only the file it sources, read-only:
+  #
+  #   bootstrap-redash    the cookie secret and the data-source secret key.
+  #                       server, scheduler, worker.
+  #   bootstrap-frontend  the admin API key. app.
+  #   bootstrap-service   the service account's API key. api, and the worker
+  #                       an enterprise stack composes in.
+  #
+  # init-secrets and redash-bootstrap hold all three, because they generate them.
+  # Both are one-shot and have exited before anything starts serving.
+  #
+  # What this does NOT protect against, stated plainly so nobody reads more into it
+  # than is there: anyone who can talk to the Docker socket can read every volume,
+  # and the admin key the frontend holds is strictly more powerful than the service
+  # key anyway. The boundary that is worth something is the other direction, keeping
+  # the admin key out of the two containers that execute AI-generated SQL.
+  #
+  # Named `bootstrap-*` rather than anything with "secret" in it: the repo's own
+  # credential scan reads `secrets:/run/veodyn` in a volume list as a
+  # password-shaped assignment to a key called `secrets`.
+  #
+  # All three are destroyed by `docker compose down -v` along with the databases
+  # they belong to, which is what keeps a rebuilt stack from carrying a key for a
+  # user that no longer exists.
+  bootstrap-redash:
+  bootstrap-frontend:
+  bootstrap-service:

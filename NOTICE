@@ -1,0 +1,77 @@
+NOTICE
+======
+
+This repository is licensed under the GNU Affero General Public License,
+version 3. `LICENSE` at the root holds the full text and is the authority on
+it. This file is the shorter thing beside it: what a redistributor has to carry,
+and which parts of this tree began as another project's code.
+
+  Copyright (C) 2026 Veodyn
+
+  This program is free software: you can redistribute it and/or modify it
+  under the terms of the GNU Affero General Public License, version 3, as
+  published by the Free Software Foundation.
+
+  This program is distributed in the hope that it will be useful, but WITHOUT
+  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+  for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+
+Two directories began as another project
+----------------------------------------
+
+`node/` and `helm/charts/flow/contrib-helm-chart/` are forks. Both are
+maintained here rather than tracked against the project they came from, both
+carry changes made here, and both are covered by the license above like the
+rest of the tree.
+
+Each keeps the license file it was obtained under, in place, unchanged. Those
+files are not a second set of terms for this tree's version of the code. They
+are the notice the original code came with, which the original terms require to
+be retained and which those same terms permit this repository to redistribute
+under the AGPL. The code as its own copyright holders publish it stays
+available from them, on the terms they publish it under.
+
+**`node/` began as Redash** (https://github.com/getredash/redash).
+`node/LICENSE` is the two-clause BSD license, copyright (c) 2013-2020 Arik
+Fraimovich, all rights reserved, exactly as written there. A redistribution in
+source or binary form has to retain that copyright notice, the list of
+conditions and the disclaimer. Attribution for what this fork inherited belongs
+to the Redash project and its contributors.
+
+**`helm/charts/flow/contrib-helm-chart/` began as the Redash community Helm
+chart** (https://github.com/getredash/contrib-helm-chart).
+`helm/charts/flow/contrib-helm-chart/LICENSE` is the Apache License, Version
+2.0. Apache-2.0 asks that changed files be marked as changed, so: **the files
+in that directory have been changed here.** It no longer declares the redis and
+postgresql subchart dependencies, and Chart.yaml records why; it carries
+templates the chart it was forked from does not have, among them a 1Password
+item and a configmap; and its values and its deployment templates have diverged
+from that chart. It ships no NOTICE file of its own, so there is no NOTICE text
+to propagate.
+
+Both of those license files are the authority on their own wording. The
+paragraphs above summarise them and do not replace them.
+
+
+Material inside this tree that came from elsewhere
+--------------------------------------------------
+
+Some files did not originate in this repository and the license above is not
+this repository's to grant over them:
+
+  app/public/db-logos/       vendor logos identifying data-source types. Each
+                             belongs to its own owner.
+  app/src/components/ui/     shadcn/ui (https://ui.shadcn.com) primitives,
+                             generated into the tree by that project's CLI
+                             rather than written here.
+
+Installed dependencies are out of scope here entirely. The packages this
+repository declares (app/package.json, api/pyproject.toml, node/pyproject.toml,
+and their lock files) keep their own licenses, stated in their own manifests
+and distributions. This file asserts nothing about any of them: it is not a
+dependency audit, and the manifests are where to look.

@@ -1,0 +1,121 @@
+# Builds docs/ and checks the two things a green Docusaurus build does not.
+#
+# THIS WORKFLOW DOES NOT DEPLOY. docs.veodyn.com is a Cloudflare Pages project
+# connected to this repository through Cloudflare's native GitHub integration,
+# so Cloudflare clones, builds and publishes on its own. Adding a wrangler
+# upload here would give the same project two publishers racing each other.
+#
+# The Pages project settings have to match this file, and nothing enforces that,
+# so they are written down here:
+#
+#   Project name         veodyn-docs
+#   Production branch    main
+#   Root directory       docs
+#   Build command        npm run build
+#   Output directory     build          (relative to the root directory)
+#
+#   Environment variables, production AND preview:
+#     DOCS_BASE_URL   /
+#     DOCS_SITE_URL   https://docs.veodyn.com
+#     DOCS_GA_ID      G-EWMJLGRK6M
+#     NODE_VERSION    22
+#
+# Those first three are the whole difference between the public docs and the
+# tenant deployment. docusaurus.config.ts defaults every one of them to the
+# tenant values (baseUrl '/docs/', the placeholder origin, analytics off), so a
+# build that sets nothing is content-identical to what the tenant deployment
+# has always served. NODE_VERSION is not optional: docs/package.json requires
+# node >=20 and Pages defaults older than that.
+#
+# WHY THE DOCS BUILD FROM THIS TREE AT ALL. The tenant image is built from the
+# deploy repository's own checkout (`build-docs-prod`, DOCKER_BUILD_DIR "docs",
+# `needs: []`), which made documentation the one thing that did not come from
+# the community tree. That deployment is untouched. This publishes the public
+# copy from the public tree, which is what the frontend and the API already do.
+
+name: docs-check
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs-check.yml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs-check.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      - run: npm ci
+
+      # Built with the same overrides Cloudflare uses, so this fails here rather
+      # than in a deployment nobody is watching. onBrokenLinks is 'throw', so a
+      # dead internal link fails the build itself.
+      - name: Build as the public docs
+        env:
+          DOCS_BASE_URL: /
+          DOCS_SITE_URL: https://docs.veodyn.com
+          DOCS_GA_ID: G-EWMJLGRK6M
+        run: npm run build
+
+      # Every explicit `{#custom-id}` heading is a cross-page link target, and
+      # onBrokenAnchors is NOT set to throw, so a build stays green when one
+      # stops resolving. Assert they reached the HTML instead.
+      - name: Every explicit heading id resolves
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, sys
+          docs, build = pathlib.Path("docs"), pathlib.Path("build")
+          missing = []
+          for f in docs.rglob("*.md"):
+              for line in f.read_text().splitlines():
+                  m = re.match(r'^#{2,3} .*\{#([a-z0-9-]+)\}\s*$', line)
+                  if not m:
+                      continue
+                  page = build / f.relative_to(docs).with_suffix("") / "index.html"
+                  if not page.exists() or f'id="{m.group(1)}"' not in page.read_text():
+                      missing.append(f"{f}: #{m.group(1)}")
+          print(f"checked, {len(missing)} missing")
+          if missing:
+              print("\n".join(missing))
+              sys.exit(1)
+          PY
+
+      # A stray /docs/ prefix means the tenant default leaked into the public
+      # build, and every asset would 404 on docs.veodyn.com.
+      - name: No tenant path prefix in the public build
+        run: |
+          if grep -rq '"/docs/assets/' build --include='*.html'; then
+            echo "::error::built HTML carries the /docs/ prefix; DOCS_BASE_URL did not apply"
+            exit 1
+          fi
+
+      # The tenant defaults are the other half of the contract: a build with no
+      # overrides must still produce the sub-path tree that image serves.
+      - name: Tenant defaults still produce the sub-path build
+        run: |
+          rm -rf build .docusaurus
+          npm run build
+          grep -rq '"/docs/assets/' build --include='*.html' || {
+            echo "::error::a default build no longer carries /docs/; the tenant deployment would break"
+            exit 1
+          }

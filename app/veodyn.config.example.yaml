@@ -1,0 +1,98 @@
+# Veodyn instance configuration (white-label).
+#
+# Copy to veodyn.config.yaml (or point VEODYN_CONFIG_PATH at it) to brand a
+# tenant. Every key is OPTIONAL; anything omitted falls back to the neutral
+# Veodyn default, so an empty file is a valid config. Any key can also be
+# overridden by an env var using __ as the nesting separator
+# (e.g. VEODYN_BRAND__NAME=Meridian). Secrets come from env only, never here.
+#
+# This example is a fictional tenant (Meridian Transit Authority) that
+# exercises every key below with invented values, so it doubles as reference
+# documentation for the config schema. It does not correspond to any real
+# organisation, domain, or deployment.
+
+# `logo` is a path under public/. Omit it and an unbranded instance gets the
+# bundled Veodyn mark (/images/veodyn-mark.svg); set `name` without a `logo` and
+# you get the name on its own, never Veodyn's mark next to someone else's name.
+#
+# It is left commented out here because a tenant logo is an asset the operator
+# supplies, and this repository bundles none that would suit a fictional one.
+# Drop your own file under app/public/ and point this at it.
+brand:
+  name: "Meridian Transit Authority"
+  # logo: /images/meridian-mark.svg
+  help_url: https://help.example.com
+  # The product documentation site (the Docusaurus build under docs/). Adds a
+  # "Documentation" row to the sidebar footer; help_url stays the tenant's own
+  # support site. Omit either and its row is absent.
+  # docs_url: https://docs.example.com
+
+theme:
+  accent: "#3d6b52"
+  chart_palette: ["#3d6b52", "#b2542c", "#3b5b92", "#8a4fbe", "#c2447a", "#d9a441", "#2f9e9e", "#6b7a3d"]
+  # fonts: { display: Newsreader, ui: Geist, mono: Geist Mono, source: external }
+
+# This list is the registry: a domain exists on an instance if and only if it is
+# named here. /data/<key> refuses anything else, and the sidebar rows and the
+# Domain selects on the KPI and report forms are all built from it. Leaving it
+# empty is legal and means the instance has no domains at all.
+#
+# `icon` takes a lucide name from the curated set in src/lib/sidebar-nav.ts
+# (bus, car, train, ship, plane, globe, wind, activity). An unknown name falls
+# back to a plain folder silently, so it looks like a deliberate choice rather
+# than a typo: this file said `train-front` for two months, which is a real
+# lucide icon and not one of the eight, so Rail rendered as a folder.
+domains:
+  - { key: transit, label: Transit, icon: bus }
+  - { key: freeway, label: Freeways, icon: car }
+  - { key: rail, label: Rail, icon: train }
+
+home:
+  tagline: "Meridian Transit Authority's regional operations dashboard."
+
+assistant:
+  widget_url: https://assistant.example.com
+  integration_id: meridian-redash
+  sub_agent: meridian
+  title: "Meridian Data Assistant"
+
+# map:
+#   tile_url: https://your-tile-server/style.json   # repoint for on-prem
+# ai:
+#   enabled: true
+#   endpoint: https://your-ai-endpoint
+#   # the AI key is a SECRET: set VEODYN_AI__KEY in the environment, not here
+# features:
+#   # Optional surfaces, off unless an instance asks for them. Query Snippets is
+#   # reusable SQL fragments with a trigger word; with none written it is an
+#   # empty page and a permanent nav row, so it ships off. Off means the route
+#   # 404s and the nav entry is absent, not that a button is greyed out.
+#   query_snippets: true
+#   # The draft workflow. Off by default: saving a query puts it straight in the
+#   # shared list, and the word "draft" appears nowhere in the UI.
+#   #
+#   # Turn it on and the author decides when a query is ready. Until they pick
+#   # "Share with the team" it is listed only for them, and it carries a Draft
+#   # badge. This is a rule about the LIST, not a permission: anyone who can
+#   # reach the data source can still open a draft from its link, so do not use
+#   # it to keep a query secret.
+#   query_drafts: true
+# wall_mode:
+#   default_dashboard: transportation-overview
+# visualizations:
+#   # Which visualization types an analyst can CREATE, by Redash type name.
+#   # OMIT this whole section (or set enabled to nothing) to offer everything
+#   # this build registers, which is the default. Present, it is an allowlist:
+#   # only these appear in the type selector and in the Visual builder.
+#   #
+#   # It never hides a visualization that already exists. A dashboard widget
+#   # saved with a type you later drop from this list still renders; you are
+#   # choosing what can be made, not what can be read.
+#   #
+#   # A name no plugin in this image registers is logged once and ignored, so
+#   # rolling back to an image without a plugin degrades the UI instead of
+#   # stopping the app.
+#   #
+#   # Core types: TABLE, CHART, COUNTER, PIVOT, FUNNEL, DETAILS, MAP, HEATMAP,
+#   # BOXPLOT, SANKEY, CHOROPLETH, COHORT, SUNBURST_SEQUENCE, WORD_CLOUD.
+#   enabled: [TABLE, CHART, COUNTER, MAP]

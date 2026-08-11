@@ -1,0 +1,5 @@
+apiVersion: v2
+name: veodyn-api
+description: Veodyn backend service (the HTTP API sidecar)
+type: application
+version: "1"

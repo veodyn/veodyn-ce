@@ -1,0 +1,37 @@
+# Port of ci/helm-render-test.yaml. Render gate for the charts under
+# helm/charts/.
+#
+# `helm template` is the whole toolchain. There is no cluster, no kubeconfig
+# and no `helm install` anywhere in this workflow, so it needs nothing a fork
+# cannot supply. Read ci/helm-render-test.yaml and scripts/check-helm-render.sh
+# for why it exists.
+name: helm-render-test
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  helm-render-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # Replaces `image: alpine/helm:3.16.4`, and keeps the pinned-version
+      # property that image tag was there for. Running the alpine image as a
+      # job container is not the port here: it is musl, and actions/checkout is
+      # a JavaScript action the runner executes with a glibc node it mounts in.
+      #
+      # The GitLab job's `entrypoint: [""]` override also disappears with the
+      # image: nothing is fighting an entrypoint on a runner VM.
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+
+      # From the repository root, which is where the script requires to be run
+      # from; it exits 2 rather than passing if it cannot find the chart.
+      - run: ./scripts/check-helm-render.sh

@@ -1,0 +1,122 @@
+# Example values for the `frontend` chart.
+#
+# Every value below is FICTIONAL: no hostname, namespace, image path, or
+# credential here is real. It was derived from a private deployment's real
+# values, with every identifying value replaced by a made-up one. Those
+# per-environment values are specific to that deployment and are not shipped
+# here; this file is the shape they take, not a copy of them.
+#
+# Render this on its own to see the manifests it produces:
+#   helm template example helm/charts/frontend -f helm/charts/frontend/values.example.yaml
+#
+# A real deployment typically layers several files instead of one (a shared
+# base, a per-stage file, a per-service file) and supplies a few keys ONLY
+# via `helm upgrade --set`, so they appear in no values file at all:
+#   --set appName=app                        (which top-level block templates read; included below so this file renders alone)
+#   --set image=<registry path> --set imageTag=<tag>
+#   --set app.env.SERVICE_NAME=<namespace>-<service>-<app>
+#   --set app.ingressHosts[0].name=<host> --set app.ingressHosts[0].host=<host>   (only when the release has a public hostname)
+#
+# Keys a real deployment MUST override:
+#   image, imageTag                - point at your own registry
+#   app.SharedSecretName           - name of a k8s Secret carrying every key
+#                                     referenced below with a `secret:` prefix
+#   app.ingressHosts                - your real hostname(s)
+#   app.env.REDASH_URL              - your Redash deployment's URL
+#   app.env.REDASH_INTERNAL_API_KEY - a Redash API key for an admin account,
+#                                      stored in the SharedSecretName Secret
+#   app.env.CATALOG_API_URL / KPI_API_URL / REPORTS_API_URL
+#                                    - your veodyn-api deployment's URL
+#
+# Keys that are optional and safe to omit entirely:
+#   app.env.VEODYN_AI__*                   - only needed to turn on the AI
+#                                             assistant surfaces
+#   app.env.POSTHOG_HOST / POSTHOG_KEY     - only needed for product analytics
+#   app.veodynConfig                        - omit to run on the built-in
+#                                             neutral defaults (no domains)
+#
+# The chart passes app.env through verbatim, so an overlay image that reads
+# extra variables can be given them here. This file documents only what the
+# public image itself reads; anything else belongs in that overlay's own
+# values, where the code reading it also lives.
+
+appName: app
+image: "example.com/veodyn-example/frontend"
+imageTag: "example"
+registrySecretName: registry-harbor
+
+app:
+  replicas:
+    default: 1
+  port: 3000
+  serviceType: NodePort
+  limitsCpu: 0.5
+  limitsMemory: 1G
+  requestsCpu: 0.2
+  requestsMemory: 512M
+  strategyType: "RollingUpdate"
+  readnessProbe:
+    path: "/api/health_check"
+    port: "3000"
+    initialDelaySeconds: "10"
+  livenessProbe:
+    path: "/api/health_check"
+    port: "3000"
+    initialDelaySeconds: "10"
+
+  # Name of a k8s Secret you create yourself. Every `secret:<KEY>` value below
+  # resolves against this Secret's data, keyed by <KEY>.
+  SharedSecretName: "example-frontend-secrets"
+
+  # Mounted at VEODYN_CONFIG_PATH below as the tenant's instance config. Omit
+  # this whole key to run on the app's built-in neutral defaults instead.
+  veodynConfig: |
+    domains:
+      - { key: north, label: North Region, icon: map }
+      - { key: south, label: South Region, icon: map }
+
+  env:
+    VEODYN_CONFIG_PATH: "/etc/veodyn/veodyn.config.yaml"
+    # Same-namespace Redash service, or an external URL if Redash runs
+    # elsewhere. Never exposed to the browser: only this app's own
+    # /api/redash/[...path] and /api/auth/* routes call it.
+    #
+    # The host is the Redash chart's Service, which is named
+    # "<release>-redash". The reference topology installs it as release "flow",
+    # hence "flow-redash" below; `example` is the namespace. Check the name
+    # your own install produced rather than assuming it, since a service that
+    # does not resolve looks exactly like Redash being down.
+    REDASH_URL: "http://flow-redash.example.svc.cluster.local:80"
+    # Used only by /api/admin/* after the caller's own session is checked for
+    # the admin permission. Create this key in SharedSecretName after the
+    # first Redash admin user exists.
+    REDASH_INTERNAL_API_KEY: "secret:REDASH_INTERNAL_API_KEY"
+    # Your veodyn-api deployment's in-cluster (or external) URL. All three
+    # point at the same service; the routes append /catalog, /domains, /kpis
+    # and /reports themselves. The veodyn-api chart names its Service after
+    # the release, and only the API half gets one (the worker sets no port),
+    # so the reference topology's "veodyn-api-api" release is the host here.
+    CATALOG_API_URL: "http://veodyn-api-api.example.svc.cluster.local:8000"
+    KPI_API_URL: "http://veodyn-api-api.example.svc.cluster.local:8000"
+    REPORTS_API_URL: "http://veodyn-api-api.example.svc.cluster.local:8000"
+    # --- AI (optional) ---
+    # Leave VEODYN_AI__ENABLED unset, or "false", to keep every AI affordance
+    # hidden; every flow still has a manual path either way.
+    VEODYN_AI__ENABLED: "false"
+    VEODYN_AI__ENDPOINT: "http://veodyn-api-api.example.svc.cluster.local:8000/ai"
+    VEODYN_AI__KEY: "secret:VEODYN_AI_RELAY_KEY"
+    # Optional: a docs site link surfaced in the sidebar. Omit to hide it.
+    VEODYN_BRAND__DOCS_URL: "https://docs.example.com"
+    # --- Telemetry (optional) ---
+    # A client-side PostHog ingestion key is not secret (posthog-js ships it
+    # to every browser), so it is fine in the clear here. Leave POSTHOG_KEY
+    # empty/unset to keep telemetry off entirely.
+    POSTHOG_HOST: "https://posthog.example.com"
+    POSTHOG_KEY: "phc_replace_with_your_own_project_key"
+
+  letsencrypt:
+    enabled: true
+    issuer: "letsencrypt-prod"
+  ingressHosts:
+    - name: veodyn.example.com
+      host: veodyn.example.com

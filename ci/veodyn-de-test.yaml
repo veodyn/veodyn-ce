@@ -1,0 +1,89 @@
+# Lint, type and test gate for the Next.js app. A language runtime and this
+# checkout: no docker, no database, no service container of any kind. That was
+# already the intent, but the job overrode only `image` while .gitlab-ci.yml's
+# `default:` block attached a docker-in-docker service to every job, so it
+# started a privileged daemon it never used and could not resolve without a
+# registry variable. That block is gone; this job now inherits nothing.
+frontend-test:
+  stage: test
+  image: ${IMAGE_NODE}
+  variables:
+    # Public image at the major the app Dockerfile ships (node:24-alpine
+    # build/runtime), so a fork resolves it unconfigured. Point IMAGE_NODE at a
+    # mirror through a project CI/CD variable if policy requires it.
+    IMAGE_NODE: "node:24"
+  # THE LAST NET UNDER A SHARED RUNNER, NOT A LICENCE FOR FLAKY TESTS.
+  #
+  # This job failed 13 of its last 29 runs on 2026-08-05, and none of them were
+  # the code. Wall time separates the two populations cleanly: passing runs took
+  # 279-665s and failing ones 1609-2284s, for the same 679 test files. What
+  # happens is that GitLab puts several jobs on one runner (one host took 17 in
+  # a 50 minute window) and vitest sizes its worker pool from the HOST's cpu
+  # count, so four frontend-test jobs each helped themselves to about ten
+  # workers on the same box. vitest.config.ts caps the pool in CI, which is the
+  # part within our control; this is what covers the case where the cap is not
+  # enough because six other jobs still landed alongside.
+  #
+  # `script_failure` only, so a runner-system failure or a timeout does not
+  # silently burn three attempts. The cost is that a GENUINE test break is now
+  # paid for three times before the pipeline goes red, which for this job is
+  # real money at ~500s a run. It is still cheaper than a human re-running a red
+  # pipeline by hand and re-reviewing it, which is what happens today.
+  #
+  # If you are reading this because the job is red: check the DURATION first.
+  # Over ~1600s means it starved and a retry will pass; under, and it is
+  # probably your change.
+  retry:
+    max: 2
+    when: script_failure
+  before_script:
+    - corepack enable
+    - cd app
+    - pnpm install --frozen-lockfile
+  script:
+    - pnpm lint
+    - pnpm exec tsc --noEmit
+    # Fails if any of the 129 paths the enterprise pack owns
+    # (scripts/enterprise-paths.mjs) has come back into this tree.
+    #
+    # This replaced a ratchet that moved those paths aside, regenerated an empty
+    # feature registry and type-checked what was left. That measurement went
+    # 78 -> 0 and then the extraction carried the move out for real, at which
+    # point the ratchet had nothing to move and would have degenerated into a
+    # second `tsc --noEmit` on the line above. The two lines above are now
+    # measuring the real community tree rather than a rehearsal of it, and this
+    # is the one claim they cannot make: an enterprise module added back here
+    # would lint, type-check and test perfectly well.
+    - node scripts/check-ce-tree.mjs
+    # Both reporters: `default` keeps the human-readable log, `junit` writes a
+    # structured report GitLab parses into the pipeline's Tests tab.
+    #
+    # The junit file is the point. Vitest prints which assertions failed at the
+    # END of a run, and GitLab stops collecting a job log at 4 MB. On 2026-07-30
+    # a run emitted 5265 React act(...) warnings, hit that ceiling mid-run, and
+    # took the failure summary with it: identifying the single test that failed
+    # meant finding one `x` character 54000 lines into the raw trace. An artifact
+    # survives that, so a failure is always named and always carries its
+    # assertion message.
+    #
+    # --coverage adds the v8 instrumentation configured in vitest.config.ts,
+    # which sets `all: true` so a source file with no test counts as 0% rather
+    # than being absent from the report. text-summary is what the `coverage:`
+    # regex below reads; cobertura is what GitLab annotates a merge request diff
+    # with. Reporting only, no threshold: a number nobody has agreed on yet
+    # should not fail a build.
+    - pnpm exec vitest run --coverage --reporter=default --reporter=junit --outputFile=junit.xml
+  # Reads the percentage off the `Lines : 71.2% (...)` line of text-summary.
+  coverage: '/Lines\s*:\s*(\d+\.?\d*)%/'
+  artifacts:
+    # `always`, or the report is missing from exactly the runs that need it.
+    when: always
+    expire_in: 1 week
+    reports:
+      junit: app/junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: app/coverage/cobertura-coverage.xml
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'

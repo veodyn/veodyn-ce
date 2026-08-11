@@ -1,0 +1,347 @@
+# Lint and backend tests for node/, the query service fork.
+#
+# The pipeline ran NO Redash tests before this job existed: .gitlab-ci.yml
+# included the two app gates and the deploy jobs and nothing else, and the
+# fork's own .github/workflows/ci.yml is dead weight in a GitLab repo. Any test
+# added under node/tests/ without a job like this one is a test that cannot
+# fail.
+#
+# The job first shipped scoped to the three alert files, alongside an alerts
+# change. By the time it was widened the fork had added 30 test files and
+# modified 8 more since the initial import, none of them alerts: the sharing
+# and embed-token scopes, super-admin and group-privilege escalation, five
+# concurrency files, tests/historical/, and two migration tests. None of it ran.
+# It runs the whole suite now, so a file added under node/tests/ is gated the
+# moment it lands and nobody has to remember to widen a list here.
+#
+# It transcribes the upstream steps (node/.github/workflows/ci.yml) against
+# the fork's own .ci/compose.ci.yaml, which brings up postgres 18 and redis 7
+# and builds the image from node/. Gated on `changes`, so a pipeline that
+# touches neither node/ nor this job's own inputs never pays for the build.
+#
+# Runner image: this job declares its own image and its own dind service,
+# rather than inheriting them from a `default:` block in .gitlab-ci.yml. It is
+# the only job in this pipeline that wants either, and the block that used to
+# supply them attached a docker daemon to five jobs that never touched one.
+# IMAGE_DOCKER and IMAGE_DIND still come from that file, so the two stay
+# together and an installation can point both at a mirror in one place.
+#
+# This is also the one job here that needs more than a runtime and a checkout:
+# a dind service is a privileged container, which is a property of the runner.
+# GitLab's shared runners provide it. A self-managed runner that does not will
+# fail this job and only this job, and .gitlab-ci.yml says so rather than
+# claiming the whole pipeline runs anywhere.
+#
+# The public docker:23.0.6 ships the compose v2 plugin (verified locally:
+# `docker compose version` prints v2.22.0), and that public tag is now the
+# default. A mirrored tag may be a different build; if a run dies on
+# `docker: 'compose' is not a docker command`, this line is the fix:
+#
+#   before_script:
+#     - apk add --no-cache docker-cli-compose
+#
+# Why the layer cache below exists. Three jobs measured on 2026-08-05 spent
+# 595s, 1453s and 2342s, and the spread was almost entirely one layer: the
+# `apt-get install` in the fork's Dockerfile took 17s, 215s and 1191s. Its log
+# shows 0.9s to reach package 6 and then 18.5 minutes to reach package 72, with
+# `Ign:` retry lines throughout, so it is deb.debian.org reachability from the
+# runner and not anything this repo controls. In the worst of the three the
+# whole build was 1498s of a 2305s job while pytest was 776s. Nothing done to
+# the tests matters while one layer can cost twenty minutes, and the layer is
+# keyed to a Dockerfile that changes a few times a year, so it should be pulled
+# and not rebuilt. Every step of the cache path is deliberately non-fatal: a run
+# with no cache, no registry, or no credentials builds exactly the way this job
+# did before and stays green.
+redash-test:
+  stage: test
+  image:
+    name: ${IMAGE_DOCKER}
+    pull_policy: always
+  services:
+    - name: ${IMAGE_DIND}
+      alias: docker
+      pull_policy: always
+      variables:
+        DOCKER_TLS_CERTDIR: ""
+        HEALTHCHECK_2375_TCP_ADDR: docker
+        HEALTHCHECK_2375_TCP_PORT: 2375
+  variables:
+    COMPOSE_FILE: .ci/compose.ci.yaml
+    COMPOSE_PROJECT_NAME: redash
+    COMPOSE_DOCKER_CLI_BUILD: 1
+    DOCKER_BUILDKIT: 1
+    # Compose names the image it builds for a service that has `build:` and no
+    # `image:` key <project>-<service>, so with COMPOSE_PROJECT_NAME=redash it
+    # is redash-redash. Building under that name ourselves is what lets the
+    # `docker compose run` steps below reuse the image instead of building a
+    # second one; verified locally, a pre-tagged image makes `compose run` skip
+    # the build entirely. If a future compose changes that convention the job
+    # still passes, it just builds twice, so this is a speed dependency and not
+    # a correctness one.
+    #
+    # The project name is `redash` and not `node` on purpose, and it is pinned
+    # in node/compose.yaml for the same reason: compose derives the default
+    # from the directory basename, so the rename would have silently renamed
+    # the network too.
+    TEST_IMAGE: redash-redash:latest
+    # The layer cache lives in THIS project's own registry, under this name.
+    # Only the name is set here; the full reference is composed in the shell
+    # below, and ONLY when the registry variables are actually present.
+    #
+    # They are not always present, which is the trap this arrangement exists to
+    # avoid. CI_REGISTRY_IMAGE and CI_REGISTRY_USER are predefined only where
+    # the project's container registry is ENABLED, so on an installation or a
+    # fork with the registry switched off they are empty. Composing the path in
+    # YAML would then yield the reference `/redash-test-cache:latest`, and the
+    # `docker tag` on the cold-cache branch below would fail on an invalid
+    # reference and take the job down with it, before a single test ran.
+    #
+    # Keeping the name a bare literal also keeps the identity gate's
+    # registry-namespace rule satisfied without an exception: there is no
+    # ${...REGISTRY...}/literal path anywhere in this file to mistake for an
+    # organisation namespace.
+    CACHE_IMAGE_NAME: redash-test-cache:latest
+  # THE RUNNER FLEET IS NOT UNIFORM, AND THIS JOB IS THE ONLY ONE THAT NOTICES.
+  #
+  # node/pyproject.toml pins numpy 2.4.2, and NumPy 2.4.0 raised its default
+  # x86 build baseline to x86-64-v2 (SSE4.2, POPCNT, CX16, LAHF: CPUs since
+  # 2009). On a runner whose CPU does not present those flags, `import numpy`
+  # raises at import time. That import is reached from redash/__init__.py, which
+  # imports every query runner, one of which is influx_db -> influxdb -> pandas
+  # -> numpy. So `redash` is left half-initialised in sys.modules and ALL of the
+  # test modules then die on `AttributeError: module 'redash' has no attribute
+  # 'models'`, which points at the fork's models layer and is the wrong place
+  # entirely. The real error is six frames down in the FIRST traceback only.
+  #
+  # Measured 2026-08-05, and it is the runner rather than the code: one commit
+  # ran twice, passing on one runner and failing on another, and across every
+  # run of this job to date the failing runner has failed all three times it
+  # picked the job up while the passing one has never failed it.
+  #
+  # Retrying is the mitigation, not the fix. The fix is to take the offending
+  # runners out of rotation, and this job is a canary for that: nothing else in
+  # the pipeline imports numpy, so a bad runner is invisible everywhere else.
+  # The cost of `script_failure` is that a GENUINE test break is now paid for
+  # three times before the pipeline goes red; the preflight below is what keeps
+  # the bad-runner case from costing a full build each time.
+  retry:
+    max: 2
+    when: script_failure
+  before_script:
+    # Probe before doing anything expensive. The mirror was never verified (see
+    # the header), so if it lacks the plugin this says which line to uncomment
+    # instead of dying twenty lines later inside a build with a bare
+    # "'compose' is not a docker command".
+    - |
+      docker compose version > /dev/null 2>&1 || {
+        echo "This runner image has no docker compose plugin."
+        echo "Uncomment the apk line documented at the top of ci/redash-test.yaml."
+        exit 1
+      }
+    # Always prints the flags, because they are the evidence. If this job ever
+    # fails the numpy way on a runner this check PASSED, the printed flags say
+    # so, and the diagnosis above needs revisiting rather than repeating.
+    #
+    # `printf`, not `echo -n`: this runs in the alpine docker image, where sh is
+    # ash. Guarded on there being a flags line at all, because /proc/cpuinfo has
+    # none on arm64 and an unguarded check would fail a perfectly good runner
+    # over a baseline that only applies to x86.
+    # All SEVEN features x86-64-v2 requires are checked, and the check and the
+    # printed list are driven by ONE list so they cannot disagree. An earlier
+    # version tested only sse4_2 and popcnt while printing all seven, so a
+    # partially exposed virtual CPU passed the preflight and then failed after
+    # the image build, which is the whole cost this is here to avoid.
+    #
+    # `pni` is SSE3. Linux has reported it under that name (Prescott New
+    # Instructions) since before the SSE3 name settled, and /proc/cpuinfo has no
+    # `sse3` line at all, so grepping for `sse3` matches nothing on every CPU
+    # ever made and silently tests six features instead of seven.
+    - |
+      echo "runner: ${CI_RUNNER_DESCRIPTION:-unknown}"
+      V2_FLAGS="pni ssse3 sse4_1 sse4_2 popcnt cx16 lahf_lm"
+      CPU_FLAGS=$(grep -m1 '^flags' /proc/cpuinfo 2>/dev/null || true)
+      if [ -z "$CPU_FLAGS" ]; then
+        echo "no x86 flags line in /proc/cpuinfo; not an x86 host, baseline check skipped"
+      else
+        MISSING=""
+        for f in $V2_FLAGS; do
+          printf '%s' "$CPU_FLAGS" | grep -qw "$f" || MISSING="$MISSING $f"
+        done
+        if [ -z "$MISSING" ]; then
+          echo "x86-64-v2 baseline present: $V2_FLAGS"
+        else
+          echo "This runner's CPU does not present x86-64-v2. Missing:$MISSING"
+          echo "(pni is SSE3; the other names match /proc/cpuinfo as printed.)"
+          echo "numpy 2.4.x cannot import here, so the Redash suite cannot collect,"
+          echo "and every test reports 'module redash has no attribute models'."
+          echo "Failing in seconds rather than after a full image build, so the"
+          echo "retry above lands on another runner cheaply. See the comment in"
+          echo "ci/redash-test.yaml for why this is the runner and not the code."
+          exit 1
+        fi
+      fi
+    - cd node
+    # Decide ONCE whether this run has a cache at all, and carry the answer in
+    # CACHE_IMAGE: a non-empty value means every cache step below is safe to
+    # run, an empty one means skip all of them. before_script and script share
+    # a shell, so this survives into the build.
+    #
+    # Best effort throughout. A job that cannot reach a registry still builds,
+    # it just pays full price, so nothing on this path may fail the pipeline.
+    - |
+      CACHE_IMAGE=""
+      if [ -n "$CI_REGISTRY_IMAGE" ] && [ -n "$CI_REGISTRY_USER" ]; then
+        if docker login -u "$CI_REGISTRY_USER" -p "$CI_JOB_TOKEN" "$CI_REGISTRY"; then
+          CACHE_IMAGE="${CI_REGISTRY_IMAGE}/${CACHE_IMAGE_NAME}"
+        else
+          echo "Registry login failed; this run builds without the layer cache."
+        fi
+      else
+        echo "No container registry on this project; building without the layer cache."
+      fi
+  script:
+    # Pull the previous image so its layers are local for --cache-from. BuildKit
+    # can resolve a cache reference straight from a registry, but the pulled
+    # form also works with the plain builder, and a pull that fails here is a
+    # cold cache rather than a broken job.
+    - |
+      CACHE_ARGS=""
+      if [ -n "$CACHE_IMAGE" ] && docker pull "$CACHE_IMAGE"; then
+        CACHE_ARGS="--cache-from $CACHE_IMAGE"
+      elif [ -n "$CACHE_IMAGE" ]; then
+        echo "No cache image yet. This run pays for a full build and then publishes one."
+      fi
+    # all_ds, matching both upstream's workflow and the image we actually ship:
+    # node/Dockerfile defaults install_groups to main,all_ds,dev and the image
+    # builds pass no override, so this is what runs. Without the driver group five
+    # test modules (athena, google_spreadsheets, influx_db, influx_db_v2,
+    # trino) fail to import, and a collection error aborts the
+    # whole run rather than skipping those files. The alternative was six
+    # --ignore flags that rot silently the next time upstream adds a driver
+    # test. The group is not where the build time goes either: the msodbcsql
+    # and Databricks ODBC layer sits above the poetry install and is paid
+    # either way.
+    #
+    # `docker build` rather than `docker compose build`, only because compose
+    # has no way to pass --cache-from on the command line and the build context
+    # is the same either way: compose resolves `build: ../` relative to
+    # .ci/compose.ci.yaml, which is this directory.
+    #
+    # BUILDKIT_INLINE_CACHE writes the cache metadata into the image itself, so
+    # the push below is a cache other runs can import with no separate cache
+    # manifest to manage.
+    #
+    # There is deliberately no `skip_frontend_build` arg here, though the
+    # version of this job on the deploy branch passes one. Plan 1C deleted the
+    # fork's legacy client and the Dockerfile no longer declares that ARG, so
+    # passing it now buys nothing and earns a "build arg not consumed" warning.
+    # The fork's own .github/workflows/ci.yml still passes it and is kept only
+    # as a reference for the Actions port; do not copy that line either.
+    #
+    # $CACHE_ARGS is unquoted on purpose: it is either empty or the two words
+    # `--cache-from <ref>`. GitLab runs every script line in one shell, so the
+    # variable set above is still here. Empty means no reference is passed at
+    # all, rather than passing an empty one and failing on `invalid reference
+    # format` when the registry is unreachable.
+    - docker build
+      $CACHE_ARGS
+      --build-arg BUILDKIT_INLINE_CACHE=1
+      --build-arg install_groups="main,all_ds,dev"
+      -t "$TEST_IMAGE" .
+    # Publish the cache here, immediately after the build and BEFORE the tests.
+    # Here because the cache is about the build and nothing below can improve
+    # it, and GitLab abandons the rest of `script` on the first non-zero exit,
+    # so a push at the end would be skipped by exactly the red pipelines that
+    # are about to be re-run.
+    #
+    # From the default branch, or from anywhere when the cache came up empty.
+    # The default branch keeps it fresh, and a 1.8GB push per feature branch
+    # otherwise buys nothing, since the layers that matter are keyed to the
+    # Dockerfile and not to anyone's source changes. The empty-cache case is
+    # what bootstraps: without it the first cache appears only after this file
+    # merges, so the merge request that introduces caching cannot show that
+    # caching works. Two branches racing to fill a cold cache both write a
+    # valid cache, so the loser costs nothing.
+    # The `-n "$CACHE_IMAGE"` guard is the load-bearing one: without a registry
+    # there is nothing to tag, and `docker tag` on an empty-hosted reference
+    # exits non-zero, which under GitLab's shell would end the job here rather
+    # than at the tests.
+    - |
+      if [ -n "$CACHE_IMAGE" ] && { [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ] || [ -z "$CACHE_ARGS" ]; }; then
+        docker tag "$TEST_IMAGE" "$CACHE_IMAGE" || echo "Cache tag failed; the tests below still decide this job."
+        docker push "$CACHE_IMAGE" || echo "Cache push failed; the tests below still decide this job."
+      fi
+    # Upstream runs this as a separate backend-lint job that gates the tests.
+    # Here it is a step in the same job, because GitLab jobs share no docker
+    # layer cache and a second job would rebuild the image from scratch to run
+    # a linter that takes a second. First, so it fails fast: no database, no
+    # containers, and --no-deps keeps compose from starting postgres and redis
+    # for it. `black --check` is deliberately absent, upstream pip-installs
+    # black in that job and it is in none of the image's poetry groups.
+    - docker compose run --rm --no-deps redash ruff check .
+    # postgres and redis only, not a bare `up -d`. The compose file's `redash`
+    # service runs `manage version` and exits within seconds, so starting it
+    # buys nothing, and it publishes host port 5000, which is one more way for
+    # the job to die on a bind conflict. The test container below is created by
+    # `docker compose run`, which does not publish ports.
+    - docker compose up -d postgres redis
+    # Upstream sleeps 10 here. `create database tests` runs straight after the
+    # containers start and postgres is not accepting connections yet, so
+    # without a wait the next line is a coin flip. Polling costs a second on a
+    # warm daemon instead of ten every run.
+    - |
+      for i in $(seq 30); do
+        docker compose exec -T postgres pg_isready -U postgres > /dev/null 2>&1 && break
+        sleep 1
+      done
+    # bin/docker-entrypoint's `tests` verb hardcodes
+    # REDASH_DATABASE_URL=.../tests, so the database has to exist first.
+    - docker compose run --rm postgres psql -h postgres -U postgres -c "create database tests;"
+    # --name, not --rm: the container has to survive for the docker cp in
+    # after_script. No path argument, so the entrypoint's `tests` verb defaults
+    # to tests/ and the suite grows without this line changing. 1302 tests,
+    # about three and a half minutes on a warm daemon.
+    - docker compose run --name redash-tests redash tests --junitxml=junit.xml
+  after_script:
+    - cd node
+    # The copy lives here, not at the end of `script`, and it has to come
+    # before the teardown. GitLab abandons the rest of `script` the moment a
+    # line exits non-zero, so a `docker cp` there would run only when the tests
+    # were green: the junit report would be missing from exactly the runs that
+    # need it. after_script always runs, and artifacts upload after it.
+    # Upstream's workflow has this same hole.
+    - docker cp redash-tests:/app/junit.xml junit.xml || true
+    # `|| true` throughout: a teardown failure must not mask the test result.
+    - docker compose down -v || true
+    # `down` leaves this one behind. Compose labels a `run` container
+    # com.docker.compose.oneoff=True and skips it, verified locally: after
+    # `down -v` removed all three service containers and the network, an exited
+    # `redash-tests` was still there. Harmless on a per-job dind, but a runner
+    # that reuses its daemon would fail the next run on a duplicate name.
+    - docker rm -f redash-tests || true
+  artifacts:
+    # `always`, matching the other two gates, or the report is missing from
+    # exactly the runs that need it.
+    when: always
+    expire_in: 1 week
+    reports:
+      junit: node/junit.xml
+  rules:
+    # Never on a schedule. GitLab evaluates `rules:changes` as TRUE for every
+    # scheduled pipeline regardless of what changed, so without this the gating
+    # below silently stops applying and every nightly pays for a Redash build.
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    # ci/redash-test.yaml is in its own `changes` list on purpose: without it, a
+    # pipeline that only edits this job never runs it, so there is no way to
+    # tell whether an edit to the gate works. .gitlab-ci.yml is there for the
+    # same reason one step out: IMAGE_DOCKER and IMAGE_DIND are defined in that
+    # file, so a change to either can break this job in a pipeline that would
+    # not otherwise have run it.
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: &redash_test_paths
+        - "node/**/*"
+        - "ci/redash-test.yaml"
+        - ".gitlab-ci.yml"
+    - if: '$CI_COMMIT_BRANCH'
+      changes: *redash_test_paths

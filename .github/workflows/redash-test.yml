@@ -1,0 +1,277 @@
+# Port of ci/redash-test.yaml. Lint and backend tests for node/, the query
+# service fork, run through that tree's own .ci/compose.ci.yaml.
+#
+# Read ci/redash-test.yaml for why each step exists, above all why the whole
+# suite runs rather than a list of files. This file records what had to change.
+#
+# WHAT DISAPPEARED, AND WHY IT IS SAFE TO LOSE
+#
+# GitLab needed `image: docker:23.0.6` plus a privileged `docker:23.0.6-dind`
+# service, and IMAGE_DOCKER / IMAGE_DIND existed so an installation could point
+# both at a mirror. A GitHub-hosted runner is a VM with a Docker daemon and the
+# compose v2 plugin already on it, so the runner image, the dind service and
+# both variables have no subject here. The probe step below is kept from the
+# GitLab before_script precisely so that a runner WITHOUT the compose plugin
+# says so in one line instead of dying inside a build.
+#
+# What that also removes is the one thing .gitlab-ci.yml warned a fork about:
+# there is no privileged container to arrange any more, so this job is no
+# longer the odd one out.
+name: redash-test
+
+# `rules: changes:` becomes `paths:`, keeping the same gate and the same
+# reason: a build of this image is expensive and a change that touches neither
+# the fork nor this job's own definition must never pay for one.
+#
+# ci/redash-test.yaml and .gitlab-ci.yml were in the GitLab list because the
+# job's definition and its image variables lived in those two files. Here both
+# collapse into this single workflow file, which is listed for the same reason:
+# without it, an edit to this gate would not run the gate.
+#
+# The filter is on the JOB, not on the trigger, and that is the difference
+# between a gate that can be required and one that cannot.
+#
+# A workflow skipped by a trigger-level `paths:` filter reports nothing at all,
+# and a REQUIRED check that never reports leaves a pull request pending for
+# ever. A job skipped by its own `if:` DOES report, as skipped, which branch
+# protection accepts. So the workflow always runs, a ten-second job decides
+# whether the fork changed, and the expensive job runs or is skipped on that
+# answer.
+#
+# The saving is unchanged: a pull request touching nothing under node/ still
+# never builds the image. What it costs is one trivial job per run, which is
+# the price of this being eligible to be a required check at all.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Does this change touch the fork, or this gate's own definition? The two
+  # paths the GitLab `rules: changes:` list named, for the same reasons: the
+  # fork because that is what is under test, and this file because otherwise an
+  # edit to the gate would not run the gate.
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      node: ${{ steps.filter.outputs.node }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The diff needs both sides. A shallow clone has only one, and would
+          # make every comparison below look like a change.
+          fetch-depth: 0
+      - id: filter
+        env:
+          # Empty on a pull_request event. On the first push of a new branch it
+          # is git's null sha, which has no predecessor to diff against; that
+          # case is handled by the resolve check below rather than by comparing
+          # against the literal, because a 40-character hex string in a tracked
+          # file is exactly what scripts/scan-secrets.py exists to flag, and it
+          # flagged this one. The check is not weaker for it: a sha of any shape
+          # that this clone cannot resolve takes the same path.
+          BEFORE: ${{ github.event.before }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          base=""
+          if [ -n "$BASE" ]; then
+            base="$BASE"
+          elif [ -n "$BEFORE" ]; then
+            base="$BEFORE"
+          fi
+
+          # No base, or a base this clone cannot resolve (the null sha of a new
+          # branch, or a force-push whose old tip is gone), means there is
+          # nothing to compare and the honest answer is to run the job. Failing
+          # OPEN here costs one build; failing closed would skip the fork's whole
+          # suite on exactly the events where the history is unusual, and report
+          # success for it.
+          if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            echo "no usable base ($base); running the fork suite" >&2
+            echo "node=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed=$(git diff --name-only "$base" HEAD -- node/ .github/workflows/redash-test.yml)
+          if [ -n "$changed" ]; then
+            echo "node=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "node=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "node changed: ${changed:-none}" >&2
+
+  redash-test:
+    needs: changes
+    if: needs.changes.outputs.node == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: node
+    env:
+      COMPOSE_FILE: .ci/compose.ci.yaml
+      # `redash` and not `node`, same as node/compose.yaml pins it: compose
+      # derives the default from the directory basename, so the rename would
+      # have silently renamed the network too. It is also what makes the image
+      # built below, redash-redash, the one `compose run` reuses instead of
+      # building a second copy.
+      COMPOSE_PROJECT_NAME: redash
+      COMPOSE_DOCKER_CLI_BUILD: 1
+      DOCKER_BUILDKIT: 1
+      TEST_IMAGE: redash-redash:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe for the compose plugin
+        run: |
+          docker compose version > /dev/null 2>&1 || {
+            echo "This runner has no docker compose plugin, so nothing below can run."
+            exit 1
+          }
+          docker compose version
+
+      # Kept from the GitLab job, and still worth its second.
+      #
+      # node/pyproject.toml pins numpy 2.4.2, and NumPy 2.4.0 raised its x86
+      # build baseline to x86-64-v2. On a CPU without those flags `import numpy`
+      # raises, redash/__init__.py is left half-initialised, and every test
+      # module then dies on "module 'redash' has no attribute 'models'", which
+      # points at the wrong layer entirely. Failing here costs a second instead
+      # of a full image build.
+      #
+      # GitHub-hosted x86 runners are a uniform fleet and should always pass
+      # this, which is exactly why it stays: if it ever fails, that is news.
+      # There is no `flags` line on arm64, and the check skips itself there.
+      - name: x86-64-v2 preflight
+        run: |
+          echo "runner: ${RUNNER_NAME:-unknown} (${RUNNER_ARCH:-unknown})"
+          V2_FLAGS="pni ssse3 sse4_1 sse4_2 popcnt cx16 lahf_lm"
+          CPU_FLAGS=$(grep -m1 '^flags' /proc/cpuinfo 2>/dev/null || true)
+          if [ -z "$CPU_FLAGS" ]; then
+            echo "no x86 flags line in /proc/cpuinfo; not an x86 host, baseline check skipped"
+          else
+            MISSING=""
+            for f in $V2_FLAGS; do
+              printf '%s' "$CPU_FLAGS" | grep -qw "$f" || MISSING="$MISSING $f"
+            done
+            if [ -z "$MISSING" ]; then
+              echo "x86-64-v2 baseline present: $V2_FLAGS"
+            else
+              echo "This runner's CPU does not present x86-64-v2. Missing:$MISSING"
+              echo "(pni is SSE3; the other names match /proc/cpuinfo as printed.)"
+              echo "numpy 2.4.x cannot import here, so the Redash suite cannot collect."
+              echo "See ci/redash-test.yaml for why this is the runner and not the code."
+              exit 1
+            fi
+          fi
+
+      # THE LAYER CACHE, TRANSLATED.
+      #
+      # On GitLab this was a cache IMAGE in the project's own container
+      # registry, pulled with --cache-from and pushed back with
+      # BUILDKIT_INLINE_CACHE. Three measured jobs spent 595s, 1453s and 2342s
+      # and the spread was almost entirely the Dockerfile's `apt-get install`
+      # layer: 17s, 215s and 1191s, with Ign: retry lines throughout. That is
+      # deb.debian.org reachability from the runner, not anything this repo
+      # controls, and the layer is keyed to a Dockerfile that changes a few
+      # times a year.
+      #
+      # The direct Actions equivalent is BuildKit's GitHub Actions cache
+      # backend. It needs no registry, no organisation namespace and no secret,
+      # which is what keeps this job satisfiable by a fork: `cache-from` and
+      # `cache-to` here talk to the same cache service actions/cache uses.
+      # Cache entries written on a branch are visible to that branch and its
+      # children; entries written on the default branch are visible to all, so
+      # the "keep it fresh from the default branch" arrangement of the GitLab
+      # job comes for free rather than needing a conditional.
+      #
+      # push is false and there is no registry login anywhere in this file.
+      # `load: true` puts the built image in the runner's docker daemon under
+      # the name compose expects, which is what makes the `compose run` steps
+      # below reuse it instead of building a second one.
+      #
+      # No BUILDKIT_INLINE_CACHE build-arg: that wrote cache metadata into a
+      # pushed image, and nothing is pushed here.
+      #
+      # all_ds matches the image we ship. Without the driver group five test
+      # modules fail to import and a collection error aborts the whole run.
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: node
+          push: false
+          load: true
+          tags: redash-redash:latest
+          build-args: |
+            install_groups=main,all_ds,dev
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Upstream runs this as a separate job that gates the tests. Here it is a
+      # step, because a second job would rebuild the image to run a linter that
+      # takes a second. First, so it fails fast; --no-deps keeps compose from
+      # starting postgres and redis for it. `black --check` is deliberately
+      # absent: upstream pip-installs it and it is in none of the image's
+      # poetry groups.
+      - run: docker compose run --rm --no-deps redash ruff check .
+
+      # postgres and redis only, not a bare `up -d`. The compose file's `redash`
+      # service runs `manage version` and exits, and it publishes host port
+      # 5000, which is one more way for the job to die on a bind conflict.
+      - run: docker compose up -d postgres redis
+
+      # Upstream sleeps 10. Polling costs about a second on a warm daemon and
+      # is not a coin flip when it is slower than that.
+      - name: Wait for postgres
+        run: |
+          for _ in $(seq 30); do
+            docker compose exec -T postgres pg_isready -U postgres > /dev/null 2>&1 && break
+            sleep 1
+          done
+
+      # bin/docker-entrypoint's `tests` verb hardcodes a database named tests.
+      - run: docker compose run --rm postgres psql -h postgres -U postgres -c "create database tests;"
+
+      # --name, not --rm: the container has to survive for the docker cp below.
+      # No path argument, so the entrypoint defaults to tests/ and the suite
+      # grows without this line changing.
+      - run: docker compose run --name redash-tests redash tests --junitxml=junit.xml
+
+      # `if: always()`, and BEFORE the teardown. This is GitLab's after_script,
+      # and it exists because a copy at the end of a passing-only path means the
+      # junit report is missing from exactly the runs that need it. Upstream's
+      # own workflow has that hole.
+      - name: Copy the junit report out of the test container
+        if: always()
+        run: docker cp redash-tests:/app/junit.xml junit.xml || true
+
+      # `|| true` throughout: a teardown failure must not mask the test result.
+      # `down` skips the one-off `run` container (compose labels it
+      # com.docker.compose.oneoff=True), so it is removed by name.
+      - name: Tear down
+        if: always()
+        run: |
+          docker compose down -v || true
+          docker rm -f redash-tests || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: redash-test-reports
+          path: node/junit.xml
+          retention-days: 7
+          if-no-files-found: warn
+
+# NOT PORTED, deliberately: the `retry: max 2, when: script_failure`.
+#
+# It existed for the x86-64-v2 problem described at the preflight above, which
+# is a property of a NON-UNIFORM self-managed runner fleet: one commit ran
+# twice, passing on one runner and failing on another. GitHub-hosted runners
+# are a uniform fleet, so the cause has no subject here, and Actions has no
+# job-level retry primitive to carry it with anyway. The preflight stays, and
+# it is now the whole mitigation: if it ever fires on a GitHub-hosted runner,
+# re-run the job and then say so, because the fleet assumption above is wrong.

@@ -1,0 +1,66 @@
+stages:
+  - test
+
+variables:
+  FF_SCRIPT_SECTIONS: "true"
+  GIT_SUBMODULE_STRATEGY: none
+  # The runner image and its dind service, used by ci/redash-test.yaml and by
+  # nothing else. Public images at a pinned tag, so a fork resolves them with
+  # no configuration; an installation that mirrors its images sets IMAGE_DOCKER
+  # and IMAGE_DIND as project CI/CD variables and gets its mirror instead. Same
+  # arrangement as IMAGE_NODE and IMAGE_PYTHON in the included files, which
+  # already worked this way.
+  #
+  # Both used to be a registry-host CI variable followed by a hardcoded
+  # organisation namespace, which is why the note below about what a fork can
+  # run had to be rewritten: with no such variable set, the image path resolved
+  # with an empty host and the job died before running a line.
+  IMAGE_DOCKER: "docker:23.0.6"
+  IMAGE_DIND: "docker:23.0.6-dind"
+
+# This pipeline tests. It does not build images and it does not deploy.
+#
+# The image builds and the deploy jobs live on the private branch, and they
+# stay there: they push to a private container registry under a fixed
+# organisation namespace, two of them clone a private repository with the
+# pipeline's own job token, and the per-environment values and cluster
+# credentials a deploy needs are configured wherever that deployment lives.
+# A fork of this repository can run none of that, which is exactly why the
+# split falls here. scripts/public_tree_forbidden_paths.py holds the two
+# paths and the reasons, so a merge from the private branch cannot bring
+# them back quietly.
+#
+# What a fork needs to run the seven jobs that remain, stated narrowly because
+# the broad version of this claim was false:
+#
+#   frontend-test, veodyn-api-test, scan-secrets, check-public-tree and
+#   check-clean-tree need a language runtime and this checkout. Nothing else.
+#   veodyn-api-test also starts a public `postgres:16` service.
+#
+#   helm-render-test needs `helm` and this checkout, which is what its public
+#   image carries. It renders the charts; it reaches no cluster and reads no
+#   kubeconfig, so there is nothing for a fork to configure.
+#
+#   redash-test needs a runner that can run a docker-in-docker service, which
+#   is a privileged container. That is a property of the runner, not something
+#   this file can supply: GitLab's own shared runners provide it, a
+#   self-managed runner may not. The job is gated on `changes` under node/, so
+#   a fork that cannot run it simply never triggers it.
+#
+# There is deliberately no `default:` block. There used to be one, giving
+# every job the docker image and the dind service above, and five of the six
+# jobs then overrode the image while four overrode the services: a default
+# that fits exactly one job is not a default. redash-test now declares both
+# itself, which is also what stops the two jobs that forgot to override
+# `services` from starting a docker daemon they never used.
+#
+# The charts under helm/charts/ are shipped too, without the values that
+# would point them at any particular cluster. ci/helm-render-test.yaml is what
+# tests them, which is as far as a repository with no cluster can go.
+
+include:
+  - local: "ci/veodyn-de-test.yaml"
+  - local: "ci/veodyn-api-test.yaml"
+  - local: "ci/redash-test.yaml"
+  - local: "ci/scan-secrets.yaml"
+  - local: "ci/helm-render-test.yaml"

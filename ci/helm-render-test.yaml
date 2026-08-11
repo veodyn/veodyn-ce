@@ -1,0 +1,28 @@
+# Render gate for the charts under helm/charts/.
+#
+# The seventh job, and the first one in this pipeline that runs `helm`. It
+# exists because every guard added to the veodyn-api chart so far was added
+# without a render test, and each one turned out to be checking something other
+# than what its own message said: the last was reading a key out of one env map
+# while the pod's environment came from two, so it refused a correct release and
+# accepted an empty value.
+#
+# `helm template` is the whole toolchain. There is no cluster, no kubeconfig and
+# no `helm install` anywhere in this pipeline, so this job needs nothing a fork
+# cannot supply either.
+helm-render-test:
+  stage: test
+  image:
+    name: ${IMAGE_HELM}
+    # alpine/helm sets helm itself as the entrypoint, so a `script:` line would
+    # be read as helm arguments.
+    entrypoint: [""]
+  variables:
+    # Public image at a pinned tag, the same arrangement as IMAGE_PYTHON and
+    # IMAGE_NODE in the other gates.
+    IMAGE_HELM: "alpine/helm:3.16.4"
+  script:
+    - ./scripts/check-helm-render.sh
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'

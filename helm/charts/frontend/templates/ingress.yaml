@@ -1,0 +1,104 @@
+{{- $root := . }}
+{{- $appName := index .Values "appName" }}
+{{- $appValues := index .Values $appName }}
+{{- if index $root.Values $appName "basicAuth" }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $root.Release.Name }}-basic-auth
+  namespace: {{ $root.Release.Namespace }}
+type: Opaque
+data:
+  auth: {{ index $root.Values $appName "basicAuth" "htpasswd" | b64enc }}
+{{- end }}
+{{- range $appValues.ingressHosts }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $root.Release.Name }}-{{ .name }}
+  namespace: {{ $root.Release.Namespace }}
+  annotations:
+    nginx.org/lb-method: "round_robin"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "32k"
+    nginx.ingress.kubernetes.io/proxy-buffers: "8 16k"
+    {{- if index $root.Values $appName "basicAuth" }}
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: {{ $root.Release.Name }}-basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
+    {{- end }}
+    {{- if index $root.Values $appName "letsencrypt" }}
+    {{- if index $root.Values $appName "letsencrypt" "issuer" }}
+    cert-manager.io/cluster-issuer: {{ index $root.Values $appName "letsencrypt" "issuer" }}
+    {{- end }}
+    {{- end }}
+spec:
+  ingressClassName: "nginx"
+  {{- if index $root.Values $appName "letsencrypt" }}
+  tls:
+    - hosts:
+        - {{ .host }}
+      secretName: {{ .host }}-tls
+  {{- end }}
+  rules:
+    - host: {{ .host }}
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ $root.Release.Name }}
+                port:
+                  number: {{ index $root.Values $appName "port" }}
+{{- end }}
+
+{{/*
+  Hosts this release serves on a SUB-PATH of a domain it does not own, rather
+  than at the root of a domain of its own. The docs release is what uses it: a
+  deployment can publish the manual at <product-host>/docs, beside the frontend
+  release that owns / on that same host, instead of giving docs a domain and a
+  certificate of their own.
+
+  Two deliberate differences from ingressHosts above:
+
+  - No tls: block and no cert-manager annotation. The owning ingress already
+    holds the certificate for this host; issuing a second one for the same name
+    would have both objects racing to rewrite the same secret.
+  - pathType Prefix, not ImplementationSpecific, so /docs matches /docs/* by the
+    spec rather than by whatever the controller decides today.
+
+  Unset for every other release, which therefore renders exactly as before.
+*/}}
+{{- range $appValues.pathIngressHosts }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $root.Release.Name }}-{{ .name }}
+  namespace: {{ $root.Release.Namespace }}
+  annotations:
+    nginx.org/lb-method: "round_robin"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "32k"
+    nginx.ingress.kubernetes.io/proxy-buffers: "8 16k"
+spec:
+  ingressClassName: "nginx"
+  rules:
+    - host: {{ .host }}
+      http:
+        paths:
+          - path: {{ .path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $root.Release.Name }}
+                port:
+                  number: {{ index $root.Values $appName "port" }}
+{{- end }}

@@ -1,0 +1,63 @@
+# Lint, type and test gate for the veodyn-api service. Mirrors the frontend
+# gate in ci/veodyn-de-test.yaml: it runs on every branch and merge request,
+# and it is not tag-gated (that is the build/deploy stage's job).
+veodyn-api-test:
+  stage: test
+  image: ${IMAGE_PYTHON}
+  variables:
+    # Public images, same situation as IMAGE_NODE in the frontend gate. Point
+    # both at Harbor if policy requires it.
+    IMAGE_PYTHON: "python:3.11"
+    POSTGRES_USER: veodyn
+    POSTGRES_DB: veodyn_test
+    # No POSTGRES_PASSWORD on purpose. The image only demands one when auth is
+    # enabled, and trust turns it off for this throwaway service, so the value
+    # that used to sit here authenticated nothing. It did read as a credential
+    # to the secret scan, which is a bad thing for a CI file to teach: the fix
+    # for a password that does nothing is to delete it, not to except it.
+    POSTGRES_HOST_AUTH_METHOD: trust
+    VEODYN_TEST_DATABASE_URL: "postgresql+psycopg://veodyn@postgres:5432/veodyn_test"
+  services:
+    - name: postgres:16
+      alias: postgres
+  before_script:
+    - pip install --no-cache-dir uv
+    - cd api
+    - uv sync --frozen
+  script:
+    - uv run ruff check .
+    - uv run ruff format --check .
+    - uv run mypy veodyn_api
+    # Same reasoning as the junit report in ci/veodyn-de-test.yaml: a failure
+    # that has to be read out of a 4 MB-truncated log is a failure nobody can
+    # diagnose. This half has not hit the ceiling, but the report costs nothing
+    # and the two gates should fail the same legible way.
+    #
+    # --cov with no value takes its source list from [tool.coverage.run] in
+    # pyproject.toml, so the gate and a local run measure the same thing rather
+    # than drifting apart. term prints the total into the job log, which is
+    # where the `coverage:` regex below reads it from; the xml is what GitLab
+    # turns into per-line annotations on a merge request diff. Reporting only,
+    # no threshold: a number nobody has agreed on yet should not fail a build.
+    - uv run pytest --junitxml=junit.xml --cov --cov-report=term --cov-report=xml:coverage.xml
+    # Contract drift gate, half one. app/src/types/generated is generated
+    # from this schema and typechecked against the hand-written contract in
+    # src/types/kpi.ts, so tsc catches a rename only once someone regenerates.
+    # This catches the case where they forget: change a response model without
+    # running `pnpm gen:api-types` and the committed schema no longer matches.
+    - uv run python -m veodyn_api.openapi > /tmp/openapi.json
+    - diff -u openapi.json /tmp/openapi.json
+  # Reads the total off the `TOTAL ... 94%` line pytest-cov prints last.
+  coverage: '/^TOTAL.+?(\d+\%)$/'
+  artifacts:
+    # `always`, or the report is missing from exactly the runs that need it.
+    when: always
+    expire_in: 1 week
+    reports:
+      junit: api/junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: api/coverage.xml
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'

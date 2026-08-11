@@ -1,0 +1,197 @@
+# Example values for helm/charts/flow/contrib-helm-chart, this repository's
+# fork of the Redash community chart. This file lives beside the chart rather
+# than inside it, so that a deployment's own values never have to be a diff
+# against the chart's.
+#
+# Every value below is FICTIONAL: no hostname, cluster domain, namespace, or
+# credential here is real. It was derived from a private deployment's real
+# values and provisioning script, with every identifying value replaced by a
+# made-up one. Both are specific to that deployment and are not shipped here;
+# this file is the shape they take, not a copy of them.
+#
+# Render this on its own to see the manifests it produces:
+#   helm dependency build helm/charts/flow/contrib-helm-chart
+#   helm template example helm/charts/flow/contrib-helm-chart -f helm/charts/flow/values.example.yaml
+#
+# That deployment layers a shared base file, a per-stage file and a
+# per-environment vars file on top of this chart's own values.yaml, and its
+# provisioning script supplies several keys ONLY via `helm upgrade --set`
+# once it knows the release's hostname. None of these belong in a values
+# file, and a value set for them in one is silently overridden the moment the
+# hostname is passed:
+#   --set redash.host=https://<host>
+#   --set redash.mailUsername=postmaster@<host>
+#   --set redash.mailDefaultSender=postmaster@<host>
+#   --set server.env.SERVICE_NAME=redash-<release>-<project>
+#   --set server.env.SERVER_URL=https://<host>
+#   --set ingress.hosts[0].host=<host>
+# redash.host in particular renders straight to the REDASH_HOST env var with
+# no `secret:`-prefix handling (unlike the env maps elsewhere in this chart),
+# so a `secret:...` placeholder left in a values file for it is never
+# resolved: it is dead unless overridden by --set at deploy time.
+#
+# Keys a real deployment MUST override:
+#   image.repository, image.tag      - point at your own registry and the tag
+#                                       you pushed. Note the nesting: this
+#                                       chart reads image.tag, and a top-level
+#                                       imageTag (the spelling the other two
+#                                       charts in this repo use) is read by
+#                                       nothing here, so it renders the
+#                                       chart's own default tag instead.
+#   redash.existingSecret            - name of a k8s Secret you create
+#                                       yourself, carrying secretKey,
+#                                       cookieSecret, googleClientSecret,
+#                                       ldapBindDnPassword and mailPassword
+#                                       (empty values are fine for keys you
+#                                       do not use, but all five must exist)
+#   externalPostgreSQLSecret, externalRedis - your own Postgres/Redis
+#   ingress.hosts / ingress.tls       - your real hostname(s)
+#
+# Keys that are optional and safe to omit entirely:
+#   redash.mailServer / mailPort / mailUsername / mailDefaultSender
+#                                     - only needed for outbound email
+#                                       (invites, alerts)
+#   redash.additionalQueryRunners    - only needed for a custom query runner
+#                                       package installed into the image
+#   scheduledWorker.env.REDASH_HISTORICAL_*
+#                                     - only needed if you run a historical
+#                                       data-capture warehouse alongside
+#                                       Redash; omit the whole block otherwise
+#   app.SharedSecretName             - only needed if any env value below
+#                                       carries a `secret:` prefix
+
+image:
+  repository: "example.com/veodyn-example/redash"
+  tag: "example"
+  pullPolicy: Always
+imagePullSecrets:
+  - name: registry-harbor
+
+# This fork's deployment templates render any env value written as
+# `secret:KEY` (in server.env, adhocWorker.env, scheduledWorker.env, ...) as a
+# reference into the Secret named here, keyed by KEY. That is the same
+# convention the frontend and veodyn-api charts use. It is unset in the chart's
+# own values.yaml, so a `secret:` value with no app.SharedSecretName set aborts
+# the render on a nil pointer rather than falling back to anything. Distinct
+# from redash.existingSecret below, which is upstream's separate mechanism for
+# Redash's own five secret keys; pointing both at one Secret is fine.
+app:
+  SharedSecretName: "example-flow-env-secrets"
+
+redash:
+  # Create this Secret yourself before installing (see above). Using
+  # existingSecret rather than inline secretKey/cookieSecret values here so
+  # this example file never needs to hold anything credential-shaped.
+  existingSecret: "example-redash-secret"
+  uiBaseUrl: "https://redash.example.com"
+  alertsDefaultMailSubjectTemplate: "{state}) {alert_name}"
+  # Optional outbound email. Omit entirely to leave alert/invite email off.
+  mailServer: "smtp.example.com"
+  mailPort: "587"
+  mailUseTls: "false"
+  mailUseSsl: "false"
+  # Left blank here on purpose: these are the hostname-derived keys the
+  # header describes, supplied via --set at deploy time, and a value here is
+  # overridden the instant one is.
+  host: ""
+  mailUsername: ""
+  mailDefaultSender: ""
+
+# Own Postgres database and Redis index, NOT the bundled bitnami subcharts
+# (postgresql.enabled / redis.enabled below are both false). Give this
+# release its own Redis database index; sharing one with another Redash
+# release means both instances' background workers pick up each other's jobs.
+#
+# The Postgres connection string arrives by reference, not by value: create a
+# Secret with a single key holding the whole `postgresql://user:password@host
+# :5432/database` URI, and name it here. The chart's alternative,
+# `externalPostgreSQL: "<the URI>"`, is the form to avoid, because the
+# database password then lives in a values file, in whatever shell or CI
+# invocation passes that file, and in the Helm release's own stored values,
+# where anyone with `helm get values` can read it back. This form keeps it in
+# exactly one place. Copy this one.
+externalPostgreSQLSecret:
+  name: example-redash-postgres
+  key: connectionString
+# Redis has no password here, so the URI is safe in the clear. If yours does,
+# `externalRedisSecret` takes a name/key pair the same way, for the same
+# reason; drop externalRedis when you use it.
+externalRedis: "redis://redis.example.svc.cluster.local:6379/0"
+
+server:
+  disableHealthChecks: true
+  replicaCount: 1
+  env:
+    APM_ENABLED: "false"
+    APM_RECORDING: "false"
+    ENVIRONMENT: "example"
+    REDASH_JWT_LOGIN_ENABLED: "false"
+    REDASH_RATELIMIT_ENABLED: "false"
+  ingress:
+    enabled: true
+    annotations: {}
+    ingressClassName: "nginx"
+    pathType: ImplementationSpecific
+    pathPrefix: "/"
+
+postgresql:
+  enabled: false
+redis:
+  enabled: false
+
+adhocWorker:
+  disableHealthChecks: true
+  replicaCount: 1
+  env:
+    QUEUES: "queries,celery,schemas,default,periodic"
+    WORKERS_COUNT: 2
+
+scheduledWorker:
+  disableHealthChecks: true
+  replicaCount: 1
+  env:
+    # This is the list of queues the worker consumes, passed straight to
+    # `manage.py rq worker $QUEUES`. It carries no "historical" because the
+    # capture block below is off; see that block before adding one.
+    QUEUES: "scheduled_queries,schemas"
+    # Optional historical-capture warehouse. Leave the block commented out if
+    # you have no ClickHouse warehouse to capture scheduled-query results
+    # into. Turning it on takes two edits, not one: uncomment these keys AND
+    # set QUEUES above to "scheduled_queries,schemas,historical". Capture jobs
+    # are enqueued on a queue named exactly "historical" (the @job decorator
+    # in node/redash/historical/tasks.py), so a worker whose QUEUES omits it
+    # never consumes one. The jobs are still accepted and still queue up; they
+    # simply accumulate in Redis with no consumer, and nothing reports it.
+    # REDASH_HISTORICAL_CLICKHOUSE_URL: "http://clickhouse.example.svc.cluster.local:8123"
+    # REDASH_HISTORICAL_CLICKHOUSE_USER: "default"
+    # The `secret:` prefix resolves against app.SharedSecretName at the top of
+    # this file, keyed by the name after the prefix, so the warehouse password
+    # never appears in a values file. It needs that key to be set: this chart
+    # has no default for it.
+    # REDASH_HISTORICAL_CLICKHOUSE_PASSWORD: "secret:REDASH_HISTORICAL_CLICKHOUSE_PASSWORD"
+    # REDASH_HISTORICAL_CLICKHOUSE_DATABASE: "historical"
+    # Loop guard: id of the data source capture writes into, so queries run
+    # against the warehouse are not re-captured into it. Look this up on your
+    # own instance after creating that data source; it is not portable.
+    # REDASH_HISTORICAL_DATA_SOURCE_ID: "CHANGE_ME_DATA_SOURCE_ID"
+
+genericWorker:
+  disableHealthChecks: true
+
+ingress:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  letsencrypt:
+    enabled: true
+    issuer: letsencrypt-prod
+  enabled: true
+  hosts:
+    - host: redash.example.com
+      paths:
+        - /
+  tls:
+    - hosts:
+        - redash.example.com
+      secretName: redash.example.com-tls
+  pathType: ImplementationSpecific
+  ingressClassName: nginx

@@ -1,0 +1,27 @@
+# Instance config for the docs screenshot capture only. Pointed at by
+# VEODYN_CONFIG_PATH in playwright.screenshots.config.ts; nothing else reads it.
+#
+# `brand` and `theme` are deliberately absent, so every capture shows the stock
+# unbranded Veodyn instance a reader of the manual is looking at.
+#
+# What IS here is the two settings without which a documented page renders
+# nothing at all. Neither can be supplied as a VEODYN_* env override: config.ts
+# only accepts overrides that name a key inside a section (they must contain the
+# `__` separator), and `domains` is a top-level array.
+
+# The domain registry. A domain exists on an instance if and only if it is named
+# here: /data/<key> answers "Domain not found" for anything else, which is what
+# the first capture run produced for domain-hub. These three are the keys the
+# neutral fixture pack's hubs, datasets and dashboards are filed under
+# (src/lib/mock-data/packs/neutral/catalog.ts), so they are what makes the hub
+# pages, the Domain columns and the Domain selects show anything.
+domains:
+  - { key: transit, label: Transit, icon: bus }
+  - { key: freeway, label: Freeways, icon: car }
+  - { key: rail, label: Rail, icon: train }
+
+# Wall mode cycles the widgets of one configured dashboard and renders an empty
+# screen when that is unset, which is the default. 1 is the neutral pack's
+# Transportation Overview. Quoted because the schema takes a string id.
+wall_mode:
+  default_dashboard: "1"

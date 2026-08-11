@@ -1,0 +1,31 @@
+---
+image: "PUT_IMAGE_IN_ENV_VALUES_FILE"
+imageTag: ""
+registrySecretName: registry-harbor
+
+app:
+  replicas:
+    default: 1
+  port: 3000
+  serviceType: NodePort
+  limitsCpu: 1
+  limitsMemory: 1G
+  requestsCpu: 1
+  requestsMemory: 1G
+  strategyType: "RollingUpdate"
+  workingDir: "/app/src/"
+  readnessProbe:
+    path: "/api/health_check"
+    port: "3000"
+  livenessProbe:
+    path: "/api/health_check"
+    port: "3000"
+  env:
+  baseEnv:
+    LOGGING_LEVEL: "INFO"
+    LOG_HANDLERS: '["console"]'
+    LOGSTASH: "logstash-logstash.logging.svc.cluster.local"
+  letsencrypt:
+    enabled: true
+    issuer: "letsencrypt-prod"
+  ingressHosts: []

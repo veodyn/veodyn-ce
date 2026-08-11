@@ -1,0 +1,34 @@
+{{- if (index .Values .Values.appName "veodynConfig") }}
+---
+# The tenant's instance config (veodyn.config.yaml), mounted rather than baked.
+#
+# Why this exists: the frontend reads its instance config from a YAML file at
+# runtime (app/src/lib/config.ts), and a missing file is legal and yields
+# neutral defaults. Nothing in the image supplies one: the Dockerfile's runner
+# stage copies only .next/standalone, .next/static and public, so every
+# deployment ran on those neutral defaults. Domains, brand, the home tagline and
+# the map tile URL were all unreachable in a real environment, which for a
+# white-label product is the config mechanism not working at all rather than a
+# missing value.
+#
+# A ConfigMap and not a COPY in the Dockerfile, because the config is per tenant
+# and per environment. Baking it would put one tenant's identity in the shared
+# image and make every config change a rebuild and a redeploy of a new tag.
+#
+# Env vars cannot stand in for this. VEODYN_* overrides address a key by path
+# and require the __ separator (isConfigOverride), because Kubernetes injects a
+# link variable per service in the namespace and a bare VEODYN_ prefix would
+# turn VEODYN_API_DEV_API_SERVICE_HOST into a top-level config key, which the
+# strict schema rejects and which 500ed every route once already. `domains` is a
+# top-level ARRAY, so no VEODYN_DOMAINS__* path can express it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-veodyn-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.Name }}
+data:
+  veodyn.config.yaml: |
+{{ index .Values .Values.appName "veodynConfig" | indent 4 }}
+{{- end }}

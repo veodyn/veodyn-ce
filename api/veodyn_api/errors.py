@@ -1,0 +1,171 @@
+import logging
+from enum import StrEnum
+from typing import Any
+
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+logger = logging.getLogger(__name__)
+
+
+class ErrorId(StrEnum):
+    """Stable, greppable causes. Mirrors the frontend's ErrorIds convention.
+
+    Never renumber or reuse an id: they end up in logs and in support threads.
+    """
+
+    UNAUTHENTICATED = "VEODYN_UNAUTHENTICATED"
+    FORBIDDEN = "VEODYN_FORBIDDEN"
+    INVALID_REQUEST = "VEODYN_INVALID_REQUEST"
+    # Nothing handled it. Its own cause so a log reader can tell "this service
+    # broke" apart from any of the deliberate refusals below.
+    INTERNAL_ERROR = "VEODYN_INTERNAL_ERROR"
+    KPI_NOT_FOUND = "VEODYN_KPI_NOT_FOUND"
+    KPI_SLUG_TAKEN = "VEODYN_KPI_SLUG_TAKEN"
+    KPI_SOURCE_UNRESOLVABLE = "VEODYN_KPI_SOURCE_UNRESOLVABLE"
+    KPI_SOURCE_NOT_SUPPORTED = "VEODYN_KPI_SOURCE_NOT_SUPPORTED"
+    # The source query returns more than one row, so the latest-row rule would
+    # report one arbitrary row of a breakdown as the whole metric. Its own cause
+    # rather than a reuse of KPI_SOURCE_NOT_SUPPORTED: that one means "this
+    # source can never work", while this is a query that works perfectly and
+    # answers a different question than the KPI claims to.
+    KPI_SOURCE_NOT_SCALAR = "VEODYN_KPI_SOURCE_NOT_SCALAR"
+    KPI_THRESHOLDS_INCONSISTENT = "VEODYN_KPI_THRESHOLDS_INCONSISTENT"
+    KPI_VALUE_COLUMN_MISSING = "VEODYN_KPI_VALUE_COLUMN_MISSING"
+    KPI_VALUE_NOT_NUMERIC = "VEODYN_KPI_VALUE_NOT_NUMERIC"
+    KPI_RESULT_EMPTY = "VEODYN_KPI_RESULT_EMPTY"
+    KPI_EVALUATION_TIMED_OUT = "VEODYN_KPI_EVALUATION_TIMED_OUT"
+    # The KPI wrote, or failed to write, its derived Redash alert. Its own cause
+    # rather than a reuse of QUERY_EXECUTION_FAILED: the query is fine, the
+    # alert write is not, and the two need different fixes.
+    KPI_ALERT_SYNC_FAILED = "VEODYN_KPI_ALERT_SYNC_FAILED"
+    REPORT_NOT_FOUND = "VEODYN_REPORT_NOT_FOUND"
+    REPORT_ID_TAKEN = "VEODYN_REPORT_ID_TAKEN"
+    # The document is in review, so authoring is closed until it comes back out.
+    REPORT_EDIT_LOCKED = "VEODYN_REPORT_EDIT_LOCKED"
+    # The write was built from a document that has since moved. Distinct from a
+    # refusal, because the caller's fix is to re-read and retry rather than to
+    # change what they asked for.
+    REPORT_REVISION_STALE = "VEODYN_REPORT_REVISION_STALE"
+    # A governance rule said no: four-eyes, a missing approval, an unsourced
+    # number, a rejection with no note.
+    REPORT_TRANSITION_REFUSED = "VEODYN_REPORT_TRANSITION_REFUSED"
+    # A block naming a query had nothing to freeze, so the snapshot was not
+    # taken at all. Distinct from a failed execution (that is
+    # QUERY_EXECUTION_FAILED): the query answered, and its answer was not a
+    # result. Either way the stamp is what a partial freeze would corrupt, so
+    # nothing is written.
+    REPORT_SNAPSHOT_INCOMPLETE = "VEODYN_REPORT_SNAPSHOT_INCOMPLETE"
+    # The catalog registry does not list this table, so there is nothing to
+    # hang a tag on. A dataset has no row in this database at all: its id is a
+    # ClickHouse registry table name, which is why this is its own cause rather
+    # than a reuse of one of the *_NOT_FOUND ids above.
+    DATASET_NOT_FOUND = "VEODYN_DATASET_NOT_FOUND"
+    # The URL named a kind this build does not have, or has but does not tag or
+    # star. A 404 rather than a 422, and deliberately the same answer as "no
+    # such object": which kinds exist depends on what is installed, and an
+    # enumeration in the refusal would tell an unauthenticated caller which
+    # packs a deployment is running.
+    UNKNOWN_OBJECT_TYPE = "VEODYN_UNKNOWN_OBJECT_TYPE"
+    # An expected interval was refused. Its own cause rather than
+    # INVALID_REQUEST so a caller can tell "you sent a nonsense interval" from
+    # "you sent a nonsense body": the first is a number to correct in a field
+    # the user is looking at, the second is a bug in the client.
+    FEED_INTERVAL_INVALID = "VEODYN_FEED_INTERVAL_INVALID"
+    # The feed's staleness probe or its derived alert would not write. Its own
+    # cause rather than a reuse of KPI_ALERT_SYNC_FAILED: the two derive from
+    # different objects and a person reading a log needs to know which board to
+    # look at.
+    FEED_ALERT_SYNC_FAILED = "VEODYN_FEED_ALERT_SYNC_FAILED"
+    # Nothing to watch: the feed has no capture query, so there is no data
+    # source to author the probe against.
+    FEED_NOT_WATCHABLE = "VEODYN_FEED_NOT_WATCHABLE"
+    # A tag was refused for starting with `domain:`. Named rather than dropped:
+    # domain membership is a real feature driven by those tags, and a person who
+    # types one, sees it vanish and concludes tagging is broken is worse served
+    # than one who is told the prefix is taken.
+    TAG_PREFIX_RESERVED = "VEODYN_TAG_PREFIX_RESERVED"
+    # One label was longer than the column's bound allows. Its own cause rather
+    # than INVALID_REQUEST because every refusal the tag endpoint makes answers
+    # 422, so the status cannot tell these apart and a caller branching on it
+    # showed "that prefix is reserved" to somebody who had simply typed too
+    # much. Separate from TOO_MANY_TAGS as well: one says shorten this label,
+    # the other says remove one, and they are not the same instruction.
+    TAG_TOO_LONG = "VEODYN_TAG_TOO_LONG"
+    # More labels on one object than the cap allows.
+    TOO_MANY_TAGS = "VEODYN_TOO_MANY_TAGS"
+    QUERY_EXECUTION_FAILED = "VEODYN_QUERY_EXECUTION_FAILED"
+    REDASH_UNREACHABLE = "VEODYN_REDASH_UNREACHABLE"
+    WAREHOUSE_UNREACHABLE = "VEODYN_WAREHOUSE_UNREACHABLE"
+    WAREHOUSE_NOT_CONFIGURED = "VEODYN_WAREHOUSE_NOT_CONFIGURED"
+    AI_NOT_CONFIGURED = "VEODYN_AI_NOT_CONFIGURED"
+    AI_PROVIDER_FAILED = "VEODYN_AI_PROVIDER_FAILED"
+    # The model answered, and the answer named something that does not exist:
+    # a query id outside the grounding set, SQL over a table nobody asked
+    # about. Distinct from a provider failure because the fault is the
+    # generation, not the transport, and only this one is worth a retry.
+    AI_UNGROUNDED = "VEODYN_AI_UNGROUNDED"
+    # The REQUEST named something no SQL statement can read: a dataset whose
+    # "table" is a documentation heading rather than a table. Separate from
+    # AI_UNGROUNDED because nothing was generated and nothing is worth
+    # retrying, and separate from a provider failure because the provider was
+    # never called.
+    AI_DATASET_NOT_QUERYABLE = "VEODYN_AI_DATASET_NOT_QUERYABLE"
+
+
+class ApiError(Exception):
+    def __init__(self, error_id: ErrorId, message: str, status_code: int = 400) -> None:
+        super().__init__(message)
+        self.error_id = error_id
+        self.message = message
+        self.status_code = status_code
+
+
+def _envelope(error_id: ErrorId, message: str, status_code: int) -> JSONResponse:
+    return JSONResponse(status_code=status_code, content={"error": {"id": error_id.value, "message": message}})
+
+
+def _actor_id(request: Request) -> int | None:
+    """Best effort. These handlers run outside the dependency graph, so there is
+    no resolved Identity to inject; routers that have one stash it on
+    request.state, and an unattributed event is better than none."""
+    identity = getattr(request.state, "identity", None)
+    user_id = getattr(identity, "user_id", None)
+    return user_id if isinstance(user_id, int) else None
+
+
+def register_error_handlers(app: FastAPI) -> None:
+    # Imported here rather than at module scope: telemetry imports ApiError from
+    # this module, and a top-level import would close the cycle.
+    from veodyn_api.telemetry import capture_api_error
+
+    @app.exception_handler(ApiError)
+    def handle_api_error(request: Request, exc: Exception) -> JSONResponse:
+        assert isinstance(exc, ApiError)
+        # 4xx is a deliberate refusal and not worth an event. 5xx means this
+        # service could not do its job, which is.
+        if exc.status_code >= 500:
+            capture_api_error(_actor_id(request), exc, {"route": request.url.path})
+        return _envelope(exc.error_id, exc.message, exc.status_code)
+
+    @app.exception_handler(Exception)
+    def handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
+        # Nothing above handled it, so this is a bug in the service. Before this
+        # handler existed such a failure went to stdout and nowhere else, which
+        # is why an unhandled 500 was invisible to everyone but whoever happened
+        # to be tailing the pod.
+        capture_api_error(_actor_id(request), exc, {"route": request.url.path})
+        logger.exception("unhandled error on %s", request.url.path)
+        return _envelope(ErrorId.INTERNAL_ERROR, "internal error", 500)
+
+    @app.exception_handler(RequestValidationError)
+    def handle_validation_error(_: Request, exc: Exception) -> JSONResponse:
+        # One envelope for every failure the caller sees, so the frontend has a
+        # single shape to parse rather than FastAPI's default detail list.
+        assert isinstance(exc, RequestValidationError)
+        detail: Any = exc.errors()
+        first = detail[0] if detail else {}
+        location = ".".join(str(part) for part in first.get("loc", ()))
+        message = f"{location}: {first.get('msg', 'invalid request')}" if location else "invalid request"
+        return _envelope(ErrorId.INVALID_REQUEST, message, 422)

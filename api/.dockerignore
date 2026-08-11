@@ -1,0 +1,14 @@
+# The Dockerfile copies only pyproject.toml, uv.lock, veodyn_api/, migrations/
+# and alembic.ini, but the whole directory is still sent to the daemon as build
+# context. A local .venv and the tool caches are most of that and none of it is
+# used: `uv sync --frozen` builds the environment inside the image.
+.venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+.git
+.env
+.env.*
+!.env.example

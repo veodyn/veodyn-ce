@@ -1,0 +1,88 @@
+# Port of ci/veodyn-api-test.yaml. Lint, format, type, test and contract gate
+# for the veodyn-api sidecar.
+#
+# Read ci/veodyn-api-test.yaml for why each step exists. This file records only
+# what had to change between the two runners.
+name: veodyn-api-test
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  veodyn-api-test:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: api
+    env:
+      # localhost, not `postgres`. This is the one substantive difference from
+      # the GitLab job: there the job itself ran inside a container on the
+      # service's network, so the service answered to its alias. Here the steps
+      # run on the runner VM and the service is reached through the published
+      # port below. Same user, same database, same trust auth.
+      VEODYN_TEST_DATABASE_URL: postgresql+psycopg://veodyn@localhost:5432/veodyn_test
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: veodyn
+          POSTGRES_DB: veodyn_test
+          # No POSTGRES_PASSWORD on purpose, carried across from the GitLab
+          # job. The image only demands one when auth is enabled, and trust
+          # turns it off for this throwaway service, so any value here would
+          # authenticate nothing while reading as a credential to a secret
+          # scan. The fix for a password that does nothing is to delete it,
+          # not to except it.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        # GitLab waited on the service itself; Actions wants the healthcheck
+        # spelled out, or the first step can start before postgres accepts
+        # connections.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # Replaces `image: python:3.11`. api/pyproject.toml requires
+      # >=3.11,<3.13, and 3.11 is what the GitLab gate pinned.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install --no-cache-dir uv
+      - run: uv sync --frozen
+
+      - run: uv run ruff check .
+      # Formatting alone has failed this job. It is a gate, not a suggestion.
+      - run: uv run ruff format --check .
+      - run: uv run mypy veodyn_api
+
+      - run: uv run pytest --junitxml=junit.xml --cov --cov-report=term --cov-report=xml:coverage.xml
+
+      # Contract drift gate. app/src/types/generated is generated from this
+      # schema, so a response model changed without `pnpm gen:api-types` leaves
+      # the committed schema stale and nothing downstream notices.
+      - run: uv run python -m veodyn_api.openapi > /tmp/openapi.json
+      - run: diff -u openapi.json /tmp/openapi.json
+
+      # Same reasoning, and the same loss, as the artifact step in
+      # frontend-test.yml: the junit report survives, the Tests tab and the
+      # coverage annotations do not exist here.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: veodyn-api-test-reports
+          path: |
+            api/junit.xml
+            api/coverage.xml
+          retention-days: 7
+          if-no-files-found: warn

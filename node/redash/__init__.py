@@ -1,0 +1,66 @@
+import logging
+import os
+import sys
+
+import redis
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_mail import Mail
+from flask_migrate import Migrate
+from statsd import StatsClient
+
+from redash import settings
+from redash.app import create_app  # noqa
+from redash.destinations import import_destinations
+from redash.query_runner import import_query_runners
+
+__version__ = "26.03.0-dev"
+
+
+if os.environ.get("REMOTE_DEBUG"):
+    import debugpy
+
+    debugpy.listen(("0.0.0.0", 5678))
+    debugpy.wait_for_client()
+
+
+def setup_logging():
+    handler = logging.StreamHandler(sys.stdout if settings.LOG_STDOUT else sys.stderr)
+    formatter = logging.Formatter(settings.LOG_FORMAT)
+    handler.setFormatter(formatter)
+    logging.getLogger().addHandler(handler)
+    logging.getLogger().setLevel(settings.LOG_LEVEL)
+
+    # Make noisy libraries less noisy
+    if settings.LOG_LEVEL != "DEBUG":
+        for name in [
+            "passlib",
+            "requests.packages.urllib3",
+            "snowflake.connector",
+            "apiclient",
+        ]:
+            logging.getLogger(name).setLevel("ERROR")
+
+
+setup_logging()
+
+redis_connection = redis.from_url(settings.REDIS_URL)
+rq_redis_connection = redis.from_url(settings.RQ_REDIS_URL)
+mail = Mail()
+migrate = Migrate(compare_type=True)
+statsd_client = StatsClient(host=settings.STATSD_HOST, port=settings.STATSD_PORT, prefix=settings.STATSD_PREFIX)
+limiter = Limiter(key_func=get_remote_address, storage_uri=settings.LIMITER_STORAGE)
+
+# settings.QUERY_RUNNERS is a funcy-lazy generator; materialize it once so it
+# can both drive the import loop and be checked for membership afterwards.
+query_runner_imports = list(settings.QUERY_RUNNERS)
+import_query_runners(query_runner_imports)
+if "redash.query_runner.legacy_types" in query_runner_imports:
+    # Build the old-type-string aliases only after every runner module in
+    # this process has imported and registered, so alias creation cannot
+    # depend on where legacy_types happens to sit in
+    # REDASH_ENABLED_QUERY_RUNNERS. See query_runner/legacy_types.py.
+    from redash.query_runner.legacy_types import register_legacy_aliases
+
+    register_legacy_aliases()
+import_destinations(settings.DESTINATIONS)

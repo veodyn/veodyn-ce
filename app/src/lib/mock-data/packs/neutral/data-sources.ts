@@ -1,0 +1,40 @@
+import type { MockDataSource } from '../types/data-sources'
+
+export const mockDataSources: MockDataSource[] = [
+  {
+    id: 1,
+    name: 'Analytics Warehouse (Historical)',
+    type: 'clickhouse',
+    syntax: 'sql',
+    paused: 0,
+    pause_reason: null,
+    options: { host: 'clickhouse.internal', port: 8123, dbname: 'analytics_historical', user: 'readonly' },
+    groups: { '1': false, '2': false },
+    created_at: '2024-01-15T10:00:00Z',
+    view_only: false,
+  },
+  {
+    id: 2,
+    name: 'Operational Database',
+    type: 'pg',
+    syntax: 'sql',
+    paused: 0,
+    pause_reason: null,
+    options: { host: 'postgres.internal', port: 5432, dbname: 'ops_db', user: 'reader' },
+    groups: { '1': false, '2': false },
+    created_at: '2024-03-20T14:00:00Z',
+    view_only: false,
+  },
+  {
+    id: 3,
+    name: 'Realtime API',
+    type: 'json',
+    syntax: 'json',
+    paused: 0,
+    pause_reason: null,
+    options: { base_url: 'https://realtime-api.example.com' },
+    groups: { '1': false, '2': true },
+    created_at: '2025-06-15T08:00:00Z',
+    view_only: false,
+  },
+]

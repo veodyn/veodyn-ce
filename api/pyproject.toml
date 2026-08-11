@@ -1,0 +1,95 @@
+[project]
+name = "veodyn-api"
+version = "0.1.0"
+description = "Veodyn backend service: the data catalog, tags, feeds and AI, served alongside the query service in node/"
+requires-python = ">=3.11,<3.13"
+license = "AGPL-3.0-only"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.2",
+    "alembic>=1.14",
+    "httpx>=0.27",
+    # rq and rq-scheduler are imported by nothing in veodyn_api, and removing
+    # them would break a build this tree cannot see. The enterprise pack carries
+    # the only queue consumer there is, and it is installed on top of THIS
+    # lock with `uv pip install --no-deps`, deliberately, so that a composed
+    # image can never carry a version the community gate did not test. A pack
+    # dependency therefore has to be present here or it is present nowhere.
+    # Same reason the Dockerfile's `uv sync --frozen --no-dev` is the whole
+    # dependency story for both editions' images.
+    "rq>=1.16",
+    "rq-scheduler>=0.14",
+    "redis>=5.2",
+    "posthog>=3.7",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "respx>=0.21",
+    "mypy>=1.13",
+    "ruff>=0.8",
+    "pytest-cov>=7.1.0",
+    "vulture>=2.16",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Picks up veodyn_api/py.typed with everything else. That marker is what lets a
+# package installed ALONGSIDE this one type-check against it: without it mypy
+# reports "module is installed, but missing library stubs or py.typed marker"
+# and treats every symbol imported from here as Any. `mypy veodyn_api` in this
+# directory never saw that, because it reads the source rather than the
+# installed distribution, so the gap only shows up from outside.
+packages = ["veodyn_api"]
+
+# Dead-code audit. Read docs/dead-code-audit.md (monorepo root) BEFORE acting
+# on anything vulture reports. Both findings from the last full run were false
+# positives: the `cls` first parameter of a pydantic @classmethod validator is
+# bound by the descriptor protocol, so vulture never sees a read of it, and
+# removing it breaks the call. Not wired into any gate; run it by hand with
+# `uv run vulture veodyn_api`.
+[tool.vulture]
+paths = ["veodyn_api"]
+min_confidence = 80
+
+[tool.ruff]
+line-length = 119
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["rq.*", "rq_scheduler.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["veodyn_api"]
+# Without this the report counts only files some test imported, so a module
+# nobody touched is missing from it rather than sitting at 0%.
+branch = true
+
+[tool.coverage.report]
+# openapi.py is the schema dump entrypoint. ci/veodyn-api-test.yaml runs it and
+# diffs the result against the committed openapi.json, which is a stronger check
+# than any unit test would be, but it happens in a separate process so coverage
+# never sees it. Counting it as untested misreports the one module that has the
+# strictest gate in the repo.
+omit = ["veodyn_api/openapi.py"]
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]

@@ -1,0 +1,103 @@
+/* The colour palette: every theme-scoped custom property, and nothing else.
+ *
+ * Split out of globals.css when the pinned-light `.light` block pushed that
+ * file past the size limit. This is the seam the limit was pointing at: these
+ * three blocks are one concern (which colours are live), and the rest of
+ * globals.css is base styles, keyframes and print rules.
+ *
+ * Imported from globals.css BEFORE @theme, which is fine and load-bearing to
+ * understand: @theme inline maps --color-* to var(--*), so utilities reference
+ * these properties and the cascade resolves them at use time. That is what lets
+ * a `.dark` or `.light` further down the DOM change what a utility paints.
+ */
+:root {
+  --background: #F7F5F0;
+  --foreground: #1C1B18;
+  --card: #FFFFFF;
+  --card-foreground: #1C1B18;
+  --popover: #FFFFFF;
+  --popover-foreground: #1C1B18;
+  --primary: #475569;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F0EDE6;
+  --secondary-foreground: #1C1B18;
+  --muted: #F0EDE6;
+  --muted-foreground: #6B6862;
+  --accent: #EFEBE2;
+  --accent-foreground: #1C1B18;
+  --destructive: #B4552D;
+  --border: #E5E1D8;
+  --input: #E5E1D8;
+  --ring: #475569;
+  --chart-1: #485EA7;
+  --chart-2: #2B7E4E;
+  --chart-3: #A37AC7;
+  --chart-4: #3570A2;
+  --chart-5: #89435E;
+  --chart-6: #BF8A32;
+  --chart-7: #1D9999;
+  --chart-8: #B25630;
+  --status-fresh: #2E7D4F;
+  /* Darker than the #C08A2D gold it replaces: that read 3.04:1 on white, below
+     the 4.5:1 WCAG AA bar for the 12px at-risk badge and stale scorecard text.
+     This is 4.98:1 on --card and 4.57:1 on --background. The dark-theme value
+     sits on a dark surface and already passes, so it is unchanged. */
+  --status-stale: #94671F;
+  --favorite: #C08A2D; /* favorite accent (gold star), not a status */
+  --radius: 0.375rem;
+  --sidebar: #F7F5F0;
+  --sidebar-foreground: #1C1B18;
+  --sidebar-primary: #1C1B18;
+  --sidebar-primary-foreground: #F7F5F0;
+  --sidebar-accent: #EFEBE2;
+  --sidebar-accent-foreground: #1C1B18;
+  --sidebar-border: #E5E1D8;
+  --sidebar-ring: #475569;
+  --font-display-family: ui-serif, Georgia, serif;
+  --font-sans-family: ui-sans-serif, system-ui, sans-serif;
+  --font-mono-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --motion-duration-fast: 120ms;
+  --motion-duration-base: 200ms;
+  --motion-duration-slow: 360ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.dark {
+  --background: #0B0E14;
+  --foreground: #E7E9EE;
+  --card: #12161F;
+  --card-foreground: #E7E9EE;
+  --popover: #12161F;
+  --popover-foreground: #E7E9EE;
+  --primary: #7FA9E0;
+  --primary-foreground: #0B0E14;
+  --secondary: #1A1F2B;
+  --secondary-foreground: #E7E9EE;
+  --muted: #1A1F2B;
+  --muted-foreground: #9AA3B2;
+  --accent: #1A1F2B;
+  --accent-foreground: #E7E9EE;
+  --destructive: #E06A45;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #7FA9E0;
+  --chart-1: #4A61AA;
+  --chart-2: #2B7E4E;
+  --chart-3: #754998;
+  --chart-4: #4D8FC8;
+  --chart-5: #A05771;
+  --chart-6: #BF861D;
+  --chart-7: #1D9999;
+  --chart-8: #B55933;
+  --status-fresh: #4CAF7D;
+  --status-stale: #D9A441;
+  --favorite: #D9A441;
+  --sidebar: #12161F;
+  --sidebar-foreground: #E7E9EE;
+  --sidebar-primary: #E7E9EE;
+  --sidebar-primary-foreground: #0B0E14;
+  --sidebar-accent: #1A1F2B;
+  --sidebar-accent-foreground: #E7E9EE;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #7FA9E0;
+}

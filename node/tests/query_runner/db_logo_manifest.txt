@@ -1,0 +1,55 @@
+# Registered, non-deprecated query runner types that must have a logo at
+# app/public/db-logos/<type>.png.
+#
+# This file is the seam between the two halves of the db-logo guard. Read
+# test_db_logo_assets.py in this directory for why the guard is split here
+# rather than reading the app's PNGs directly.
+#
+# One type per line, sorted with Python's sorted() (so "Cassandra" sorts
+# before the lowercase names). Lines starting with # and blank lines are
+# ignored by both readers.
+airnow
+athena
+aws_es
+azure_kusto
+bigquery
+clickhouse
+cockroach
+csv
+databricks
+duckdb
+elasticsearch2
+elasticsearch2_OpenDistroSQLElasticSearch
+elasticsearch2_XPackSQLElasticSearch
+excel
+gbfs
+geotab
+go511
+google_spreadsheets
+gtfs_realtime
+influxdb
+influxdbv2
+json
+metrocloudalliance
+mongodb
+mssql
+mssql_odbc
+mysql
+ntcip_dms
+openweathermap
+oracle
+pg
+presto
+prometheus
+rds_mysql
+redshift
+redshift_iam
+results
+snowflake
+socaltransport
+sqlite
+static_geojson
+tmdd
+trafficland
+trino
+waze

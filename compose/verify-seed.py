@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+"""Prove the two seeded API keys are real, and that they carry exactly the rights they should.
+
+Run it as its own one-shot container on the stack's network:
+
+    docker compose run --rm --no-deps verify-seed
+
+Not `compose exec api`, which is what this used to be. Checking both keys means
+holding both, and no container that serves a request is allowed to hold both any
+more: each mounts only its own volume. The verify-seed service exists to be the
+one place that mounts both, read-only, behind a compose profile so nothing starts
+it by accident.
+
+A file existing is not evidence that a key works, and a key working is not
+evidence that the service account was created with the rights it should have,
+which is the part of docs/docs/operations/deployment.md step 5 that is easy to
+get silently wrong. Redash resolves a user API key through the same request
+loader as a session cookie, so GET /api/session answers with the owning user
+and its effective permissions.
+
+This script used to check the service account for two things: that it was not
+an admin, and that it could execute queries. Both passed while the account sat
+in the builtin default group holding create_dashboard, edit_dashboard,
+edit_query, list_users, list_alerts, schedule_query and view_source on top of
+what it uses, and the PASS line said so to two reviewers in a row. A check that
+looks for the absence of one known-bad thing reports the absence of that one
+thing, and gets read as "this is fine".
+
+So the service account is now compared against an exact set. Anything missing
+fails, and anything extra fails just as loudly, because an unexpected
+permission is the failure that was actually shipped. The admin key is a
+required-subset check instead: its permissions are the union of Redash's own
+builtin admin and default groups, so pinning them exactly here would turn a
+routine fork update into a confusing verifier failure, and the risk for that
+account runs the other way, toward having too little.
+
+Prints outcomes only. No key, and no fragment of one, ever reaches stdout:
+this output is meant to be pasted into a report.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+REDASH_URL = os.environ.get("VEODYN_REDASH_URL", "http://server:5000").rstrip("/")
+FRONTEND_SECRETS_DIR = Path(os.environ.get("VEODYN_FRONTEND_SECRETS_DIR", "/run/veodyn/frontend"))
+SERVICE_SECRETS_DIR = Path(os.environ.get("VEODYN_SERVICE_SECRETS_DIR", "/run/veodyn/service"))
+ADMIN_EMAIL = os.environ.get("VEODYN_ADMIN_EMAIL", "admin@example.com")
+SERVICE_EMAIL = os.environ.get("VEODYN_SERVICE_EMAIL", "kpi-service@example.com")
+
+# Must stay identical to SERVICE_GROUP_PERMISSIONS in compose/seed-redash.py, which
+# carries the derivation of why each string is on the list. Kept as a literal rather
+# than imported: this runs in the veodyn-api container, which has no copy of the seed
+# script's imports, and a verifier that reads its expectation from the thing it verifies
+# cannot catch the thing being wrong.
+EXPECTED_SERVICE_PERMISSIONS = {
+    "create_query",
+    "execute_query",
+    "list_dashboards",
+    "list_data_sources",
+    "view_query",
+}
+
+# What the frontend's admin proxy routes need from the admin key. Not an exact set; see
+# the module docstring.
+REQUIRED_ADMIN_PERMISSIONS = {"admin", "super_admin"}
+
+
+def read_key(directory: Path, filename: str, var: str) -> str:
+    path = directory / filename
+    if not path.is_file():
+        raise SystemExit(f"verify-seed: FAIL {path} does not exist; the seed step never ran")
+    for line in path.read_text().splitlines():
+        name, _, value = line.partition("=")
+        if name == var and value:
+            return value
+    raise SystemExit(f"verify-seed: FAIL {path} carries no non-empty {var}")
+
+
+def session(key: str) -> dict:
+    request = urllib.request.Request(f"{REDASH_URL}/api/session", headers={"Authorization": f"Key {key}"})
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as exc:
+        raise SystemExit(f"verify-seed: FAIL /api/session rejected a seeded key with HTTP {exc.code}") from exc
+
+
+def describe(permissions: set[str]) -> str:
+    return ", ".join(sorted(permissions)) or "(none)"
+
+
+def check_admin(label: str, key: str) -> list[str]:
+    user = session(key).get("user", {})
+    email = user.get("email")
+    permissions = set(user.get("permissions") or [])
+    failures = []
+    if email != ADMIN_EMAIL:
+        failures.append(f"{label}: key belongs to {email!r}, expected {ADMIN_EMAIL!r}")
+    missing = REQUIRED_ADMIN_PERMISSIONS - permissions
+    if missing:
+        failures.append(f"{label}: is missing {describe(missing)}, so the admin proxy routes would 403")
+    if not failures:
+        print(f"verify-seed: PASS {label} authenticates as {email} and holds {describe(REQUIRED_ADMIN_PERMISSIONS)}")
+    return failures
+
+
+def check_service(label: str, key: str) -> list[str]:
+    user = session(key).get("user", {})
+    email = user.get("email")
+    permissions = set(user.get("permissions") or [])
+    failures = []
+    if email != SERVICE_EMAIL:
+        failures.append(f"{label}: key belongs to {email!r}, expected {SERVICE_EMAIL!r}")
+    missing = EXPECTED_SERVICE_PERMISSIONS - permissions
+    if missing:
+        failures.append(f"{label}: is missing {describe(missing)}, so veodyn-api would 403 on those calls")
+    unexpected = permissions - EXPECTED_SERVICE_PERMISSIONS
+    if unexpected:
+        # The whole point of this check. An extra permission is not a harmless surplus:
+        # it is what a leaked service key can do that nothing in this product needs.
+        failures.append(
+            f"{label}: holds {describe(unexpected)}, which veodyn-api never uses. "
+            f"Expected exactly {describe(EXPECTED_SERVICE_PERMISSIONS)}. "
+            "This usually means the account is in Redash's builtin default group."
+        )
+    if not failures:
+        print(f"verify-seed: PASS {label} authenticates as {email} with exactly {describe(permissions)}")
+    return failures
+
+
+def main() -> int:
+    failures = check_admin(
+        "REDASH_INTERNAL_API_KEY",
+        read_key(FRONTEND_SECRETS_DIR, "frontend.env", "REDASH_INTERNAL_API_KEY"),
+    )
+    failures += check_service(
+        "VEODYN_REDASH_SERVICE_API_KEY",
+        read_key(SERVICE_SECRETS_DIR, "service-account.env", "VEODYN_REDASH_SERVICE_API_KEY"),
+    )
+    for failure in failures:
+        print(f"verify-seed: FAIL {failure}", file=sys.stderr)
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,26 @@
+# app/node_modules measures 1.1 GB in a checkout that has been developed in,
+# and without this file every byte of it is sent to the daemon as build context
+# on every build. It also lands in the image: the Dockerfile copies the Linux
+# dependency tree out of its `deps` stage and only then runs `COPY . .`, so a
+# host node_modules is written on top of it, pnpm's symlink farm and the host
+# platform's native binaries included. CI sees neither problem because CI
+# builds from a clean clone.
+node_modules
+.next
+.git
+
+# Build and test output, none of which belongs in an image.
+out
+coverage
+junit.xml
+tsconfig.tsbuildinfo
+playwright-report
+blob-report
+test-results
+e2e/.auth
+
+# Local configuration. Runtime env comes from the compose file or the pod.
+.env
+.env.*
+!.env.local.example
+veodyn.config.yaml

@@ -1,0 +1,53 @@
+.DS_Store
+*.log
+.idea/
+.vscode/
+
+# Claude Code: keep personal/local state private, share team config
+# (.claude/settings.json + .claude/rules/ are committed on purpose)
+.claude/settings.local.json
+.claude/worktrees/
+
+# Self-improvement ledger: raw signal is local/noisy, reflections are shared.
+# Pattern matches every subtree, not just the root (monorepo: log-event writes
+# to the .harness next to the nearest package.json/.git marker).
+**/.harness/ledger.jsonl
+# Helm chart dependency downloads (fetched by `helm dependency build`)
+helm/charts/flow/contrib-helm-chart/charts/
+helm/charts/flow/contrib-helm-chart/Chart.lock
+helm/charts/flow/contrib-helm-chart/requirements.lock
+
+# brainstorming visual companion sessions
+.superpowers/
+
+# Python bytecode (veodyn-api has its own; this covers scripts/ and anything new)
+__pycache__/
+*.pyc
+
+# Test reports written by the CI gates (ci/veodyn-de-test.yaml, ci/veodyn-api-test.yaml).
+# Uploaded as GitLab junit artifacts, never committed.
+junit.xml
+
+# Dependencies (veodyn-de and redash ignore their own; this covers the repo root,
+# where running vitest from the top leaves a node_modules/.vite result cache)
+node_modules/
+
+# Docusaurus site (docs/): build outputs only; content and config are committed
+docs/build/
+docs/.docusaurus/
+
+# Scratch space for files moved aside during a session (rm-scope-guard).
+.trash/
+
+# Composed tree assembled by the enterprise pack's build-overlay.sh.
+#
+# That script refuses an output directory that is not beside this checkout's
+# app/ and node/, because two community suites read up into node/, and the
+# message it prints suggests exactly this path. Following that suggestion left
+# a ~1200-file untracked tree sitting in the repo, one `git add -A` away from
+# being committed. Ignored rather than relocated, because the placement rule
+# that puts it here is a real constraint and not a convenience.
+#
+# Only this name. An overlay assembled under a different one is NOT ignored,
+# and `git status` is what will tell you.
+composed/

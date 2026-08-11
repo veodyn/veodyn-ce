@@ -1,0 +1,112 @@
+# Port of ci/scan-secrets.yaml, which holds three jobs: scan-secrets,
+# check-public-tree and check-clean-tree. Literals, paths and identity, the
+# three halves of "must not be in the public tree".
+#
+# Read ci/scan-secrets.yaml for what each one checks and why. This file records
+# what had to change.
+#
+# EVERY STEP HERE RUNS FROM THE REPOSITORY ROOT, which is the Actions default
+# and must stay that way. `python3 -m unittest discover -s scripts` resolves
+# `scripts` against the current directory, so a working-directory set anywhere
+# else collects nothing. The three scripts themselves are safer than that: they
+# resolve the repository from their own location and pass it to `git -C`, so
+# they check the same tree from anywhere. The discovery lines are the fragile
+# half, not the guards.
+#
+# The GitLab jobs each began by apt-installing git, because the public
+# python:3.11 image does not ship it and all three depend on `git ls-files`.
+# GitHub-hosted runners have git preinstalled (actions/checkout uses it), so
+# that step is gone rather than translated.
+name: tree-guards
+
+on:
+  push:
+    branches: ["**"]
+    # scan-secrets alone also runs on tags, minus the features_* series. A tag
+    # is the moment a tree gets published somewhere, and that is the last
+    # moment a credential scan is worth anything. The two jobs below it skip
+    # tag runs through their `if:`, matching the GitLab rules exactly.
+    tags:
+      - "**"
+      - "!features_*"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan-secrets:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python3 scripts/scan-secrets.py
+      # Stdlib unittest, not pytest: nothing is installed here, which is the
+      # same reason scan-secrets.py itself imports nothing.
+      - run: python3 -m unittest discover -s scripts -p "test_scan_secrets.py"
+      # A third pattern, and not redundant: this file is named *_test.py, so
+      # the line above has never matched it. It holds both expiry guards.
+      - run: python3 -m unittest discover -s scripts -p "scan_secrets_known_exceptions_test.py"
+      # compose/, not scripts/. compose/seed-redash.py mints this stack's two
+      # API keys, and compose/ has no job of its own anywhere.
+      - run: python3 -m unittest discover -s compose -p "seed_redash_test.py"
+
+  check-public-tree:
+    runs-on: ubuntu-24.04
+    # Branch and pull request runs only, never tags. Deliberate, and carried
+    # across: release tags were cut from the private branch, where these paths
+    # exist on purpose.
+    if: github.ref_type == 'branch' || github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      # No flags. `--root` and `--export` both belong to the export script:
+      # --export turns off the deferral for a tree whose history publishes in
+      # full, which is not what this run is checking. The default is this tree
+      # against the 17 forbidden paths.
+      - run: python3 scripts/check-public-tree.py
+      # These plant a forbidden path in a throwaway repository and assert the
+      # checker rejects it, so a green run is evidence the guard can still
+      # fail rather than evidence this tree happens to be clean.
+      - run: python3 -m unittest discover -s scripts -p "test_check_public_tree.py"
+
+  check-clean-tree:
+    runs-on: ubuntu-24.04
+    if: github.ref_type == 'branch' || github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python3 scripts/check-clean-tree.py
+      # The trailing `*` is load-bearing and not decoration: the suite is
+      # test_check_clean_tree.py plus its _declarations, _patterns and _ratchet
+      # siblings. An exact-name pattern would collect the first and silently
+      # skip the rest, which is how a test file in this repository has already
+      # gone unrun.
+      - run: python3 -m unittest discover -s scripts -p "test_check_clean_tree*.py"
+
+# THE ONE DELIBERATE BEHAVIOUR CHANGE IN THIS PORT, and it needs a decision at
+# cutover rather than a silent inheritance.
+#
+# On GitLab, check-public-tree and check-clean-tree are scoped to the `oss`
+# branch, to merge requests targeting it, and to the feat/public-reorg branches
+# that build it. That scoping is not caution, it is a requirement: on `main`
+# every path in the manifest and every identity term exists on purpose, so
+# running these two there would fail every private pipeline and the only
+# available fix would be to weaken the manifest.
+#
+# These workflows run in the community repository, which has no private branch
+# and no `oss` branch either: every branch in it is public. Transcribing
+# `branches: [oss]` into a repository with no such branch produces two gates
+# that never run once, which is worse than not having them, because a required
+# check that never reports reads as coverage. So they run on every branch and
+# every pull request here.
+#
+# If the community repository turns out to have a branch where a forbidden path
+# or an identity term is legitimate, this is the block to change, and the
+# change is a `branches:` filter naming that branch and nothing wider.

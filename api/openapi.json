@@ -1,0 +1,2203 @@
+{
+  "components": {
+    "schemas": {
+      "AiDatasetColumnIn": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "maxLength": 255,
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "maxLength": 128,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "AiDatasetColumnIn",
+        "type": "object"
+      },
+      "AiDatasetIn": {
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/AiDatasetColumnIn"
+            },
+            "maxItems": 500,
+            "title": "Columns",
+            "type": "array"
+          },
+          "table": {
+            "maxLength": 255,
+            "title": "Table",
+            "type": "string"
+          }
+        },
+        "required": [
+          "table",
+          "columns"
+        ],
+        "title": "AiDatasetIn",
+        "type": "object"
+      },
+      "AlertIn": {
+        "description": "Whether this feed should page someone when it goes quiet.",
+        "properties": {
+          "armed": {
+            "title": "Armed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "armed"
+        ],
+        "title": "AlertIn",
+        "type": "object"
+      },
+      "ConverseIn": {
+        "properties": {
+          "focusTable": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focustable"
+          },
+          "kind": {
+            "enum": [
+              "query",
+              "dashboard",
+              "kpi",
+              "report",
+              "snippet"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ConverseMessageIn"
+            },
+            "maxItems": 25,
+            "minItems": 1,
+            "title": "Messages",
+            "type": "array"
+          },
+          "targetDashboardId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetdashboardid"
+          }
+        },
+        "required": [
+          "kind",
+          "messages"
+        ],
+        "title": "ConverseIn",
+        "type": "object"
+      },
+      "ConverseMessageIn": {
+        "properties": {
+          "content": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "ConverseMessageIn",
+        "type": "object"
+      },
+      "ConverseOut": {
+        "properties": {
+          "focusTable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focustable"
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "dashboard": "#/components/schemas/DashboardProposalOut",
+                    "kpi": "#/components/schemas/KpiProposalOut",
+                    "query": "#/components/schemas/QueryProposalOut",
+                    "report": "#/components/schemas/ReportProposalOut",
+                    "snippet": "#/components/schemas/SnippetProposalOut"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/QueryProposalOut"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DashboardProposalOut"
+                  },
+                  {
+                    "$ref": "#/components/schemas/KpiProposalOut"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ReportProposalOut"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SnippetProposalOut"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
+          "suggestedAnswers": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 4,
+            "title": "Suggestedanswers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "reply",
+          "suggestedAnswers",
+          "ready",
+          "proposal",
+          "focusTable"
+        ],
+        "title": "ConverseOut",
+        "type": "object"
+      },
+      "DashboardProposalOut": {
+        "properties": {
+          "kind": {
+            "const": "dashboard",
+            "default": "dashboard",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "widgets": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardWidgetProposalOut"
+            },
+            "title": "Widgets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "widgets"
+        ],
+        "title": "DashboardProposalOut",
+        "type": "object"
+      },
+      "DashboardWidgetProposalOut": {
+        "description": "One widget: either a query that exists, or one to be written first.\n\nExactly one of the two, enforced below rather than left to a reader: a\nwidget carrying both would let the card create a query and then hang a\ndifferent one on the dashboard, and a widget carrying neither is a row with\nnothing behind it.",
+        "properties": {
+          "newQuery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewQueryProposalOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "queryId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryid"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "visualizationId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visualizationid"
+          },
+          "vizChoiceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vizchoiceid"
+          }
+        },
+        "required": [
+          "title",
+          "queryId",
+          "visualizationId",
+          "vizChoiceId",
+          "newQuery"
+        ],
+        "title": "DashboardWidgetProposalOut",
+        "type": "object"
+      },
+      "DatasetColumnOut": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "DatasetColumnOut",
+        "type": "object"
+      },
+      "DatasetCoverageOut": {
+        "properties": {
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "DatasetCoverageOut",
+        "type": "object"
+      },
+      "DatasetFreshnessOut": {
+        "properties": {
+          "feedId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedid"
+          },
+          "lastUpdatedAt": {
+            "title": "Lastupdatedat",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "fresh",
+              "stale"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lastUpdatedAt",
+          "status"
+        ],
+        "title": "DatasetFreshnessOut",
+        "type": "object"
+      },
+      "DatasetOut": {
+        "properties": {
+          "coverage": {
+            "$ref": "#/components/schemas/DatasetCoverageOut"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/DatasetFreshnessOut"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rowCount": {
+            "title": "Rowcount",
+            "type": "integer"
+          },
+          "sampleQueryId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Samplequeryid"
+          },
+          "schema": {
+            "items": {
+              "$ref": "#/components/schemas/DatasetColumnOut"
+            },
+            "title": "Schema",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "domain",
+          "schema",
+          "freshness",
+          "coverage",
+          "rowCount",
+          "sources",
+          "tags",
+          "sampleQueryId"
+        ],
+        "title": "DatasetOut",
+        "type": "object"
+      },
+      "DomainHubOut": {
+        "properties": {
+          "counters": {
+            "items": {
+              "$ref": "#/components/schemas/HubCounterOut"
+            },
+            "title": "Counters",
+            "type": "array"
+          },
+          "dashboardIds": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Dashboardids",
+            "type": "array"
+          },
+          "datasetIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Datasetids",
+            "type": "array"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "datasetIds",
+          "dashboardIds",
+          "counters"
+        ],
+        "title": "DomainHubOut",
+        "type": "object"
+      },
+      "ExpectationIn": {
+        "description": "How often this feed should deliver, or null to stop expecting.\n\nNull rather than a second endpoint: setting and clearing are the same\ndecision made twice, and a DELETE beside a PUT invites a client to think\nclearing is destructive when it only returns the feed to its Redash\nschedule.",
+        "properties": {
+          "expectedIntervalSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedintervalseconds"
+          }
+        },
+        "required": [
+          "expectedIntervalSeconds"
+        ],
+        "title": "ExpectationIn",
+        "type": "object"
+      },
+      "FavoritesOut": {
+        "additionalProperties": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "description": "The caller's own starred ids, keyed by object type.\n\nOne key per registered favoritable kind, always, and an empty list where\nthere are no stars: a person with no favorites has an empty set, not an\nunknown one, and a client that has to tell those apart will get it wrong.",
+        "title": "FavoritesOut",
+        "type": "object"
+      },
+      "FeedOut": {
+        "description": "One upstream capture, as the Feed Health board reads it.\n\nA feed here IS a scheduled Redash query that captures into the historical\nwarehouse, so the id is the table it captures into and it matches the\ndataset of the same id one to one. That is structural rather than a\nconvention worth breaking: `get_or_create_table_name` keys the registry on\nquery_id and hands back exactly one table, so `dataset_count` cannot be\nanything but 1 while that holds.",
+        "properties": {
+          "alertId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alertid"
+          },
+          "cadence": {
+            "title": "Cadence",
+            "type": "string"
+          },
+          "cadenceSource": {
+            "enum": [
+              "declared",
+              "schedule",
+              "none"
+            ],
+            "title": "Cadencesource",
+            "type": "string"
+          },
+          "datasetCount": {
+            "title": "Datasetcount",
+            "type": "integer"
+          },
+          "expectedIntervalSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedintervalseconds"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "lastReceivedAt": {
+            "title": "Lastreceivedat",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "fresh",
+              "stale"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "source",
+          "cadence",
+          "cadenceSource",
+          "expectedIntervalSeconds",
+          "alertId",
+          "lastReceivedAt",
+          "status",
+          "datasetCount"
+        ],
+        "title": "FeedOut",
+        "type": "object"
+      },
+      "GenerateSqlIn": {
+        "properties": {
+          "currentSql": {
+            "anyOf": [
+              {
+                "maxLength": 50000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentsql"
+          },
+          "dataset": {
+            "$ref": "#/components/schemas/AiDatasetIn"
+          },
+          "prompt": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt",
+          "dataset"
+        ],
+        "title": "GenerateSqlIn",
+        "type": "object"
+      },
+      "GenerateSqlOut": {
+        "properties": {
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "sql": {
+            "title": "Sql",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sql",
+          "rationale"
+        ],
+        "title": "GenerateSqlOut",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "Health",
+        "type": "object"
+      },
+      "HubCounterOut": {
+        "properties": {
+          "delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "deltaUnit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deltaunit"
+          },
+          "kpiId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kpiid"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "queryId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryid"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "HubCounterOut",
+        "type": "object"
+      },
+      "KpiProposalOut": {
+        "description": "A KPI over a query that exists, or over one written for it.\n\nA KPI reads one number from one query, so unlike a dashboard there is no cap\nto state: it needs exactly one source and this is which of the two kinds it\nis. Both halves are always on the wire with the unused one null, the same\nrule DashboardWidgetProposalOut follows and for the same reason.",
+        "properties": {
+          "atRisk": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Atrisk"
+          },
+          "breached": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breached"
+          },
+          "cadence": {
+            "enum": [
+              "hourly",
+              "daily",
+              "weekly"
+            ],
+            "title": "Cadence",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "direction": {
+            "enum": [
+              "higher-is-better",
+              "lower-is-better"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "kind": {
+            "const": "kpi",
+            "default": "kpi",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "newQuery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewQueryProposalOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceQueryId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcequeryid"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "valueColumn": {
+            "title": "Valuecolumn",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "sourceQueryId",
+          "newQuery",
+          "valueColumn",
+          "unit",
+          "target",
+          "direction",
+          "cadence",
+          "atRisk",
+          "breached"
+        ],
+        "title": "KpiProposalOut",
+        "type": "object"
+      },
+      "NewQueryProposalOut": {
+        "description": "A query the AI wrote because the instance did not have one that fits.\n\nBeside generate-sql rather than with the proposals, because that is what it\nis: the output of one `generate_sql` call, so it has been through the\none-statement, read-only, right-table check and its retry-with-reason. Three\ncontainers carry one (a dashboard widget, a KPI, a report section) and two of\nthem live in ai_create.py, so putting it there would make an outline section\nimport the conversation contract to describe a query.\n\nCarries everything QueryProposalOut does except its `kind` discriminator,\nbecause whoever holds one creates it with exactly the same call: write the\nquery, then point the container at what it produced.",
+        "properties": {
+          "datasetTable": {
+            "title": "Datasettable",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sql": {
+            "title": "Sql",
+            "type": "string"
+          },
+          "vizChoiceId": {
+            "title": "Vizchoiceid",
+            "type": "string"
+          },
+          "vizOptions": {
+            "additionalProperties": true,
+            "title": "Vizoptions",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "sql",
+          "datasetTable",
+          "vizChoiceId",
+          "vizOptions"
+        ],
+        "title": "NewQueryProposalOut",
+        "type": "object"
+      },
+      "OutlineSectionOut": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "intent": {
+            "title": "Intent",
+            "type": "string"
+          },
+          "newQuery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewQueryProposalOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceQueryId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcequeryid"
+          },
+          "suggested": {
+            "title": "Suggested",
+            "type": "boolean"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "intent",
+          "sourceQueryId",
+          "newQuery",
+          "suggested",
+          "enabled"
+        ],
+        "title": "OutlineSectionOut",
+        "type": "object"
+      },
+      "QueryProposalOut": {
+        "properties": {
+          "datasetTable": {
+            "title": "Datasettable",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "kind": {
+            "const": "query",
+            "default": "query",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sql": {
+            "title": "Sql",
+            "type": "string"
+          },
+          "vizChoiceId": {
+            "title": "Vizchoiceid",
+            "type": "string"
+          },
+          "vizOptions": {
+            "additionalProperties": true,
+            "title": "Vizoptions",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "sql",
+          "datasetTable",
+          "vizChoiceId",
+          "vizOptions"
+        ],
+        "title": "QueryProposalOut",
+        "type": "object"
+      },
+      "ReportOutlineOut": {
+        "properties": {
+          "goal": {
+            "title": "Goal",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/OutlineSectionOut"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "goal",
+          "sections"
+        ],
+        "title": "ReportOutlineOut",
+        "type": "object"
+      },
+      "ReportProposalOut": {
+        "properties": {
+          "kind": {
+            "const": "report",
+            "default": "report",
+            "title": "Kind",
+            "type": "string"
+          },
+          "outline": {
+            "$ref": "#/components/schemas/ReportOutlineOut"
+          }
+        },
+        "required": [
+          "outline"
+        ],
+        "title": "ReportProposalOut",
+        "type": "object"
+      },
+      "SnippetProposalOut": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "kind": {
+            "const": "snippet",
+            "default": "snippet",
+            "title": "Kind",
+            "type": "string"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          },
+          "trigger": {
+            "title": "Trigger",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trigger",
+          "snippet",
+          "description"
+        ],
+        "title": "SnippetProposalOut",
+        "type": "object"
+      },
+      "TagCountOut": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "count"
+        ],
+        "title": "TagCountOut",
+        "type": "object"
+      },
+      "TagsIn": {
+        "description": "The whole set for one object.\n\nA replace rather than an add/remove pair, because the frontend's\nTagsControl hands back the full array on every change, and replace is\nidempotent under retry where an add is not.",
+        "properties": {
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tags"
+        ],
+        "title": "TagsIn",
+        "type": "object"
+      },
+      "TagsOut": {
+        "description": "What is actually stored, after normalization.\n\nEchoed back rather than left to the client to assume, so the chips render\nwhat was kept rather than what was sent: `  Rail  ` went in and `rail` is\nwhat the next reader will match on.",
+        "properties": {
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tags"
+        ],
+        "title": "TagsOut",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "veodyn-api",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/ai/converse": {
+      "post": {
+        "description": "One Create-with-AI interview turn, grounded on what actually exists.\n\nThe request carries no grounding, unlike /outline: the catalog and the query\nlist are assembled here, so a modified client cannot make the model believe\nin a table that does not exist.",
+        "operationId": "post_converse_ai_converse_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConverseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConverseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Converse",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/ai/generate-sql": {
+      "post": {
+        "description": "Natural language to one read-only SELECT over the given dataset.\n\nGiven the same warehouse profile the interview gets: this is the query\neditor's own prompt bar, calling the same generator, and a statement written\nagainst real cardinality and real ranges is the point of the profile\nwherever it is written from.",
+        "operationId": "post_generate_sql_ai_generate_sql_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateSqlIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateSqlOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Generate Sql",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/catalog": {
+      "get": {
+        "description": "Every table the historical warehouse has captured, as catalog datasets.\n\n`q` filters on the dataset and table name. It is applied here rather than in\nClickHouse because the registry is one small table and the frontend expects\nthe same list either way.\n\nTags come from this service's own assignment table rather than the\nwarehouse: the warehouse has no notion of one, and a dataset's labels are an\norg-shared fact this service stores. Read for the whole org in one statement,\nwhich is cheap for the same reason the registry read is.",
+        "operationId": "list_datasets_catalog_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DatasetOut"
+                  },
+                  "title": "Response List Datasets Catalog Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Datasets",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/domains": {
+      "get": {
+        "operationId": "list_domain_hubs_domains_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DomainHubOut"
+                  },
+                  "title": "Response List Domain Hubs Domains Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Domain Hubs",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/domains/{key}": {
+      "get": {
+        "operationId": "get_domain_hub_domains__key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainHubOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Domain Hub",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/favorites": {
+      "get": {
+        "description": "Every id this caller has starred, grouped by kind.\n\nWhole sets rather than a page: a person's favorites are the short list by\ndefinition, and the client marks rows by membership, which needs all of them\nor it marks some rows wrongly.\n\nOne key per registered favoritable kind, present even when empty, and a\nstored row whose kind is no longer registered is left out rather than\ninventing a key the client has no page for.",
+        "operationId": "list_favorites_favorites_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FavoritesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Favorites",
+        "tags": [
+          "favorites"
+        ]
+      }
+    },
+    "/favorites/{object_type}/{object_id}": {
+      "delete": {
+        "description": "Deliberately does NOT check that the object exists: removing the star of\nsomething already deleted is exactly the tidy-up a caller should be allowed\nto finish. The kind is still resolved, so a delete cannot address rows of a\nkind this build does not serve.",
+        "operationId": "remove_favorite_favorites__object_type___object_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_type",
+            "required": true,
+            "schema": {
+              "title": "Object Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Favorite",
+        "tags": [
+          "favorites"
+        ]
+      },
+      "post": {
+        "operationId": "add_favorite_favorites__object_type___object_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_type",
+            "required": true,
+            "schema": {
+              "title": "Object Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Favorite",
+        "tags": [
+          "favorites"
+        ]
+      }
+    },
+    "/feeds": {
+      "get": {
+        "description": "Every scheduled capture the warehouse holds, with its cadence and source.\n\nThe two Redash lookups run as the CALLER, not as the service account, so a\ndata source or a query the reader cannot see goes unnamed rather than named\nfor them. Both are best-effort by construction: they label a list the\nwarehouse already produced, and neither can empty it.",
+        "operationId": "list_feeds_feeds_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeedOut"
+                  },
+                  "title": "Response List Feeds Feeds Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Feeds",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/feeds/{feed_id}/alert": {
+      "put": {
+        "description": "Arm or disarm the late alert on a feed.\n\nRequires a declared expectation, because the alert's threshold is two of\nthose periods. Arming without one would mean inventing a deadline on the\nuser's behalf and then paging them about it.\n\nUnlike the expectation, this IS checked against the catalog: arming writes a\nquery against a real table on a real data source, and there is nothing to\nwrite for a feed the registry cannot resolve.",
+        "operationId": "put_alert_feeds__feed_id__alert_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feed_id",
+            "required": true,
+            "schema": {
+              "title": "Feed Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Alert",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/feeds/{feed_id}/expectation": {
+      "put": {
+        "description": "Declare how often a capture is expected to deliver.\n\nDeliberately NOT checked against the catalog first. A feed id is a warehouse\ntable name, and an expectation for a table that has not appeared yet, or has\nbriefly dropped out of the registry, is a harmless row that starts working\nthe moment it is back. Refusing it would mean an operator cannot set an\nexpectation on the feed they are waiting for, which is the one they most\nwant to hear about.\n\nAny authenticated member of the org may set one. It changes no data and no\npermission: what it changes is when this org's own board calls a feed late.",
+        "operationId": "put_expectation_feeds__feed_id__expectation_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feed_id",
+            "required": true,
+            "schema": {
+              "title": "Feed Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Expectation",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "meta"
+        ]
+      }
+    },
+    "/tags": {
+      "get": {
+        "description": "The org's tag vocabulary, unioned across every kind this service owns.\n\nThe same item shape Redash's QueryTagsResource returns, so the frontend\nmerges this with the query and dashboard vocabularies through one mapper.\nReserved `domain:` tags are excluded, so they can never be suggested.",
+        "operationId": "list_tags_tags_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TagCountOut"
+                  },
+                  "title": "Response List Tags Tags Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tags",
+        "tags": [
+          "tags"
+        ]
+      }
+    },
+    "/tags/{object_type}/{object_id}": {
+      "put": {
+        "description": "Replace the whole tag set for one object.\n\nReplace rather than add/remove because the frontend's TagsControl hands back\nthe full array on every change, so replace matches the component contract\nand is idempotent under retry.\n\nNormalized here as well as in the browser. This endpoint is reachable\nwithout the UI, and matching is exact, so a single unnormalized write is\nenough to split a tag in two for everyone.\n\nThe kind is resolved first, where the route's Literal used to refuse it, so\nthe order a caller sees is unchanged: an unknown kind is answered before the\nbody is judged. After that the body is checked before anything is loaded: it\ncosts no I/O, and a caller who sent a reserved tag gets that told to them\nwhether or not the object they aimed at exists.",
+        "operationId": "set_tags_tags__object_type___object_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_type",
+            "required": true,
+            "schema": {
+              "title": "Object Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Tags",
+        "tags": [
+          "tags"
+        ]
+      }
+    }
+  }
+}

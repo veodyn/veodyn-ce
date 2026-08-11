@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "redash.adhocWorker.fullname" . }}
+  labels:
+    {{- include "redash.labels" . | nindent 4 }}
+    app.kubernetes.io/component: adhocworker
+spec:
+  replicas: {{ .Values.adhocWorker.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "redash.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: adhocworker
+  template:
+    metadata:
+      labels:
+        {{- include "redash.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: adhocworker
+        {{- if .Values.adhocWorker.podLabels }}
+        {{- tpl (toYaml .Values.adhocWorker.podLabels) $ | nindent 8 }}
+        {{- end }}
+      annotations:
+        deploymentRevisionId: "{{ .Release.Revision }}"
+        {{- if .Values.adhocWorker.podAnnotations }}
+        {{ toYaml .Values.adhocWorker.podAnnotations | nindent 8 }}
+        {{- end }}
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ include "redash.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.adhocWorker.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "redash.name" . }}-adhocworker
+          securityContext:
+            {{- toYaml .Values.adhocWorker.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/sh"]
+          args: ["-c", ". /config/dynamicenv.sh && /app/bin/docker-entrypoint worker"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            {{- with .Values.adhocWorker.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+          {{- include "redash.env" . | nindent 12 }}
+          {{- range $key, $value := .Values.adhocWorker.env }}
+              {{- if (hasPrefix "secret:" (printf "%s" $value)) }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.app.SharedSecretName }}
+                  key: {{ $value | replace "secret:" "" }}
+              {{- else }}
+            - name: {{ $key }} 
+              value: {{ $value | quote }}
+              {{- end }}
+          {{- end }}
+          envFrom:
+          {{- include "redash.envFrom" . | nindent 12 }}
+          {{- if not .Values.adhocWorker.disableHealthChecks }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://flow-redash/api/public/rq_length_status)
+                  if [ "$STATUS_CODE" -ne 200 ]; then
+                    echo "Liveness check failed with HTTP status: $STATUS_CODE"
+                    echo "Exiting with code 1"
+                    exit 1
+                  fi
+                  echo "Liveness check passed with HTTP status: $STATUS_CODE"
+                  echo "Exiting with code 0"
+                  exit 0
+            initialDelaySeconds: 60
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 10
+          {{- end }}
+          resources:
+{{ toYaml .Values.adhocWorker.resources | indent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "redash.fullname" . }}
+        {{- with .Values.adhocWorker.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    {{- if .Values.adhocWorker.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.adhocWorker.nodeSelector | indent 8 }}
+    {{- end }}
+    {{- with .Values.adhocWorker.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.adhocWorker.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}

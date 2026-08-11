@@ -1,0 +1,76 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Release.Name }}-upgrade"
+  labels:
+    {{- include "redash.labels" . | nindent 4 }}
+    app.kubernetes.io/component: upgrade
+  annotations:
+    # This is what defines this resource as a hook.
+    "helm.sh/hook": post-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: {{ .Values.hookUpgradeJob.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      name: "{{ .Release.Name }}"
+      labels:
+        {{- include "redash.selectorLabels" . | nindent 8 }}
+      {{- if .Values.hookUpgradeJob.podAnnotations }}
+      annotations:
+      {{ toYaml .Values.hookUpgradeJob.podAnnotations | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "redash.serviceAccountName" . }}
+      restartPolicy: Never
+      securityContext:
+        {{- toYaml .Values.hookUpgradeJob.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ include "redash.name" . }}-server
+        securityContext:
+          {{- toYaml .Values.hookUpgradeJob.securityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["/bin/bash", "/config/install-upgrade.sh", "upgrade"]
+        volumeMounts:
+          - name: config
+            mountPath: /config
+        env:
+        {{- include "redash.env" . | nindent 10 }}
+        {{- range $key, $value := .Values.server.env }}
+            {{- if (hasPrefix "secret:" (printf "%s" $value)) }}
+          - name: {{ $key }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Values.app.SharedSecretName }}
+                key: {{ $value | replace "secret:" "" }}
+            {{- else }}
+          - name: {{ $key }} 
+            value: {{ $value | quote }}
+            {{- end }}
+        {{- end }}
+        envFrom:
+        {{- include "redash.envFrom" . | nindent 10 }}
+        resources:
+{{ toYaml .Values.server.resources | indent 10 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "redash.fullname" . }}
+    {{- with .Values.hookUpgradeJob.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.hookUpgradeJob.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.hookUpgradeJob.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}

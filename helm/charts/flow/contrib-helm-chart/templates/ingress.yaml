@@ -1,0 +1,76 @@
+{{- if and .Values.ingress.enabled }}
+{{- $fullName := include "redash.fullname" . -}}
+{{- $ingressPathType := .Values.ingress.pathType -}}
+{{- $svcPort := .Values.service.port -}}
+
+{{- $includeWarehouse := false -}}
+{{- $warehouseFullName := "" -}}
+{{- $warehouseIngressPathType := "" -}}
+{{- $warehouseIngressPathPrefix := "" -}}
+{{- if and (hasKey .Values "warehouseapi") (hasKey .Values.warehouseapi "ingress") }}
+  {{- $includeWarehouse = true -}}
+  {{- $warehouseFullName = include "redash.warehouseapi.fullname" . -}}
+  {{- $warehouseIngressPathType = .Values.warehouseapi.ingress.pathType -}}
+  {{- $warehouseIngressPathPrefix = .Values.warehouseapi.ingress.pathPrefix -}}
+{{- end }}
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "redash.labels" . | nindent 4 }}
+  annotations:
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if and .Values.ingress.letsencrypt.enabled .Values.ingress.letsencrypt.issuer }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.letsencrypt.issuer | quote }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.ingressClassName }}
+  ingressClassName: {{ .Values.ingress.ingressClassName | quote }}
+  {{- end }}
+  {{- if or .Values.ingress.tls .Values.ingress.letsencrypt.enabled }}
+  tls:
+    {{- if .Values.ingress.tls }}
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+      - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+    {{- else }}
+    {{- range .Values.ingress.hosts }}
+    - hosts:
+        - {{ .host | quote }}
+      secretName: {{ .host }}-tls
+    {{- end }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ . }}
+            pathType: {{ $ingressPathType }}
+            backend:
+              service:
+                name: {{ $fullName }}
+                port:
+                  number: {{ $svcPort }}
+          {{- if $includeWarehouse }}
+          - path: {{ $warehouseIngressPathPrefix }}{{ . }}
+            pathType: {{ $warehouseIngressPathType }}
+            backend:
+              service:
+                name: {{ $warehouseFullName }}
+                port:
+                  number: {{ $svcPort }}
+          {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}

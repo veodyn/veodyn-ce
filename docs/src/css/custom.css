@@ -1,0 +1,53 @@
+/**
+ * Veodyn docs theme, built on Infima (Docusaurus default).
+ * Mirrors the product accents: slate #475569 in light mode and the
+ * hand-picked #7FA9E0 in dark mode (see app/src/lib/config-schema.ts).
+ */
+
+:root {
+  --ifm-color-primary: #475569;
+  --ifm-color-primary-dark: #404c5e;
+  --ifm-color-primary-darker: #3c4859;
+  --ifm-color-primary-darkest: #323b49;
+  --ifm-color-primary-light: #4e5e74;
+  --ifm-color-primary-lighter: #526279;
+  --ifm-color-primary-lightest: #5c6f88;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(71, 85, 105, 0.1);
+
+  --ifm-background-color: #fafafa;
+  --ifm-background-surface-color: #ffffff;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #7fa9e0;
+  --ifm-color-primary-dark: #649ada;
+  --ifm-color-primary-darker: #5792d7;
+  --ifm-color-primary-darkest: #327bce;
+  --ifm-color-primary-light: #9ab8e6;
+  --ifm-color-primary-lighter: #a7c0e9;
+  --ifm-color-primary-lightest: #cfddf3;
+  --docusaurus-highlighted-code-line-bg: rgba(127, 169, 224, 0.16);
+
+  --ifm-background-color: #12161f;
+  --ifm-background-surface-color: #1a202c;
+}
+
+/**
+ * Sidebar marker for enterprise-only pages. Applied by `className` in
+ * sidebars.ts rather than by page, so the nav says which pages describe
+ * something a community build does not contain. The comparison chart in
+ * docs/editions.md is the complete list; this is the at-a-glance version.
+ */
+.menu-ee .menu__link::after {
+  content: 'EE';
+  margin-left: 0.5em;
+  padding: 0.05em 0.4em;
+  border: 1px solid var(--ifm-color-emphasis-400);
+  border-radius: 0.5em;
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.7em;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+}

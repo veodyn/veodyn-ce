@@ -1,0 +1,168 @@
+{{- $app := index .Values .Values.appName }}
+{{- $ee := $app.runEnterpriseMigrations | default false }}
+{{- $baseEnv := $app.baseEnv | default dict }}
+{{- $env := $app.env | default dict }}
+{{- /*
+  THE EFFECTIVE VALUE, NOT THE PRESENCE OF A KEY, AND ACROSS BOTH MAPS.
+
+  The pod's environment is baseEnv and env together: this Job renders both
+  below, and so does templates/deployment.yaml. An earlier version of this guard
+  asked `hasKey $app.env`, which got both halves of that wrong and was measured
+  doing it. The correct module in app.baseEnv with app.env empty was REFUSED,
+  and `app.env.VEODYN_EXTRA_MODULES: ""` RENDERED, which is a release that
+  passes the guard, runs both chains and loads no pack at all: exactly the
+  silent half-install the guard exists to stop.
+
+  `merge` with env as the first source gives env precedence over baseEnv, which
+  is both the layering convention of these values files (baseEnv is the chart's,
+  env is the deployment's) and what the pod does anyway, since the two are
+  rendered in that order and a later duplicate wins.
+
+  Membership, not a substring. veodyn_api/extras.py splits this variable on
+  commas and strips each name, so the same parse happens here: a value of
+  "veodyn_enterprise.registration_disabled" contains the module name and is not
+  it, and a list that names the module among others is correct.
+*/}}
+{{- $effective := merge (dict) $env $baseEnv }}
+{{- $raw := printf "%v" (get $effective "VEODYN_EXTRA_MODULES" | default "") }}
+{{- $modules := list }}
+{{- range $candidate := splitList "," $raw }}
+{{- $modules = append $modules (trim $candidate) }}
+{{- end }}
+{{- $extras := has "veodyn_enterprise.registration" $modules }}
+{{- $found := ternary (printf "the effective value is %q" $raw) "neither app.env nor app.baseEnv sets it" (hasKey $effective "VEODYN_EXTRA_MODULES") }}
+{{- /*
+  The two halves of an enterprise install have to arrive together, so this is a
+  render-time refusal rather than a comment nobody reads. Each half on its own
+  is a deployment that comes up green and does not work:
+
+    routers without the chain  -> every enterprise request hits a missing table
+    the chain without routers  -> four tables created and nothing serving them
+
+  Only checked on the migrating release. A non-migrating release of an
+  enterprise deployment carries VEODYN_EXTRA_MODULES and no migration keys,
+  which is correct, so the guard must not fire there.
+
+  scripts/check-helm-render.sh is where each branch below is watched firing, and
+  ci/helm-render-test.yaml is what runs it. A chart guard with no render test is
+  the thing this branch kept finding.
+*/}}
+{{- if $app.runMigrations }}
+{{- if and $ee (not $extras) }}
+{{- fail (printf "app.runEnterpriseMigrations is true but VEODYN_EXTRA_MODULES does not name veodyn_enterprise.registration (%s). This release would create the enterprise tables and then serve none of the enterprise routers. Set VEODYN_EXTRA_MODULES=veodyn_enterprise.registration in app.env, or turn runEnterpriseMigrations off." $found) }}
+{{- end }}
+{{- if and $extras (not $ee) }}
+{{- fail "VEODYN_EXTRA_MODULES names veodyn_enterprise.registration on the migrating release but app.runEnterpriseMigrations is false. This release would serve the enterprise routers against tables the enterprise Alembic chain never created. Set app.runEnterpriseMigrations: true, or remove VEODYN_EXTRA_MODULES." }}
+{{- end }}
+{{- end }}
+{{- if $app.runMigrations }}
+# Runs the Alembic chains before the app pods roll.
+#
+# Without this a first deploy comes up against an empty schema: the image ships
+# alembic.ini and migrations/, but nothing invoked them, the app has no startup
+# create_all, and the chart had no hook. Every request that touched the database
+# would have failed with an undefined table.
+#
+# pre-install/pre-upgrade rather than post-*, so the schema is in place before
+# any pod serves traffic. helm --wait blocks on the hook, so a failed migration
+# fails the deploy instead of rolling out an app that cannot work.
+#
+# Guarded on runMigrations because ONE release must own this. Every release from
+# this chart shares a database; if two ran it they would race for the alembic
+# version lock on every deploy.
+#
+# There are two chains, not one. `alembic upgrade head` walks the community
+# chain in `alembic_version`. The enterprise chain is separate, lives in
+# `alembic_version_ee`, and is reachable only through the pack's own entry
+# point, because the wheel ships no alembic.ini and the repository's own one has
+# a script_location relative to a checkout no image has. runEnterpriseMigrations
+# adds it, in that order; either order works (neither chain reads the other's
+# version table) and community-first is what the pack's migration runbook says.
+#
+# One container running both rather than two containers: the containers of a Job
+# pod start in parallel, and two Alembic processes opening DDL transactions
+# against one database at the same moment is a race this hook exists to avoid.
+#
+# THE PREFLIGHT RUNS FIRST, before either chain. A database migrated before the
+# split has all seven product tables and only `alembic_version`, so the
+# enterprise chain believes it has never run: it starts at 0001 and fails
+# creating `kpi`. That is a blocked deploy rather than a damaged database,
+# because Postgres rolls the whole of 0001 back, but as shipped the failure
+# arrived as a DuplicateTable traceback out of a pre-upgrade hook with no
+# indication of what to do about it.
+#
+# `migrate preflight` is the pack's runbook Step 0 as a command. It classifies
+# the database, exits 0 for the three scenarios a deploy can proceed through,
+# and exits non-zero for the one that needs a person: naming the scenario, and
+# naming the one-time `migrate stamp head` that clears it. It refuses rather
+# than stamping automatically, because a stamp is only right when the
+# enterprise tables are ALREADY the shape head would have left, and a hook can
+# see that they exist but not that they are. See veodyn_enterprise/preflight.py
+# for the full argument.
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-migrate
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.Name }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-migrate
+    spec:
+      restartPolicy: Never
+      {{- if .Values.registrySecretName }}
+      imagePullSecrets:
+        - name: {{ .Values.registrySecretName }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: "{{ .Values.image }}:{{ .Values.imageTag }}"
+          imagePullPolicy: Always
+          {{- if $ee }}
+          command:
+            - /bin/sh
+            - -c
+            - uv run --no-dev python -m veodyn_enterprise.migrate preflight && uv run --no-dev alembic upgrade head && uv run --no-dev python -m veodyn_enterprise.migrate upgrade head
+          {{- else }}
+          command: ["uv", "run", "--no-dev", "alembic", "upgrade", "head"]
+          {{- end }}
+          env:
+            {{- /*
+              The same two maps the deployment renders, resolved the same way.
+              migrations/env.py reads the URL through veodyn_api.settings, so
+              the job needs the identical VEODYN_* environment the app gets.
+            */}}
+            {{- range $key, $value := (index .Values .Values.appName "baseEnv") }}
+            {{- if (hasPrefix "secret:" (printf "%s" $value)) }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.app.SharedSecretName }}
+                  key: {{ $value | replace "secret:" "" }}
+            {{- else }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
+            {{- range $key, $value := (index .Values .Values.appName "env") }}
+            {{- if (hasPrefix "secret:" (printf "%s" $value)) }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.app.SharedSecretName }}
+                  key: {{ $value | replace "secret:" "" }}
+            {{- else }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
+{{- end }}

@@ -1,0 +1,73 @@
+---
+# Defaults for the veodyn-api chart. One generic Deployment template, installed
+# once per release; the per-release values file decides what that release is.
+# A community deployment installs exactly one release from this chart, the HTTP
+# API, and `values.example-api.yaml` is its shape.
+#
+# THERE IS NO WORKER RELEASE IN A COMMUNITY DEPLOYMENT, and no
+# values.example-worker.yaml here. The only recurring job the sidecar has ever
+# had evaluates KPIs, KPIs are enterprise, and the whole worker package ships in
+# veodyn-enterprise, as `veodyn_enterprise.worker`, rather than in this
+# repository. A community worker would be a process with no jobs against a
+# database with no `kpi` table.
+#
+# An enterprise deployment adds a second release from this same chart, with a
+# `command` override and an image carrying the pack. That values overlay is
+# `deploy/values.worker.yaml` in veodyn-enterprise, which is rendered against
+# this chart and this file's `values.example.yaml`. Nothing in this repository
+# can check that it is there, so the pack asserts it from its side; before it
+# existed, this paragraph pointed at a file nobody held.
+#
+# The templates are not conditional on any of that, deliberately. There is one
+# generic templates/deployment.yaml, so a default-off condition on it would
+# disable the HTTP API along with the worker. What the chart conditions on
+# instead is the pair of migration keys below, which is where an enterprise
+# release differs in a way a template can actually check.
+#
+# Every release is expected to be installed with `--set appName=app`, so every
+# one reads this `app` section and differs only through its own values file.
+image: "PUT_IMAGE_IN_ENV_VALUES_FILE"
+imageTag: ""
+registrySecretName: registry-harbor
+
+app:
+  replicas:
+    default: 1
+  port: 8000
+  serviceType: ClusterIP
+  limitsCpu: 1
+  limitsMemory: 1G
+  requestsCpu: 0.2
+  requestsMemory: 256M
+  strategyType: "RollingUpdate"
+  readnessProbe:
+    path: "/health"
+    port: "8000"
+  livenessProbe:
+    path: "/health"
+    port: "8000"
+  # Whether this release runs the community Alembic chain (`alembic upgrade
+  # head`) as a pre-install/pre-upgrade hook. Off by default and turned on for
+  # exactly one release: every release from this chart shares one database, so
+  # two migrating releases would race on the version lock on every deploy.
+  runMigrations: false
+  # Whether that same hook ALSO runs the enterprise Alembic chain. This is a
+  # second chain with its own version table (`alembic_version_ee`) and its own
+  # entry point, `python -m veodyn_enterprise.migrate`, which exists only in an
+  # image that has veodyn-enterprise installed. The wheel ships no alembic.ini,
+  # so `alembic -c alembic.ini upgrade head` is NOT the command for it.
+  #
+  # Set this true on the migrating release of any deployment that runs the pack,
+  # and set VEODYN_EXTRA_MODULES=veodyn_enterprise.registration in app.env on
+  # every release of that deployment. The two go together and the migrate hook
+  # refuses to render if only one of them is present, because each half alone is
+  # a silent failure: enterprise routers against tables that were never created,
+  # or four enterprise tables nothing serves.
+  runEnterpriseMigrations: false
+  env:
+  baseEnv:
+    LOGGING_LEVEL: "INFO"
+  letsencrypt:
+    enabled: true
+    issuer: "letsencrypt-prod"
+  ingressHosts: []
