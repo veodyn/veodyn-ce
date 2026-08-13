@@ -40,6 +40,23 @@ describe('ApiKeyDialog', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
+  // The key alone still leaves the user to assemble the call by hand. The
+  // dialog hands out the exact endpoints, built on this app's origin: the
+  // backend's own host is unreachable from outside a deployment (see
+  // public-links.ts), so the proxy path is the only address that works pasted
+  // anywhere.
+  it('shows the exact results endpoints, ready to copy', () => {
+    renderWithProviders(<ApiKeyDialog open onClose={() => {}} queryId={7} apiKey="query-key-123" />)
+
+    const origin = window.location.origin
+    expect(
+      screen.getByDisplayValue(`${origin}/api/node/queries/7/results.json?api_key=query-key-123`)
+    ).toBeInTheDocument()
+    expect(
+      screen.getByDisplayValue(`${origin}/api/node/queries/7/results.csv?api_key=query-key-123`)
+    ).toBeInTheDocument()
+  })
+
   // The dialog was handed `query.user.email` as the key, so it displayed the
   // author's address under an "API Key" label and copied it to the clipboard.
   // An absent key must therefore read as absent, never fall back to whatever

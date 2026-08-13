@@ -1,11 +1,12 @@
 /**
  * The addresses this product serves to somebody who is not signed in.
  *
- * There are two of them, and neither is a Redash address. `/dashboards/public/
- * <token>` and `/embed/public/<token>` are Next routes in this app, and the
- * proxy at `api/node/[...path]` lets exactly those two token paths through
- * without a session. So the link a reader should be handed is always built from
- * this origin, and the token is the whole of the credential in it.
+ * None of them is a Redash address. `/dashboards/public/<token>` and
+ * `/embed/public/<token>` are Next routes in this app, and the query results
+ * API is the proxy itself: `api/node/[...path]` lets those token paths and the
+ * `?api_key=`-carrying results paths through without a session. So the link a
+ * reader should be handed is always built from this origin, and the credential
+ * in the URL is the whole of what it grants.
  *
  * Redash also mints a `public_url`, and it is not that link. It is
  * `/public/dashboards/<token>` (the segments are the other way round) on
@@ -24,6 +25,21 @@ export function dashboardPublicPath(token: string): string {
 
 export function embedPublicPath(token: string): string {
   return `/embed/public/${token}`
+}
+
+/**
+ * The results of one query, authenticated by that query's own API key. This is
+ * the URL the API-key dialog hands out to copy, so it goes through the proxy
+ * on this origin like every link above. The backend's own host is not an
+ * alternative: it is an in-cluster name in a deployment, and the deployed
+ * NEXT_PUBLIC_REDASH_URL is a bare build toggle (`1`), not an address.
+ */
+export function queryResultsApiPath(
+  queryId: number,
+  apiKey: string,
+  filetype: 'json' | 'csv'
+): string {
+  return `/api/node/queries/${queryId}/results.${filetype}?api_key=${encodeURIComponent(apiKey)}`
 }
 
 /**

@@ -6,6 +6,7 @@ import { InputWithCopy } from '@/components/shared/input-with-copy'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/shared/toast-provider'
 import { useRegenerateQueryApiKey } from '@/hooks/use-queries'
+import { publicLinkUrl, queryResultsApiPath } from '@/lib/public-links'
 
 interface ApiKeyDialogProps {
   open: boolean
@@ -51,8 +52,21 @@ export function ApiKeyDialog({ open, onClose, queryId, apiKey }: ApiKeyDialogPro
           {apiKey ? (
             <>
               <InputWithCopy label="API Key" value={apiKey} />
+              {/* The exact calls, not just the key: assembling the URL by hand
+                  is where the path shape and the param name go wrong. Built on
+                  this app's origin because that is the only address a reader
+                  outside the deployment can reach; see public-links.ts. */}
+              <InputWithCopy
+                label="Results in JSON format"
+                value={publicLinkUrl(queryResultsApiPath(queryId, apiKey, 'json'))}
+              />
+              <InputWithCopy
+                label="Results in CSV format"
+                value={publicLinkUrl(queryResultsApiPath(queryId, apiKey, 'csv'))}
+              />
               <p className="text-xs text-muted-foreground">
-                Use this key to access this query&apos;s results via the API.
+                These URLs return this query&apos;s latest results to anyone holding the key,
+                with no sign-in: paste one into a browser, curl, or a spreadsheet importer.
               </p>
               <div className="flex justify-end">
                 <Button

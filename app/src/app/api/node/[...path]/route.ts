@@ -17,21 +17,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-
-/**
- * Whether a response body can be read as text without damaging it.
- *
- * Deliberately matched on the type rather than on a substring: xlsx is
- * `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, which
- * contains "xml" twice and is not text at all.
- */
-function isTextualContentType(contentType: string): boolean {
-  const type = contentType.split(';')[0].trim().toLowerCase()
-  if (type === '') return true
-  if (type.startsWith('text/')) return true
-  if (type.endsWith('+json') || type.endsWith('+xml')) return true
-  return ['application/json', 'application/xml', 'application/javascript'].includes(type)
-}
+import {
+  isKeyedResultsPath,
+  isPublicPath,
+  isTextualContentType,
+  stripOwnCookies,
+} from './proxy-guards'
 
 // Never cache proxied responses — dashboards/queries carry volatile fields
 // like latest_query_data_id; a cached GET serves stale result pointers.
@@ -46,34 +37,6 @@ function getRedashUrl(path: string[]): string {
     return `${REDASH_URL}/ping`
   }
   return `${REDASH_URL}/api/${path.join('/')}`
-}
-
-// Paths reachable without a session cookie or API key. Everything else is
-// rejected here so unauthenticated requests never reach Redash; authenticated
-// ones are enforced by Redash itself via the forwarded session cookie.
-function isPublicPath(path: string[]): boolean {
-  const joined = path.join('/')
-  return (
-    joined === 'ping' ||
-    joined === 'session' ||
-    joined.startsWith('dashboards/public/') ||
-    // A per-visualization share token, the embed equivalent of the dashboard
-    // one above. The token in the path is the entire credential, so this
-    // request arrives with no session and no key by design.
-    joined.startsWith('visualizations/public/') ||
-    // Invite/reset token endpoints — the token itself is the credential
-    (path.length === 2 && (path[0] === 'invite' || path[0] === 'reset'))
-  )
-}
-
-// Our origin-only cookies must not leak to Redash: `redash_api_key` holds the
-// user's key (sent as an Authorization header instead).
-function stripOwnCookies(cookieHeader: string): string {
-  return cookieHeader
-    .split(';')
-    .map((c) => c.trim())
-    .filter((c) => !c.startsWith('redash_api_key='))
-    .join('; ')
 }
 
 async function proxyRequest(
@@ -104,11 +67,13 @@ async function proxyRequest(
   // Forward cookies from browser to Redash (session cookie, CSRF)
   const cookieHeader = stripOwnCookies(request.headers.get('cookie') || '')
 
-  // Reject unauthenticated requests before they reach Redash
+  // Reject unauthenticated requests before they reach Redash. A keyed results
+  // URL passes: its ?api_key= is the credential, and Redash validates it.
   const hasSession = !!request.cookies.get('session')?.value
   const userApiKey = request.cookies.get('redash_api_key')?.value || ''
   const authHeader = request.headers.get('authorization')
-  if (!hasSession && !userApiKey && !authHeader && !isPublicPath(path)) {
+  const keyedResults = isKeyedResultsPath(request, path)
+  if (!hasSession && !userApiKey && !authHeader && !keyedResults && !isPublicPath(path)) {
     return NextResponse.json({ message: 'Please login to continue.' }, { status: 401 })
   }
 
@@ -142,6 +107,16 @@ async function proxyRequest(
     if (csrfToken) {
       headers['X-CSRF-TOKEN'] = csrfToken
     }
+  }
+
+  // An anonymous keyed-results request authenticates by its URL alone, so
+  // nothing was attached above. It still counts as API-key auth on the way
+  // back out: Redash answers it with a brand-new empty session, and forwarding
+  // that Set-Cookie would overwrite a real login (same hazard as the header
+  // branches). With a session present, Redash authenticates the session and
+  // its cookie refresh must keep flowing.
+  if (keyedResults && !hasSession) {
+    usedApiKeyAuth = true
   }
 
   // Build fetch options

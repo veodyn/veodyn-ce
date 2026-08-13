@@ -118,6 +118,57 @@ describe('mutating verbs', () => {
   )
 })
 
+// The URL the API-key dialog hands out: a results path with ?api_key=. The
+// key is the whole credential (Redash validates it), so the gate must let it
+// through with no session, and must not widen beyond the results paths.
+describe('per-query api_key access', () => {
+  it('forwards an unauthenticated results GET that carries api_key', async () => {
+    const fetchMock = stubFetch()
+    const { GET } = await loadRoute()
+
+    const res = await GET(
+      new NextRequest('http://localhost/api/node/queries/7/results.json?api_key=k1'),
+      ctx(['queries', '7', 'results.json'])
+    )
+
+    expect(res.status).toBe(200)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      'https://redash.example/api/queries/7/results.json?api_key=k1'
+    )
+  })
+
+  it('still rejects an unauthenticated non-results path carrying api_key', async () => {
+    const fetchMock = stubFetch()
+    const { GET } = await loadRoute()
+
+    const res = await GET(
+      new NextRequest('http://localhost/api/node/queries/7?api_key=k1'),
+      ctx(['queries', '7'])
+    )
+
+    expect(res.status).toBe(401)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('does not forward the anonymous session Redash mints for a key request', async () => {
+    stubFetch(
+      new Response('{}', {
+        status: 200,
+        headers: { 'content-type': 'application/json', 'set-cookie': 'session=anon; Path=/' },
+      })
+    )
+    const { GET } = await loadRoute()
+
+    const res = await GET(
+      new NextRequest('http://localhost/api/node/queries/7/results.json?api_key=k1'),
+      ctx(['queries', '7', 'results.json'])
+    )
+
+    expect(res.status).toBe(200)
+    expect(res.headers.getSetCookie()).toEqual([])
+  })
+})
+
 describe('upstream failures', () => {
   it.each([400, 403, 404, 422, 500])('passes an upstream %i straight through', async (status) => {
     stubFetch(
