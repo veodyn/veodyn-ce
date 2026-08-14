@@ -44,4 +44,6 @@ export const {
   mockDomainHubs,
   mockAnnotations,
   mockFeeds,
+  mockPublishedFeeds,
+  mockPublishAttempts,
 } = neutral

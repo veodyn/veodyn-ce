@@ -30,6 +30,8 @@ export {
   mockDomainHubs,
   mockAnnotations,
   mockFeeds,
+  mockPublishedFeeds,
+  mockPublishAttempts,
   // Imported through the '@/' path rather than './packs/active' on purpose:
   // turbopack.resolveAlias matches the specifier as WRITTEN, so a relative one
   // would resolve past the alias and quietly ship both packs again. The alias

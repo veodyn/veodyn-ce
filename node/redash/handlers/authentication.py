@@ -1,3 +1,4 @@
+import hmac
 import logging
 
 from flask import abort, flash, redirect, render_template, request, url_for
@@ -8,13 +9,17 @@ from sqlalchemy.orm.exc import NoResultFound
 from redash import __version__, limiter, models, settings
 from redash.authentication import current_org, get_login_url, get_next_path
 from redash.authentication.account import (
+    INVITE_SALT,
+    RESET_SALT,
+    VERIFY_SALT,
+    password_stamp,
     send_password_reset_email,
     send_user_disabled_email,
     send_verify_email,
     validate_token,
 )
 from redash.handlers import routes
-from redash.handlers.base import json_response, org_scoped_rule
+from redash.handlers.base import json_response, org_scoped_rule, token_fingerprint
 from redash.security import csrf
 from redash.version_check import get_latest_version
 
@@ -31,24 +36,30 @@ def get_google_auth_url(next_path):
 
 def render_token_login_page(template, org_slug, token, invite):
     error_message = None
+    # The token only opens the door it was minted for, and does not survive the
+    # password it protects being set.
     try:
-        user_id = validate_token(token)
-        org = current_org._get_current_object()
-        user = models.User.get_by_id_and_org(user_id, org)
+        user = _resolve_token_user(token, INVITE_SALT if invite else RESET_SALT)
     except NoResultFound:
-        logger.exception(
-            "Bad user id in token. Token=%s , User id= %s, Org=%s",
-            token,
-            user_id,
-            org_slug,
-        )
+        # Fingerprint, not the token: this line used to put a live account
+        # credential into the log pipeline. The user id went with it, because
+        # outside _resolve_token_user there is no parsed token to read it from.
+        logger.exception("Bad user id in token. Token fingerprint=%s, org=%s", token_fingerprint(token), org_slug)
         error_message = "Your invite link is invalid. Bad user id in token. Please ask for a new one."
     except SignatureExpired:
-        logger.exception("Token signature has expired. Token: %s, org=%s", token, org_slug)
+        logger.exception("Token signature has expired. Fingerprint=%s, org=%s", token_fingerprint(token), org_slug)
         error_message = "Your invite link has expired. Please ask for a new one."
     except BadSignature:
-        logger.exception("Bad signature for the token: %s, org=%s", token, org_slug)
+        # Also the spent-token case: _resolve_token_user raises BadSignature
+        # when the stamp no longer matches, so a used link reads as an invalid
+        # one to the visitor while the traceback says which it really was.
+        logger.exception("Bad signature for the token. Fingerprint=%s, org=%s", token_fingerprint(token), org_slug)
         error_message = "Your invite link is invalid. Bad signature. Please double-check the token."
+
+    if not error_message and user.is_disabled:
+        # The JSON reset endpoints already refused a disabled account. This is
+        # the same rule on the HTML path, for both invite and reset.
+        error_message = "This account has been disabled. Please contact an administrator."
 
     if error_message:
         return (
@@ -122,26 +133,52 @@ def reset(token, org_slug=None):
 # These do NOT require authentication — the token itself is the credential.
 # ---------------------------------------------------------------------------
 
-def _resolve_token_user(token):
-    """Resolve a timed token to a User, raising on any error."""
-    user_id = validate_token(token)
+def _resolve_token_user(token, salt):
+    """Resolve a timed token to a User, raising on any error.
+
+    Both halves of validation live here so that no endpoint can get one and
+    miss the other: the signature and age come from validate_token under the
+    caller's salt, and the password stamp is re-derived from the loaded user
+    and compared.
+
+    A stale stamp raises BadSignature rather than a type of its own, so every
+    existing `except (SignatureExpired, BadSignature, NoResultFound)` treats a
+    spent token exactly like a forged one, and no caller can forget to handle
+    the new case.
+    """
+    user_id, stamp = validate_token(token, salt)
     org = current_org._get_current_object()
-    return models.User.get_by_id_and_org(user_id, org)
+    user = models.User.get_by_id_and_org(user_id, org)
+    if not hmac.compare_digest(stamp, password_stamp(user)):
+        raise BadSignature("token predates a password change")
+    return user
 
 
 @routes.route(org_scoped_rule("/api/invite/<token>"), methods=["GET"])
+@limiter.limit(settings.THROTTLE_PASS_RESET_PATTERN)
 @csrf.exempt
 def api_invite_get(token, org_slug=None):
     try:
-        user = _resolve_token_user(token)
+        user = _resolve_token_user(token, INVITE_SALT)
     except SignatureExpired:
         return json_response({"error": "expired", "message": "Invite link has expired. Please ask for a new one."}), 400
     except (BadSignature, NoResultFound):
         return json_response({"error": "invalid", "message": "Invite link is invalid."}), 400
 
+    if user.is_disabled:
+        return json_response({"error": "disabled", "message": "This account has been disabled."}), 400
+
     if user.details.get("is_invitation_pending") is False:
-        return json_response(
-            {"error": "already_accepted", "message": "Invitation already accepted. Try resetting your password instead."},
+        # Tuple form, like every other branch in this file. json_response takes
+        # one argument, so passing the status positionally raised TypeError and
+        # this branch answered 500 instead of the 400 it reads as.
+        return (
+            json_response(
+                {
+                    "error": "already_accepted",
+                    "message": "Invitation already accepted. Try resetting your password instead.",
+                }
+            ),
             400,
         )
 
@@ -149,12 +186,31 @@ def api_invite_get(token, org_slug=None):
 
 
 @routes.route(org_scoped_rule("/api/invite/<token>"), methods=["POST"])
+@limiter.limit(settings.THROTTLE_PASS_RESET_PATTERN)
 @csrf.exempt
 def api_invite_post(token, org_slug=None):
     try:
-        user = _resolve_token_user(token)
+        user = _resolve_token_user(token, INVITE_SALT)
     except (SignatureExpired, BadSignature, NoResultFound):
         return json_response({"error": "invalid", "message": "Invite link is invalid or expired."}), 400
+
+    # The two guards its own GET sibling and the HTML path already had. This is
+    # the handler that actually sets a password, so it is the one that mattered.
+    # `is False` and not falsy: an account predating the flag has no key in
+    # details at all, and that reads as pending rather than as accepted.
+    if user.is_disabled:
+        return json_response({"error": "disabled", "message": "This account has been disabled."}), 400
+
+    if user.details.get("is_invitation_pending") is False:
+        return (
+            json_response(
+                {
+                    "error": "already_accepted",
+                    "message": "Invitation already accepted. Try resetting your password instead.",
+                }
+            ),
+            400,
+        )
 
     data = request.get_json(force=True) or {}
     password = data.get("password", "")
@@ -170,10 +226,11 @@ def api_invite_post(token, org_slug=None):
 
 
 @routes.route(org_scoped_rule("/api/reset/<token>"), methods=["GET"])
+@limiter.limit(settings.THROTTLE_PASS_RESET_PATTERN)
 @csrf.exempt
 def api_reset_get(token, org_slug=None):
     try:
-        user = _resolve_token_user(token)
+        user = _resolve_token_user(token, RESET_SALT)
     except SignatureExpired:
         return json_response({"error": "expired", "message": "Reset link has expired. Please request a new one."}), 400
     except (BadSignature, NoResultFound):
@@ -186,10 +243,11 @@ def api_reset_get(token, org_slug=None):
 
 
 @routes.route(org_scoped_rule("/api/reset/<token>"), methods=["POST"])
+@limiter.limit(settings.THROTTLE_PASS_RESET_PATTERN)
 @csrf.exempt
 def api_reset_post(token, org_slug=None):
     try:
-        user = _resolve_token_user(token)
+        user = _resolve_token_user(token, RESET_SALT)
     except (SignatureExpired, BadSignature, NoResultFound):
         return json_response({"error": "invalid", "message": "Reset link is invalid or expired."}), 400
 
@@ -211,11 +269,11 @@ def api_reset_post(token, org_slug=None):
 @routes.route(org_scoped_rule("/verify/<token>"), methods=["GET"])
 def verify(token, org_slug=None):
     try:
-        user_id = validate_token(token)
-        org = current_org._get_current_object()
-        user = models.User.get_by_id_and_org(user_id, org)
+        user = _resolve_token_user(token, VERIFY_SALT)
     except (BadSignature, NoResultFound):
-        logger.exception("Failed to verify email verification token: %s, org=%s", token, org_slug)
+        logger.exception(
+            "Failed to verify email verification token. Fingerprint=%s, org=%s", token_fingerprint(token), org_slug
+        )
         return (
             render_template(
                 "error.html",

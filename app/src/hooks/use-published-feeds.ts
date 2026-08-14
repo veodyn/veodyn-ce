@@ -1,0 +1,145 @@
+'use client'
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { USE_REAL_API } from '@/services/redash/config'
+import { withFixtureFallback } from '@/lib/backend-fallback'
+import { useMockDataStore } from '@/stores/mock-data-store'
+import * as queriesService from '@/services/redash/queries'
+import { getResult } from '@/services/redash/execution'
+import {
+  createPublishedFeed,
+  deletePublishedFeed,
+  fetchAttempts,
+  fetchPublishedFeed,
+  fetchPublishedFeeds,
+  publishNow,
+  updatePublishedFeed,
+} from '@/services/published-feeds/client'
+import type { PublishAttempt, PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
+
+const LIST_KEY = ['published-feeds']
+const feedKey = (slug: string) => ['published-feeds', slug]
+const attemptsKey = (slug: string) => ['published-feeds', slug, 'attempts']
+
+export interface QueryResultColumns {
+  /** Redash's own result id, so a later read can tell whether it has moved on. */
+  resultId: number | null
+  columns: string[]
+}
+
+export function usePublishedFeeds() {
+  const feeds = useMockDataStore((s) => s.publishedFeeds)
+  return useQuery({
+    queryKey: LIST_KEY,
+    // The sidecar 503s until its URL is set, which is the agreed "not wired
+    // yet" signal. Only a 503 falls back; a 4xx or 5xx from a configured
+    // backend is a real failure and must surface.
+    queryFn: async ({ signal }) =>
+      USE_REAL_API ? withFixtureFallback(() => fetchPublishedFeeds({ signal }), () => feeds) : feeds,
+  })
+}
+
+export function usePublishedFeed(slug: string | undefined) {
+  const feeds = useMockDataStore((s) => s.publishedFeeds)
+  return useQuery({
+    queryKey: feedKey(slug ?? ''),
+    enabled: slug != null,
+    queryFn: async ({ signal }): Promise<PublishedFeed | null> => {
+      const fixture = () => feeds.find((f) => f.slug === slug) ?? null
+      if (!USE_REAL_API) return fixture()
+      return withFixtureFallback(() => fetchPublishedFeed(slug as string, { signal }), fixture)
+    },
+  })
+}
+
+export function useAttempts(slug: string | undefined) {
+  const attempts = useMockDataStore((s) => s.publishAttempts)
+  return useQuery({
+    queryKey: attemptsKey(slug ?? ''),
+    enabled: slug != null,
+    queryFn: async ({ signal }): Promise<PublishAttempt[]> => {
+      const fixture = () => attempts[slug as string] ?? []
+      if (!USE_REAL_API) return fixture()
+      return withFixtureFallback(() => fetchAttempts(slug as string, { signal }), fixture)
+    },
+  })
+}
+
+export function useCreatePublishedFeed() {
+  const qc = useQueryClient()
+  const store = useMockDataStore()
+  return useMutation({
+    mutationFn: async (input: PublishedFeedInput) =>
+      USE_REAL_API ? createPublishedFeed(input) : store.createPublishedFeed(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: LIST_KEY }),
+  })
+}
+
+export function useUpdatePublishedFeed() {
+  const qc = useQueryClient()
+  const store = useMockDataStore()
+  return useMutation({
+    mutationFn: async (vars: { slug: string; input: PublishedFeedInput }) =>
+      USE_REAL_API
+        ? updatePublishedFeed(vars.slug, vars.input)
+        : store.updatePublishedFeed(vars.slug, vars.input),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: LIST_KEY })
+      qc.invalidateQueries({ queryKey: feedKey(vars.slug) })
+      // The edit cleared the served pointer, so the history on screen is stale
+      // in the one way that matters: it still shows something as serving.
+      qc.invalidateQueries({ queryKey: attemptsKey(vars.slug) })
+    },
+  })
+}
+
+export function useDeletePublishedFeed() {
+  const qc = useQueryClient()
+  const store = useMockDataStore()
+  return useMutation({
+    mutationFn: async (slug: string) =>
+      USE_REAL_API ? deletePublishedFeed(slug) : store.deletePublishedFeed(slug),
+    onSuccess: () => qc.invalidateQueries({ queryKey: LIST_KEY }),
+  })
+}
+
+/**
+ * The bound query's latest result columns, read through the existing Redash
+ * passthrough rather than a new backend endpoint: the query for
+ * `latest_query_data_id`, then that result for `data.columns[].name`.
+ *
+ * Returns the result id alongside the columns, not just the columns: a later
+ * screen (the publish-now guard) needs it to compare against the artifact
+ * currently serving, and reading it twice through two hooks would be two
+ * reads of the same Redash pair.
+ */
+export function useQueryResultColumns(queryId: number | undefined) {
+  const queries = useMockDataStore((s) => s.queries)
+  const queryResults = useMockDataStore((s) => s.queryResults)
+  return useQuery({
+    queryKey: ['published-feeds', 'query-result-columns', queryId],
+    enabled: queryId !== undefined,
+    queryFn: async (): Promise<QueryResultColumns> => {
+      if (!USE_REAL_API) {
+        const query = queries.find((q) => q.id === queryId)
+        const resultId = query?.latest_query_data_id ?? null
+        const columns = resultId != null ? (queryResults[resultId]?.data.columns.map((c) => c.name) ?? []) : []
+        return { resultId, columns }
+      }
+      const query = await queriesService.get(queryId as number)
+      const resultId = query?.latest_query_data_id ?? null
+      if (resultId == null) return { resultId: null, columns: [] }
+      const result = await getResult(resultId)
+      return { resultId, columns: result.data.columns.map((c) => c.name) }
+    },
+  })
+}
+
+export function usePublishNow() {
+  const qc = useQueryClient()
+  const store = useMockDataStore()
+  return useMutation({
+    mutationFn: async (slug: string) => (USE_REAL_API ? publishNow(slug) : store.recordPublishAttempt(slug)),
+    onSuccess: (_data, slug) => qc.invalidateQueries({ queryKey: attemptsKey(slug) }),
+  })
+}

@@ -13,7 +13,7 @@ from werkzeug.exceptions import Unauthorized
 from redash import models, settings
 from redash.authentication import jwt_auth
 from redash.authentication.org_resolving import current_org
-from redash.permissions import token_is_revoked_by_archive
+from redash.permissions import secret_equal, token_is_revoked_by_archive
 from redash.settings.organization import settings as org_settings
 from redash.tasks import record_event
 
@@ -88,7 +88,13 @@ def hmac_load_user_from_request(request):
             user = models.User.query.get(user_id)
             calculated_signature = sign(user.api_key, request.path, expires)
 
-            if user.api_key and signature == calculated_signature:
+            # Constant-time, not ==: both sides are hex digests of the same
+            # length, so a short-circuiting comparison leaks how much of a
+            # forged signature was right. secret_equal rather than
+            # hmac.compare_digest directly, because `signature` is a query-string
+            # parameter and compare_digest raises TypeError on a non-ASCII str,
+            # which turned a malformed credential into a 500.
+            if secret_equal(signature, calculated_signature):
                 return user
 
         if query_id:
@@ -101,7 +107,13 @@ def hmac_load_user_from_request(request):
             # authorize against the data source instead of the query, notably
             # GET /api/queries/<id>/results.json, never ask has_access_to_object
             # anything and would be satisfied by those groups alone.
-            if query.api_key and signature == calculated_signature and not token_is_revoked_by_archive(query):
+            #
+            # The dropdowns route used to be one of those and no longer is: it
+            # refuses an API-key principal outright on the unrelated-query
+            # branch (handlers/query_results.py). The breadth here is unchanged,
+            # so anything new that authorizes against a data source still has to
+            # ask what a query key would reach.
+            if secret_equal(signature, calculated_signature) and not token_is_revoked_by_archive(query):
                 return models.ApiUser(
                     query.api_key,
                     query.org,
@@ -133,9 +145,11 @@ def get_user_from_api_key(api_key, query_id):
                 # get_by_id_and_org has no archive filter, so an archived query
                 # still resolves here and its api_key column still matches. Same
                 # reason as the HMAC branch above: refusing the identity is what
-                # covers the routes that authorize against the data source.
+                # covers the routes that authorize against the data source. The
+                # dropdowns route no longer relies on that breadth; the rest
+                # still do.
                 query = models.Query.get_by_id_and_org(query_id, org)
-                if query and query.api_key == api_key and not token_is_revoked_by_archive(query):
+                if query and secret_equal(query.api_key, api_key) and not token_is_revoked_by_archive(query):
                     user = models.ApiUser(
                         api_key,
                         query.org,

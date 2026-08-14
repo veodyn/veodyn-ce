@@ -78,9 +78,51 @@ export function activePack(): string {
   return "./src/lib/mock-data/packs/neutral/index.ts";
 }
 
+/**
+ * Response headers that do not vary by request.
+ *
+ * The per-request half, Content-Security-Policy, lives in src/middleware.ts:
+ * it carries a nonce and has to let the embed routes be framed. These are here
+ * instead because this list also covers /api/* and /_next/*, which the
+ * middleware matcher deliberately excludes.
+ *
+ * Framing is deliberately absent from this list. `frame-ancestors` in that CSP
+ * is the only control for it, because X-Frame-Options cannot express "deny
+ * everywhere except the embed routes", and two mechanisms disagreeing about
+ * that is worse than one. Every browser this app supports honours
+ * frame-ancestors and prefers it over X-Frame-Options.
+ */
+function securityHeaders() {
+  const headers = [
+    // The one that matters most for a proxy that streams backend bodies
+    // through: it stops a response being re-interpreted as script or CSS.
+    { key: "X-Content-Type-Options", value: "nosniff" },
+    // Full URL same-origin, origin only cross-origin, nothing to an insecure
+    // destination. Paths here carry share tokens.
+    { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+    { key: "X-DNS-Prefetch-Control", value: "off" },
+  ];
+
+  // Production only. A browser that has once seen this refuses plain http for
+  // the host for a year, which is not a thing to hand a developer's localhost,
+  // and the e2e suite runs over http on 3100.
+  if (process.env.NODE_ENV === "production") {
+    headers.push({
+      key: "Strict-Transport-Security",
+      value: "max-age=31536000; includeSubDomains",
+    });
+  }
+
+  return headers;
+}
+
 const nextConfig: NextConfig = {
   // Self-contained server bundle for the Docker image (see Dockerfile)
   output: "standalone",
+
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders() }];
+  },
 
   turbopack: {
     // src/lib/mock-data/packs/active.ts is the fallback this replaces; it holds

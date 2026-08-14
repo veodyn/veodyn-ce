@@ -24,6 +24,7 @@ import {
   ListChecks,
   Plane,
   Plug,
+  Radio,
   Scissors,
   Search,
   Server,
@@ -156,6 +157,10 @@ export function buildSidebarSections(
       items: [
         { label: 'APIs', href: '/connect/apis', icon: Plug },
         { label: 'MCP', href: '/connect/mcp', icon: Server },
+        // Not admin-gated: the published-feeds API serves this list to any
+        // org member, so hiding the row would be a lie told only to the
+        // sidebar. Only the create action on the page itself is admin-gated.
+        { label: 'Feeds', href: '/connect/feeds', icon: Radio },
       ],
     },
   ]

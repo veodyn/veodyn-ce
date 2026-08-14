@@ -3,7 +3,10 @@
 The database URL comes from veodyn_api.settings, not from alembic.ini, so the
 API, the worker and the migrations all read the same env var.
 
-This chain owns three tables and must mind only those. On a database that also
+This chain owns the tables listed in `ownership.CE_TABLES` and must mind only
+those. Referred to rather than counted here: the count has already moved once,
+and a stale number in a docstring reads as a claim about which tables get
+filtered. On a database that also
 carries the enterprise chain, an unfiltered autogenerate proposes dropping
 every enterprise table it reflects, so both `context.configure` calls take an
 ownership filter on the reflection side and on the metadata side. Filtering one

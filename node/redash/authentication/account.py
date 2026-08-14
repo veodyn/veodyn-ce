@@ -1,3 +1,4 @@
+import hashlib
 import logging
 
 from flask import render_template
@@ -10,35 +11,67 @@ from redash.utils import base_url
 logger = logging.getLogger(__name__)
 serializer = URLSafeTimedSerializer(settings.SECRET_KEY)
 
+# One salt per purpose. Without them all three link kinds were the same string,
+# so a verification link mailed to a user was byte-for-byte a password-reset
+# credential and could be replayed against the reset endpoint. itsdangerous
+# folds the salt into the signing key, so a token minted for one purpose fails
+# signature validation against another.
+INVITE_SALT = "invite"
+RESET_SALT = "reset"
+VERIFY_SALT = "verify"
 
-def invite_token(user):
-    return serializer.dumps(str(user.id))
+
+def password_stamp(user):
+    """A short digest of the user's current password hash.
+
+    Signing this alongside the user id is what gives these tokens single-use
+    semantics without a new column: setting a password changes the hash, so
+    every token minted before that stops validating. A digest rather than the
+    hash itself, so no credential material travels in the URL.
+
+    `or ""` covers an invited user who has never had a password. The value is
+    stable across the GET and the POST of one invite flow and changes exactly
+    once, when the POST sets the password.
+    """
+    return hashlib.sha256((user.password_hash or "").encode()).hexdigest()[:16]
+
+
+def invite_token(user, salt=INVITE_SALT):
+    return serializer.dumps([str(user.id), password_stamp(user)], salt=salt)
 
 
 def verify_link_for_user(user):
-    token = invite_token(user)
+    token = invite_token(user, salt=VERIFY_SALT)
     verify_url = "{}/verify/{}".format(base_url(user.org), token)
 
     return verify_url
 
 
 def invite_link_for_user(user):
-    token = invite_token(user)
+    token = invite_token(user, salt=INVITE_SALT)
     invite_url = "{}/invite/{}".format(base_url(user.org), token)
 
     return invite_url
 
 
 def reset_link_for_user(user):
-    token = invite_token(user)
+    token = invite_token(user, salt=RESET_SALT)
     invite_url = "{}/reset/{}".format(base_url(user.org), token)
 
     return invite_url
 
 
-def validate_token(token):
+def validate_token(token, salt):
+    """Return (user_id, stamp) for a token minted under `salt`.
+
+    The stamp is not checked here, because checking it needs the user and the
+    id is what says which user to load. _resolve_token_user in
+    handlers/authentication.py does both halves together; nothing else should
+    call this without following it with that comparison.
+    """
     max_token_age = settings.INVITATION_TOKEN_MAX_AGE
-    return serializer.loads(token, max_age=max_token_age)
+    user_id, stamp = serializer.loads(token, max_age=max_token_age, salt=salt)
+    return user_id, stamp
 
 
 def send_verify_email(user, org):

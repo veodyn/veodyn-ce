@@ -54,6 +54,36 @@ export function isKeyedResultsPath(request: NextRequest, path: string[]): boolea
   )
 }
 
+/**
+ * The `/api/` suffix to address on the backend, or null when the caller's
+ * segments are not addressing something under `/api/` at all.
+ *
+ * These segments are caller input and used to be joined and interpolated raw.
+ * `new URL()` resolves dot segments, so a `..` walked out of the `/api/`
+ * namespace and reached the backend root; it decodes before resolving, so
+ * `%2e%2e` did the same.
+ *
+ * Next's router normalises a literal `../` away before a handler ever sees it,
+ * which is what made this look unreachable. It does not normalise one hidden
+ * INSIDE a segment: `/api/node/..%2flogin` arrives here as the single segment
+ * `../login`, and that reached the backend's HTML login page instead of
+ * `/api/login`. Confirmed against a running dev server, before and after.
+ *
+ * So both halves: refuse a segment that IS a traversal, and percent-encode the
+ * rest, which neutralises one that merely CONTAINS a separator (`../login`
+ * becomes `..%2Flogin`, a segment name the backend simply does not have).
+ * Encoding alone would close it today; the refusal is the half a reader can see
+ * is doing something.
+ *
+ * Same shape as the sibling relays in `api/tags` and `api/verify`. Nothing
+ * legitimate changes: `queries/1/results.json` and a base64url share token both
+ * pass through encodeURIComponent unaltered.
+ */
+export function safeApiPath(path: string[]): string | null {
+  if (path.some((segment) => !segment || segment === '.' || segment === '..')) return null
+  return path.map(encodeURIComponent).join('/')
+}
+
 // Our origin-only cookies must not leak to Redash: `redash_api_key` holds the
 // user's key (sent as an Authorization header instead).
 export function stripOwnCookies(cookieHeader: string): string {

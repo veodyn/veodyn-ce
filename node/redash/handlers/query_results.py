@@ -5,6 +5,7 @@ import regex
 from flask import make_response, request
 from flask_login import current_user
 from flask_restful import abort
+from rq.exceptions import NoSuchJobError
 
 from redash import models, settings
 from redash.handlers.base import BaseResource, get_object_or_404, record_event
@@ -16,6 +17,7 @@ from redash.models.parameterized_query import (
 )
 from redash.permissions import (
     has_access,
+    is_admin_or_owner,
     not_view_only,
     require_access,
     require_any_of_permission,
@@ -208,6 +210,17 @@ class QueryDropdownsResource(BaseResource):
 
         related_queries_ids = [p["queryId"] for p in query.parameters if p["type"] == "query"]
         if int(dropdown_query_id) not in related_queries_ids:
+            # An API-key principal cannot take this branch. The check below
+            # authorizes against the DATA SOURCE, which has no api_key attribute,
+            # so has_access falls through to the group comparison, and a query
+            # key's principal carries its data source's group ids
+            # (authentication.get_user_from_api_key). That satisfied it, which
+            # made one query's key a reader of every sibling query's dropdown
+            # values. The check on the line above is the correct shape: it
+            # authorizes against the Query, which does have an api_key, so it
+            # takes the object-comparison path and matches only its own query.
+            if current_user.is_api_user():
+                abort(403, message="An API key may only read dropdowns for its own query's parameters.")
             dropdown_query = get_object_or_404(models.Query.get_by_id_and_org, dropdown_query_id, self.current_org)
             require_access(dropdown_query.data_source, current_user, view_only)
 
@@ -396,17 +409,93 @@ class QueryResultResource(BaseResource):
         return make_response(serialize_query_result_to_xlsx(query_result), 200, headers)
 
 
+# tasks/general.py enqueues this through rq's decorator, so the job carries no
+# meta and its first positional argument is the only place the data source id
+# exists.
+SCHEMA_JOB_FUNC = "redash.tasks.general.get_schema"
+
+
+def _job_data_source_id(job):
+    """The data source a job is about, or None."""
+    if job.func_name == SCHEMA_JOB_FUNC:
+        return job.args[0] if job.args else None
+    return (job.meta or {}).get("data_source_id")
+
+
 class JobResource(BaseResource):
+    def _fetch_own_job(self, job_id, allow_admin=False):
+        """Fetch a job this caller is entitled to, or 404.
+
+        404 and not 403, throughout and including an id that does not exist, so
+        the endpoint does not tell a caller which job ids are real.
+
+        Two kinds of job reach here and they are authorized differently.
+
+        A query job records its owner and org at enqueue time (the `meta` dict
+        in tasks/queries/execution.py), where `user_id` is whatever
+        `current_user.id` was: an integer for a session user, the key string for
+        an ApiUser, which is what makes one comparison serve both. Its owner may
+        read it, and an admin may cancel it.
+
+        Anyone with view access to the QUERY may also poll it, and that is not
+        generosity. enqueue_query reuses an in-flight job for an identical
+        query, so two readers of one saved query share a job id and only the
+        first is its owner; without this the second gets a 404 for a query they
+        can open. Access is checked against the Query object, which carries an
+        api_key, so a query key takes the object-comparison path rather than the
+        group one (see plans/004).
+
+        A SCHEMA job records nothing at all: tasks/general.py enqueues through
+        rq's decorator, which sets no meta, and the schema browser polls it here
+        (services/redash/data-sources.ts). An owner-only rule made every
+        uncached schema load and every refresh answer 404. Those are authorized
+        against the data source they name, which is exactly what the endpoint
+        that creates them already requires.
+        """
+        try:
+            job = Job.fetch(job_id)
+        except NoSuchJobError:
+            abort(404)
+
+        meta = job.meta or {}
+        owner_id = meta.get("user_id")
+
+        if owner_id is not None:
+            if meta.get("org_id") != self.current_org.id:
+                abort(404)
+            if owner_id == self.current_user.id:
+                return job
+            if allow_admin and is_admin_or_owner(owner_id):
+                return job
+            query_id = meta.get("query_id")
+            if query_id is not None:
+                query = models.Query.get_by_id_and_org(query_id, self.current_org)
+                if query is not None and has_access(query, self.current_user, view_only):
+                    return job
+            abort(404)
+
+        data_source_id = _job_data_source_id(job)
+        if data_source_id is None:
+            abort(404)
+        try:
+            data_source = models.DataSource.get_by_id_and_org(data_source_id, self.current_org)
+        except models.NoResultFound:
+            abort(404)
+        if not has_access(data_source, self.current_user, view_only):
+            abort(404)
+
+        return job
+
     def get(self, job_id, query_id=None):
         """
         Retrieve info about a running query job.
         """
-        job = Job.fetch(job_id)
+        job = self._fetch_own_job(job_id)
         return serialize_job(job)
 
-    def delete(self, job_id):
+    def delete(self, job_id, query_id=None):
         """
         Cancel a query job in progress.
         """
-        job = Job.fetch(job_id)
+        job = self._fetch_own_job(job_id, allow_admin=True)
         job.cancel()

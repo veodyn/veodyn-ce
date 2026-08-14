@@ -23,6 +23,11 @@ class ObjectPermissionsListResource(BaseResource):
         model = get_model_from_type(object_type)
         obj = get_object_or_404(model.get_by_id_and_org, object_id, self.current_org)
 
+        # Same rule as post and delete below. The response is a roster of
+        # identifiable people (grantee.to_dict() carries name, email and profile
+        # image), and this method was the only one of the three without a check.
+        require_admin_or_owner(obj.user_id)
+
         # TODO: include grantees in search to avoid N+1 queries
         permissions = AccessPermission.find(obj)
 
@@ -76,8 +81,12 @@ class ObjectPermissionsListResource(BaseResource):
         grantee_id = req["user_id"]
         access_type = req["access_type"]
 
-        grantee = User.query.get(req["user_id"])
-        if grantee is None:
+        # Org-scoped, matching post above. This was a bare primary-key read with
+        # no organization filter, so a user_id belonging to another organization
+        # resolved here and the request answered 200.
+        try:
+            grantee = User.get_by_id_and_org(req["user_id"], self.current_org)
+        except NoResultFound:
             abort(400, message="User not found.")
 
         AccessPermission.revoke(obj, grantee, access_type)

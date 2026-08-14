@@ -268,6 +268,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/published-feeds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Feeds */
+        get: operations["list_feeds_published_feeds_get"];
+        put?: never;
+        /** Create Feed */
+        post: operations["create_feed_published_feeds_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/published-feeds/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Feed */
+        get: operations["get_feed_published_feeds__slug__get"];
+        /** Update Feed */
+        put: operations["update_feed_published_feeds__slug__put"];
+        post?: never;
+        /** Delete Feed */
+        delete: operations["delete_feed_published_feeds__slug__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/published-feeds/{slug}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Attempts
+         * @description The recent record for one feed, newest first.
+         *
+         *     `load_feed` first, so an unknown slug is a 404 rather than an empty list. A
+         *     feed that was deleted and a feed that has never published are different
+         *     facts and the page says different things about them.
+         *
+         *     `defer` on the bytes column is load-bearing, not a micro-optimisation: these
+         *     rows carry the served artifact, and selecting twenty of them to render
+         *     twenty status words would move the whole feed history over the wire.
+         *
+         *     The served artifact is added back when the cap pushed it off the page, and
+         *     it is the one row that is not optional context. Twenty blocked or failed
+         *     attempts in a row is exactly the situation where the still-serving artifact
+         *     is older than the page, and a client that reads "what is serving" off this
+         *     list would then conclude a live feed is dark: it would offer to publish over
+         *     it, and skip the going-dark warning on an edit.
+         */
+        get: operations["list_attempts_published_feeds__slug__attempts_get"];
+        put?: never;
+        /**
+         * Publish Now
+         * @description Run one attempt for this feed, now.
+         *
+         *     201 for every decision the engine reaches, including `blocked` and `failed`:
+         *     the attempt was created, which is what this endpoint promises, and its
+         *     decision is the answer rather than the status code. A 4xx here is reserved
+         *     for the cases where no attempt happens at all.
+         *
+         *     `run_attempt` records and commits the row itself, so nothing here commits.
+         */
+        post: operations["publish_now_published_feeds__slug__attempts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tags": {
         parameters: {
             query?: never;
@@ -552,6 +635,24 @@ export interface components {
              */
             status: "fresh" | "stale";
         };
+        /**
+         * FindingOut
+         * @description One validator finding, flattened to one occurrence.
+         *
+         *     `publish_engine._as_json` already stores these camelCased, because that
+         *     column is served verbatim. CamelModel's `populate_by_name` accepts either
+         *     spelling, so this validates straight off the stored JSONB.
+         */
+        FindingOut: {
+            /** Locator */
+            locator: string;
+            /** Ruleid */
+            ruleId: string;
+            /** Severity */
+            severity: string;
+            /** Title */
+            title: string;
+        };
         /** GenerateSqlIn */
         GenerateSqlIn: {
             /** Currentsql */
@@ -683,6 +784,117 @@ export interface components {
             suggested: boolean;
             /** Title */
             title: string;
+        };
+        /**
+         * PublishAttemptOut
+         * @description One attempt, without the bytes it produced.
+         *
+         *     `feed_bytes` is absent on purpose rather than by omission. It is the served
+         *     artifact, and a list endpoint that carried it would move megabytes per row
+         *     to render a status word.
+         */
+        PublishAttemptOut: {
+            /** Attemptid */
+            attemptId: number;
+            /** Bindingrevision */
+            bindingRevision: number;
+            /** Createdat */
+            createdAt: string;
+            /** Decision */
+            decision: string;
+            /** Enabledrules */
+            enabledRules: string[];
+            /** Findings */
+            findings: components["schemas"]["FindingOut"][];
+            /** Iscurrent */
+            isCurrent: boolean;
+            /** Queryresultid */
+            queryResultId: number;
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * PublishedFeedIn
+         * @description A declaration that one query publishes one standard feed.
+         *
+         *     The whole binding on every write, PUT rather than PATCH, because every field
+         *     here is an input to the same question ("what will this feed contain, and
+         *     what is it checked against"), and a partial edit would leave the caller
+         *     guessing which of the untouched fields the revision bump now covers.
+         */
+        PublishedFeedIn: {
+            /** Columnmap */
+            columnMap: {
+                [key: string]: string;
+            };
+            /**
+             * Entity
+             * @constant
+             */
+            entity: "vehicle_positions";
+            /** Lastgoodmaxageseconds */
+            lastGoodMaxAgeSeconds?: number | null;
+            /**
+             * Onerror
+             * @default block
+             * @enum {string}
+             */
+            onError: "block" | "last_good";
+            /** Queryid */
+            queryId: number;
+            /** Slug */
+            slug: string;
+            /** Sourcecolumn */
+            sourceColumn?: string | null;
+            /**
+             * Standard
+             * @constant
+             */
+            standard: "gtfs-rt";
+            /** Staticgtfsref */
+            staticGtfsRef: string;
+            /**
+             * Version
+             * @constant
+             */
+            version: "2.0";
+            /**
+             * Visibility
+             * @default private
+             * @enum {string}
+             */
+            visibility: "private" | "public";
+        };
+        /** PublishedFeedOut */
+        PublishedFeedOut: {
+            /** Bindingstate */
+            bindingState: string;
+            /** Columnmap */
+            columnMap: {
+                [key: string]: string;
+            };
+            /** Entity */
+            entity: string;
+            /** Lastgoodmaxageseconds */
+            lastGoodMaxAgeSeconds: number | null;
+            /** Onerror */
+            onError: string;
+            /** Queryid */
+            queryId: number;
+            /** Revision */
+            revision: number;
+            /** Slug */
+            slug: string;
+            /** Sourcecolumn */
+            sourceColumn: string | null;
+            /** Standard */
+            standard: string;
+            /** Staticgtfsref */
+            staticGtfsRef: string;
+            /** Version */
+            version: string;
+            /** Visibility */
+            visibility: string;
         };
         /** QueryProposalOut */
         QueryProposalOut: {
@@ -1177,6 +1389,246 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    list_feeds_published_feeds_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishedFeedOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_feed_published_feeds_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishedFeedIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishedFeedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_feed_published_feeds__slug__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishedFeedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_feed_published_feeds__slug__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishedFeedIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishedFeedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_feed_published_feeds__slug__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_attempts_published_feeds__slug__attempts_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishAttemptOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_now_published_feeds__slug__attempts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishAttemptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -21,8 +21,10 @@ import {
   isKeyedResultsPath,
   isPublicPath,
   isTextualContentType,
+  safeApiPath,
   stripOwnCookies,
 } from './proxy-guards'
+import { COOKIE_SECURE_ATTR } from '@/lib/cookie-attrs'
 
 // Never cache proxied responses — dashboards/queries carry volatile fields
 // like latest_query_data_id; a cached GET serves stale result pointers.
@@ -30,13 +32,15 @@ export const dynamic = 'force-dynamic'
 
 const REDASH_URL = process.env.REDASH_URL || ''
 
-function getRedashUrl(path: string[]): string {
+function getRedashUrl(path: string[]): string | null {
   // Redash's ping (used to refresh the csrf_token cookie) lives at the root,
   // outside the /api/* namespace.
   if (path.length === 1 && path[0] === 'ping') {
     return `${REDASH_URL}/ping`
   }
-  return `${REDASH_URL}/api/${path.join('/')}`
+  const suffix = safeApiPath(path)
+  if (suffix === null) return null
+  return `${REDASH_URL}/api/${suffix}`
 }
 
 async function proxyRequest(
@@ -53,7 +57,14 @@ async function proxyRequest(
     )
   }
 
-  const url = new URL(getRedashUrl(path))
+  const target = getRedashUrl(path)
+  if (target === null) {
+    // 404, not 400: a caller probing for traversal learns nothing it could not
+    // have learned from asking for a path that simply does not exist.
+    return NextResponse.json({ message: 'Not found.' }, { status: 404 })
+  }
+
+  const url = new URL(target)
 
   // Forward query params. `append`, not `set`: Redash list filtering takes
   // repeated keys (?tags=a&tags=b) and services/api-client.ts appends them on
@@ -232,7 +243,7 @@ async function proxyRequest(
                 const maxAge = 60 * 60 * 24 * 30
                 res.headers.append(
                   'Set-Cookie',
-                  `redash_api_key=${encodeURIComponent(newKey)}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax`
+                  `redash_api_key=${encodeURIComponent(newKey)}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${COOKIE_SECURE_ATTR}`
                 )
               }
             }

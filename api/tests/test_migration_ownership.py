@@ -31,7 +31,7 @@ filter written against product tables sweeps up.
 **It pins `include_name` and it does not pin `include_object`, which was
 measured rather than assumed.** Delete `include_object` from
 `migrations/ownership.py` and every test in this file stays green, because with
-no pack installed the shared metadata holds only the three community tables, so
+no pack installed the shared metadata holds only the community tables, so
 `include_object` has nothing to refuse; and `include_name` has already kept
 `alembic_version_ee` out of the reflection, so it never reaches the metadata
 side either. `include_object` is load bearing only once the pack has attached

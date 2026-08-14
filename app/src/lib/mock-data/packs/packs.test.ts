@@ -39,6 +39,8 @@ const VALUE_EXPORTS = [
   'mockDomainHubs',
   'mockAnnotations',
   'mockFeeds',
+  'mockPublishedFeeds',
+  'mockPublishAttempts',
 ] as const
 
 // neutral, empty, active: la carried real customer hostnames and org names

@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { REDASH_URL, redashFetch, forwardSetCookies } from '@/lib/redash-server'
+import { COOKIE_SECURE_ATTR } from '@/lib/cookie-attrs'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
               'Set-Cookie',
               `redash_api_key=${encodeURIComponent(userData.api_key)}; Path=/; Max-Age=${
                 60 * 60 * 24 * 30
-              }; HttpOnly; SameSite=Lax`
+              }; HttpOnly; SameSite=Lax${COOKIE_SECURE_ATTR}`
             )
           }
         }

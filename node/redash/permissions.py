@@ -1,4 +1,5 @@
 import functools
+import hmac
 
 from flask_login import current_user
 from flask_restful import abort
@@ -352,17 +353,36 @@ def has_access(obj, user, need_view_only):
         return has_access_to_groups(obj, user, need_view_only)
 
 
+def secret_equal(left, right):
+    """Constant-time comparison of two secrets, safe on attacker-controlled input.
+
+    Encoded to bytes first, and that is the whole point rather than a detail.
+    hmac.compare_digest raises TypeError on a str holding a non-ASCII character,
+    and the right-hand side here is a query-string parameter, so comparing the
+    strings directly turned `?api_key=<any non-ASCII>` into a 500 where a wrong
+    ASCII key answers 404. Bytes never raise on content.
+
+    Either side missing is False rather than an error: an object with no key and
+    a caller with no key must not match each other.
+    """
+    if not left or not right:
+        return False
+    return hmac.compare_digest(str(left).encode("utf-8"), str(right).encode("utf-8"))
+
+
 def has_access_to_object(obj, api_key, need_view_only):
     # Before the token comparison rather than after it, because an archived
     # object's own token is dead whichever branch below would have matched it.
     if token_is_revoked_by_archive(obj):
         return False
 
-    if obj.api_key == api_key:
+    if secret_equal(obj.api_key, api_key):
         return need_view_only
     elif hasattr(obj, "dashboard_api_keys"):
-        # check if api_key belongs to a dashboard containing this query
-        return api_key in obj.dashboard_api_keys and need_view_only
+        # A dashboard token that reaches this query. `any` over a constant-time
+        # comparison rather than `in`, which short-circuits on the first
+        # differing byte the same way `==` did.
+        return any(secret_equal(key, api_key) for key in obj.dashboard_api_keys) and need_view_only
     else:
         return False
 

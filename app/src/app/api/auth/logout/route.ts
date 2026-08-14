@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { REDASH_URL, redashFetch } from '@/lib/redash-server'
+import { COOKIE_SECURE } from '@/lib/cookie-attrs'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,8 +19,13 @@ export async function POST(request: NextRequest) {
   }
 
   const res = NextResponse.json({ message: 'Logged out.' })
-  res.cookies.set('session', '', { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 0 })
-  res.cookies.set('csrf_token', '', { path: '/', httpOnly: false, sameSite: 'lax', maxAge: 0 })
-  res.cookies.set('redash_api_key', '', { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 0 })
+  // `secure` matches the set sites. A browser matches a cookie for overwrite on
+  // (name, domain, path) and not on this attribute, so logout would clear the
+  // cookies either way; carrying it keeps all six writes reading the same, so
+  // nobody has to work out whether the difference was deliberate.
+  const expire = { path: '/', sameSite: 'lax', secure: COOKIE_SECURE, maxAge: 0 } as const
+  res.cookies.set('session', '', { ...expire, httpOnly: true })
+  res.cookies.set('csrf_token', '', { ...expire, httpOnly: false })
+  res.cookies.set('redash_api_key', '', { ...expire, httpOnly: true })
   return res
 }

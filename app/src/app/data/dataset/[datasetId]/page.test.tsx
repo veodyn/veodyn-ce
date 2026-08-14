@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, screen } from '@testing-library/react'
+import { act, cleanup, screen } from '@testing-library/react'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import * as useCatalogModule from '@/hooks/use-catalog'
 import { mockDatasets } from '@/lib/mock-data'
@@ -16,6 +16,20 @@ vi.mock('@/hooks/use-catalog', async (importOriginal) => {
 const useDatasetSpy = vi.mocked(useCatalogModule.useDataset)
 
 afterEach(() => {
+  // UNMOUNT BEFORE TOUCHING THE SPY. Same hazard as the one described below,
+  // reached from the other side: RTL's auto-cleanup is registered when the
+  // setup file imports it, this hook is registered later, and vitest runs
+  // afterEach hooks in reverse registration order. So without this line the
+  // stub is swapped back to the real hook while the last test's tree is STILL
+  // MOUNTED, and the next pending query to settle re-renders that tree through
+  // a useDataset that now calls useQuery where the mounted render called no
+  // hooks at all. React walks to a hook slot that holds another hook's
+  // memoizedState, reads deps off it, and throws
+  // "Cannot read properties of undefined (reading 'length')" from
+  // areHookInputsEqual, as an unhandled error AFTER the test has passed.
+  // Verified: `--sequence.hooks=list` alone makes it disappear.
+  cleanup()
+
   // Back to the wrapped real hook. A stub that only answered the FIRST call
   // made the page render with one hook shape and then re-render with another
   // as soon as anything else on the page settled, which React reports as a

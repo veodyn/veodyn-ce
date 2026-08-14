@@ -20,7 +20,20 @@ Two consequences, both intended:
 1. This service cannot know who is asking, so it grounds on the Redash service
    account and can NAME a query the reader may not be able to open. Reading a
    result still goes through Redash under the reader's own credential, so
-   nothing here discloses data.
+   nothing here discloses data TO THE READER.
+
+   That last clause used to stop at "discloses data", which was wrong about
+   this module's own behaviour. The profile block attached below
+   (`_profile_block`, and `services/dataset_profile` under it) reads the
+   warehouse on the SERVICE account and puts real column values in the prompt:
+   the three most common values of every non-numeric column, and the min and
+   max of every numeric or time one. That prompt goes to whatever `AI_ENDPOINT`
+   names, which may be a third party.
+
+   So the boundary stated accurately: a reader gains nothing they could not
+   already read, and the configured AI provider sees a sample of the table.
+   Whether that trade is acceptable is a deployment decision, and the lever is
+   whether a profile is attached at all.
 2. The bearer is the entire gate. It is compared in constant time, and an unset
    key answers 503 rather than letting everyone through.
 

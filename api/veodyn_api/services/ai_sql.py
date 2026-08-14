@@ -52,6 +52,11 @@ measures and which columns it reads. Never claim a result: you have not run it.
 FORBIDDEN = (
     "insert|update|delete|drop|alter|create|truncate|grant|revoke|attach|detach"
     "|optimize|rename|system|kill|exchange|use|set|outfile|infile"
+    # dictGet and its family read a configured external source from a SCALAR
+    # position, so there is no table reference for the allowlist below to catch.
+    # A denylist is the wrong shape for most of this problem and the right one
+    # here, because the alternative is not checking at all.
+    "|dict[a-z_]*"
 )
 # `replace` is deliberately absent: replace(haystack, needle, value) is an
 # ordinary ClickHouse string function, and refusing it would refuse a large
@@ -59,13 +64,28 @@ FORBIDDEN = (
 # are caught by CREATE or by the must-start-with-SELECT rule instead.
 
 FORBIDDEN_RE = re.compile(rf"\b({FORBIDDEN})\b", re.IGNORECASE)
-STRING_RE = re.compile(r"'(?:[^'\\]|\\.)*'")
-BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
-LINE_COMMENT_RE = re.compile(r"--[^\n]*")
-# What a table reference looks like: the name after FROM or JOIN, optionally
-# qualified. A subquery (`FROM (SELECT ...`) does not match, and does not need
-# to: the SELECT inside it has its own FROM.
-TABLE_REF_RE = re.compile(r"\b(?:from|join)\s+([A-Za-z_][A-Za-z0-9_.]*)", re.IGNORECASE)
+# Where one FROM or JOIN clause's item list ends. Everything between the
+# keyword and the next of these is the thing being read.
+CLAUSE_END = (
+    "where|prewhere|group|having|order|limit|offset|settings|union|format"
+    "|on|using|from|join|left|right|inner|full|cross|any|all|asof|semi|anti|global|array"
+)
+FROM_CLAUSE_RE = re.compile(
+    rf"\b(?:from|join)\b(?P<items>.*?)(?=\b(?:{CLAUSE_END})\b|$)",
+    re.IGNORECASE | re.DOTALL,
+)
+# The first item of such a clause. Three shapes matter and the old pattern saw
+# only the third: a function call (`url(`, `file(`, a ClickHouse table function
+# that reads a network or a filesystem), a quoted identifier, and a bare name.
+TABLE_ITEM_RE = re.compile(
+    r"""
+      (?P<call>[A-Za-z_][A-Za-z0-9_]*)\s*\(
+    | `(?P<bt1>[^`]*)`(?:\s*\.\s*`(?P<bt2>[^`]*)`)?
+    | "(?P<dq1>[^"]*)"(?:\s*\.\s*"(?P<dq2>[^"]*)")?
+    | (?P<bare>[A-Za-z_][A-Za-z0-9_.]*)
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
 # A CTE introduces a name that is legitimately read later on.
 CTE_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s+as\s*\(", re.IGNORECASE)
 # A name a FROM clause can carry unquoted, optionally qualified once. It is the
@@ -80,9 +100,120 @@ class UngroundedSql(Exception):
 
 
 def _strip_noise(sql: str) -> str:
-    """SQL with comments and string literals removed, for keyword checks only."""
-    without_comments = LINE_COMMENT_RE.sub(" ", BLOCK_COMMENT_RE.sub(" ", sql))
-    return STRING_RE.sub("''", without_comments)
+    """SQL with comments and string literals removed, for keyword checks only.
+
+    One left-to-right pass, not a sequence of regex substitutions. Comments and
+    strings can each contain the other's delimiter, so no ordering of two
+    independent passes is correct in both directions, and the ordering this used
+    to have was exploitable: removing comments first let a `--` inside a string
+    literal erase the rest of the statement, so
+
+        SELECT a FROM allowed WHERE note = '--' UNION ALL SELECT b FROM secrets
+
+    was checked as `SELECT a FROM allowed WHERE note = '` and the union was
+    never seen, while ClickHouse reads '--' as an ordinary string and runs it.
+    The `/*` spelling did the same. Reversing the order would only move the
+    problem: an apostrophe in a comment would then swallow the code after it.
+    """
+    out: list[str] = []
+    index, length = 0, len(sql)
+
+    while index < length:
+        char = sql[index]
+
+        if char == "'":
+            out.append("''")
+            index += 1
+            while index < length:
+                if sql[index] == "\\" and index + 1 < length:
+                    index += 2
+                    continue
+                if sql[index] == "'":
+                    # A doubled quote is an escaped one, not the end.
+                    if index + 1 < length and sql[index + 1] == "'":
+                        index += 2
+                        continue
+                    index += 1
+                    break
+                index += 1
+            continue
+
+        if sql.startswith("--", index):
+            while index < length and sql[index] != "\n":
+                index += 1
+            out.append(" ")
+            continue
+
+        if sql.startswith("/*", index):
+            end = sql.find("*/", index + 2)
+            index = length if end == -1 else end + 2
+            out.append(" ")
+            continue
+
+        out.append(char)
+        index += 1
+
+    return "".join(out)
+
+
+def _has_top_level_comma(items: str) -> bool:
+    """Whether this FROM clause lists more than one thing.
+
+    Depth-aware, so the commas inside `toStartOfInterval(t, INTERVAL 1 HOUR)`
+    do not count. A comma at depth 0 is a comma join, which is the shape that
+    hid a second table from the old scan entirely: it matched only the name
+    directly after FROM or JOIN, so everything after the comma was invisible.
+    """
+    depth = 0
+    for char in items:
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth = max(0, depth - 1)
+        elif char == "," and depth == 0:
+            return True
+    return False
+
+
+def _referenced_tables(noise_free: str) -> tuple[set[str], list[str]]:
+    """Every table this statement reads, and any table-function calls in it.
+
+    Returns names lowercased. A subquery (`FROM (SELECT ...`) yields no name
+    here and does not need to: the SELECT inside it has its own FROM, which this
+    finds on its own pass.
+    """
+    names: set[str] = set()
+    calls: list[str] = []
+
+    for clause in FROM_CLAUSE_RE.finditer(noise_free):
+        items = clause.group("items").lstrip()
+        # `FROM (SELECT ...)` names no table at this level, and does not need to:
+        # the SELECT inside has its own FROM, which this loop reaches on its own.
+        # Anchored rather than searched, or the `select` inside that subquery
+        # gets read as this clause's table name.
+        if items.startswith("("):
+            continue
+        item = TABLE_ITEM_RE.match(items)
+        if item is None:
+            continue
+        if item.group("call"):
+            calls.append(item.group("call").lower())
+            continue
+        parts = [
+            part
+            for part in (
+                item.group("bt1"),
+                item.group("bt2"),
+                item.group("dq1"),
+                item.group("dq2"),
+            )
+            if part
+        ]
+        name = ".".join(parts) if parts else (item.group("bare") or "")
+        if name:
+            names.add(name.lower().rstrip("."))
+
+    return names, calls
 
 
 def _table_names(table: str) -> set[str]:
@@ -119,12 +250,31 @@ def validate_sql(sql: str, dataset: AiDatasetIn) -> str:
     if not (head.startswith("select") or head.startswith("with")):
         raise UngroundedSql("the statement did not start with SELECT or WITH")
 
+    # A comma join lists a second thing in a position the reference scan below
+    # reads as one item, so `FROM allowed, anything_else` used to pass with
+    # `anything_else` never looked at. Refusing the shape rather than trying to
+    # split it: an explicit JOIN says the same thing and is what the prompt asks
+    # for anyway, so the reason is one the retry can act on.
+    for clause in FROM_CLAUSE_RE.finditer(noise_free):
+        if _has_top_level_comma(clause.group("items")):
+            raise UngroundedSql("the statement used a comma join; write an explicit JOIN instead")
+
     # Every table the statement reads must BE the dataset, rather than the
     # statement merely mentioning it somewhere. Checking for the name anywhere
     # in the text passed `SELECT ... FROM historical.other_table`, because the
     # database part of the qualified name matched.
     allowed = _table_names(dataset.table) | {match.group(1).lower() for match in CTE_RE.finditer(noise_free)}
-    referenced = {match.group(1).lower().rstrip(".") for match in TABLE_REF_RE.finditer(noise_free)}
+    referenced, table_calls = _referenced_tables(noise_free)
+
+    # A table function reads whatever its arguments name: url() and s3() a
+    # network, file() a filesystem, remote() and cluster() another server. None
+    # of them is a table this dataset could ever authorise, so the answer does
+    # not depend on which one it is.
+    if table_calls:
+        raise UngroundedSql(
+            f"the statement read from {sorted(table_calls)[0]}(), but the only table it may read is {dataset.table}"
+        )
+
     if not referenced:
         raise UngroundedSql(f"the statement did not read the requested table {dataset.table}")
     unexpected = referenced - allowed

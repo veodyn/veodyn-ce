@@ -86,6 +86,11 @@ export interface RedashQuery {
   runtime: number | null
   version?: number
   latest_query_data_id: number | null
+  // This query's own results key, on the same terms as the embed token above:
+  // sent by GET queries/:id and by regenerate_api_key, and only to an admin or
+  // the owner. It is a permanent credential, so a plain viewer gets a response
+  // without the field rather than an empty one. ApiKeyDialog renders its own
+  // empty state for that; never substitute another value for it.
   api_key?: string
   visualizations?: RedashVisualization[]
   can_edit?: boolean

@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConfigProvider } from '@/components/config/config-provider'
 import { NEUTRAL_CONFIG, toClientConfig, type ClientConfig } from '@/lib/config-schema'
 import { useAuthStore, type CurrentUser, type Permission } from '@/stores/auth-store'
-import { mockUsers } from '@/lib/mock-data'
+import { mockPublishAttempts, mockPublishedFeeds, mockUsers } from '@/lib/mock-data'
 import { useMockDataStore } from '@/stores/mock-data-store'
 
 export function resetStores() {
@@ -15,8 +15,19 @@ export function resetStores() {
   useAuthStore.setState({ isAuthenticated: false, isLoading: false, currentUser: null })
   // The mock data store is a singleton too. Access grants in particular are
   // written by the permissions dialog in mock mode, so without this one test's
-  // grant would decide the next test's starting state.
-  useMockDataStore.setState({ accessGrants: { queries: {}, dashboards: {} } })
+  // grant would decide the next test's starting state. Published feeds and
+  // their attempts are the same story: recordPublishAttempt and the delete
+  // mutation both write straight into this store, so a test that publishes or
+  // deletes one leaves that mutation sitting for the next test unless it is
+  // put back here. Both spreads are shallow, so the inner arrays are still the
+  // fixture's own objects: what keeps that safe is that every slice mutation
+  // REPLACES an array rather than pushing into one. A slice that starts editing
+  // in place needs a deep copy here, or it edits the fixture for the whole run.
+  useMockDataStore.setState({
+    accessGrants: { queries: {}, dashboards: {} },
+    publishedFeeds: [...mockPublishedFeeds],
+    publishAttempts: { ...mockPublishAttempts },
+  })
 }
 
 // Sign a test in as an administrator.

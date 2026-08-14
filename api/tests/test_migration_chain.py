@@ -30,7 +30,9 @@ from alembic.script import ScriptDirectory
 
 from migrations.ownership import CE_TABLES
 from tests.migration_chains import (
+    CE_HEAD,
     CE_REVISIONS,
+    CE_SHIPPED_IDS,
     EE_REVISIONS,
     EE_TABLES,
     ce_config,
@@ -59,9 +61,22 @@ def test_the_community_chain_is_linear_from_one_root_to_one_head() -> None:
     # runs `upgrade head`, which is a long way from the commit that caused it.
     script = ScriptDirectory.from_config(ce_config())
 
-    assert list(script.get_heads()) == ["0010"], f"expected one community head, got {script.get_heads()}"
+    assert list(script.get_heads()) == [CE_HEAD], f"expected one community head, got {script.get_heads()}"
     assert list(script.get_bases()) == ["0005"], f"expected one community root, got {script.get_bases()}"
-    assert walked(ce_config(), "0010") == list(CE_REVISIONS)
+    assert walked(ce_config(), CE_HEAD) == list(CE_REVISIONS)
+
+
+def test_no_shipped_community_revision_id_was_renumbered() -> None:
+    """The one assertion in this file that is not derived from `CE_REVISIONS`.
+
+    Every other check compares the chain against that tuple, so editing the
+    tuple and the files together keeps them all green. This one holds both to a
+    literal set of ids that are stamped in databases we do not control, where a
+    renumber orphans the stamp rather than tidying anything.
+    """
+    missing = CE_SHIPPED_IDS - set(CE_REVISIONS)
+
+    assert missing == set(), f"shipped revision id(s) {sorted(missing)} are no longer in the community chain"
 
 
 def test_the_enterprise_chain_is_linear_and_walks_into_no_community_revision() -> None:

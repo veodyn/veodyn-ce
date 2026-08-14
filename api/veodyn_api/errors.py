@@ -112,6 +112,28 @@ class ErrorId(StrEnum):
     # retrying, and separate from a provider failure because the provider was
     # never called.
     AI_DATASET_NOT_QUERYABLE = "VEODYN_AI_DATASET_NOT_QUERYABLE"
+    # Appended, never inserted: these ids reach logs and support threads, so
+    # their spelling is the contract and the enum's order is not.
+    PUBLISHED_FEED_NOT_FOUND = "VEODYN_PUBLISHED_FEED_NOT_FOUND"
+    # The slug is the feed's public URL path as well as half its key, so a
+    # second binding on it is a collision over an address rather than a
+    # malformed request.
+    PUBLISHED_FEED_SLUG_TAKEN = "VEODYN_PUBLISHED_FEED_SLUG_TAKEN"
+    # The column map cannot produce this entity. Its own cause rather than
+    # INVALID_REQUEST, because the frontend renders the per-field problems and
+    # INVALID_REQUEST already carries pydantic's own message shape.
+    PUBLISHED_FEED_BINDING_INVALID = "VEODYN_PUBLISHED_FEED_BINDING_INVALID"
+    # The binding names a query this service cannot read: no such query, or one
+    # the service credential has no permission on. Its own cause rather than
+    # BINDING_INVALID, because the column map may be perfect and the instruction
+    # to the operator is different ("fix the query id" against "fix the map").
+    # Not KPI_SOURCE_UNRESOLVABLE either: that one is the KPI source gate's, and
+    # a caller branching on it would show a KPI message on a feed screen.
+    PUBLISHED_FEED_QUERY_UNREADABLE = "VEODYN_PUBLISHED_FEED_QUERY_UNREADABLE"
+    # The bound query has never run, so its result cache holds nothing yet.
+    # Refused before an attempt is recorded: there were no rows to judge, which
+    # is not the same fact as an attempt that judged some rows and failed.
+    PUBLISHED_FEED_NO_RESULT = "VEODYN_PUBLISHED_FEED_NO_RESULT"
 
 
 class ApiError(Exception):

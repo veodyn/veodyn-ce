@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import './globals.css'
 import { Providers } from './providers'
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout'
@@ -35,6 +36,13 @@ export default async function RootLayout({
   // what each answer means, including why it may decline to decide.
   const initialSession = await readServerSession()
 
+  // The CSP that middleware attached to this response is nonce-based with
+  // strict-dynamic, so an inline script it did not authorise does not run. Next
+  // stamps its own script tags automatically; the hand-written one below is not
+  // one of those, and without this it is silently blocked and the theme flash
+  // it exists to prevent comes back.
+  const nonce = (await headers()).get('x-nonce') ?? undefined
+
   return (
     // suppressHydrationWarning because the script below writes `class` and
     // `data-theme` on this element before React hydrates, so the client DOM is
@@ -52,7 +60,7 @@ export default async function RootLayout({
             prefers dark never sees the light page flash past while the bundle
             loads. The server cannot do this for them, since the preference
             lives in localStorage and the OS setting is only knowable here. */}
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript() }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript() }} />
         <style dangerouslySetInnerHTML={{ __html: themeStyle(config) }} />
         {/* Telemetry config travels as a prop rather than a NEXT_PUBLIC_ var so
             it is read per request. This route is already force-dynamic, so one

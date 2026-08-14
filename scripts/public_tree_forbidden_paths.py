@@ -190,6 +190,16 @@ FORBIDDEN_PATHS = (
         "incidents, internal paths, and who did what.",
     ),
     (
+        "plans/",
+        "The security audit and the remediation plans written against it. Every finding names "
+        "an unfixed weakness in the running deployment by file and line, and the plans spell "
+        "out how to reach each one. This is the same class as helm/envs/ and "
+        ".harness/reflections/ above, and more directly so than either: publishing it hands a "
+        "reader the exploit order for a system that has not been fixed yet. It stays forbidden "
+        "while any finding is open, and the decision to publish a written-up finding is made "
+        "per finding, after it is closed, not by unforbidding this directory.",
+    ),
+    (
         ".mcp.json",
         "Local MCP server wiring pointing at internal analytics infrastructure by hostname.",
     ),

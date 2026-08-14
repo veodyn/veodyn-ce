@@ -75,12 +75,18 @@ ENFORCE_FILE_SAVE = parse_boolean(os.environ.get("REDASH_ENFORCE_FILE_SAVE", "tr
 # Whether api calls using the json query runner will block private addresses
 ENFORCE_PRIVATE_ADDRESS_BLOCK = parse_boolean(os.environ.get("REDASH_ENFORCE_PRIVATE_IP_BLOCK", "true"))
 
-# Whether to use secure cookies by default.
-COOKIES_SECURE = parse_boolean(os.environ.get("REDASH_COOKIES_SECURE", str(ENFORCE_HTTPS)))
+# Whether to use secure cookies by default. Deliberately NOT derived from
+# ENFORCE_HTTPS: TLS is normally terminated at the ingress, so ENFORCE_HTTPS is
+# off in a deployment whose cookies must still never travel in the clear.
+COOKIES_SECURE = parse_boolean(os.environ.get("REDASH_COOKIES_SECURE", "true"))
 # Whether the session cookie is set to secure.
 SESSION_COOKIE_SECURE = parse_boolean(os.environ.get("REDASH_SESSION_COOKIE_SECURE") or str(COOKIES_SECURE))
 # Whether the session cookie is set HttpOnly.
 SESSION_COOKIE_HTTPONLY = parse_boolean(os.environ.get("REDASH_SESSION_COOKIE_HTTPONLY", "true"))
+# SameSite for the session cookie. Lax is compatible with this deployment: the
+# browser talks only to the Next.js origin, which reaches this service
+# server-to-server.
+SESSION_COOKIE_SAMESITE = os.environ.get("REDASH_SESSION_COOKIE_SAMESITE", "Lax")
 SESSION_EXPIRY_TIME = int(os.environ.get("REDASH_SESSION_EXPIRY_TIME", 60 * 60 * 6))
 SESSION_COOKIE_NAME = os.environ.get("REDASH_SESSION_COOKIE_NAME", "session")
 
@@ -88,6 +94,8 @@ SESSION_COOKIE_NAME = os.environ.get("REDASH_SESSION_COOKIE_NAME", "session")
 REMEMBER_COOKIE_SECURE = parse_boolean(os.environ.get("REDASH_REMEMBER_COOKIE_SECURE") or str(COOKIES_SECURE))
 # Whether the remember cookie is set HttpOnly.
 REMEMBER_COOKIE_HTTPONLY = parse_boolean(os.environ.get("REDASH_REMEMBER_COOKIE_HTTPONLY", "true"))
+# SameSite for the remember cookie, read by Flask-Login rather than by Flask.
+REMEMBER_COOKIE_SAMESITE = os.environ.get("REDASH_REMEMBER_COOKIE_SAMESITE", "Lax")
 # The amount of time before the remember cookie expires.
 REMEMBER_COOKIE_DURATION = int(os.environ.get("REDASH_REMEMBER_COOKIE_DURATION", 60 * 60 * 24 * 31))
 
@@ -466,9 +474,10 @@ SQLPARSE_FORMAT_OPTIONS = {
 # requests
 REQUESTS_ALLOW_REDIRECTS = parse_boolean(os.environ.get("REDASH_REQUESTS_ALLOW_REDIRECTS", "false"))
 
-# Enforces CSRF token validation on API requests.
-# This is turned off by default to avoid breaking any existing deployments but it is highly recommended to turn this toggle on to prevent CSRF attacks.
-ENFORCE_CSRF = parse_boolean(os.environ.get("REDASH_ENFORCE_CSRF", "false"))
+# Enforces CSRF token validation on requests authenticated by a session cookie.
+# API-key authenticated requests are exempt by design (see redash/security.py).
+# Defaults on: a deployment that needs it off must opt out explicitly.
+ENFORCE_CSRF = parse_boolean(os.environ.get("REDASH_ENFORCE_CSRF", "true"))
 
 # Databricks
 

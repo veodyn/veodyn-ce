@@ -5,16 +5,21 @@ the community one, because the two questions the split has to answer from this
 side are both about what happens when `alembic upgrade head` executes:
 
 - A **fresh** database gets the community chain's tables and no others.
-- A database **already stamped `0010`**, which is stage and prod, runs no
-  revision body at all. That is the assertion with production behind it, and it
-  is trivially satisfiable: comparing a current revision of `0010` against a
-  target of `0010` is an empty list whatever the ancestry is, and a test
-  written that way is green even after somebody renumbers the whole chain. So
-  it does not ask Alembic what it plans. It wraps every revision module's
-  `upgrade()` to record its own id, runs the upgrade for real, and asserts the
-  recording is empty and the schema did not move. `test_the_body_recorder_records`
-  is the control that keeps that from being a tautology: the same seed one
-  revision back must record `["0010"]`.
+- A database **already stamped at head**, which is what stage and prod are once
+  a release lands, runs no revision body at all. That is the assertion with
+  production behind it, and it is trivially satisfiable: comparing a current
+  revision against an identical target is an empty list whatever the ancestry
+  is, and a test written that way is green even after somebody renumbers the
+  whole chain. So it does not ask Alembic what it plans. It wraps every revision
+  module's `upgrade()` to record its own id, runs the upgrade for real, and
+  asserts the recording is empty and the schema did not move.
+  `test_the_body_recorder_records` is the control that keeps that from being a
+  tautology: the same seed one revision back must record exactly the head id.
+
+  Head is read from `CE_HEAD` rather than written out, so adding a revision does
+  not silently turn this pair into a test of an old id. The renumber that
+  derivation cannot catch is held separately, by
+  `test_migration_chain.py::test_no_shipped_community_revision_id_was_renumbered`.
 
 Each test gets a database of its own rather than the session `engine`. That one
 is built with `create_all` and shared by the whole suite, and Alembic has to be
@@ -33,9 +38,19 @@ from sqlalchemy.engine import make_url
 from migrations.ownership import CE_TABLES
 from tests.conftest import TEST_DATABASE_URL
 from tests.migration_chains import (
+    CE_HEAD,
+    CE_PREVIOUS,
     CE_VERSION_TABLE,
     ce_config,
 )
+
+HEAD_TABLE = "publish_attempt"
+"""The table the head revision creates, which the control below undoes by hand.
+
+Named here rather than inline so the pairing with `CE_HEAD` is one thing to
+update when a revision lands, and so a mismatch reads as this constant being
+stale rather than as a puzzling `DuplicateTable` inside the upgrade.
+"""
 
 CHAIN_DATABASE = "veodyn_migration_chain"
 """Its own database, named rather than randomised so a crashed run leaves one
@@ -93,18 +108,22 @@ def columns_in(url: str) -> set[tuple[str, str]]:
         engine.dispose()
 
 
-def seed_like_prod(url: str, stamp: str = "0010") -> None:
-    """This chain's three product tables and a community stamp.
+def seed_like_prod(url: str, stamp: str = CE_HEAD) -> None:
+    """This chain's product tables and a community stamp.
 
     Built with `create_all` rather than by running the chain: a seed made by
     the thing under test cannot be evidence about it.
 
-    **Three, not seven.** This used to build both chains' tables, because both
-    were on the shared declarative base. They are not any more: the enterprise
-    models live in the pack, this suite does not import them, and the four
-    tables they carry are absent from `Base.metadata` here. So what this builds
-    is a database at community head, which is enough for the two tests below
-    and is NOT the pre-split shape.
+    **Community tables only.** This used to build both chains' tables, because
+    both were on the shared declarative base. They are not any more: the
+    enterprise models live in the pack, this suite does not import them, and the
+    four tables they carry are absent from `Base.metadata` here. So what this
+    builds is a database at community head, which is enough for the two tests
+    below and is NOT the pre-split shape.
+
+    It builds **head's** shape, whatever head is, because `create_all` reads
+    today's metadata. That is why `stamp` defaults to head and why a caller
+    passing an earlier stamp has to undo the later revisions by hand.
 
     The pre-split shape (all seven product tables, one version table, stamped
     `0010`) is the case that can go wrong in production, and it cannot be built
@@ -168,7 +187,10 @@ def test_a_fresh_community_database_gets_exactly_the_community_tables(fresh_url:
     assert tables_in(fresh_url) - {CE_VERSION_TABLE} == set(CE_TABLES)
 
 
-def test_a_database_already_stamped_0010_runs_no_revision_body(fresh_url: str) -> None:
+def test_a_database_already_at_head_runs_no_revision_body(fresh_url: str) -> None:
+    # Named for the property rather than for a revision id. It used to say
+    # `0010`, which meant every new revision renamed the test or left it
+    # asserting something its own name denied.
     seed_like_prod(fresh_url)
     before = columns_in(fresh_url)
 
@@ -181,15 +203,20 @@ def test_a_database_already_stamped_0010_runs_no_revision_body(fresh_url: str) -
 def test_the_body_recorder_records(fresh_url: str) -> None:
     """The control, without which the assertion above is a tautology.
 
-    The same prod-shaped seed taken back exactly the two columns `0010` adds,
-    stamped one revision earlier. Undone by hand rather than by running 0010's
-    own downgrade, so the control does not depend on the chain it instruments.
+    The same seed taken back exactly what the head revision does, stamped one
+    revision earlier. Undone by hand rather than by running head's own
+    downgrade, so the control does not depend on the chain it instruments.
+
+    `create_all` builds whatever is in `Base.metadata` today, which is head's
+    shape, so a seed stamped earlier than head is only consistent once head's
+    effect is reversed here. Miss that and the upgrade fails as `DuplicateTable`
+    rather than as the assertion this test is making.
     """
-    seed_like_prod(fresh_url, stamp="0009")
+    seed_like_prod(fresh_url, stamp=CE_PREVIOUS)
     engine = create_engine(fresh_url)
     with engine.begin() as connection:
-        connection.execute(text("ALTER TABLE feed_expectation DROP COLUMN alert_id, DROP COLUMN alert_query_id"))
+        connection.execute(text(f"DROP TABLE {HEAD_TABLE}"))
     engine.dispose()
 
-    assert run_upgrade_recording_bodies(ce_config()) == ["0010"]
-    assert ("feed_expectation", "alert_id") in columns_in(fresh_url)
+    assert run_upgrade_recording_bodies(ce_config()) == [CE_HEAD]
+    assert HEAD_TABLE in tables_in(fresh_url)

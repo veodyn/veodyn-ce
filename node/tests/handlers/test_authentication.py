@@ -3,7 +3,7 @@ import time
 import mock
 
 from redash import limiter, settings
-from redash.authentication.account import invite_token
+from redash.authentication.account import RESET_SALT, invite_token
 from redash.models import User
 from tests import BaseTestCase
 
@@ -11,7 +11,10 @@ from tests import BaseTestCase
 class TestResetPassword(BaseTestCase):
     def test_shows_reset_password_form(self):
         user = self.factory.create_user(is_invitation_pending=False)
-        token = invite_token(user)
+        # Minted under the reset salt, because the reset path only accepts a
+        # reset token now. This used to pass an invite-salted one, which was
+        # the cross-purpose replay itself: see tests/test_account_tokens.py.
+        token = invite_token(user, salt=RESET_SALT)
         response = self.get_request("/reset/{}".format(token), org=self.factory.org)
         self.assertEqual(response.status_code, 200)
 

@@ -86,6 +86,9 @@ export const ErrorIds = {
   // ── Data Catalog (CATALOG) ─────────────────────────────────────────────────
   CATALOG_FETCH_FAILED: 'E_CATALOG_001',
 
+  // ── Published feeds (PUBFEED) ──────────────────────────────────────────────
+  PUBLISHED_FEED_REQUEST_FAILED: 'E_PUBFEED_001',
+
   // ── KPI object (KPI) ───────────────────────────────────────────────────────
   KPI_FETCH_FAILED: 'E_KPI_001',
 

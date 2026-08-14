@@ -644,6 +644,35 @@
         "title": "FeedOut",
         "type": "object"
       },
+      "FindingOut": {
+        "description": "One validator finding, flattened to one occurrence.\n\n`publish_engine._as_json` already stores these camelCased, because that\ncolumn is served verbatim. CamelModel's `populate_by_name` accepts either\nspelling, so this validates straight off the stored JSONB.",
+        "properties": {
+          "locator": {
+            "title": "Locator",
+            "type": "string"
+          },
+          "ruleId": {
+            "title": "Ruleid",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ruleId",
+          "severity",
+          "title",
+          "locator"
+        ],
+        "title": "FindingOut",
+        "type": "object"
+      },
       "GenerateSqlIn": {
         "properties": {
           "currentSql": {
@@ -1006,6 +1035,254 @@
           "enabled"
         ],
         "title": "OutlineSectionOut",
+        "type": "object"
+      },
+      "PublishAttemptOut": {
+        "description": "One attempt, without the bytes it produced.\n\n`feed_bytes` is absent on purpose rather than by omission. It is the served\nartifact, and a list endpoint that carried it would move megabytes per row\nto render a status word.",
+        "properties": {
+          "attemptId": {
+            "title": "Attemptid",
+            "type": "integer"
+          },
+          "bindingRevision": {
+            "title": "Bindingrevision",
+            "type": "integer"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "string"
+          },
+          "enabledRules": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Enabledrules",
+            "type": "array"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOut"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "isCurrent": {
+            "title": "Iscurrent",
+            "type": "boolean"
+          },
+          "queryResultId": {
+            "title": "Queryresultid",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attemptId",
+          "bindingRevision",
+          "queryResultId",
+          "decision",
+          "reason",
+          "findings",
+          "enabledRules",
+          "isCurrent",
+          "createdAt"
+        ],
+        "title": "PublishAttemptOut",
+        "type": "object"
+      },
+      "PublishedFeedIn": {
+        "description": "A declaration that one query publishes one standard feed.\n\nThe whole binding on every write, PUT rather than PATCH, because every field\nhere is an input to the same question (\"what will this feed contain, and\nwhat is it checked against\"), and a partial edit would leave the caller\nguessing which of the untouched fields the revision bump now covers.",
+        "properties": {
+          "columnMap": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Columnmap",
+            "type": "object"
+          },
+          "entity": {
+            "const": "vehicle_positions",
+            "title": "Entity",
+            "type": "string"
+          },
+          "lastGoodMaxAgeSeconds": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 2147483647.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastgoodmaxageseconds"
+          },
+          "onError": {
+            "default": "block",
+            "enum": [
+              "block",
+              "last_good"
+            ],
+            "title": "Onerror",
+            "type": "string"
+          },
+          "queryId": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 2147483647.0,
+            "title": "Queryid",
+            "type": "integer"
+          },
+          "slug": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "title": "Slug",
+            "type": "string"
+          },
+          "sourceColumn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcecolumn"
+          },
+          "standard": {
+            "const": "gtfs-rt",
+            "title": "Standard",
+            "type": "string"
+          },
+          "staticGtfsRef": {
+            "minLength": 1,
+            "title": "Staticgtfsref",
+            "type": "string"
+          },
+          "version": {
+            "const": "2.0",
+            "title": "Version",
+            "type": "string"
+          },
+          "visibility": {
+            "default": "private",
+            "enum": [
+              "private",
+              "public"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "queryId",
+          "standard",
+          "version",
+          "entity",
+          "staticGtfsRef",
+          "columnMap"
+        ],
+        "title": "PublishedFeedIn",
+        "type": "object"
+      },
+      "PublishedFeedOut": {
+        "properties": {
+          "bindingState": {
+            "title": "Bindingstate",
+            "type": "string"
+          },
+          "columnMap": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Columnmap",
+            "type": "object"
+          },
+          "entity": {
+            "title": "Entity",
+            "type": "string"
+          },
+          "lastGoodMaxAgeSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastgoodmaxageseconds"
+          },
+          "onError": {
+            "title": "Onerror",
+            "type": "string"
+          },
+          "queryId": {
+            "title": "Queryid",
+            "type": "integer"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "sourceColumn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcecolumn"
+          },
+          "standard": {
+            "title": "Standard",
+            "type": "string"
+          },
+          "staticGtfsRef": {
+            "title": "Staticgtfsref",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "visibility": {
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "revision",
+          "queryId",
+          "standard",
+          "version",
+          "entity",
+          "staticGtfsRef",
+          "sourceColumn",
+          "columnMap",
+          "onError",
+          "lastGoodMaxAgeSeconds",
+          "visibility",
+          "bindingState"
+        ],
+        "title": "PublishedFeedOut",
         "type": "object"
       },
       "QueryProposalOut": {
@@ -2032,6 +2309,521 @@
         "summary": "Health",
         "tags": [
           "meta"
+        ]
+      }
+    },
+    "/published-feeds": {
+      "get": {
+        "operationId": "list_feeds_published_feeds_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PublishedFeedOut"
+                  },
+                  "title": "Response List Feeds Published Feeds Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Feeds",
+        "tags": [
+          "published-feeds"
+        ]
+      },
+      "post": {
+        "operationId": "create_feed_published_feeds_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishedFeedIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishedFeedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Feed",
+        "tags": [
+          "published-feeds"
+        ]
+      }
+    },
+    "/published-feeds/{slug}": {
+      "delete": {
+        "operationId": "delete_feed_published_feeds__slug__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Feed",
+        "tags": [
+          "published-feeds"
+        ]
+      },
+      "get": {
+        "operationId": "get_feed_published_feeds__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishedFeedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Feed",
+        "tags": [
+          "published-feeds"
+        ]
+      },
+      "put": {
+        "operationId": "update_feed_published_feeds__slug__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishedFeedIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishedFeedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Feed",
+        "tags": [
+          "published-feeds"
+        ]
+      }
+    },
+    "/published-feeds/{slug}/attempts": {
+      "get": {
+        "description": "The recent record for one feed, newest first.\n\n`load_feed` first, so an unknown slug is a 404 rather than an empty list. A\nfeed that was deleted and a feed that has never published are different\nfacts and the page says different things about them.\n\n`defer` on the bytes column is load-bearing, not a micro-optimisation: these\nrows carry the served artifact, and selecting twenty of them to render\ntwenty status words would move the whole feed history over the wire.\n\nThe served artifact is added back when the cap pushed it off the page, and\nit is the one row that is not optional context. Twenty blocked or failed\nattempts in a row is exactly the situation where the still-serving artifact\nis older than the page, and a client that reads \"what is serving\" off this\nlist would then conclude a live feed is dark: it would offer to publish over\nit, and skip the going-dark warning on an edit.",
+        "operationId": "list_attempts_published_feeds__slug__attempts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PublishAttemptOut"
+                  },
+                  "title": "Response List Attempts Published Feeds  Slug  Attempts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Attempts",
+        "tags": [
+          "published-feeds"
+        ]
+      },
+      "post": {
+        "description": "Run one attempt for this feed, now.\n\n201 for every decision the engine reaches, including `blocked` and `failed`:\nthe attempt was created, which is what this endpoint promises, and its\ndecision is the answer rather than the status code. A 4xx here is reserved\nfor the cases where no attempt happens at all.\n\n`run_attempt` records and commits the row itself, so nothing here commits.",
+        "operationId": "publish_now_published_feeds__slug__attempts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishAttemptOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Publish Now",
+        "tags": [
+          "published-feeds"
         ]
       }
     },

@@ -158,6 +158,7 @@ def serialize_query(
     with_visualizations=False,
     with_user=True,
     with_last_modified_by=True,
+    with_api_key=False,
 ):
     d = {
         "id": query.id,
@@ -167,7 +168,6 @@ def serialize_query(
         "query": query.query_text,
         "query_hash": query.query_hash,
         "schedule": query.schedule,
-        "api_key": query.api_key,
         "is_archived": query.is_archived,
         "is_draft": query.is_draft,
         "updated_at": query.updated_at,
@@ -178,6 +178,18 @@ def serialize_query(
         "tags": query.tags or [],
         "is_safe": query.parameterized.is_safe,
     }
+
+    # A query's api_key is a permanent bearer credential, not metadata: whoever
+    # holds it can read this query's results anonymously, and the only way to
+    # revoke it is to regenerate it for every holder at once. So it travels the
+    # same way the visualization embed token does, to an admin or the owner and
+    # to nobody else (QueryResource.get attaches that one; the comment there
+    # says the same thing).
+    #
+    # Default off so a caller nobody updated omits it. Flipping this to True for
+    # convenience restores the disclosure in full.
+    if with_api_key:
+        d["api_key"] = query.api_key
 
     if with_user:
         d["user"] = query.user.to_dict()

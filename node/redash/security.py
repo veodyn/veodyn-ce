@@ -29,7 +29,14 @@ def init_app(app):
 
     @app.after_request
     def inject_csrf_token(response):
-        response.set_cookie("csrf_token", generate_csrf())
+        # No httponly: the double-submit pattern requires the client to read
+        # this value and echo it in the X-CSRF-TOKEN header.
+        response.set_cookie(
+            "csrf_token",
+            generate_csrf(),
+            secure=settings.COOKIES_SECURE,
+            samesite=settings.SESSION_COOKIE_SAMESITE,
+        )
         return response
 
     if settings.ENFORCE_CSRF:
@@ -45,7 +52,11 @@ def init_app(app):
                 return
             # END workaround
 
-            if not current_user.is_authenticated or "user_id" in session:
+            # "_user_id" is Flask-Login's session key from 0.5.0 onward. The
+            # un-prefixed 0.4.x spelling silently disabled this check for every
+            # session-authenticated request. API-key requests set no session
+            # key and stay exempt, which is intended.
+            if not current_user.is_authenticated or "_user_id" in session:
                 csrf.protect()
 
     talisman.init_app(

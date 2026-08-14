@@ -83,8 +83,9 @@ def created_tables() -> list[str]:
     stopped existing in a community build the TRUNCATE raised for EVERY database
     test rather than for the enterprise ones, because one statement naming a
     missing relation fails whole. Reading `sorted_tables` means the fixture
-    cleans whatever the installed edition actually created: four tables in a
-    community run, seven plus the fixture table in a composed one.
+    cleans whatever the installed edition actually created, community tables
+    plus the pack's four and the fixture table in a composed run, without this
+    docstring having to carry a count that goes stale every time a table lands.
     """
     from tests.fixture_objects import FixtureBase
     from veodyn_api.models.base import Base

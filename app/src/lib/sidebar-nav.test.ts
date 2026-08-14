@@ -72,6 +72,18 @@ describe('buildSidebarSections', () => {
     ])
   })
 
+  // The API serves the published-feeds list to any org member, so gating the
+  // row itself would hide a page a non-admin can actually read. Only the
+  // create action inside the page is admin-gated.
+  it('lists Feeds in CONNECT beside APIs and MCP', () => {
+    const connect = build().find((s) => s.id === 'connect')
+    expect(connect?.items.map((i) => i.href)).toEqual([
+      '/connect/apis',
+      '/connect/mcp',
+      '/connect/feeds',
+    ])
+  })
+
   it('includes the ADMIN section only when canAccessAdmin is true', () => {
     expect(build().some((s) => s.id === 'admin')).toBe(false)
     expect(build(ORG_ADMIN).at(-1)?.id).toBe('admin')

@@ -16,6 +16,7 @@ import type { Dataset, DomainHub } from '@/types/catalog'
 import type { Annotation } from '@/types/annotation'
 import { hydrateMockData } from './mock-data-hydration'
 import { createFeedSlice, type FeedSlice } from './feed-slice'
+import { createPublishedFeedSlice, type PublishedFeedSlice } from './published-feed-slice'
 import { createContributedSlices, type ContributedSlices } from './generated-mock-slices'
 
 /**
@@ -124,7 +125,7 @@ interface MockDataCore {
   nextId: (collection: 'queries' | 'dashboards' | 'dataSources' | 'alerts' | 'users' | 'groups' | 'destinations' | 'querySnippets' | 'annotations') => number
 }
 
-export type MockDataState = MockDataCore & FeedSlice & ContributedSlices
+export type MockDataState = MockDataCore & FeedSlice & PublishedFeedSlice & ContributedSlices
 
 export const useMockDataStore = create<MockDataState>((set, get, store) => ({
   // Contributed first, then community, matching the order these were spread in
@@ -132,6 +133,7 @@ export const useMockDataStore = create<MockDataState>((set, get, store) => ({
   // resolves to whichever is spread last, so this order is behaviour.
   ...createContributedSlices(set, get, store),
   ...createFeedSlice(set, get, store),
+  ...createPublishedFeedSlice(set, get, store),
   queries: [...mockQueries],
   dashboards: [...mockDashboards],
   dataSources: [...mockDataSources],

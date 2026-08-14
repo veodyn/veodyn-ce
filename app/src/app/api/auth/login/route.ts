@@ -17,6 +17,7 @@ import {
   parseSetCookieHeaders,
   buildCookieHeader,
 } from '@/lib/redash-server'
+import { COOKIE_SECURE } from '@/lib/cookie-attrs'
 
 export const dynamic = 'force-dynamic'
 
@@ -128,6 +129,7 @@ export async function POST(request: NextRequest) {
         path: '/',
         httpOnly: true,
         sameSite: 'lax',
+        secure: COOKIE_SECURE,
         maxAge: 60 * 60 * 24 * 30,
       })
     }
@@ -139,6 +141,7 @@ export async function POST(request: NextRequest) {
         path: '/',
         httpOnly: false,
         sameSite: 'lax',
+        secure: COOKIE_SECURE,
       })
     }
     if (userApiKey) {
@@ -146,6 +149,7 @@ export async function POST(request: NextRequest) {
         path: '/',
         httpOnly: true,
         sameSite: 'lax',
+        secure: COOKIE_SECURE,
         maxAge: 60 * 60 * 24 * 30,
       })
     }

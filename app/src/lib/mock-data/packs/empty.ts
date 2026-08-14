@@ -27,6 +27,7 @@ import type { SchemaTable } from './types/schema'
 import type { Dataset, DomainHub } from '@/types/catalog'
 import type { Annotation } from '@/types/annotation'
 import type { Feed } from '@/types/feed'
+import type { PublishAttempt, PublishedFeed } from '@/types/published-feed'
 
 export const mockUsers: MockUser[] = []
 
@@ -71,3 +72,5 @@ export const mockDatasets: Dataset[] = []
 export const mockDomainHubs: DomainHub[] = []
 export const mockAnnotations: Annotation[] = []
 export const mockFeeds: Feed[] = []
+export const mockPublishedFeeds: PublishedFeed[] = []
+export const mockPublishAttempts: Record<string, PublishAttempt[]> = {}

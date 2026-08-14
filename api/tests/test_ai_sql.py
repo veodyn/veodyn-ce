@@ -116,6 +116,124 @@ def test_the_bare_table_name_counts_as_naming_a_qualified_dataset() -> None:
     assert validate_sql("SELECT speed_mph FROM regional_speeds LIMIT 10", DATASET).endswith("LIMIT 10")
 
 
+# The two structural holes. Each of these statements was confirmed against this
+# validator before the fix and came back unchanged, so the model could read
+# outside the requested dataset while the guard reported success. The keyword
+# denylist could never have caught any of them: none is a state-changing verb.
+
+
+@pytest.mark.parametrize(
+    "opener",
+    ["--", "/*"],
+)
+def test_a_comment_delimiter_inside_a_string_cannot_hide_a_union(opener: str) -> None:
+    """The worst of the three, and the most general.
+
+    _strip_noise used to remove comments before strings, so a delimiter inside a
+    string literal erased everything after it. The validator checked
+    `SELECT ... WHERE note = '` and never saw the union, while ClickHouse reads
+    the literal as data and runs it. Any trailing statement could hide this way,
+    not just a union.
+    """
+    sql = f"SELECT speed_mph FROM regional_speeds WHERE note = '{opener}' UNION ALL SELECT x FROM regional_boardings"
+
+    assert "regional_boardings" in refusal(sql)
+
+
+def test_a_string_holding_a_comment_delimiter_is_still_ordinary_data() -> None:
+    """The other direction. Reversing the old order would have broken this."""
+    sql = "SELECT speed_mph FROM regional_speeds WHERE note = '/* not a comment */ -- nor this'"
+
+    assert validate_sql(sql, DATASET) == sql
+
+
+def test_an_apostrophe_inside_a_comment_does_not_swallow_the_statement() -> None:
+    sql = "SELECT speed_mph FROM regional_speeds -- don't drop the nulls\nLIMIT 10"
+
+    assert validate_sql(sql, DATASET) == sql
+
+
+def test_a_comma_join_to_a_second_table_is_refused() -> None:
+    """The scan read the name after FROM and stopped, so everything past the
+    comma was invisible and this passed with the second table unexamined."""
+    sql = "SELECT speed_mph FROM regional_speeds, historical.regional_boardings"
+
+    assert "comma join" in refusal(sql)
+
+
+def test_a_comma_join_to_a_table_function_is_refused() -> None:
+    """The same hole, reaching a network rather than a sibling table."""
+    sql = "SELECT * FROM regional_speeds, url('http://elsewhere.invalid/x', CSV, 'c String')"
+
+    assert "comma join" in refusal(sql)
+
+
+def test_a_backtick_quoted_second_table_is_refused() -> None:
+    """The scan needed an identifier character straight after JOIN, so a quoted
+    name matched nothing at all and the statement read as single-table."""
+    sql = "SELECT speed_mph FROM regional_speeds JOIN `historical`.`regional_boardings` ON 1"
+
+    assert "regional_boardings" in refusal(sql)
+
+
+def test_a_double_quoted_second_table_is_refused() -> None:
+    sql = 'SELECT speed_mph FROM regional_speeds JOIN "regional_boardings" ON 1'
+
+    assert "regional_boardings" in refusal(sql)
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        "url('http://elsewhere.invalid/x', CSV, 'c String')",
+        "file('/etc/passwd', CSV, 'c String')",
+        "s3('https://elsewhere.invalid/b', CSV)",
+    ],
+)
+def test_a_table_function_is_refused_by_name(call: str) -> None:
+    """url() and s3() read a network, file() a filesystem. None is a table this
+    dataset could authorise, so the reason says that rather than reporting a
+    table name that does not exist."""
+    assert "()" in refusal(f"SELECT * FROM {call}")
+
+
+def test_dict_get_is_refused() -> None:
+    """A dictionary read sits in a scalar position, so there is no table
+    reference to check and only the keyword rule can see it."""
+    assert "DICTGET" in refusal("SELECT dictGet('other', 'v', toUInt64(1)) FROM regional_speeds")
+
+
+# The other half. A guard that refuses real analysis gets turned off, so these
+# are as load-bearing as the refusals above.
+
+
+def test_a_subquery_in_from_is_not_read_as_a_table_named_select() -> None:
+    sql = "SELECT speed_mph FROM (SELECT speed_mph FROM regional_speeds WHERE speed_mph > 10) LIMIT 100"
+
+    assert validate_sql(sql, DATASET) == sql
+
+
+def test_commas_inside_a_function_call_are_not_a_comma_join() -> None:
+    sql = (
+        "SELECT toStartOfInterval(captured_at, INTERVAL 1 HOUR) AS bucket, avg(speed_mph) "
+        "FROM regional_speeds GROUP BY bucket LIMIT 200"
+    )
+
+    assert validate_sql(sql, DATASET) == sql
+
+
+def test_an_explicit_self_join_is_allowed() -> None:
+    sql = "SELECT x.speed_mph FROM regional_speeds AS x JOIN regional_speeds AS y ON x.stop = y.stop LIMIT 10"
+
+    assert validate_sql(sql, DATASET) == sql
+
+
+def test_the_dataset_quoted_with_backticks_is_allowed() -> None:
+    sql = "SELECT speed_mph FROM `historical`.`regional_speeds` LIMIT 10"
+
+    assert validate_sql(sql, DATASET) == sql
+
+
 def test_a_refused_answer_is_retried_once_with_the_reason() -> None:
     llm = FakeLlm(
         {"sql": "DROP TABLE regional_speeds", "rationale": "removes the table"},

@@ -259,7 +259,9 @@ class QueryListResource(BaseQueryListResource):
 
         self.record_event({"action": "create", "object_id": query.id, "object_type": "query"})
 
-        return QuerySerializer(query, with_visualizations=True).serialize()
+        return QuerySerializer(
+            query, with_visualizations=True, with_api_key=is_admin_or_owner(query.user_id)
+        ).serialize()
 
 
 class QueryArchiveResource(BaseQueryListResource):
@@ -384,7 +386,9 @@ class QueryResource(BaseResource):
         except StaleDataError:
             abort(409)
 
-        return QuerySerializer(query, with_visualizations=True).serialize()
+        return QuerySerializer(
+            query, with_visualizations=True, with_api_key=is_admin_or_owner(query.user_id)
+        ).serialize()
 
     @require_permission("view_query")
     def get(self, query_id):
@@ -398,7 +402,8 @@ class QueryResource(BaseResource):
         q = get_object_or_404(models.Query.get_by_id_and_org, query_id, self.current_org)
         require_access(q, self.current_user, view_only)
 
-        result = QuerySerializer(q, with_visualizations=True).serialize()
+        # Same rule as the embed token below, and for the same reason.
+        result = QuerySerializer(q, with_visualizations=True, with_api_key=is_admin_or_owner(q.user_id)).serialize()
         result["can_edit"] = can_modify(q, self.current_user)
 
         # An embed share token is a credential rather than metadata, so it is
@@ -449,7 +454,9 @@ class QueryRegenerateApiKeyResource(BaseResource):
             }
         )
 
-        result = QuerySerializer(query).serialize()
+        # The one response that exists to hand back a key. require_admin_or_owner
+        # above has already decided the caller may hold it.
+        result = QuerySerializer(query, with_api_key=True).serialize()
         return result
 
 
@@ -470,7 +477,9 @@ class QueryForkResource(BaseResource):
 
         self.record_event({"action": "fork", "object_id": query_id, "object_type": "query"})
 
-        return QuerySerializer(forked_query, with_visualizations=True).serialize()
+        return QuerySerializer(
+            forked_query, with_visualizations=True, with_api_key=is_admin_or_owner(forked_query.user_id)
+        ).serialize()
 
 
 class QueryRefreshResource(BaseResource):

@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     # shortest capture schedule seen in a real deployment is 10 minutes, so an
     # hour is several missed runs rather than one late one.
     catalog_stale_after_minutes: int = 60
+    # The containerized MobilityData GTFS-Realtime validator. Empty means no
+    # validator is configured, and a publish attempt then fails closed rather
+    # than publishing unvalidated bytes.
+    feed_validator_url: str = ""
 
     # Dotted module paths, comma separated, imported at startup by both the API
     # and the worker. Importing a module is what registers whatever it
