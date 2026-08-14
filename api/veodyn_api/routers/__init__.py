@@ -21,7 +21,9 @@ from veodyn_api.routers.ai import router as ai_router
 from veodyn_api.routers.catalog import router as catalog_router
 from veodyn_api.routers.domains import router as domains_router
 from veodyn_api.routers.favorites import router as favorites_router
+from veodyn_api.routers.feed_capabilities import router as feed_capabilities_router
 from veodyn_api.routers.feeds import router as feeds_router
+from veodyn_api.routers.public_feeds import router as public_feeds_router
 from veodyn_api.routers.published_feed_attempts import router as published_feed_attempts_router
 from veodyn_api.routers.published_feeds import router as published_feeds_router
 from veodyn_api.routers.tags import router as tags_router
@@ -31,7 +33,15 @@ for _router in (
     catalog_router,
     domains_router,
     favorites_router,
+    # Registered ahead of published_feeds_router, not alphabetically: both
+    # mount under "/published-feeds", FastAPI matches in registration order
+    # with no preference for a static segment over a path parameter, and
+    # published_feeds_router's `GET /{slug}` would otherwise swallow
+    # `GET /capabilities` before this router ever saw it. See
+    # feed_capabilities.py's own docstring for the fuller version.
+    feed_capabilities_router,
     feeds_router,
+    public_feeds_router,
     published_feeds_router,
     published_feed_attempts_router,
     tags_router,

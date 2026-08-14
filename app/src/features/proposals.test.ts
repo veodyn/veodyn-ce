@@ -18,7 +18,8 @@ import {
   proposalContributionFor,
   resolveContributedProposal,
 } from './proposals'
-import type { FeatureDescriptor, ProposalContribution } from './types'
+import type { ProposalContribution } from './proposal-types'
+import type { FeatureDescriptor } from './types'
 
 function featureWith(id: string, proposals: ProposalContribution[]): FeatureDescriptor {
   return { id, nav: [], routes: [], proposals }

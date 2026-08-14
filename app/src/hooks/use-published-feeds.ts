@@ -10,16 +10,24 @@ import {
   createPublishedFeed,
   deletePublishedFeed,
   fetchAttempts,
+  fetchFeedCapabilities,
   fetchPublishedFeed,
   fetchPublishedFeeds,
   publishNow,
   updatePublishedFeed,
 } from '@/services/published-feeds/client'
-import type { PublishAttempt, PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
+import type { FeedCapabilities, PublishAttempt, PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
 
 const LIST_KEY = ['published-feeds']
+const CAPABILITIES_KEY = ['published-feeds', 'capabilities']
 const feedKey = (slug: string) => ['published-feeds', slug]
 const attemptsKey = (slug: string) => ['published-feeds', slug, 'attempts']
+
+// Community's own registry, seeded with the one entity every deployment has.
+// What a real fixture-mode session returns when there is no backend to ask,
+// matching services/feed_registry.py's seed: mock mode is what pnpm test:e2e
+// runs on, and it must show the single-fact form, not an empty picker.
+const MOCK_CAPABILITIES: FeedCapabilities = { entities: ['vehicle_positions'] }
 
 export interface QueryResultColumns {
   /** Redash's own result id, so a later read can tell whether it has moved on. */
@@ -49,6 +57,25 @@ export function usePublishedFeed(slug: string | undefined) {
       if (!USE_REAL_API) return fixture()
       return withFixtureFallback(() => fetchPublishedFeed(slug as string, { signal }), fixture)
     },
+  })
+}
+
+/**
+ * What this deployment's entity registry holds. Any org member may read it,
+ * matching the API's own gate: it names what a build can bind a feed to, not
+ * who may read one.
+ *
+ * Same 503-falls-back-to-fixture rule as the other feed hooks: only "not
+ * wired yet" degrades, a real 4xx or 5xx surfaces as an error the form's
+ * loading-or-failed branch treats identically to still-loading.
+ */
+export function useFeedCapabilities() {
+  return useQuery({
+    queryKey: CAPABILITIES_KEY,
+    queryFn: async ({ signal }): Promise<FeedCapabilities> =>
+      USE_REAL_API
+        ? withFixtureFallback(() => fetchFeedCapabilities({ signal }), () => MOCK_CAPABILITIES)
+        : MOCK_CAPABILITIES,
   })
 }
 

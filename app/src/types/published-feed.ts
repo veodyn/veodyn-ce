@@ -33,7 +33,12 @@ export interface PublishedFeedInput {
   queryId: number
   standard: 'gtfs-rt'
   version: '2.0'
-  entity: 'vehicle_positions'
+  // Not a Literal: services/feed_registry.py holds the entity vocabulary at
+  // runtime, seeded with vehicle_positions and widened by an enterprise pack,
+  // so the wire contract stays one string regardless of which pack is
+  // installed. See FeedCapabilities below for what a deployment actually
+  // registers.
+  entity: string
   staticGtfsRef: string
   sourceColumn: string | null
   columnMap: Record<string, string>
@@ -47,4 +52,16 @@ export interface PublishedFeed extends PublishedFeedInput {
   // Only ever fresh in a write response. Both read paths hard-code `unknown`,
   // so no read path may render this as mapping validity.
   bindingState: string
+}
+
+/**
+ * What GET /published-feeds/capabilities answers: the entity vocabulary this
+ * deployment actually registered, sorted. One entry is the community case and
+ * renders as a stated fact; more than one means a pack widened the registry
+ * and the binding form renders a picker instead. Read at runtime rather than
+ * inferred from a values file, per root CLAUDE.md's note that an installed
+ * layer is inert until a deployment names it.
+ */
+export interface FeedCapabilities {
+  entities: string[]
 }

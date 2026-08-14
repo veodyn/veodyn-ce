@@ -152,6 +152,8 @@ const SINGLE_EMPTY: { [Id in SingleSlotId]: SlotProps[Id] } = {
   'dashboard.annotationSuggest': { dashboardId: 17, widgetId: 4 },
   'dashboard.viewActions': { dashboard: DASHBOARD },
   'feedHealth.metrics': { datasets: [] },
+  'publishedFeed.tokenPanel': { slug: 'vehicles-live' },
+  'publishedFeed.blockedAttribution': { slug: 'vehicles-live', attemptId: 1 },
 }
 
 describe('a single slot with no contributor', () => {

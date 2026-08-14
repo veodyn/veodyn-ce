@@ -21,7 +21,8 @@ import { AppError, ErrorIds } from '@/lib/errorIds'
 import type { AnyProposal, FeatureProposal } from '@/types/ai-create'
 import { FEATURES } from './generated-registry'
 import { featureList } from './index'
-import type { FeatureDescriptor, ProposalCardProps, ProposalContribution } from './types'
+import type { ProposalCardProps, ProposalContribution } from './proposal-types'
+import type { FeatureDescriptor } from './types'
 
 type Card = LazyExoticComponent<ComponentType<ProposalCardProps>>
 

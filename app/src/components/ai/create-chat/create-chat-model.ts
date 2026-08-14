@@ -4,7 +4,8 @@
 // and the wire projection can be tested without rendering anything (the
 // proposal-model and report-outline-model precedent).
 import { proposalContributionFor } from '@/features/proposals'
-import type { FeatureDescriptor, ProposalManualPath } from '@/features/types'
+import type { ProposalManualPath } from '@/features/proposal-types'
+import type { FeatureDescriptor } from '@/features/types'
 import { isAppError } from '@/lib/errorIds'
 import {
   MAX_MESSAGE_CHARS,

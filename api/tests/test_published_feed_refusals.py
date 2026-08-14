@@ -144,6 +144,28 @@ def test_a_version_this_service_does_not_publish_is_refused(
 
 
 @respx.mock
+def test_a_slug_shadowing_the_capabilities_route_is_refused(
+    api: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`GET /published-feeds/capabilities` is a static route registered ahead of
+    `GET /published-feeds/{slug}`, so it wins that match on every request.
+    Without this refusal the collision is silent and one-directional: the feed
+    is created, can be edited and deleted by slug, and its own detail endpoint
+    answers the capabilities payload instead of it, forever.
+
+    Checked through the real HTTP path rather than against the schema, because
+    the point is that a caller cannot reach the shadowed state at all.
+    """
+    as_user(ADMIN)
+    set_columns(monkeypatch, BOUND_COLUMNS)
+
+    payload = refusal(api, db, {**BODY, "slug": "capabilities"}, 422, "VEODYN_INVALID_REQUEST")
+
+    assert "capabilities" in payload["error"]["message"]
+    assert "reserved" in payload["error"]["message"]
+
+
+@respx.mock
 def test_a_query_id_outside_postgres_integer_is_a_422_not_a_500(
     api: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:

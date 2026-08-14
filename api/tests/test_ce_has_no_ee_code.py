@@ -39,6 +39,21 @@ API_DIR = PACKAGE.parent
 ALLOWLIST = Path(__file__).parent / "ce_module_allowlist.json"
 
 EE_PATH_PREFIXES = ("/kpis", "/reports", "/public", "/admin/shared-links", "/ai/digest", "/ai/outline")
+
+# The bare "/public" above stays deny-by-default, and community's exceptions to
+# it are listed here EXACTLY rather than by prefix.
+#
+# `routers/public_feeds.py` is community and mounts `/public/feeds/<slug>`, the
+# anonymous feed-serving endpoint the feeds CE/EE split design puts there on
+# purpose, so the prefix alone would fail the build. Narrowing the prefix to
+# "/public/reports" was the obvious repair and it is the wrong one: that module
+# is retained, so an enterprise route added INSIDE it -- `/public/feeds/{slug}/
+# tokens` is the concrete one, since the same design reserves feed-token
+# issuance for enterprise -- would then pass this assertion, the module
+# allowlist and the import check all three. An exact-match exception keeps the
+# deny-by-default and costs one line whenever community genuinely adds a public
+# route, which is the trade this guard exists to make.
+CE_PUBLIC_PATHS = frozenset({"/public/feeds/{slug}"})
 EE_SCHEMA_PREFIXES = ("Kpi", "Report", "SharedLink", "Public", "Digest", "Outline", "Annotation")
 EE_SCHEMA_KEEP = frozenset(
     {
@@ -194,9 +209,14 @@ def openapi() -> dict[str, Any]:
 def test_the_ce_openapi_names_no_ee_path() -> None:
     schema = openapi()
 
-    assert [path for path in schema["paths"] if path.startswith(EE_PATH_PREFIXES)] == []
+    named = [path for path in schema["paths"] if path.startswith(EE_PATH_PREFIXES) and path not in CE_PUBLIC_PATHS]
+    assert named == []
     # A positive control: an empty document would satisfy the line above.
     assert "/tags/{object_type}/{object_id}" in schema["paths"]
+    # And a second one for the exception itself, so a community build that
+    # stopped serving feeds publicly cannot leave CE_PUBLIC_PATHS quietly
+    # excusing a path nothing declares any more.
+    assert CE_PUBLIC_PATHS <= schema["paths"].keys()
 
 
 def test_the_ce_openapi_names_no_ee_schema_key() -> None:

@@ -1,5 +1,6 @@
 import { FindingsList } from '@/components/published-feeds/findings-list'
 import { TimeAgo } from '@/components/shared/time-ago'
+import { Slot } from '@/features/slots'
 import { cn } from '@/lib/utils'
 import type { PublishAttempt } from '@/types/published-feed'
 
@@ -21,7 +22,7 @@ const DECISION_TEXT: Record<PublishAttempt['decision'], string> = {
   failed: 'text-destructive',
 }
 
-function AttemptRow({ attempt }: { attempt: PublishAttempt }) {
+function AttemptRow({ attempt, slug }: { attempt: PublishAttempt; slug: string }) {
   return (
     <li className="space-y-2 rounded-md border p-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -34,7 +35,20 @@ function AttemptRow({ attempt }: { attempt: PublishAttempt }) {
           <span className="text-xs font-medium text-status-fresh">Currently serving</span>
         )}
       </div>
-      {attempt.decision === 'blocked' && <FindingsList findings={attempt.findings} />}
+      {attempt.decision === 'blocked' && (
+        <>
+          <FindingsList findings={attempt.findings} />
+          {/* Whose fault a blocked attempt is belongs to the health and
+              attribution area (design section 7), which is not built. A
+              community build renders nothing here, same as any other
+              unfilled slot. */}
+          <Slot
+            id="publishedFeed.blockedAttribution"
+            props={{ slug, attemptId: attempt.attemptId }}
+            fallback={null}
+          />
+        </>
+      )}
       {attempt.decision === 'failed' && <p className="text-sm text-muted-foreground">{attempt.reason}</p>}
       {attempt.decision === 'published' && attempt.findings.length > 0 && (
         <div className="space-y-1">
@@ -46,7 +60,7 @@ function AttemptRow({ attempt }: { attempt: PublishAttempt }) {
   )
 }
 
-export function AttemptHistory({ attempts }: { attempts: PublishAttempt[] }) {
+export function AttemptHistory({ attempts, slug }: { attempts: PublishAttempt[]; slug: string }) {
   if (attempts.length === 0) {
     return <p className="text-sm text-muted-foreground">No publish attempts recorded yet.</p>
   }
@@ -60,7 +74,7 @@ export function AttemptHistory({ attempts }: { attempts: PublishAttempt[] }) {
   return (
     <ul className="space-y-2">
       {ordered.map((attempt) => (
-        <AttemptRow key={attempt.attemptId} attempt={attempt} />
+        <AttemptRow key={attempt.attemptId} attempt={attempt} slug={slug} />
       ))}
     </ul>
   )

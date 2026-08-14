@@ -12,6 +12,7 @@ import { useToast } from '@/components/shared/toast-provider'
 import { ServingStatus } from '@/components/published-feeds/serving-status'
 import { AttemptHistory } from '@/components/published-feeds/attempt-history'
 import { BindingSummary } from '@/components/published-feeds/binding-summary'
+import { FeedAddress } from '@/components/published-feeds/feed-address'
 import { AdministeredNote } from '@/components/published-feeds/administered-note'
 import {
   useAttempts,
@@ -170,11 +171,14 @@ export default function FeedDetailPage({ params }: { params: Promise<{ slug: str
         action={<ServingStatus attempt={newest} />}
       />
 
-      <BindingSummary feed={feed} />
+      <div className="space-y-4">
+        <FeedAddress feed={feed} />
+        <BindingSummary feed={feed} />
+      </div>
 
       <div className="mt-6 space-y-3">
         <h2 className={SECTION_HEADING}>Publish history</h2>
-        <AttemptHistory attempts={list} />
+        <AttemptHistory attempts={list} slug={slug} />
       </div>
 
       {isAdmin ? (

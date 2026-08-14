@@ -18,7 +18,7 @@ would become a hub table, and it is deliberately not.
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Integer, Text, func
+from sqlalchemy import CheckConstraint, DateTime, Index, Integer, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -44,6 +44,26 @@ class PublishedFeed(Base):
         CheckConstraint(
             "visibility IN ('private', 'public')",
             name="ck_published_feed_visibility",
+        ),
+        # The primary key makes a slug unique within one org, which is all the
+        # authenticated endpoints ever needed. `GET /public/feeds/<slug>` has no
+        # org segment, so a slug shared by two `public` feeds leaves it unable
+        # to say which was meant, and refusing that case at read time turns the
+        # collision into a weapon: any other org's administrator could claim a
+        # victim's slug, publish nothing, and take the victim's live feed dark.
+        # Unique here instead, so the collision cannot be created.
+        #
+        # Partial on purpose. A private feed is not anonymously addressable and
+        # cannot collide, so private slugs stay per-org exactly as before.
+        #
+        # It is also the index that lookup needs: `slug` is the primary key's
+        # SECOND column and therefore unusable as a leading key, so without this
+        # every anonymous request cost a sequential scan of the table.
+        Index(
+            "uq_published_feed_public_slug",
+            "slug",
+            unique=True,
+            postgresql_where=text("visibility = 'public'"),
         ),
     )
 

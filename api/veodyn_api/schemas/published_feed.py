@@ -7,15 +7,24 @@ diff fails the pipeline.
 
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from veodyn_api.schemas.catalog import CamelModel
+from veodyn_api.services import feed_registry
 
 # PostgreSQL `INTEGER`, which is the column type behind both of the integer
 # fields below. Without the bound a larger value passes request validation and
 # then fails at COMMIT, inside psycopg, as an unhandled 500 that names no field.
 # With it the refusal is the 422 every other bad field here already gets.
 PG_INT_MAX = 2_147_483_647
+
+
+# Slugs that cannot be feed names because a static route on `/published-feeds`
+# already answers to them. Kept beside the schema that refuses them rather than
+# in the router, because the write path is where a collision is still
+# preventable; by the time a request reaches the router the shadowing has
+# already happened.
+RESERVED_SLUGS = frozenset({"capabilities"})
 
 
 class PublishedFeedIn(CamelModel):
@@ -36,13 +45,60 @@ class PublishedFeedIn(CamelModel):
     # and contradicted by the very bytes served under it. The set widens when a
     # serializer learns a second version, and the type is what will say so.
     version: Literal["2.0"]
-    entity: Literal["vehicle_positions"]
+    # A plain string, validated against `feed_registry` below, not a `Literal`.
+    # A `Literal` here would make the generated openapi schema depend on which
+    # pack is installed, and `api/openapi.json` is committed and diffed in CI:
+    # a deployment naming an enterprise pack would fail its own pipeline the
+    # moment the registry widened. The registry keeps one wire contract for
+    # every deployment and moves the variation into the refusal message
+    # instead. See design section 4 for the full reasoning, and note revision 1
+    # of that design put `visibility` in this same registry -- it does not
+    # belong here, see `feed_registry.py`.
+    entity: str = Field(min_length=1)
     static_gtfs_ref: str = Field(min_length=1)
     source_column: str | None = None
     column_map: dict[str, str]
     on_error: Literal["block", "last_good"] = "block"
     last_good_max_age_seconds: int | None = Field(default=None, gt=0, le=PG_INT_MAX)
     visibility: Literal["private", "public"] = "private"
+
+    @field_validator("slug")
+    @classmethod
+    def _slug_is_not_a_reserved_segment(cls, value: str) -> str:
+        """`GET /published-feeds/capabilities` is a static route on the same
+        prefix as `GET /published-feeds/{slug}`, and `routers/__init__.py`
+        registers it first so the wildcard cannot swallow it. That ordering has
+        a cost this refusal pays off: without it a feed slugged `capabilities`
+        is accepted, and its own detail endpoint then answers the capabilities
+        payload forever, so the feed can be created, edited and deleted but
+        never read back.
+
+        Refused at the write instead, which is the only place the two can still
+        be told apart. Dropping the reservation and reordering the routers is
+        not the alternative it looks like: that trades an unreadable feed for an
+        unreachable capabilities endpoint on any deployment where somebody has
+        claimed the name.
+        """
+        if value in RESERVED_SLUGS:
+            reserved = ", ".join(sorted(RESERVED_SLUGS))
+            raise ValueError(
+                f"{value!r} is a reserved name on this collection and cannot be a feed slug; reserved: {reserved}"
+            )
+        return value
+
+    @field_validator("entity")
+    @classmethod
+    def _entity_is_registered(cls, value: str) -> str:
+        """Names the deployment, not the enum. A caller reading this should
+        conclude "this deployment does not support that entity" and see what it
+        does support, rather than parsing a 422 about a value nobody told them
+        the valid set of."""
+        if not feed_registry.is_registered(value):
+            supported = ", ".join(sorted(feed_registry.entities())) or "(none registered)"
+            raise ValueError(
+                f"{value!r} is not a supported entity in this deployment; this deployment supports: {supported}"
+            )
+        return value
 
     @model_validator(mode="after")
     def _cap_matches_mode(self) -> "PublishedFeedIn":
@@ -79,6 +135,23 @@ class PublishedFeedOut(CamelModel):
     # never reaches this model at all -- a write carrying it is refused with a
     # 422, so no stored binding is known-invalid at the moment it is written.
     binding_state: str
+
+
+class FeedCapabilitiesOut(CamelModel):
+    """What this deployment's entity registry actually holds, read at runtime
+    rather than inferred from a values file or a matching image digest.
+
+    Root CLAUDE.md records that an installed layer is inert until a deployment
+    names it, and the deploy succeeds either way -- costing four releases before
+    this pattern got an interrogation endpoint. `entities` is sorted so the
+    response is stable across the registry's unordered set.
+
+    The frontend's binding form renders `entity` as a stated fact when there is
+    exactly one, and as a picker otherwise (design section 4's "one
+    consequence"); this is the response that decision reads.
+    """
+
+    entities: list[str]
 
 
 class FindingOut(CamelModel):

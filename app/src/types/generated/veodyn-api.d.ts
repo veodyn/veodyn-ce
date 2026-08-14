@@ -268,6 +268,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/public/feeds/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Public Feed
+         * @description The current artifact for one public feed, as raw GTFS-Realtime bytes.
+         */
+        get: operations["get_public_feed_public_feeds__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/published-feeds": {
         parameters: {
             query?: never;
@@ -280,6 +300,28 @@ export interface paths {
         put?: never;
         /** Create Feed */
         post: operations["create_feed_published_feeds_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/published-feeds/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Capabilities
+         * @description A read, open to any org member: it names what this build can bind a feed
+         *     to, not who may read one, so it carries the same authorization as listing
+         *     feeds rather than the admin gate that creating or editing one takes.
+         */
+        get: operations["get_capabilities_published_feeds_capabilities_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -597,6 +639,24 @@ export interface components {
             [key: string]: string[];
         };
         /**
+         * FeedCapabilitiesOut
+         * @description What this deployment's entity registry actually holds, read at runtime
+         *     rather than inferred from a values file or a matching image digest.
+         *
+         *     Root CLAUDE.md records that an installed layer is inert until a deployment
+         *     names it, and the deploy succeeds either way -- costing four releases before
+         *     this pattern got an interrogation endpoint. `entities` is sorted so the
+         *     response is stable across the registry's unordered set.
+         *
+         *     The frontend's binding form renders `entity` as a stated fact when there is
+         *     exactly one, and as a picker otherwise (design section 4's "one
+         *     consequence"); this is the response that decision reads.
+         */
+        FeedCapabilitiesOut: {
+            /** Entities */
+            entities: string[];
+        };
+        /**
          * FeedOut
          * @description One upstream capture, as the Feed Health board reads it.
          *
@@ -827,11 +887,8 @@ export interface components {
             columnMap: {
                 [key: string]: string;
             };
-            /**
-             * Entity
-             * @constant
-             */
-            entity: "vehicle_positions";
+            /** Entity */
+            entity: string;
             /** Lastgoodmaxageseconds */
             lastGoodMaxAgeSeconds?: number | null;
             /**
@@ -1393,6 +1450,37 @@ export interface operations {
             };
         };
     };
+    get_public_feed_public_feeds__slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_feeds_published_feeds_get: {
         parameters: {
             query?: never;
@@ -1448,6 +1536,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublishedFeedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_capabilities_published_feeds_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedCapabilitiesOut"];
                 };
             };
             /** @description Validation Error */

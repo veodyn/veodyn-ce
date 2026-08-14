@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { FeatureDescriptor, ProposalManualPath } from '@/features/types'
+import type { ProposalManualPath } from '@/features/proposal-types'
+import type { FeatureDescriptor } from '@/features/types'
 import { AppError, ErrorIds } from '@/lib/errorIds'
 import { MAX_MESSAGE_CHARS, MAX_TRANSCRIPT_MESSAGES } from '@/types/ai-create'
 import type { CreateKind } from '@/types/ai-create'

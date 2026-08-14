@@ -39,6 +39,40 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 # What a read path reports instead of running the check. See PublishedFeedOut.
 UNKNOWN_STATE = "unknown"
 
+# The partial unique index from migration 0013. Matched by name against the
+# integrity error, so a violation of some OTHER constraint is never reported as
+# this one; see `_public_address_taken`.
+PUBLIC_SLUG_INDEX = "uq_published_feed_public_slug"
+
+
+def _public_address_taken(clash: IntegrityError) -> bool:
+    """Whether this integrity error is the cross-org public-slug collision.
+
+    Matched on the constraint name rather than assumed from context. Both write
+    paths can violate more than one constraint, and reporting an unrelated
+    failure as "that address is taken" sends the next debugger to a slug that is
+    perfectly free.
+    """
+    constraint = getattr(getattr(clash.orig, "diag", None), "constraint_name", None)
+    return constraint == PUBLIC_SLUG_INDEX
+
+
+def _public_address_conflict(slug: str, clash: IntegrityError) -> ApiError:
+    """Deliberately does not say which org holds it.
+
+    A public feed's address has no org segment, so the name is claimed globally
+    and the holder is in some other tenant. Naming them would turn this refusal
+    into a cross-tenant directory: anyone could enumerate which orgs exist by
+    guessing slugs. The caller gets what they can act on, which is that the
+    address is unavailable and a different one will work.
+    """
+    return ApiError(
+        ErrorId.PUBLISHED_FEED_PUBLIC_ADDRESS_TAKEN,
+        f"the public address {slug!r} is already claimed; a public feed's address is shared across the instance, "
+        "so choose a different slug or keep this feed private",
+        status_code=409,
+    )
+
 
 def require_admin(identity: Identity) -> None:
     """Guarded in the handler, because there is no `require_admin` dependency.
@@ -149,6 +183,11 @@ def create_feed(
         # check. The primary key is what actually decides, so the loser answers
         # the 409 this endpoint already documents rather than a 500 at commit.
         db.rollback()
+        # Checked before the per-org key, because this one is invisible from
+        # inside the caller's org: the colliding row belongs to someone else, so
+        # the `db.get` below finds nothing and would re-raise as a 500.
+        if _public_address_taken(clash):
+            raise _public_address_conflict(body.slug, clash) from clash
         if db.get(PublishedFeed, (identity.org_slug, body.slug)) is None:
             # Not the race: some other constraint gave way, which is a defect,
             # and calling it "slug taken" sends the debugger to the wrong place.
@@ -204,8 +243,21 @@ def update_feed(
     # The revision is half an artifact's identity, so it moves with any edit and
     # no existing artifact can be mistaken for one of this binding.
     feed.revision += 1
-    take_the_feed_off_the_air(db, feed)
-    db.commit()
+    try:
+        # `take_the_feed_off_the_air` is INSIDE the try, not before it. It runs a
+        # SELECT, which autoflushes the pending UPDATE, so a visibility flip onto
+        # a claimed address raises there rather than at the commit below.
+        take_the_feed_off_the_air(db, feed)
+        db.commit()
+    except IntegrityError as clash:
+        # An edit can claim a public address as surely as a create can, by
+        # flipping `private` to `public` on a slug another org already publishes
+        # at. Without this the caller gets a 500 out of psycopg naming an index
+        # they have never heard of, and the feed is left mid-edit.
+        db.rollback()
+        if not _public_address_taken(clash):
+            raise
+        raise _public_address_conflict(body.slug, clash) from clash
     return _out(feed, state)
 
 

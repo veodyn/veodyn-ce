@@ -5,8 +5,14 @@
     "these as required, and nothing on the wire carries them, so this file is",
     "what holds the two copies together. Changing the serializer fails",
     "test_gtfs_field_vocabulary.py; update the frontend in the same change,",
-    "then update this. Same shape and intent as ce_module_allowlist.json."
+    "then update this. Same shape and intent as ce_module_allowlist.json.",
+    "`entities` is the separate claim 'community registers exactly these', read",
+    "against services/feed_registry.py rather than the serializer: an",
+    "enterprise pack widens the registry without touching this file, so",
+    "`required`/`supported` are checked per entity this file names rather than",
+    "by exhaustive equality against whatever the serializer's dicts hold."
   ],
+  "entities": ["vehicle_positions"],
   "required": {
     "vehicle_positions": ["latitude", "longitude", "vehicle_id"]
   },

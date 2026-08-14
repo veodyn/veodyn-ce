@@ -6,7 +6,7 @@
 // column map in one message, and the form puts each on its own field.
 
 import { AppError, ErrorIds, isAppError } from '@/lib/errorIds'
-import type { PublishAttempt, PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
+import type { FeedCapabilities, PublishAttempt, PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
 
 function wrapError(error: unknown): Error {
   if (isAppError(error)) return error
@@ -108,6 +108,19 @@ export async function deletePublishedFeed(slug: string, opts: { signal?: AbortSi
       signal: opts.signal,
     })
     if (!res.ok) throw await refusal(res, `could not retire this feed (${res.status})`)
+  } catch (error) {
+    throw wrapError(error)
+  }
+}
+
+export async function fetchFeedCapabilities(opts: { signal?: AbortSignal } = {}): Promise<FeedCapabilities> {
+  try {
+    const res = await fetch('/api/published-feeds/capabilities', {
+      credentials: 'include',
+      signal: opts.signal,
+    })
+    if (!res.ok) throw await refusal(res, `feed capabilities fetch failed (${res.status})`)
+    return (await res.json()) as FeedCapabilities
   } catch (error) {
     throw wrapError(error)
   }

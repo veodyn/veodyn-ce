@@ -562,6 +562,23 @@
         "title": "FavoritesOut",
         "type": "object"
       },
+      "FeedCapabilitiesOut": {
+        "description": "What this deployment's entity registry actually holds, read at runtime\nrather than inferred from a values file or a matching image digest.\n\nRoot CLAUDE.md records that an installed layer is inert until a deployment\nnames it, and the deploy succeeds either way -- costing four releases before\nthis pattern got an interrogation endpoint. `entities` is sorted so the\nresponse is stable across the registry's unordered set.\n\nThe frontend's binding form renders `entity` as a stated fact when there is\nexactly one, and as a picker otherwise (design section 4's \"one\nconsequence\"); this is the response that decision reads.",
+        "properties": {
+          "entities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Entities",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entities"
+        ],
+        "title": "FeedCapabilitiesOut",
+        "type": "object"
+      },
       "FeedOut": {
         "description": "One upstream capture, as the Feed Health board reads it.\n\nA feed here IS a scheduled Redash query that captures into the historical\nwarehouse, so the id is the table it captures into and it matches the\ndataset of the same id one to one. That is structural rather than a\nconvention worth breaking: `get_or_create_table_name` keys the registry on\nquery_id and hands back exactly one table, so `dataset_count` cannot be\nanything but 1 while that holds.",
         "properties": {
@@ -1108,7 +1125,7 @@
             "type": "object"
           },
           "entity": {
-            "const": "vehicle_positions",
+            "minLength": 1,
             "title": "Entity",
             "type": "string"
           },
@@ -2312,6 +2329,50 @@
         ]
       }
     },
+    "/public/feeds/{slug}": {
+      "get": {
+        "description": "The current artifact for one public feed, as raw GTFS-Realtime bytes.",
+        "operationId": "get_public_feed_public_feeds__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-protobuf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed's current GTFS-Realtime message."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Public Feed",
+        "tags": [
+          "public-feeds"
+        ]
+      }
+    },
     "/published-feeds": {
       "get": {
         "operationId": "list_feeds_published_feeds_get",
@@ -2449,6 +2510,72 @@
           }
         },
         "summary": "Create Feed",
+        "tags": [
+          "published-feeds"
+        ]
+      }
+    },
+    "/published-feeds/capabilities": {
+      "get": {
+        "description": "A read, open to any org member: it names what this build can bind a feed\nto, not who may read one, so it carries the same authorization as listing\nfeeds rather than the admin gate that creating or editing one takes.",
+        "operationId": "get_capabilities_published_feeds_capabilities_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedCapabilitiesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Capabilities",
         "tags": [
           "published-feeds"
         ]

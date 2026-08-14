@@ -44,13 +44,20 @@ from tests.migration_chains import (
     ce_config,
 )
 
-HEAD_TABLE = "publish_attempt"
-"""The table the head revision creates, which the control below undoes by hand.
+HEAD_OBJECT = "uq_published_feed_public_slug"
+HEAD_OBJECT_DROP = f"DROP INDEX {HEAD_OBJECT}"
+"""What the head revision creates, and the statement that takes it back.
 
 Named here rather than inline so the pairing with `CE_HEAD` is one thing to
-update when a revision lands, and so a mismatch reads as this constant being
+update when a revision lands, and so a mismatch reads as these constants being
 stale rather than as a puzzling `DuplicateTable` inside the upgrade.
-"""
+
+It was `HEAD_TABLE = "publish_attempt"` with a hardcoded `DROP TABLE`, which
+held only while every revision happened to create a table. 0013 creates an
+INDEX, so the drop statement had to become part of what this names: a revision
+adding a column or a constraint will move it again, and that is the point.
+`relation` in Postgres covers both, which is why the stale version failed as
+`DuplicateTable` for an index."""
 
 CHAIN_DATABASE = "veodyn_migration_chain"
 """Its own database, named rather than randomised so a crashed run leaves one
@@ -215,8 +222,23 @@ def test_the_body_recorder_records(fresh_url: str) -> None:
     seed_like_prod(fresh_url, stamp=CE_PREVIOUS)
     engine = create_engine(fresh_url)
     with engine.begin() as connection:
-        connection.execute(text(f"DROP TABLE {HEAD_TABLE}"))
+        connection.execute(text(HEAD_OBJECT_DROP))
     engine.dispose()
 
     assert run_upgrade_recording_bodies(ce_config()) == [CE_HEAD]
-    assert HEAD_TABLE in tables_in(fresh_url)
+    assert HEAD_OBJECT in relations_in(fresh_url)
+
+
+def relations_in(url: str) -> set[str]:
+    """Tables AND indexes, because head is not always a table.
+
+    `tables_in` was enough while every revision created one. It silently answers
+    "absent" for an index, so using it here would have made the assertion above
+    fail for the right reason by accident and then pass for the wrong one the
+    moment somebody made it lenient.
+    """
+    engine = create_engine(url)
+    with engine.begin() as connection:
+        names = set(connection.execute(text("SELECT relname FROM pg_class")).scalars())
+    engine.dispose()
+    return names

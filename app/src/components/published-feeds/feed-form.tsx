@@ -7,11 +7,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { GTFS_FIELDS, missingRequired, toColumnMap } from '@/lib/gtfs-fields'
-import { useQueryResultColumns } from '@/hooks/use-published-feeds'
+import { useFeedCapabilities, useQueryResultColumns } from '@/hooks/use-published-feeds'
 import { SUBSECTION_HEADING } from '@/lib/section-heading'
 import { QueryPicker } from './query-picker'
 import { ColumnMapEditor } from './column-map-editor'
 import { OnFailureSection, lastGoodAgeError } from './feed-form-on-failure'
+import { STANDARD, VERSION, ShapeSection } from './feed-form-shape'
+import { resolveEntitySelection } from './entity-selection'
 import type { PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
 
 interface FeedFormProps {
@@ -26,13 +28,6 @@ interface FeedFormProps {
   onSubmit: (input: PublishedFeedInput) => void
   onCancel: () => void
 }
-
-// The only legal values today, per the API's own Literal types. Stated as
-// facts rather than a one-option dropdown: a control with a single choice
-// invites clicking it to see what else is there, and there is nothing else.
-const STANDARD: PublishedFeedInput['standard'] = 'gtfs-rt'
-const VERSION: PublishedFeedInput['version'] = '2.0'
-const ENTITY: PublishedFeedInput['entity'] = 'vehicle_positions'
 
 function initialSelection(feed: PublishedFeed | undefined): Record<string, string | null> {
   const selection: Record<string, string | null> = {}
@@ -71,6 +66,9 @@ export function FeedForm({
   const [lastGoodMaxAgeSeconds, setLastGoodMaxAgeSeconds] = useState(
     initial?.lastGoodMaxAgeSeconds != null ? String(initial.lastGoodMaxAgeSeconds) : ''
   )
+  // Only meaningful once resolveEntitySelection says this is a picker; null
+  // until the reader picks something of their own.
+  const [pickedEntity, setPickedEntity] = useState<string | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   // Set once the reader has tried to submit, so the missing-field rows below
   // update live as fields are mapped rather than staying stuck on whatever was
@@ -81,6 +79,19 @@ export function FeedForm({
   const columns = resultColumns?.columns ?? []
   const missing = missingRequired(selection)
   const ageError = attempted ? lastGoodAgeError(onError, lastGoodMaxAgeSeconds) : null
+
+  const {
+    data: capabilities,
+    isLoading: capabilitiesLoading,
+    isError: capabilitiesError,
+  } = useFeedCapabilities()
+  // Undefined covers both "still loading" and "the request failed": both
+  // degrade to the single-fact form rather than an empty picker or a spinner
+  // blocking the whole form. A community deployment has exactly one entity
+  // and must never see the form degrade because a secondary request was slow.
+  const registeredEntities =
+    capabilitiesLoading || capabilitiesError ? undefined : capabilities?.entities
+  const entitySelection = resolveEntitySelection(registeredEntities, initial?.entity, pickedEntity)
 
   const mappingErrors: Record<string, string> = {}
   for (const field of GTFS_FIELDS) {
@@ -137,7 +148,7 @@ export function FeedForm({
       queryId: selectedQueryId,
       standard: STANDARD,
       version: VERSION,
-      entity: ENTITY,
+      entity: entitySelection.entity,
       staticGtfsRef: staticGtfsRef.trim(),
       // Carried through, never re-sent as null. The endpoint is a whole-binding
       // PUT, and `source_column` is real: it records the provenance of a row and
@@ -198,14 +209,12 @@ export function FeedForm({
           </div>
         </div>
 
-        <div className="space-y-3">
-          <h2 className={SUBSECTION_HEADING}>Shape</h2>
-          <dl className="grid grid-cols-3 gap-4 text-sm">
-            <ShapeFact label="Standard" value={STANDARD} />
-            <ShapeFact label="Version" value={VERSION} />
-            <ShapeFact label="Entity" value={ENTITY} />
-          </dl>
-        </div>
+        <ShapeSection
+          entity={entitySelection.entity}
+          onEntityChange={setPickedEntity}
+          isPicker={entitySelection.isPicker}
+          options={entitySelection.options}
+        />
 
         <div className="space-y-3">
           <h2 className={SUBSECTION_HEADING}>Mapping</h2>
@@ -263,15 +272,6 @@ function VisibilityOption({ value, label, description }: { value: string; label:
         <span>{label}</span>
         <span className="text-xs text-muted-foreground">{description}</span>
       </Label>
-    </div>
-  )
-}
-
-function ShapeFact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="space-y-1">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="font-mono text-sm">{value}</dd>
     </div>
   )
 }

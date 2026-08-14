@@ -134,6 +134,21 @@ class ErrorId(StrEnum):
     # Refused before an attempt is recorded: there were no rows to judge, which
     # is not the same fact as an attempt that judged some rows and failed.
     PUBLISHED_FEED_NO_RESULT = "VEODYN_PUBLISHED_FEED_NO_RESULT"
+    # `routers/public_feeds.py`'s one refusal for an unknown slug, a private
+    # feed, and a feed that has never published a clean attempt. Its own cause
+    # rather than a reuse of PUBLISHED_FEED_NOT_FOUND, because that one is an
+    # authenticated 404 whose message may say more: the anonymous route is the
+    # one place in this service where the three causes are deliberately
+    # indistinguishable, and giving it PUBLISHED_FEED_NOT_FOUND's id would tempt
+    # a future edit into giving it that id's message too.
+    PUBLIC_FEED_NOT_FOUND = "VEODYN_PUBLIC_FEED_NOT_FOUND"
+    # A public feed's address has no org segment, so `public` slugs are unique
+    # across every org, not just within one. Distinct from
+    # PUBLISHED_FEED_SLUG_TAKEN, which reports the per-org primary key: this one
+    # is refused by a name that is not visible to the caller and not theirs to
+    # free, so the message has to say the address is taken without saying who
+    # holds it.
+    PUBLISHED_FEED_PUBLIC_ADDRESS_TAKEN = "VEODYN_PUBLISHED_FEED_PUBLIC_ADDRESS_TAKEN"
 
 
 class ApiError(Exception):

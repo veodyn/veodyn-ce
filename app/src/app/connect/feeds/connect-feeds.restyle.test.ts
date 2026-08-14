@@ -11,6 +11,7 @@ const files = [
   'components/published-feeds/findings-list.tsx',
   'components/published-feeds/attempt-history.tsx',
   'components/published-feeds/binding-summary.tsx',
+  'components/published-feeds/feed-address.tsx',
   'components/published-feeds/query-picker.tsx',
   'components/published-feeds/column-map-editor.tsx',
   'components/published-feeds/feed-form.tsx',
