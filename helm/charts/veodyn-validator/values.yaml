@@ -42,9 +42,12 @@ app:
   # **Sized for the version we pin, which is 0.3.0**, and measured here rather
   # than taken on report: 584 MB peak RSS for one prepared feed, on the same
   # 18 MB, 92,360-trip archive the package author sizes against
-  # (`corpus/agencies/mdb-437` in that repository), prepare time 71s. 0.2.0
-  # cost about 3.5 GB for the same archive, which is why these were 4Gi/6Gi
-  # until the pin moved. Re-measure before lowering them again.
+  # (`corpus/agencies/mdb-437` in that repository). The author measures the
+  # same 584 MB resident on Linux with a 618 MB peak, and 618 is the number
+  # this pod is sized against, because the limit is enforced on Linux and
+  # against the peak. 0.2.0 cost about 3.5 GB for the same archive, which is
+  # why these were 4Gi/6Gi until the pin moved. Re-measure before lowering
+  # them again.
   #
   # **Size against the PEAK, not the steady state.** A limit that merely fits
   # what a prepared feed retains will OOM during the first prepare, and a peak
