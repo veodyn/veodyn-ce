@@ -45,17 +45,27 @@ app:
   # room for that peak plus the process itself; the request is what one
   # prepared feed actually holds.
   #
+  # **Size against the PEAK, not the steady state.** A limit that merely fits
+  # what a prepared feed retains will OOM during the first prepare, and a peak
+  # once reached is paid for good: freed pages stay reusable by the process but
+  # are not handed back to the OS. Measured on the package author's side, an
+  # intermediate version cut the live object graph from 1,684 MB to 328 MB and
+  # resident memory did not fall at all, it rose slightly, to 2.0 GB, because
+  # the loader still built every row before the compaction could happen. An
+  # object-graph number is not a number this pod can ever observe.
+  #
   # These are for ONE cached archive. VALIDATOR_CACHE_SIZE above one multiplies
   # the request, and the chart cannot know that, so raising it means raising
   # these together.
   #
   # **Sized for the version we pin, which is 0.2.0.** The package author has
-  # since found most of that footprint on their side (trips sharing a shape
-  # were each building their own copy of its polyline) and measures about
-  # 1.8 GB after it, but that is on their main and NOT in 0.2.0. Do not lower
-  # these to 1.8 until the pin in validator/pyproject.toml moves to a release
-  # that carries it: the number to size against is the code that runs, not the
-  # code that exists.
+  # since cut this to about 584 MB resident and 618 MB peak on their main, by
+  # consuming loader rows as they arrive rather than listing them first, with
+  # prepare time unchanged. That is NOT in 0.2.0. Do not lower these until the
+  # pin in validator/pyproject.toml moves to a release carrying it: the number
+  # to size against is the code that runs, not the code that exists. (An
+  # earlier revision of this note said 1.8 GB, which was a mid-flight figure
+  # the author has since superseded.)
   limitsCpu: "2"
   limitsMemory: "6Gi"
   requestsCpu: "500m"
