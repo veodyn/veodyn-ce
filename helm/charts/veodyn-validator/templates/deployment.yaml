@@ -1,0 +1,94 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Release.Name }}
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  progressDeadlineSeconds: 600
+  replicas: {{ (index .Values .Values.appName "replicas").default }}
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  strategy:
+    type: {{ index .Values .Values.appName "strategyType" }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+      annotations:
+        {{- /*
+          Changes on every deploy, so the pod template is never byte-identical
+          between two releases of the same image tag. Without it a release that
+          moves nothing but the image behind a floating tag leaves the
+          Deployment object unchanged, Kubernetes rolls nothing, and the old
+          pod serves on. That exact failure is recorded against the Redash
+          server template, which has no such annotation.
+        */}}
+        deploymentRevisionId: "{{ .Release.Revision }}"
+    spec:
+      {{- if .Values.registrySecretName }}
+      imagePullSecrets:
+        - name: {{ .Values.registrySecretName }}
+      {{- end }}
+      containers:
+      - name: {{ .Release.Name }}
+        image: "{{ .Values.image }}:{{ .Values.imageTag }}"
+        imagePullPolicy: Always
+        {{- /*
+          Both maps, matching veodyn-api's deployment. Gating on `env` alone is
+          a mistake that chart made and documents: a release with everything in
+          baseEnv and an empty env rendered no env block at all.
+        */}}
+        {{- if or (index .Values .Values.appName "env") (index .Values .Values.appName "baseEnv") }}
+        env:
+          {{- range $key, $value := (index .Values .Values.appName "baseEnv") }}
+          - name: {{ $key }}
+            value: {{ $value | quote }}
+          {{- end }}
+          {{- range $key, $value := (index .Values .Values.appName "env") }}
+          - name: {{ $key }}
+            value: {{ $value | quote }}
+          {{- end }}
+        {{- end }}
+        {{- /*
+          No `secret:` prefix handling, unlike veodyn-api's template. This
+          service holds no credentials: it takes a URL and returns a report,
+          and every one of its settings is a number or a duration. Adding the
+          secret branch here would be adding a mechanism for a case that does
+          not exist, and the absence is worth noticing if one ever does.
+        */}}
+        ports:
+        - containerPort: {{ index .Values .Values.appName "port" }}
+          name: lbport
+          protocol: TCP
+        resources:
+          limits:
+            cpu: {{ index .Values .Values.appName "limitsCpu" }}
+            memory: {{ index .Values .Values.appName "limitsMemory" }}
+          requests:
+            cpu: {{ index .Values .Values.appName "requestsCpu" }}
+            memory: {{ index .Values .Values.appName "requestsMemory" }}
+        {{- if (index .Values .Values.appName "readnessProbe") }}
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: {{ index .Values .Values.appName "readnessProbe" "path" }}
+            port: {{ index .Values .Values.appName "readnessProbe" "port" }}
+            scheme: HTTP
+          initialDelaySeconds: {{ index .Values .Values.appName "readnessProbe" "initialDelaySeconds" | default "20" }}
+          periodSeconds: {{ index .Values .Values.appName "readnessProbe" "periodSeconds" | default "30" }}
+          successThreshold: 1
+          timeoutSeconds: {{ index .Values .Values.appName "readnessProbe" "timeoutSeconds" | default "10" }}
+        {{- end }}
+        {{- /*
+          No livenessProbe, deliberately. A prepare occupies the process for
+          about 48 seconds, and a liveness probe that timed out during one
+          would kill the pod and throw away the work, then do it again on the
+          replacement. Readiness is enough: it takes the pod out of the Service
+          while it cannot answer, which is what the caller needs, without
+          destroying the thing it is waiting for.
+        */}}

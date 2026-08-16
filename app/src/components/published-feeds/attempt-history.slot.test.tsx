@@ -37,7 +37,7 @@ const BLOCKED: PublishAttempt = {
   queryResultId: 500,
   decision: 'blocked',
   reason: '1 conformance error(s)',
-  findings: [{ ruleId: 'E003', severity: 'ERROR', title: 'bad trip_id', locator: 'entity 0' }],
+  findings: [{ ruleId: 'E003', severity: 'ERROR', title: 'bad trip_id', locator: 'entity 0', occurrenceCount: 1 }],
   enabledRules: ['E003'],
   isCurrent: false,
   createdAt: new Date().toISOString(),

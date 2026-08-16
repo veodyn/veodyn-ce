@@ -31,11 +31,11 @@ UNSERIALIZABLE: list[dict[str, Any]] = [{"bus": "b1", "lat": None, "lon": -118.2
 
 CLEAN = ValidationOutcome(findings=(), enabled_rules=("E003",))
 ERRORED = ValidationOutcome(
-    findings=(Finding("E003", "ERROR", "trip_id does not exist", "vehicle_id b1 trip_id GHOST"),),
+    findings=(Finding("E003", "ERROR", "trip_id does not exist", "vehicle_id b1 trip_id GHOST", occurrence_count=1),),
     enabled_rules=("E003",),
 )
 WARNED = ValidationOutcome(
-    findings=(Finding("W009", "WARNING", "schedule_relationship not populated", "trip_id t1"),),
+    findings=(Finding("W009", "WARNING", "schedule_relationship not populated", "trip_id t1", occurrence_count=1),),
     enabled_rules=("W009",),
 )
 # No rule ran, so nothing was checked. Shaped exactly like CLEAN otherwise,

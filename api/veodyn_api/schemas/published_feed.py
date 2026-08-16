@@ -155,9 +155,9 @@ class FeedCapabilitiesOut(CamelModel):
 
 
 class FindingOut(CamelModel):
-    """One validator finding, flattened to one occurrence.
+    """One validator finding, flattened to one exported occurrence.
 
-    `publish_engine._as_json` already stores these camelCased, because that
+    `services/finding_json.py` already stores these camelCased, because that
     column is served verbatim. CamelModel's `populate_by_name` accepts either
     spelling, so this validates straight off the stored JSONB.
     """
@@ -166,6 +166,17 @@ class FindingOut(CamelModel):
     severity: str
     title: str
     locator: str
+    # How many times the rule fired, which is NOT how many findings carry this
+    # rule id: the validator exports a sample per rule and reports the total
+    # separately. Every finding split from one notice repeats that notice's
+    # total, so a surface can say "1 of 40" instead of showing one and implying
+    # one.
+    #
+    # Defaulted, because attempts recorded before this field existed are stored
+    # JSONB without it and are read back through this model. Zero rather than
+    # one: it is the value that reads as "this attempt does not know", and a
+    # default of 1 would be a plausible lie about historical data.
+    occurrence_count: int = 0
 
 
 class PublishAttemptOut(CamelModel):

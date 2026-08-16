@@ -160,6 +160,101 @@ contains "baseEnv reaches the Deployment with no app.env at all" "VEODYN_EXTRA_M
 renders "the example values files, as their header documents" \
 	-f "$CHART/values.example.yaml" -f "$CHART/values.example-api.yaml"
 
+# --- the validator chart ----------------------------------------------------
+#
+# One invariant here matters more than the rest, and it is why this section
+# exists rather than trusting `helm template` to exit 0: the validator must
+# never be reachable from outside the cluster. It authenticates nobody, and one
+# request makes it download a URL of the caller's choosing and spend about 48
+# seconds and several gigabytes on it. Adding an Ingress later would be a
+# one-line change with nothing failing anywhere, which is the shape of every
+# mistake the rest of this file was written for.
+
+VALIDATOR_CHART="helm/charts/veodyn-validator"
+
+validator_render() {
+	helm template render "$VALIDATOR_CHART" --set appName=app \
+		-f "$VALIDATOR_CHART/values.example.yaml" \
+		>/tmp/helm-render.out 2>/tmp/helm-render.err
+}
+
+# validator_lacks <description> <substring that must NOT appear>
+validator_lacks() {
+	description="$1"
+	forbidden="$2"
+	if ! validator_render; then
+		fail "validator: $description -- it did not render at all"
+	elif grep -qF "$forbidden" /tmp/helm-render.out; then
+		CHECKS=$((CHECKS + 1))
+		FAILURES=$((FAILURES + 1))
+		printf 'FAIL validator: %s -- %s is in the rendered manifest\n' "$description" "$forbidden"
+	else
+		pass "validator: $description"
+	fi
+}
+
+# validator_contains <description> <substring that must appear>
+validator_contains() {
+	description="$1"
+	expected="$2"
+	if ! validator_render; then
+		fail "validator: $description -- it did not render at all"
+	elif grep -qF "$expected" /tmp/helm-render.out; then
+		pass "validator: $description"
+	else
+		CHECKS=$((CHECKS + 1))
+		FAILURES=$((FAILURES + 1))
+		printf 'FAIL validator: %s -- %s is not in the rendered manifest\n' "$description" "$expected"
+	fi
+}
+
+validator_lacks "renders no Ingress, so nothing outside the cluster can reach it" "kind: Ingress"
+validator_contains "renders its Service as ClusterIP" "type: ClusterIP"
+validator_contains "renders one replica, because each holds its own prepared archive" "replicas: 1"
+validator_lacks "renders no migrate Job, having no database" "kind: Job"
+validator_contains "binds the port its readiness probe checks" "containerPort: 8000"
+
+# --- the API actually points at the validator -------------------------------
+#
+# `VEODYN_FEED_VALIDATOR_URL` is a STRING, and nothing else in either repository
+# compares it to the Service the validator chart creates. Get it wrong and the
+# deploy is green, the pod is healthy, and every publish attempt records
+# `failed` with an unreachable validator, which is indistinguishable at a glance
+# from a validator that is simply down. This renders both and checks that the
+# host in one is the Service name of the other.
+#
+# Skipped where helm/envs is absent, which is the community tree: the
+# per-environment values are deployment-specific and do not travel there, so
+# this check has nothing to compare and says so rather than failing.
+
+ENVS="helm/envs"
+if [ ! -d "$ENVS" ]; then
+	printf 'skip validator: no %s in this tree, so the API-to-validator link is not checkable here\n' "$ENVS"
+elif [ ! -f "$ENVS/veodyn-api-dev/values.yaml" ] || [ ! -f "$ENVS/veodyn-validator-dev/values.yaml" ]; then
+	printf 'skip validator: the dev values for one side are missing, so the link is not checkable\n'
+else
+	VALIDATOR_RELEASE="veodyn-validator-dev-app"
+	if helm template "$VALIDATOR_RELEASE" "$VALIDATOR_CHART" --set appName=app \
+		--set image=render --set imageTag=check \
+		-f "$ENVS/values-base.yaml" -f "$ENVS/values-dev.yaml" \
+		-f "$ENVS/veodyn-validator-dev/values.yaml" \
+		-f "$ENVS/veodyn-validator-dev/veodyn-validator-app.yaml" \
+		>/tmp/helm-render.out 2>/tmp/helm-render.err; then
+		# The Service the validator release actually creates, and the port on it.
+		if grep -qF "name: $VALIDATOR_RELEASE" /tmp/helm-render.out &&
+			grep -qF "port: 8000" /tmp/helm-render.out &&
+			grep -qF "http://$VALIDATOR_RELEASE:8000" "$ENVS/veodyn-api-dev/values.yaml"; then
+			pass "validator: the dev API's VEODYN_FEED_VALIDATOR_URL names the Service and port the chart creates"
+		else
+			CHECKS=$((CHECKS + 1))
+			FAILURES=$((FAILURES + 1))
+			printf 'FAIL validator: the dev API points at a validator Service or port that is not what the chart renders\n'
+		fi
+	else
+		fail "validator: the dev values do not render at all"
+	fi
+fi
+
 echo
 if [ "$FAILURES" -ne 0 ]; then
 	echo "$FAILURES of $CHECKS render checks failed"

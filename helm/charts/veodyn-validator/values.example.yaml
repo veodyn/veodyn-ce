@@ -1,0 +1,48 @@
+---
+# An example release of the veodyn-validator chart, in the shape a deployment's
+# own values file takes. The real per-environment files are not in this
+# repository; this is what one looks like.
+#
+# Installed with `--set appName=app`, like the other charts here.
+image: "registry.example/veodyn/veodyn-validator"
+imageTag: "latest"
+kubeNamespace: "veodyn"
+registrySecretName: "registry-credentials"
+
+app:
+  replicas:
+    default: 1
+  strategyType: Recreate
+  port: 8000
+
+  limitsCpu: "2"
+  limitsMemory: "6Gi"
+  requestsCpu: "500m"
+  requestsMemory: "4Gi"
+
+  readnessProbe:
+    path: /health
+    port: 8000
+    initialDelaySeconds: 20
+    periodSeconds: 30
+    timeoutSeconds: 10
+
+  env:
+    # ONE prepared archive, which is the normal case: the design gives a node
+    # one agency and one static_gtfs_ref. Raising this multiplies the memory
+    # request above by the same factor, since each entry holds its own copy.
+    VALIDATOR_CACHE_SIZE: "1"
+
+    # How long a prepared archive is served before it is rebuilt. The archive
+    # is NOT re-read until it expires, so this is the staleness the deployment
+    # is choosing to accept: an agency that republishes its schedule to the
+    # same URL will keep being validated against the previous one until this
+    # elapses. Agencies publish to a stable URL whose contents change, so
+    # nothing else will ever notice.
+    VALIDATOR_CACHE_TTL_SECONDS: "3600"
+
+    # Bounded so a hung upstream cannot hold a prepare open indefinitely and
+    # block every other request for that archive behind it.
+    VALIDATOR_STATIC_FETCH_TIMEOUT_SECONDS: "60"
+
+    VALIDATOR_PORT: "8000"

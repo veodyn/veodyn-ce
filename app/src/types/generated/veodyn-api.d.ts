@@ -697,15 +697,20 @@ export interface components {
         };
         /**
          * FindingOut
-         * @description One validator finding, flattened to one occurrence.
+         * @description One validator finding, flattened to one exported occurrence.
          *
-         *     `publish_engine._as_json` already stores these camelCased, because that
+         *     `services/finding_json.py` already stores these camelCased, because that
          *     column is served verbatim. CamelModel's `populate_by_name` accepts either
          *     spelling, so this validates straight off the stored JSONB.
          */
         FindingOut: {
             /** Locator */
             locator: string;
+            /**
+             * Occurrencecount
+             * @default 0
+             */
+            occurrenceCount: number;
             /** Ruleid */
             ruleId: string;
             /** Severity */
@@ -1461,13 +1466,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description The feed's current GTFS-Realtime message. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/x-protobuf": string;
                 };
             };
             /** @description Validation Error */

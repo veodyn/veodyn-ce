@@ -41,8 +41,12 @@ export const mockPublishAttempts: Record<string, PublishAttempt[]> = {
       decision: 'blocked',
       reason: '2 conformance error(s)',
       findings: [
-        { ruleId: 'E003', severity: 'ERROR', title: 'GTFS-rt trip_id does not exist', locator: 'entity 0' },
-        { ruleId: 'E003', severity: 'ERROR', title: 'GTFS-rt trip_id does not exist', locator: 'entity 4' },
+        // occurrenceCount is the validator's TRUE total and the locators are its
+        // capped sample, so this pair renders as "showing 2 of 12 occurrences".
+        // Deliberately unequal: a fixture where they matched would hide the
+        // only case the count exists for.
+        { ruleId: 'E003', severity: 'ERROR', title: 'GTFS-rt trip_id does not exist', locator: 'entity 0', occurrenceCount: 12 },
+        { ruleId: 'E003', severity: 'ERROR', title: 'GTFS-rt trip_id does not exist', locator: 'entity 4', occurrenceCount: 12 },
       ],
       enabledRules: ['E002', 'E003'],
       isCurrent: false,

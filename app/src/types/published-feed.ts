@@ -10,6 +10,18 @@ export interface PublishFinding {
   severity: string
   title: string
   locator: string
+  /**
+   * How many times the rule fired, which is NOT how many findings carry this
+   * ruleId: the validator caps exported samples per rule (1000 in 0.2.0) and
+   * reports the total separately, so past that ceiling the findings are a
+   * sample and only this knows the real number. Every finding split from one
+   * notice repeats that notice's total.
+   *
+   * Zero on attempts recorded before the field existed. Treat zero as "this
+   * attempt does not know" and fall back to the number of locators, rather
+   * than rendering a count of none.
+   */
+  occurrenceCount: number
 }
 
 export interface PublishAttempt {

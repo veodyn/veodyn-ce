@@ -48,6 +48,7 @@ from sqlalchemy.orm import Session
 from veodyn_api.models.publish_attempt import PublishAttempt
 from veodyn_api.models.published_feed import PublishedFeed
 from veodyn_api.services.feed_validator import Finding, ValidationOutcome, ValidatorUnavailable
+from veodyn_api.services.finding_json import findings_as_json
 from veodyn_api.services.gtfs_rt_serializer import SerializationError, serialize_vehicle_positions
 
 # Deliberately not a registry lookup yet: one entity is supported, and a
@@ -134,19 +135,6 @@ def _of_current_revision(artifact: PublishAttempt | None, feed: PublishedFeed) -
     return artifact
 
 
-def _as_json(findings: tuple[Finding, ...]) -> list[dict[str, Any]]:
-    """Findings as stored. camelCase because this column is served verbatim."""
-    return [
-        {
-            "ruleId": finding.rule_id,
-            "severity": finding.severity,
-            "title": finding.title,
-            "locator": finding.locator,
-        }
-        for finding in findings
-    ]
-
-
 def _record(
     db: Session,
     feed: PublishedFeed,
@@ -176,7 +164,7 @@ def _record(
             reason=reason,
             feed_bytes=feed_bytes,
             feed_timestamp=feed_timestamp,
-            findings=_as_json(findings),
+            findings=findings_as_json(findings),
             enabled_rules=list(outcome.enabled_rules) if outcome is not None else [],
             is_current=decision == "published",
         )

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: veodyn-validator
+description: The GTFS-Realtime validator service, which veodyn-api calls to validate a feed before publishing it
+type: application
+version: "1"

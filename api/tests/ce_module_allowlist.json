@@ -113,6 +113,7 @@
     "services/feed_registry.py",
     "services/feed_validator.py",
     "services/feeds.py",
+    "services/finding_json.py",
     "services/gtfs_rt_serializer.py",
     "services/llm.py",
     "services/publish_engine.py",

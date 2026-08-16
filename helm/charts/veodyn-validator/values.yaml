@@ -1,0 +1,74 @@
+---
+# Defaults for the veodyn-validator chart: the GTFS-Realtime validator that
+# veodyn-api calls before it publishes a feed. One Deployment and one Service.
+#
+# **Its own chart rather than a release of veodyn-api's**, for two reasons that
+# are both in the templates. That chart renders a migrate Job unconditionally,
+# and this service has no database at all; and it renders an Ingress, which
+# this service must not have (see `serviceType` below).
+#
+# **There is NO ingress here, and that is the security boundary.** The service
+# has no authentication of any kind: it takes a URL, downloads it, and spends
+# about 48 seconds and several gigabytes preparing it. Exposed publicly that is
+# a request that costs a pod's whole memory budget, and an unauthenticated
+# fetcher of arbitrary URLs besides. Only veodyn-api calls it, in-cluster, over
+# the ClusterIP Service. Every other service in this deployment has its own
+# public ingress; this one is the exception and it is deliberate.
+image: "PUT_IMAGE_IN_ENV_VALUES_FILE"
+imageTag: ""
+kubeNamespace: ""
+registrySecretName: ""
+
+# Read with `index .Values .Values.appName`, the same convention the other
+# charts use, so a release is installed with `--set appName=app`.
+app:
+  # ONE. Each replica prepares and holds its own copy of the static archive,
+  # so a second replica does not share the work, it doubles the memory. Scaling
+  # this is not a capacity decision, it is a decision to pay for the archive
+  # again; a shared cache would be a different design.
+  replicas:
+    default: 1
+  strategyType: Recreate
+  port: 8000
+
+  # Sized from the package author's measurement on an 18 MB, 92,360-trip
+  # archive: about 3.5 GB retained for one prepared feed, with the raw tables
+  # and the built context briefly coexisting during the load. The limit leaves
+  # room for that peak plus the process itself; the request is what one
+  # prepared feed actually holds.
+  #
+  # These are for ONE cached archive. VALIDATOR_CACHE_SIZE above one multiplies
+  # the request, and the chart cannot know that, so raising it means raising
+  # these together.
+  #
+  # **Sized for the version we pin, which is 0.2.0.** The package author has
+  # since found most of that footprint on their side (trips sharing a shape
+  # were each building their own copy of its polyline) and measures about
+  # 1.8 GB after it, but that is on their main and NOT in 0.2.0. Do not lower
+  # these to 1.8 until the pin in validator/pyproject.toml moves to a release
+  # that carries it: the number to size against is the code that runs, not the
+  # code that exists.
+  limitsCpu: "2"
+  limitsMemory: "6Gi"
+  requestsCpu: "500m"
+  requestsMemory: "4Gi"
+
+  # Recreate, not RollingUpdate, and the reason is the memory above: a rolling
+  # update runs the old and new pods at once, so it needs headroom for two
+  # prepared archives on one node. The cost is a gap in validation during a
+  # deploy, which publish attempts see as a failed attempt and retry, and which
+  # is the cheaper of the two failures.
+
+  readnessProbe:
+    path: /health
+    port: 8000
+    # Generous initial delay: the process answers /health as soon as it is up,
+    # but it is competing with a prepare for the same CPU whenever one is in
+    # flight, and a probe that fails during a prepare would restart the pod and
+    # throw the prepare away.
+    initialDelaySeconds: 20
+    periodSeconds: 30
+    timeoutSeconds: 10
+
+  baseEnv: {}
+  env: {}

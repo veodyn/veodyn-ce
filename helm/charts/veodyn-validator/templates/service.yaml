@@ -1,0 +1,29 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  ports:
+    - name: default
+      protocol: TCP
+      port: {{ index .Values .Values.appName "port" }}
+      targetPort: {{ index .Values .Values.appName "port" }}
+  selector:
+    app: {{ .Release.Name }}
+  {{- /*
+    ClusterIP, and NOT settable from a values file. Every other chart here
+    takes `serviceType` as a value; this one does not, because the only reason
+    to change it is to expose the service outside the cluster and that is the
+    one thing it must never be. It has no authentication: it takes a URL,
+    fetches it, and spends about 48 seconds and several gigabytes on it. The
+    caller is veodyn-api, in-cluster, and there is no second caller.
+
+    If a public validator is ever wanted, it needs authentication and a
+    per-caller budget first, and that is a different service rather than a
+    values change.
+  */}}
+  type: ClusterIP

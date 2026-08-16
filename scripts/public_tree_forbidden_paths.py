@@ -130,6 +130,26 @@ FORBIDDEN_PATHS = (
         "and the accounts used to seed them.",
     ),
     (
+        "docs/local-development.md",
+        "The local development runbook for a tenant build. It names both private packs and "
+        "the internal GitLab namespace they are cloned from, the reference tenant, and the "
+        "image names a local three-layer build produces. A reader of the public tree has "
+        "none of the three repositories it composes, so in that tree it is instructions for "
+        "machinery they cannot obtain. Same class as docs/local-la-metro-stack.md above. "
+        "CONTRIBUTING.md carries the community half: the loop for a clone that has only "
+        "this tree.",
+    ),
+    (
+        "scripts/dev-assemble.sh",
+        "The script the runbook above is written for, forbidden for the same reason and "
+        "found missing from this list while porting an unrelated change. It defaults to "
+        "sibling checkouts of veodyn-enterprise and veodyn-pack-riits by name, refuses to "
+        "run without both, prints their pinned commits, and selects the tenant's plugin. It "
+        "landed in the same merge as docs/local-development.md and was left off here, which "
+        "is the half that would have let it travel: the doc is blocked and the script it "
+        "documents was not.",
+    ),
+    (
         "docs/secret-rotation.md",
         "Operational runbook for one deployment's credentials: its 1Password vault and item "
         "path, its namespace and Secret names, which of its releases share a database, and "

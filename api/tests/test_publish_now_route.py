@@ -66,7 +66,7 @@ def _validator(monkeypatch: pytest.MonkeyPatch, outcome: ValidationOutcome) -> N
 
 CLEAN = ValidationOutcome(findings=(), enabled_rules=("E003",))
 ERRORED = ValidationOutcome(
-    findings=(Finding(rule_id="E003", severity="ERROR", title="bad id", locator="entity 0"),),
+    findings=(Finding(rule_id="E003", severity="ERROR", title="bad id", locator="entity 0", occurrence_count=1),),
     enabled_rules=("E003",),
 )
 

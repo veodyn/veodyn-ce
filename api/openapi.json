@@ -662,11 +662,16 @@
         "type": "object"
       },
       "FindingOut": {
-        "description": "One validator finding, flattened to one occurrence.\n\n`publish_engine._as_json` already stores these camelCased, because that\ncolumn is served verbatim. CamelModel's `populate_by_name` accepts either\nspelling, so this validates straight off the stored JSONB.",
+        "description": "One validator finding, flattened to one exported occurrence.\n\n`services/finding_json.py` already stores these camelCased, because that\ncolumn is served verbatim. CamelModel's `populate_by_name` accepts either\nspelling, so this validates straight off the stored JSONB.",
         "properties": {
           "locator": {
             "title": "Locator",
             "type": "string"
+          },
+          "occurrenceCount": {
+            "default": 0,
+            "title": "Occurrencecount",
+            "type": "integer"
           },
           "ruleId": {
             "title": "Ruleid",

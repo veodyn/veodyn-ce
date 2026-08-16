@@ -44,7 +44,7 @@ def test_the_findings_ship_with_the_attempt(api: TestClient, db: Session, monkey
 
     assert body[0]["findings"], "a blocked attempt with no findings explains nothing"
     finding = body[0]["findings"][0]
-    assert set(finding) == {"ruleId", "severity", "title", "locator"}
+    assert set(finding) == {"ruleId", "severity", "title", "locator", "occurrenceCount"}
     assert body[0]["enabledRules"]
 
 
