@@ -213,6 +213,11 @@ validator_contains "renders its Service as ClusterIP" "type: ClusterIP"
 validator_contains "renders one replica, because each holds its own prepared archive" "replicas: 1"
 validator_lacks "renders no migrate Job, having no database" "kind: Job"
 validator_contains "binds the port its readiness probe checks" "containerPort: 8000"
+# Empty here renders no imagePullSecrets at all, every node fails the pull with
+# "no basic auth credentials", and the deploy job still reports success because
+# helm --wait times out on readiness rather than on the pull. That is what the
+# first deploy of this chart did.
+validator_contains "carries an imagePullSecrets block at all" "imagePullSecrets"
 
 # --- the API actually points at the validator -------------------------------
 #

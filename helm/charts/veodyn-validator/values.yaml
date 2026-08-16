@@ -17,7 +17,15 @@
 image: "PUT_IMAGE_IN_ENV_VALUES_FILE"
 imageTag: ""
 kubeNamespace: ""
-registrySecretName: ""
+
+# Defaulted, not empty, and it matches veodyn-api's chart for the same reason.
+# helm/deploy.sh creates a secret named `registry-harbor` in the namespace if
+# one is missing, and no per-environment values file sets this: the charts
+# carry it. Left empty here the Deployment renders with no imagePullSecrets,
+# every node fails the pull with "no basic auth credentials", and the deploy
+# job still goes green because helm --wait times out on readiness rather than
+# on the pull. Measured exactly that way on the first deploy of this chart.
+registrySecretName: registry-harbor
 
 # Read with `index .Values .Values.appName`, the same convention the other
 # charts use, so a release is installed with `--set appName=app`.
