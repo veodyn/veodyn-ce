@@ -16,9 +16,9 @@ app:
   port: 8000
 
   limitsCpu: "2"
-  limitsMemory: "6Gi"
+  limitsMemory: "2Gi"
   requestsCpu: "500m"
-  requestsMemory: "4Gi"
+  requestsMemory: "1Gi"
 
   readnessProbe:
     path: /health

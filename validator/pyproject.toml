@@ -15,7 +15,7 @@ dependencies = [
     # and gtfs_rt_validator.report.occurrence, which are real but narrower than the
     # api.py surface, so an unpinned bump could move code this service depends on
     # without anything here noticing at install time.
-    "gtfs-rt-validator==0.2.0",
+    "gtfs-rt-validator==0.3.0",
 ]
 
 [dependency-groups]

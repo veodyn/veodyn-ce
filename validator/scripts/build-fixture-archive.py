@@ -2,7 +2,7 @@
 
 Small enough that `prepare_feed` returns in well under a second, which is the
 whole reason the contract check is runnable by hand: a real agency archive
-costs about 48 seconds and 3.5 GB.
+costs about a minute and 584 MB.
 
 It declares one agency, stop, route and trip, so a realtime message naming any
 OTHER trip_id makes E003 fire deterministically. That is what gives the check

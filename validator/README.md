@@ -71,11 +71,19 @@ addition per notice:
 ## The prepared-feed cache
 
 `gtfs_rt_validator.api.validate` reloads the static archive on every call
-unless handed a `PreparedFeed`; that reload is ~48 seconds and ~1.9 GB
-resident for an MBTA-sized archive (measured in the 2026-08-13 spike behind
-`docs/superpowers/specs/2026-08-13-validated-feed-publishing-design.md`
-section 6.6). This service caches one `PreparedFeed` per `gtfs` URL so repeat
+unless handed a `PreparedFeed`; that reload is ~48 seconds and peaks at
+~584 MB resident for an MBTA-sized archive, measured on the pinned
+gtfs-rt-validator 0.3.0 against `corpus/agencies/mdb-437` (18 MB, 92,360
+trips). This service caches one `PreparedFeed` per `gtfs` URL so repeat
 validations cost the sub-second rule pass instead.
+
+The memory figure tracks the pin, not the archive: the same archive cost about
+3.5 GB on 0.2.0, and the 2026-08-13 spike behind
+`docs/superpowers/specs/2026-08-13-validated-feed-publishing-design.md`
+section 6.6 reported ~1.9 GB, which that spike measured as a live object graph
+rather than as resident memory. Re-measure RSS when the pin moves; the pod's
+limit is enforced against RSS, and an object-graph number can fall while
+resident memory does not move at all.
 
 - **Cache size defaults to 1** (`VALIDATOR_CACHE_SIZE`). A node serves one
   agency and carries one `static_gtfs_ref`, so 1 is the normal case, and the
@@ -89,8 +97,9 @@ validations cost the sub-second rule pass instead.
 - **No headroom for two copies.** A stale entry is dropped the moment it is
   found stale, before its replacement starts building, rather than kept alive
   until the rebuild finishes. The alternative would let the default size-1
-  cache spike to ~3.8 GB (two archives resident at once) during every rebuild,
-  which is exactly the surprise the default above is supposed to rule out.
+  cache spike to roughly double (two archives resident at once) during every
+  rebuild, which is exactly the surprise the default above is supposed to rule
+  out.
   Dropping first costs a gap instead: the request that finds the entry gone
   pays the full ~48 second rebuild.
 - **Concurrent requests for one URL do not queue.** A second request for a
@@ -174,21 +183,27 @@ over already-parsed rows, so this costs microseconds) and real, decodable
 GTFS-Realtime bytes built with the package's own fixture-building
 `proto.encode.encode` helper. See `tests/fixtures.py`.
 
-## What the chart needs (for whoever wires up deployment)
+## How this is deployed
 
-Not built here; `helm/` and `ci/` are out of scope per the brief. For whoever
-does:
+The chart is `helm/charts/veodyn-validator` and the dev environment's values
+are `helm/envs/veodyn-validator-dev/`. Three things about it are load-bearing
+and each has a render check in `scripts/check-helm-render.sh`:
 
-- A new deployment (image built from this `Dockerfile`, one container, no
-  persistent volume: the cache is in-process memory only and is expected to be
-  rebuilt on restart).
-- `api`'s `VEODYN_FEED_VALIDATOR_URL` needs to point at this service's
-  in-cluster address (see `api/.env.example`, currently documented there as
-  empty, which is why every publish attempt fails closed today).
-- Memory request/limit should account for `VALIDATOR_CACHE_SIZE *` ~1.9 GB per
-  entry (default size 1, so ~2 GB plus headroom) rather than a generic
-  service's footprint; this is the one thing that makes this service unusual
-  to size.
+- **No Ingress, and a ClusterIP Service.** This service authenticates nobody
+  and one request makes it download a URL of the caller's choosing, so only
+  `api` reaches it, in-cluster. Every other service here has a public ingress;
+  this one is the exception on purpose.
+- **One replica, `Recreate`.** Each replica prepares and holds its own archive,
+  so a second replica doubles the memory rather than sharing the work, and a
+  rolling update would need headroom for two prepared archives on one node.
+- **Memory sized on `VALIDATOR_CACHE_SIZE *` the per-entry peak** (default
+  size 1, ~584 MB on the pinned 0.3.0, so 1Gi request and 2Gi limit) rather
+  than a generic service's footprint. This is the one thing that makes the
+  service unusual to size, and the figure moves with the pin.
+
+`api`'s `VEODYN_FEED_VALIDATOR_URL` must name that Service; the render script
+checks the dev values on both sides agree, because a wrong string there is a
+green deploy where every publish attempt records an unreachable validator.
 - No liveness concern beyond `GET /health`; no external dependencies to probe
   (this service fetches the static GTFS archive itself, per request, rather
   than depending on another in-cluster service for it).

@@ -39,37 +39,33 @@ app:
   strategyType: Recreate
   port: 8000
 
-  # Sized from the package author's measurement on an 18 MB, 92,360-trip
-  # archive: about 3.5 GB retained for one prepared feed, with the raw tables
-  # and the built context briefly coexisting during the load. The limit leaves
-  # room for that peak plus the process itself; the request is what one
-  # prepared feed actually holds.
+  # **Sized for the version we pin, which is 0.3.0**, and measured here rather
+  # than taken on report: 584 MB peak RSS for one prepared feed, on the same
+  # 18 MB, 92,360-trip archive the package author sizes against
+  # (`corpus/agencies/mdb-437` in that repository), prepare time 71s. 0.2.0
+  # cost about 3.5 GB for the same archive, which is why these were 4Gi/6Gi
+  # until the pin moved. Re-measure before lowering them again.
   #
   # **Size against the PEAK, not the steady state.** A limit that merely fits
   # what a prepared feed retains will OOM during the first prepare, and a peak
   # once reached is paid for good: freed pages stay reusable by the process but
-  # are not handed back to the OS. Measured on the package author's side, an
-  # intermediate version cut the live object graph from 1,684 MB to 328 MB and
-  # resident memory did not fall at all, it rose slightly, to 2.0 GB, because
-  # the loader still built every row before the compaction could happen. An
-  # object-graph number is not a number this pod can ever observe.
+  # are not handed back to the OS. What made this worth writing down: an
+  # intermediate version on the author's side cut the live object graph from
+  # 1,684 MB to 328 MB while resident memory did not fall at all, it rose, to
+  # 2.0 GB, because the loader still built every row before the compaction
+  # could happen. An object-graph number is not one this pod can ever observe,
+  # so measure RSS, which is what the limit is enforced against.
   #
-  # These are for ONE cached archive. VALIDATOR_CACHE_SIZE above one multiplies
-  # the request, and the chart cannot know that, so raising it means raising
-  # these together.
-  #
-  # **Sized for the version we pin, which is 0.2.0.** The package author has
-  # since cut this to about 584 MB resident and 618 MB peak on their main, by
-  # consuming loader rows as they arrive rather than listing them first, with
-  # prepare time unchanged. That is NOT in 0.2.0. Do not lower these until the
-  # pin in validator/pyproject.toml moves to a release carrying it: the number
-  # to size against is the code that runs, not the code that exists. (An
-  # earlier revision of this note said 1.8 GB, which was a mid-flight figure
-  # the author has since superseded.)
+  # The headroom is deliberate and it is NOT slack for a bigger cache. 584 MB
+  # is one archive of one size; a larger agency costs more, and the request has
+  # to cover the worst archive this deployment is pointed at, not the one that
+  # happened to be measured. VALIDATOR_CACHE_SIZE (default 1) multiplies it,
+  # and the chart cannot see that value, so raising it means raising these in
+  # the same change.
   limitsCpu: "2"
-  limitsMemory: "6Gi"
+  limitsMemory: "2Gi"
   requestsCpu: "500m"
-  requestsMemory: "4Gi"
+  requestsMemory: "1Gi"
 
   # Recreate, not RollingUpdate, and the reason is the memory above: a rolling
   # update runs the old and new pods at once, so it needs headroom for two

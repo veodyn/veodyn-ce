@@ -16,10 +16,22 @@ from gtfs_rt_validator.api import Mode, PreparedFeed
 from gtfs_rt_validator.proto.encode import encode
 from gtfs_rt_validator.proto.schema_current import SCHEMA
 from gtfs_rt_validator.report.occurrence import NoticeContainer
-from gtfs_rt_validator.static.adapter import RawTables
+from gtfs_rt_validator.static.adapter import RawTables, StopTimeTable
 from gtfs_rt_validator.static.context import StaticContext
 
-EMPTY_RAW_TABLES = RawTables(agency=[], stops=[], routes=[], trips=[], stop_times=[], shapes=[], frequencies=[])
+# `stop_times` is a `StopTimeTable`, not a list: 0.3.0 compacted the stop_times
+# representation so a prepared feed peaks at ~584 MB instead of ~3.5 GB, and
+# `StaticContext.build` reads `.by_trip` off it. An empty table is still the
+# featureless static feed these fixtures want; only its container changed.
+EMPTY_RAW_TABLES = RawTables(
+    agency=[],
+    stops=[],
+    routes=[],
+    trips=[],
+    stop_times=StopTimeTable(by_trip={}, first_unknown_trip_id=None, first_unknown_stop_id=None),
+    shapes=[],
+    frequencies=[],
+)
 
 
 def empty_prepared_feed() -> PreparedFeed:

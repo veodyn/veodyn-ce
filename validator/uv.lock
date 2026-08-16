@@ -125,14 +125,14 @@ wheels = [
 
 [[package]]
 name = "gtfs-rt-validator"
-version = "0.2.0"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "gtfs-validator" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ee/04/2cfb2f345ccb38f5188a829b94fff455a48909613555172a014a313f9428/gtfs_rt_validator-0.2.0.tar.gz", hash = "sha256:630e906e86a0d1120687c0b8e5609bb1689a5599e714fe9c990cf27b083711ab", size = 725908, upload-time = "2026-08-16T18:14:17.446Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/68/bb/3efbd63c66cd2d18602a451e26c42334b511abca23d3838df7526ed9f21a/gtfs_rt_validator-0.3.0.tar.gz", hash = "sha256:beab926ed3514cafc9bf46a0c5b6955f36a2e0630259b184ed641a41cb166bd5", size = 736241, upload-time = "2026-08-16T22:16:35.377Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3c/68/5ae09a03777d0faf43d1f00e12ec9079cf6d2125f22fcbf4c36b679e075d/gtfs_rt_validator-0.2.0-py3-none-any.whl", hash = "sha256:e7564dedf50d4c1dd38709027dca6c3bc5a5acdfe48cbae718d3859316561fe3", size = 467592, upload-time = "2026-08-16T18:14:16.238Z" },
+    { url = "https://files.pythonhosted.org/packages/30/86/4d9ed319bbb00634328a01efa9b3553ed4f3e8a54d965ad76d5ba7896b7f/gtfs_rt_validator-0.3.0-py3-none-any.whl", hash = "sha256:e7051cdd3a0bcbf0c989a1a2f6ee8722871cdcf72a58428912083d44d20ded10", size = 473273, upload-time = "2026-08-16T22:16:34.124Z" },
 ]
 
 [[package]]
@@ -618,7 +618,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
-    { name = "gtfs-rt-validator", specifier = "==0.2.0" },
+    { name = "gtfs-rt-validator", specifier = "==0.3.0" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pydantic-settings", specifier = ">=2.6" },
