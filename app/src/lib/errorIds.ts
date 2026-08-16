@@ -26,6 +26,12 @@ export const ErrorIds = {
   API_BAD_REQUEST: 'E_API_001',
   API_NOT_FOUND: 'E_API_002',
   API_UPSTREAM_FAILED: 'E_API_003',
+  // A published feed set to `last_good` whose current artifact is older than
+  // the cap its operator declared. Its own cause rather than API_NOT_FOUND,
+  // because it is the opposite claim: the feed is there and the address is
+  // right, and only the data is too old to hand over. A consumer should poll
+  // again; one reading this as NOT_FOUND would drop the address.
+  API_FEED_TOO_STALE: 'E_API_004',
 
   // ── Auth / permissions (AUTH) ─────────────────────────────────────────────
   AUTH_NO_SESSION: 'E_AUTH_001',

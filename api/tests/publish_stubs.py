@@ -116,12 +116,18 @@ def attempt_row(
     is_current: bool = True,
     query_result_id: int = 999,
     binding_revision: int | None = None,
+    feed_timestamp: int | None = 1800,
 ) -> PublishAttempt:
     """An artifact row written straight to the table, bypassing the engine.
 
     Two jobs: standing in for the writer who does not clear the old pointer,
     and standing in for the other worker in a race. Both need a row the engine
     did not produce, which is the whole point of not going through it.
+
+    `feed_timestamp` is the artifact's GTFS header time, and it is settable
+    because the serving endpoint's `last_good` age cap is measured against it:
+    a test for that has to place the artifact at a chosen distance from a
+    frozen clock.
     """
     return PublishAttempt(
         org_slug=feed.org_slug,
@@ -131,7 +137,7 @@ def attempt_row(
         decision=decision,
         reason="",
         feed_bytes=feed_bytes,
-        feed_timestamp=1800,
+        feed_timestamp=feed_timestamp,
         findings=[],
         enabled_rules=["E003"],
         is_current=is_current,

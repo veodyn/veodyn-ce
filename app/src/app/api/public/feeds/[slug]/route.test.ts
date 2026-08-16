@@ -100,7 +100,55 @@ describe('the public feed proxy', () => {
     }
   )
 
-  it.each([500, 503, 429])(
+  it('passes a stale-feed 503 through with its Retry-After', async () => {
+    // The one upstream refusal that is neither an absence nor a fault: a
+    // `last_good` feed past its cap. Folding it into the 502 below would tell a
+    // consumer the backend broke, and folding it into the 404 above would tell
+    // them the feed was gone; both send them somewhere other than "poll again".
+    vi.stubEnv('CATALOG_API_URL', 'http://sidecar:8000')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: { id: 'VEODYN_PUBLIC_FEED_TOO_STALE' } }), {
+            status: 503,
+            headers: { 'retry-after': '300' },
+          })
+      )
+    )
+    const { GET } = await load()
+
+    const res = await GET(request(), { params: Promise.resolve({ slug: 'vehicles-live' }) })
+
+    expect(res.status).toBe(503)
+    expect(res.headers.get('retry-after')).toBe('300')
+    // Upstream's own body still does not come through, same as every other
+    // refusal on this route.
+    expect(JSON.stringify(await res.json())).not.toContain('VEODYN_PUBLIC_FEED_TOO_STALE')
+  })
+
+  it.each([
+    ['an ingress HTML body', 'text/html', '<html>503 Service Unavailable</html>'],
+    ['some other JSON refusal', 'application/json', JSON.stringify({ error: { id: 'SOMETHING_ELSE' } })],
+  ])('folds a 503 that is not a stale feed (%s) into 502', async (_label, type, body) => {
+    // A 503 is also what an ingress with no healthy backend answers, and what a
+    // restarting pod answers. Reporting that as "stale, retry" would tell every
+    // consumer to keep polling straight through an outage, which is the 404
+    // collapse's mistake pointed the other way.
+    vi.stubEnv('CATALOG_API_URL', 'http://sidecar:8000')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(body, { status: 503, headers: { 'content-type': type } }))
+    )
+    const { GET } = await load()
+
+    const res = await GET(request(), { params: Promise.resolve({ slug: 'vehicles-live' }) })
+
+    expect(res.status).toBe(502)
+    expect(res.headers.get('retry-after')).toBeNull()
+  })
+
+  it.each([500, 429])(
     'answers 502 for upstream %i, so an outage does not read as a missing feed',
     async (status) => {
       // The counterpart to the 404 case above. Both hide the upstream body, but

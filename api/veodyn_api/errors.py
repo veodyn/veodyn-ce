@@ -149,6 +149,12 @@ class ErrorId(StrEnum):
     # free, so the message has to say the address is taken without saying who
     # holds it.
     PUBLISHED_FEED_PUBLIC_ADDRESS_TAKEN = "VEODYN_PUBLISHED_FEED_PUBLIC_ADDRESS_TAKEN"
+    # `last_good` mode, past the cap. Distinct from PUBLIC_FEED_NOT_FOUND
+    # because it is the opposite claim: the feed exists, is public, and has
+    # published: what it does not have is anything fresh enough to serve. It
+    # rides a 503 rather than a 404 for the same reason, so a consumer can tell
+    # "come back" from "there is nothing here".
+    PUBLIC_FEED_TOO_STALE = "VEODYN_PUBLIC_FEED_TOO_STALE"
 
 
 class ApiError(Exception):
