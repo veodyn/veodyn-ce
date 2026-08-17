@@ -56,14 +56,45 @@ def test_retired_type_blocks_the_deploy():
     assert any("riits_nextbus" in line and "BLOCKS DEPLOY" in line for line in lines)
 
 
-def test_needs_manual_migration_type_blocks_the_deploy():
+def test_needs_manual_migration_type_blocks_the_deploy(monkeypatch):
     # The other blocking bucket: a lossy rename, not a retirement. Both feed
     # blocking_reasons and both must gate; this covers the branch retired
     # types alone would not.
-    counts = [("riits_gtfsrt", 1)]
+    #
+    # NEEDS_MANUAL_MIGRATION is EMPTY now: its two entries moved to
+    # PACK_PROVIDED_TYPES when those runners moved into veodyn-pack-riits
+    # rather than being migrated onto community connectors. So this injects a
+    # synthetic entry instead of naming a real type. Deleting the test would
+    # have been easier and wrong: what is under test is the mechanism the next
+    # lossy rename will depend on, not today's contents, and a version written
+    # against an empty dict would be a test that cannot fail.
+    monkeypatch.setattr(report_data_source_types, "NEEDS_MANUAL_MIGRATION", {"some_lossy_type": "a reason"})
+
+    counts = [("some_lossy_type", 1)]
     blocking_reasons = report_data_source_types.build_blocking_reasons()
 
-    assert "riits_gtfsrt" in report_data_source_types.offending_types(counts, blocking_reasons)
+    assert "some_lossy_type" in report_data_source_types.offending_types(counts, blocking_reasons)
+
+    lines = report_data_source_types.format_report_lines(counts, blocking_reasons)
+    assert any("some_lossy_type" in line and "BLOCKS DEPLOY" in line for line in lines)
+
+
+def test_the_two_moved_types_no_longer_gate():
+    # The point of the change, asserted directly rather than inferred from the
+    # dict being empty: a database still holding riits_gtfsrt and riits_geojson
+    # rows must now deploy, because the runners are in the pack installed on
+    # top of this image. This is the assertion that fails if someone puts
+    # either back into NEEDS_MANUAL_MIGRATION without moving the runner back.
+    counts = [("riits_gtfsrt", 1), ("riits_geojson", 1)]
+    blocking_reasons = report_data_source_types.build_blocking_reasons()
+
+    assert report_data_source_types.offending_types(counts, blocking_reasons) == []
+
+    lines = report_data_source_types.format_report_lines(counts, blocking_reasons)
+    for type_name in ("riits_gtfsrt", "riits_geojson"):
+        assert any(type_name in line and "needs pack" in line for line in lines), (
+            f"{type_name} must still be named in the report so an operator without the pack sees it"
+        )
 
 
 def test_main_exit_code_matches_offending_types_being_empty_or_not():

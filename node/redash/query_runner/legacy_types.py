@@ -60,24 +60,17 @@ RETIRED_TYPES = ("riits_nextbus", "riits_twitter")
 # connect the row wrong instead of leaving it visibly broken. Reported by
 # bin/report_data_source_types.py; an operator must resolve each row by hand,
 # there is no code path that migrates them automatically.
-NEEDS_MANUAL_MIGRATION = {
-    "riits_gtfsrt": (
-        "not a pure rename: the old runner offered two endpoints "
-        "(rail_ws_url_template, bus_ws_url_template) and two resources "
-        "(rail_vehicle_positions, rapid_bus_vehicle_positions); gtfs_realtime has a "
-        "single feed_url and a single vehicle_positions resource, and drops `source` "
-        "and renames `route_code`. An operator must decide which of the two feeds this "
-        "data source becomes, create a new gtfs_realtime data source for it, and update "
-        "any saved queries that name the resource gtfs_realtime no longer has."
-    ),
-    "riits_geojson": (
-        "not a pure rename: the old runner read bundled layer data that this branch "
-        "deleted from the repo; static_geojson reads layers from a data_path directory "
-        "instead. An operator must decide where that layer directory now lives, create a "
-        "new static_geojson data source with data_path pointed at it, and update any "
-        "saved queries and dashboards that used the old data source."
-    ),
-}
+#
+# EMPTY, and that is a decision rather than an oversight. Both entries that
+# were here, riits_gtfsrt and riits_geojson, moved to PACK_PROVIDED_TYPES
+# below when their runners moved into veodyn-pack-riits instead of being
+# migrated onto a community connector. The reasoning is recorded there.
+#
+# Keep the mechanism. The next connector rename that cannot represent an
+# existing row belongs here, and an empty dict is what makes the gate a no-op
+# rather than absent: bin/report_data_source_types.py folds this into
+# build_blocking_reasons() unconditionally.
+NEEDS_MANUAL_MIGRATION: dict[str, str] = {}
 
 # Types whose runner is no longer in this image: it moved to a customer pack
 # that a deployment installs on top. The rows are not orphaned and there is
@@ -88,6 +81,36 @@ PACK_PROVIDED_TYPES = {
         "provided by the veodyn-pack-riits distribution; install it in the image "
         "and name veodyn_pack_riits.query_runner.riits_api in "
         "REDASH_ADDITIONAL_QUERY_RUNNERS, or these data sources cannot run"
+    ),
+    # These two were in NEEDS_MANUAL_MIGRATION until the first deploy that ran
+    # the preflight against a real database. It blocked, correctly, on four
+    # rows; two were retired by hand and these two turned out to be worth
+    # keeping in their original shape rather than migrating.
+    #
+    # The trade the migration would have required, for gtfs_realtime: one data
+    # source split into two, five saved queries repointed and rewritten for
+    # renamed fields, four of them on dashboards. For static_geojson: a new
+    # data source and seven queries repointed, two of them scheduled and so
+    # failing unattended if missed. Moving the runner into the pack that is
+    # already installed on this node costs none of that, and the layer data the
+    # geojson runner reads had already moved into the same pack.
+    #
+    # This is what the mechanism is for. A pack-provided type is reported but
+    # does not gate, because an operator running the pack-installed image is in
+    # a correct state.
+    "riits_gtfsrt": (
+        "provided by the veodyn-pack-riits distribution; install it in the image "
+        "and name veodyn_pack_riits.query_runner.riits_gtfsrt in "
+        "REDASH_ADDITIONAL_QUERY_RUNNERS, or these data sources cannot run. Kept "
+        "rather than migrated to gtfs_realtime: it serves two feeds and two "
+        "resources that the community connector cannot represent as one row."
+    ),
+    "riits_geojson": (
+        "provided by the veodyn-pack-riits distribution; install it in the image "
+        "and name veodyn_pack_riits.query_runner.riits_geojson in "
+        "REDASH_ADDITIONAL_QUERY_RUNNERS, or these data sources cannot run. Kept "
+        "rather than migrated to static_geojson: it reads layer data bundled beside "
+        "itself, which moved into the same pack."
     ),
 }
 

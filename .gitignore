@@ -51,3 +51,8 @@ docs/.docusaurus/
 # Only this name. An overlay assembled under a different one is NOT ignored,
 # and `git status` is what will tell you.
 composed/
+
+# Wrangler writes an account-id cache here whenever it runs from the repo root.
+# scan-secrets fails on it: the id is a 32-char hex literal, exactly the shape
+# of a credential.
+.wrangler/

@@ -3,12 +3,18 @@
 A data source row stores the runner's type. Until the migration has run
 everywhere and the release after it has shipped, both strings must resolve
 for the connectors that were pure renames. riits_gtfsrt and riits_geojson are
-NOT pure renames (see legacy_types.NEEDS_MANUAL_MIGRATION) and must stay out
-of this resolution path entirely.
+NOT pure renames and must stay out of this resolution path entirely: their
+runners moved into veodyn-pack-riits instead, so they are in
+legacy_types.PACK_PROVIDED_TYPES and are provided by the pack rather than
+aliased to anything here.
 """
 
 from redash.query_runner import get_query_runner, legacy_types, query_runners, register
-from redash.query_runner.legacy_types import NEEDS_MANUAL_MIGRATION, TYPE_RENAMES
+from redash.query_runner.legacy_types import (
+    NEEDS_MANUAL_MIGRATION,
+    PACK_PROVIDED_TYPES,
+    TYPE_RENAMES,
+)
 
 
 def test_every_old_type_still_resolves():
@@ -33,19 +39,36 @@ def test_lossy_renames_are_absent_from_type_renames():
     assert "riits_geojson" not in TYPE_RENAMES
 
 
-def test_lossy_renames_need_manual_migration():
-    assert "riits_gtfsrt" in NEEDS_MANUAL_MIGRATION
-    assert "riits_geojson" in NEEDS_MANUAL_MIGRATION
-    # Each explanation is operator-facing text, not a placeholder.
-    assert len(NEEDS_MANUAL_MIGRATION["riits_gtfsrt"]) > 20
-    assert len(NEEDS_MANUAL_MIGRATION["riits_geojson"]) > 20
+def test_lossy_renames_are_provided_by_the_pack():
+    # These two were in NEEDS_MANUAL_MIGRATION until the preflight ran against
+    # a real database and blocked on them. Migrating would have cost one data
+    # source split in two, twelve queries repointed and rewritten, and two
+    # scheduled queries failing unattended if missed; keeping the runners and
+    # moving them into the pack costs none of that.
+    for old in ("riits_gtfsrt", "riits_geojson"):
+        assert old not in NEEDS_MANUAL_MIGRATION, f"{old} no longer needs a manual migration"
+        assert old in PACK_PROVIDED_TYPES, f"{old} must be declared pack-provided or the preflight blocks it"
+        # Operator-facing text, not a placeholder, and it must name the pack
+        # and the import path: without them the message says a deploy is
+        # broken without saying what to install.
+        reason = PACK_PROVIDED_TYPES[old]
+        assert "veodyn-pack-riits" in reason
+        assert f"veodyn_pack_riits.query_runner.{old}" in reason
+
+
+def test_needs_manual_migration_is_empty_and_the_mechanism_survives():
+    # Empty is the current state, not the permanent one. Asserting it keeps a
+    # future addition visible in review rather than letting one appear
+    # silently, and legacy_types must keep exporting the name either way.
+    assert NEEDS_MANUAL_MIGRATION == {}
 
 
 def test_lossy_renames_are_not_aliased():
-    # No runner module named riits_gtfsrt.py or riits_geojson.py exists any
-    # more (the rename replaced them), and legacy_types only builds aliases
-    # for entries in TYPE_RENAMES, so neither old string should resolve to
-    # anything at all.
+    # Neither runner is in THIS image: they live in veodyn-pack-riits, which a
+    # deployment installs on top. legacy_types only builds aliases for entries
+    # in TYPE_RENAMES, so neither old string resolves here. On a node with the
+    # pack installed they resolve because the pack registers them directly,
+    # which is a different path from aliasing and is not what this file tests.
     assert query_runners.get("riits_gtfsrt") is None
     assert query_runners.get("riits_geojson") is None
     assert get_query_runner("riits_gtfsrt", {}) is None

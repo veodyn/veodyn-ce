@@ -72,8 +72,18 @@ _NON_SECRET_KEY_SUFFIXES = ("name", "maxage", "enabled")
 # convention for "the name of an existing Secret object", never a literal
 # value: a chart values file writing `redash.existingSecret: "some-secret"`
 # is naming a Secret object the cluster already holds, not carrying its
-# contents.
-_NON_SECRET_EXACT_KEYS = frozenset({"existingsecret", "existingtoken"})
+# contents. `onePasswordItemPath` is the same idea one level further out: it
+# addresses a vault item (`vaults/<vault>/items/<item>`) that the 1Password
+# operator reads, so the value is a location and the credential never appears
+# in the file at all.
+#
+# Exact matches rather than a "path"/"secret" suffix rule on purpose. A suffix
+# would also excuse a key like `DB_SECRET` or `TOKEN_PATH` that a future values
+# file might genuinely use for a value, and this detector is the only thing
+# standing between a deploy branch and a committed credential.
+_NON_SECRET_EXACT_KEYS = frozenset(
+    {"existingsecret", "existingtoken", "onepassworditempath"}
+)
 
 
 def _looks_like_secret_key(key):

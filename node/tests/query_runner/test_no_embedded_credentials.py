@@ -31,10 +31,8 @@ from pathlib import Path
 import pytest
 
 from tests.query_runner.credential_scan import (
-    CREDENTIAL_SHAPED,
     credential_shaped_offenders_in_text,
     discover_tracked_text_files,
-    password_shaped_offenders_in_text,
     scan_repo_for_credential_shaped_literals,
 )
 
@@ -251,27 +249,7 @@ def test_known_benign_literals_are_not_flagged():
     assert offenders == [], offenders
 
 
-def test_password_shaped_assignment_is_flagged_where_credential_shaped_misses_it():
-    # A human-chosen password fixture, deliberately not hex, not a UUID, and
-    # not 40+ base64-ish characters: CREDENTIAL_SHAPED is blind to it by
-    # design, which is exactly the gap the second, assignment-shaped
-    # detector exists to close (see credential_scan_password_shaped.py).
-    fake_password = "NotHexOrBase64Shaped"
-    text = f'postgresPassword: "{fake_password}"\n'
-    assert not CREDENTIAL_SHAPED.findall(text), (
-        "test fixture is invalid: the fixture value must NOT match CREDENTIAL_SHAPED, "
-        "or this test would not be proving what it claims to"
-    )
-    offenders = password_shaped_offenders_in_text("helm/depends/vars/example-values.yml", text)
-    assert offenders, "a password-shaped assignment must be flagged even when value-shape misses it"
-    assert fake_password not in offenders[0], "the offender message must never carry the matched value"
-
-
-def test_password_shaped_detector_does_not_fire_on_indirection_empty_or_placeholder():
-    text = (
-        'REDASH_HISTORICAL_CLICKHOUSE_PASSWORD: "secret:REDASH_HISTORICAL_CLICKHOUSE_PASSWORD"\n'
-        'API_TOKEN: ""\n'
-        'SECRET_KEY: "CHANGE_ME"\n'
-    )
-    offenders = password_shaped_offenders_in_text("helm/depends/vars/example-values.yml", text)
-    assert offenders == [], offenders
+# The assignment-shaped detector's own cases live in
+# test_password_shaped_detector.py. They were here until this file crossed the
+# 300-line limit; they are a coherent group (all about the key-name judgement)
+# and were the natural seam.
