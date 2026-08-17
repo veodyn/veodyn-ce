@@ -13,7 +13,7 @@ both trees and not named here must match byte for byte.
 WHY THIS GUARD EXISTS. Only docs/ was compared before, and everything else was
 left to whoever remembered. It was not remembered. Six files under node/ sat
 for weeks at the state of the initial community import while this tree moved
-on twice: riits_gtfsrt and riits_geojson were still declared as blocking
+on twice: two of the tenant's realtime runners were still declared as blocking
 manual migrations after their runners had moved into the pack, and a
 credential-detector test file that a 300-line split created here never existed
 there at all. Neither side failed anything. The community tree was in a

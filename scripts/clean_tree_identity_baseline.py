@@ -58,6 +58,5 @@ BASELINE = (
     ("node/tests/query_runner/test_no_embedded_credentials.py", 1, ((11, 1),)),
     ("node/tests/query_runner/test_socaltransport.py", 20, ((9, 3), (13, 17))),
     ("node/tests/query_runner/test_trafficland.py", 18, ((12, 18),)),
-    ("node/tests/test_report_data_source_types.py", 14, ((0, 14),)),
     ("scripts/kpi_specs.py", 5, ((0, 3), (15, 1), (16, 1))),
 )

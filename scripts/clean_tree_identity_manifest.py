@@ -171,6 +171,17 @@ LOAD_BEARING = (
         "is testing nothing.",
     ),
     (
+        "node/tests/test_report_data_source_types.py",
+        "The same reasoning as the file above, one layer out. It asserts which of those same "
+        "type keys the deploy preflight blocks on and which it only reports: a pack-provided "
+        "type must be named and must not gate the deploy, a retired one must gate it. Both "
+        "cases have to spell the key out, because the key IS what the preflight matches on. "
+        "It carried a counted baseline rather than this declaration until the count grew and "
+        "failed, which was the wrong mechanism for it: a number going up here means somebody "
+        "added a case to a test whose whole job is naming these strings, so raising the "
+        "number would have recorded nothing and blocking on it stops a correct change.",
+    ),
+    (
         "node/migrations/versions/e369133dda9a_rename_connector_types.py",
         "An applied migration. Its literals are the from-side of a rename that already ran "
         "against production; editing them changes what a replayed history does.",

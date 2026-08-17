@@ -143,7 +143,7 @@ FORBIDDEN_PATHS = (
         "scripts/dev-assemble.sh",
         "The script the runbook above is written for, forbidden for the same reason and "
         "found missing from this list while porting an unrelated change. It defaults to "
-        "sibling checkouts of veodyn-enterprise and veodyn-pack-riits by name, refuses to "
+        "sibling checkouts of the enterprise pack and the tenant pack by name, refuses to "
         "run without both, prints their pinned commits, and selects the tenant's plugin. It "
         "landed in the same merge as docs/local-development.md and was left off here, which "
         "is the half that would have let it travel: the doc is blocked and the script it "
