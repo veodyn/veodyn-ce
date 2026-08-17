@@ -134,6 +134,7 @@ All prefixed `VEODYN_`:
 | `VEODYN_REDIS_URL` | Its own Redis index |
 | `VEODYN_CLICKHOUSE_URL` (+ user, password, database) | The warehouse the data catalog reads; empty means the catalog answers 503 |
 | `VEODYN_AI_RELAY_KEY`, `VEODYN_AI_API_KEY`, `VEODYN_AI_MODEL` | The AI provider half: the shared bearer, the Anthropic key, the model |
+| `VEODYN_FEED_VALIDATOR_URL` | The containerized GTFS-Realtime validator behind [Published Feeds](/features/published-feeds). Empty means none is configured, and every publish attempt then fails closed rather than serving bytes nothing checked |
 | `VEODYN_EXTRA_MODULES` | Dotted module paths, comma separated, imported at startup. Empty is the community edition. An [enterprise](/editions) deployment sets it to `veodyn_enterprise.registration`, and a module named here that cannot be imported raises rather than being skipped |
 | `VEODYN_REPORTS_REQUIRE_SEPARATE_APPROVER` | Enterprise: server-side enforcement of the four-eyes rule (default true) |
 

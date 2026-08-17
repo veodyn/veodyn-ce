@@ -58,6 +58,7 @@ is licensed commercially.
 | **Finding things** | Home, Discover, favorites, tags | ● | ● |
 | | Federated search across object types | ● | ● |
 | | Data catalog and domain pages | ● | ● |
+| | [Managed datasets](/features/data-catalog#where-a-dataset-comes-from) in the catalog, and writing records to one | | ● |
 | | Movers, and the counter row on a domain page | | ● |
 | **Watching** | Feed Health and Schedules | ● | ● |
 | | KPIs: targets, thresholds, owners, cadence, history | | ● |
@@ -67,6 +68,8 @@ is licensed commercially.
 | | Shared-link audit and bulk revoke | | ● |
 | **Interfaces** | REST API and per-query API keys | ● | ● |
 | | MCP endpoint | ● | ● |
+| | [Published feeds](/features/published-feeds): declaring, publishing on demand, serving publicly | ● | ● |
+| | Feed entities beyond vehicle positions, scheduled publishing, private-feed tokens | | ● |
 | | WebSocket streaming | | ● |
 | **AI** | SQL generation, Create with AI, converse, Edit with AI | ● | ● |
 | | The Home digest and annotation suggestions | | ● |

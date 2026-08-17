@@ -202,7 +202,7 @@ The kebab menu on a query gathers everything else, shown only when you hold the 
 |---|---|
 | **Fork** | Copies the query so you can modify it without touching the original |
 | **Schedule** | Runs the query on a cadence: from every minute to every 24 hours, or weekly, with an optional end date and a time/day picker |
-| **API Key** | Reveals the query's results API key, with copy and a confirmed **Regenerate** (the old URL stops working) |
+| **API Key** | Reveals the query's results API key **and the two URLs built from it**, with copy on each and a confirmed **Regenerate**. See [The API Key dialog](#the-api-key-dialog) |
 | **Embed** | For queries marked safe: a public URL and iframe snippet for one visualization, with width/height |
 | **Add to Dashboard** | Pick one of the query's visualizations and a target dashboard, or create a new dashboard on the spot |
 | **Permissions** | Manage the per-query permitted-users list |
@@ -210,6 +210,30 @@ The kebab menu on a query gathers everything else, shown only when you hold the 
 | **Make it a draft / Share with the team** | Only with the drafts feature enabled: controls whether the query is listed for the team yet |
 
 Scheduled runs and their punctuality are visible org-wide under [Monitoring](/features/monitoring).
+
+### The API Key dialog
+
+The dialog hands out three copyable fields, not one:
+
+| Field | What it is |
+|---|---|
+| **API Key** | The query's own results key |
+| **Results in JSON format** | The complete URL, key included |
+| **Results in CSV format** | The same, as CSV |
+
+The two URLs are there because assembling one by hand is where the path shape and the parameter name go wrong, and the address a reader would most plausibly build did not work. They are built on **this app's own origin**, which is the only address a consumer outside the deployment can reach.
+
+Either URL returns the query's latest results to **anyone holding the key, with no sign-in**: paste one into a browser, `curl`, or a spreadsheet importer. Treat it as a credential, and see [Sharing & Embeds](/features/sharing) for how it sits beside the other tokenized surfaces.
+
+**Regenerate** takes two clicks, because rotating the key breaks every URL already built from it and there is no undo.
+
+A query whose backend issued no key says so, and offers no rotate control, rather than showing an empty box.
+
+:::note Who can see the key
+
+The key is returned to the query's **owner and to administrators** only. Another member with permission to run the query still cannot read the credential that would let anyone else run it anonymously.
+
+:::
 
 ## Query snippets
 

@@ -23,6 +23,7 @@ const sidebars: SidebarsConfig = {
         'features/ai',
         'features/sharing',
         'features/connect',
+        'features/published-feeds',
         'features/settings',
       ],
     },

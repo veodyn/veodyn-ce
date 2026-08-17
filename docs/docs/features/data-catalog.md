@@ -28,18 +28,39 @@ Below that, one card of metadata:
 
 | Field | Meaning |
 |---|---|
-| Freshness badge | The same Fresh / Stale / Down verdict used everywhere else |
+| Freshness badge | The same Fresh / Stale / Down verdict used everywhere else, on a [captured](#where-a-dataset-comes-from) dataset |
 | **Domain** | A link to that [domain page](#domain-pages), when the dataset belongs to one |
 | Tags | Editable in place by any signed-in member, with autocomplete over the existing vocabulary |
 | **Coverage** | The first and last timestamp the dataset holds, in your chosen [date format](/features/settings) |
 | **Rows** | How many rows in total |
 | **Sources** | The feeds or queries that write into it |
 
-Then the **Schema**: every column with its type and, where one is recorded, a description. Types are the warehouse's own, so `Nullable(Float64)` and `DateTime64(3, 'UTC')` appear as written rather than translated.
+Then the **Schema**: every column with its type and, where one is recorded, a description. Types are the warehouse's own, so `Nullable(Float64)` and `DateTime64(3, 'UTC')` appear as written rather than translated. A **copy button** beside the heading puts the whole schema on the clipboard as JSON, which is the form a script or an AI client wants it in.
 
 Tags here are wiki-like on purpose. A dataset has no owner to check against, since its id is a warehouse table rather than something a person created, so curating them is open to any member of the org.
 
 An id that matches no dataset says **Dataset not found**, and a catalog service that cannot be reached says so instead of showing an empty table.
+
+### Where a dataset comes from
+
+Every dataset states its **origin**, and whether this build can **write** to it. The two answers change what its page renders.
+
+| Origin | What it is | Freshness badge | Schema table | Records |
+|---|---|:---:|:---:|:---:|
+| **Capture** | A table the warehouse accumulated from a scheduled query | ● | ● | |
+| **Contributed** | A dataset a registered provider serves, which nothing captures | | | ● |
+
+**A contributed dataset carries no freshness badge, and that is not an omission.** *Stale* describes a feed that stopped arriving, and a dataset nobody feeds has not stopped: it is complete when its author says it is. An empty contributed dataset makes the point concrete, since it has no coverage end and would therefore read as stale on the day it was declared.
+
+It shows no schema table either. Its columns are the ones somebody declared, the record table renders every one of them under its own name, and restating them would add two nobody asked for: `captured_at` and `source` belong to the log the view is built from, not to the declaration. On a capture that table is the only place the shape is written down, which is why it stays there.
+
+Because it is a page you type into rather than read out of, a contributed dataset also gets the **full page width**. The narrow column that keeps a description readable is the same column that makes a sixteen-column record table scroll sideways inside itself.
+
+:::note Writing to a dataset is enterprise
+
+A community build renders no record editor, so a contributed dataset there is a catalog entry with nothing to type into. That is the intended state rather than a missing feature: the editor, and the actions beside the dataset's name, mount from the [enterprise](/editions) pack.
+
+:::
 
 ### Domain pages
 
@@ -87,7 +108,7 @@ On an [enterprise](/editions) build, `GET /api/domains` discovers keys from two 
 
 `/data` is every dataset in the instance as a grid of cards, with a count beside the search box.
 
-Each card carries the dataset's **name**, which is the link to its page, the **domain** it belongs to if it has one, a **freshness badge**, its **row count**, and its tags. Tag chips are links in their own right, so a chip searches for everything carrying that tag rather than opening the dataset under it. Tags of the form `domain:*` are structural and never shown as chips.
+Each card carries the dataset's **name**, which is the link to its page, the **domain** it belongs to if it has one, its **row count**, and its tags. Where the badge goes depends on [where the dataset came from](#where-a-dataset-comes-from): a captured one shows its **freshness badge**, and a contributed one is marked **Managed** instead, so a dataset you can type into is distinguishable from the captures either side of it in the grid. Tag chips are links in their own right, so a chip searches for everything carrying that tag rather than opening the dataset under it. Tags of the form `domain:*` are structural and never shown as chips.
 
 ### Reading the freshness badge
 
@@ -98,6 +119,8 @@ Three states, and they are the same three the [Feed Health](/features/monitoring
 | **Fresh** | The dataset has been updated within the cadence its feed is expected to keep |
 | **Stale** | It has not, and is overdue |
 | **Down** | The feed behind it is not running |
+
+The badge appears on **captured** datasets only, for the reason given [above](#where-a-dataset-comes-from).
 
 The verdict is a function of elapsed time and ages while you watch: a badge reading Fresh when you opened the page will turn Stale on its own if the next update does not arrive. The time beside the badge is when the dataset last received data, not when the page loaded.
 
@@ -122,6 +145,21 @@ Datasets, queries and dashboards share one [tagging system](/features/home#searc
 
 ## Where the catalog comes from
 
-The catalog is served by the veodyn-api sidecar reading the **historical warehouse** (ClickHouse), which is populated by the query service's capture layer: an admin opts a data source into historical capture, and every scheduled run of its queries lands as rows in the warehouse. The catalog is strictly read-only over that warehouse.
+The catalog is served by the veodyn-api sidecar over the **historical warehouse** (ClickHouse), and it is assembled from **every registered dataset source** rather than from one place.
+
+The warehouse's own registry is one such source, and on a community build it is the only one: an admin opts a data source into historical capture, every scheduled run of its queries lands as rows in the warehouse, and the query service records each capture table there. An [enterprise](/editions) pack registers further sources, which is how a dataset the warehouse never captured can appear in the catalog at all.
+
+Whatever a source does not state, the catalog fills in from ClickHouse's own system tables: the schema, the row count, and the coverage span. Nothing is invented on top of that. A dataset with no rows reports no coverage rather than a plausible-looking range, and a source that declines to describe where its rows come from gets an empty description rather than a borrowed sentence about a Redash capture that never happened.
+
+Two mechanics are worth knowing if a deployment runs more than one source:
+
+- **A source can take the place of one it replaced.** A pack that renames a captured table and puts a view under the original name would otherwise leave the same dataset in the catalog twice under two ids, with every consumer keying on whichever arrived first. The replacing source names what it shadows, and the shadowed entry drops out, including as a target for tags.
+- **A source states its own row count where the warehouse cannot.** A view stores no rows, so asking the warehouse would report every contributed dataset as empty.
+
+### When it is empty rather than broken
+
+A fresh install has no `historical` database and no capture registry, because the query service creates them the first time it captures a result. **That is an empty catalog, not a failure**: the catalog, the domain pages and Feed Health all report having nothing rather than answering 502, whichever of the two is missing.
+
+A single registered table that is shaped differently from the rest no longer fails the catalog for all of them either; it is left out and the others are served.
 
 On an instance without the sidecar or without ClickHouse configured, the catalog pages state that the service is unavailable and fall back to demo fixtures.

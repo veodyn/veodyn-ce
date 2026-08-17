@@ -129,6 +129,38 @@ Each chart renders an nginx-class Ingress per configured host with cert-manager 
 
 Because each backend is publicly routable, anything that must always run on a request (token checks, audit logging, rate limits) belongs in the backend that owns it, not in the frontend proxy.
 
+## Security headers
+
+**The frontend sends its own security headers; the charts and the ingress do not.** Nothing in the Helm templates or in any per-environment values file adds a `configuration-snippet` or an `add_header` for these, so an ingress annotation is not quietly covering the same ground, and adding one would give the same concern two authorities.
+
+Sent on every response:
+
+| Header | Value |
+|---|---|
+| `X-Content-Type-Options` | `nosniff`, which matters most for a proxy streaming backend bodies through |
+| `Referrer-Policy` | `strict-origin-when-cross-origin`, since paths here carry share tokens |
+| `X-DNS-Prefetch-Control` | `off` |
+| `Strict-Transport-Security` | One year, `includeSubDomains`, **in production builds only** |
+
+The **Content-Security-Policy** is built per request and is nonce-based with `strict-dynamic`, which is what makes a nonce workable in an app that code-splits: the nonce authorizes Next's bootstrap and everything it loads inherits trust, so hashed chunk filenames do not each need listing.
+
+Two of its choices are deliberate and worth not "tightening" by reflex:
+
+- **`style-src` keeps `unsafe-inline`.** React and Next both write inline style attributes and there is no nonce path for those, so removing it ships a policy that breaks the app rather than one that protects it.
+- **`img-src` allows `https:` wholesale.** Two features render an image URL that cannot be known in advance: a result cell renders one the *query author* wrote, and an avatar renders whatever a user set. Restricting it to `self` blanks both. Plain `http` is still refused, and blocking script injection is `script-src`'s job.
+
+**Framing is expressed only as `frame-ancestors`**, and there is no `X-Frame-Options`. That header cannot say "deny everywhere except the embed routes", and two mechanisms disagreeing about framing is worse than one. `/login`, `/invite` and `/reset` are reachable without a session but are **not** embeddable, because a framed sign-in form is the clickjacking case.
+
+:::caution A basemap configured only in YAML is invisible to the policy
+
+MapLibre fetches its style, glyphs and sprites from the basemap host, so those origins have to be in `connect-src`. The policy is built in middleware, which **cannot read `veodyn.config.yaml`**. A deployment that sets `map.tile_url` there must therefore also set the **`VEODYN_MAP__TILE_URL`** environment variable, which is the documented override for the same key.
+
+It fails visibly rather than silently: the basemap does not render, and the browser console names the blocked origin.
+
+:::
+
+Verify a policy change against a **production build**, never the dev server. Development keeps `unsafe-eval` and allows websockets, so a dev run proves nothing about what production will permit.
+
 ## First-deploy checklist
 
 The order is the point. Every credential has to exist before the release that reads it is installed, and for veodyn-api that is stricter than it sounds: its migration Job is a pre-install hook, so a missing key stalls the install itself rather than one pod.

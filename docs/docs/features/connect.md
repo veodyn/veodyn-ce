@@ -8,6 +8,8 @@ description: "Reaching Veodyn data from your own tools: the data API surface and
 
 The **Connect** section of the sidebar documents, inside the product, how to reach your instance's data from outside it.
 
+Its third page goes the other way, serving your data out in a standard other people's software already speaks: see [Published Feeds](/features/published-feeds).
+
 ## APIs
 
 **Connect → APIs** is three cards, each carrying **your instance's real values** rather than examples to edit. The page reads its own address, so the copy button beside each block gives you something that works as pasted.
