@@ -159,7 +159,12 @@ describe('DatasetDetailPage', () => {
     // exactly as it does today.
     await renderPage(railDataset.id)
 
-    const schemaSection = (await screen.findByText('Schema')).parentElement
+    // `closest` rather than one `parentElement` hop: the heading now shares a
+    // row with the copy-as-JSON control, so it sits a level deeper than it
+    // did. The claim is unchanged -- the schema section is still the last
+    // element in the container, with no empty node after it for the slot.
+    const schemaSection = (await screen.findByText('Schema')).closest('div.mt-6')
+    expect(schemaSection).not.toBeNull()
     expect(schemaSection?.parentElement?.lastElementChild).toBe(schemaSection)
   })
 

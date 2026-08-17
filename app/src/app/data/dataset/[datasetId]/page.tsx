@@ -9,6 +9,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { NoData } from '@/components/ui/no-data'
 import { SkeletonCard } from '@/components/ui/skeleton-card'
 import { FreshnessBadge } from '@/components/catalog/freshness-badge'
+import { CopySchemaJson } from '@/components/catalog/copy-schema-json'
 import { SchemaTable } from '@/components/catalog/schema-table'
 import { TagsControl } from '@/components/shared/tags-control'
 import { Slot } from '@/features/slots'
@@ -84,10 +85,16 @@ export default function DatasetDetailPage({ params }: { params: Promise<{ datase
         title={dataset.name}
         description={dataset.description}
         action={
-          <Button render={<Link href={queryHref} />}>
-            <Play className="h-4 w-4" />
-            Query this dataset
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Where a feature adds an action ABOUT this dataset. Empty in a
+                community build, which is the intended state, same rule as
+                dataset.records below. */}
+            <Slot id="dataset.headerActions" props={{ dataset }} fallback={null} />
+            <Button render={<Link href={queryHref} />}>
+              <Play className="h-4 w-4" />
+              Query this dataset
+            </Button>
+          </div>
         }
       />
 
@@ -141,7 +148,10 @@ export default function DatasetDetailPage({ params }: { params: Promise<{ datase
       </Card>
 
       <div className="mt-6">
-        <h2 className={`${SECTION_HEADING} mb-3`}>Schema</h2>
+        <div className="mb-3 flex items-center gap-1">
+          <h2 className={SECTION_HEADING}>Schema</h2>
+          <CopySchemaJson schema={dataset.schema} />
+        </div>
         <SchemaTable schema={dataset.schema} />
       </div>
 

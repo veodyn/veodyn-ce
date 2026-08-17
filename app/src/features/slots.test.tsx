@@ -155,6 +155,7 @@ const SINGLE_EMPTY: { [Id in SingleSlotId]: SlotProps[Id] } = {
   'publishedFeed.tokenPanel': { slug: 'vehicles-live' },
   'publishedFeed.blockedAttribution': { slug: 'vehicles-live', attemptId: 1 },
   'dataset.records': { dataset: DATASET },
+  'dataset.headerActions': { dataset: DATASET },
 }
 
 describe('a single slot with no contributor', () => {

@@ -88,6 +88,7 @@ export type SingleSlotId =
   | 'publishedFeed.tokenPanel'
   | 'publishedFeed.blockedAttribution'
   | 'dataset.records'
+  | 'dataset.headerActions'
 
 /**
  * A slot every installed feature may fill, all of them rendered, with
@@ -185,6 +186,17 @@ export interface SlotProps {
    * community surface is holding on screen.
    */
   'dataset.records': { dataset: Dataset }
+  /**
+   * Beside "Query this dataset" in the page header, for actions a feature adds
+   * to a dataset rather than to its rows. Separate from `dataset.records`
+   * because that one mounts a whole editor at the foot of the page, and a
+   * header button rendered there would be nowhere near the thing it acts on.
+   *
+   * Carries the same `dataset` object, for the same reason: the surface
+   * already holds it, and a pack re-fetching the catalog to read a field on
+   * screen is a second answer to a question already answered.
+   */
+  'dataset.headerActions': { dataset: Dataset }
 }
 
 /**
