@@ -217,21 +217,21 @@ The dialog hands out three copyable fields, not one:
 
 | Field | What it is |
 |---|---|
-| **API Key** | The query's own results key |
-| **Results in JSON format** | The complete URL, key included |
-| **Results in CSV format** | The same, as CSV |
+| API Key | The query's own results key |
+| Results in JSON format | The complete URL, key included |
+| Results in CSV format | The same, as CSV |
 
-The two URLs are there because assembling one by hand is where the path shape and the parameter name go wrong, and the address a reader would most plausibly build did not work. They are built on **this app's own origin**, which is the only address a consumer outside the deployment can reach.
+The two URLs are there because assembling one by hand is where the path shape and the parameter name go wrong, and the address most people would build by guessing did not work. Both are built on this app's own origin, the only address a consumer outside the deployment can reach.
 
-Either URL returns the query's latest results to **anyone holding the key, with no sign-in**: paste one into a browser, `curl`, or a spreadsheet importer. Treat it as a credential, and see [Sharing & Embeds](/features/sharing) for how it sits beside the other tokenized surfaces.
+Either one returns the query's latest results to anyone holding the key, with no sign-in. Paste it into a browser, `curl`, or a spreadsheet importer. Treat it as a credential; [Sharing & Embeds](/features/sharing) covers how it sits beside the other tokenized surfaces.
 
-**Regenerate** takes two clicks, because rotating the key breaks every URL already built from it and there is no undo.
+**Regenerate** takes two clicks, since rotating the key breaks every URL already built from it and there is no undo.
 
-A query whose backend issued no key says so, and offers no rotate control, rather than showing an empty box.
+A query whose backend issued no key says so and offers no rotate control, instead of showing an empty box.
 
 :::note Who can see the key
 
-The key is returned to the query's **owner and to administrators** only. Another member with permission to run the query still cannot read the credential that would let anyone else run it anonymously.
+The key goes to the query's owner and to administrators. A member with permission to run the query cannot read the credential that would let anyone else run it anonymously.
 
 :::
 

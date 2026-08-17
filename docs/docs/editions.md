@@ -69,7 +69,7 @@ is licensed commercially.
 | **Interfaces** | REST API and per-query API keys | ● | ● |
 | | MCP endpoint | ● | ● |
 | | [Published feeds](/features/published-feeds): declaring, publishing on demand, serving publicly | ● | ● |
-| | Feed entities beyond vehicle positions, scheduled publishing, private-feed tokens | | ● |
+| | Feed entities beyond vehicle positions, and scheduled publishing | | ● |
 | | WebSocket streaming | | ● |
 | **AI** | SQL generation, Create with AI, converse, Edit with AI | ● | ● |
 | | The Home digest and annotation suggestions | | ● |
