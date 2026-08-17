@@ -35,6 +35,23 @@ describe('ScrollArea', () => {
     expect(viewport).toContainElement(screen.getByText('Scrollable nav content'))
   })
 
+  it('gives the viewport max-h-[inherit], so a max-h-* root actually clips', () => {
+    // jsdom runs no layout, so this asserts the class rather than the height.
+    // What it guards is a real regression: without it the viewport's
+    // `size-full` (height:100%) does not resolve against an auto-height root,
+    // so the viewport grows to its content and the list overflows its own
+    // border instead of scrolling. That shipped once, on the feed query
+    // picker, where the overflowing rows drew over the rest of the form.
+    const { container } = render(
+      <ScrollArea className="max-h-[280px]">
+        <div>Taller than the cap</div>
+      </ScrollArea>
+    )
+
+    const viewport = container.querySelector('[data-slot="scroll-area-viewport"]')
+    expect(viewport).toHaveClass('max-h-[inherit]')
+  })
+
   it('renders the scrollbar thumb with the border token class', async () => {
     const { getByTestId } = render(
       <ScrollArea className="h-24">
