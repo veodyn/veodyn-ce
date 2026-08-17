@@ -63,17 +63,21 @@ Three different situations, three different messages: *Unable to load KPIs. The 
 
 A KPI used to mean one thing: a saved query, and which of its columns holds the number. It can now also measure a feed directly, which saves writing a query whose only job is to count how well a feed is behaving.
 
-| Source | You pick | The number is |
-|---|---|---|
-| **Query** | A saved query and one of its result columns | Whatever that column holds |
-| **Ingest feed** | A captured feed and a measure | Computed from what the feed has landed in the warehouse |
-| **Published feed** | A [published feed](/features/published-feeds) and a measure | Computed from its publish attempts |
+**Source type** on the form picks between them, and the two fields beside it change with it. A saved query asks for a query and a value column; either feed kind asks for a feed and a measure.
 
-The two feed kinds are separate rather than one kind with a switch, because their identifiers are not the same thing: an ingest feed is keyed on its warehouse table name and a published feed on the slug an operator chose.
+![The New KPI form with Source type set to Capture feed, so the source fields ask for a feed and a measure](/img/screenshots/kpi-new-source.png)
+
+| Source type | You pick | The number is |
+|---|---|---|
+| Saved query | A saved query and one of its result columns | Whatever that column holds |
+| Capture feed | A captured feed and a measure | Computed from what the feed has landed in the warehouse |
+| Published feed | A [published feed](/features/published-feeds) and a measure | Computed from its publish attempts |
+
+The two feed kinds are separate rather than one kind with a switch, because their identifiers are not the same thing: a capture feed is keyed on its warehouse table name and a published feed on the slug an operator chose.
 
 The measures are a fixed list, each with its own unit and its own sense of which direction is good, so the form fills in the direction rather than making you reason it out.
 
-**Ingest feed:**
+**Capture feed:**
 
 | Measure | Unit | Good direction |
 |---|---|---|

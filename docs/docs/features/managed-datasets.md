@@ -32,7 +32,9 @@ A writer acts **as a group**, not as themselves. Editing and retracting are limi
 
 ## Declaring one
 
-**Admin → Managed Datasets** lists every declaration on the instance with its provisioning state, and is where new ones are declared. You can also declare one from the catalog page of an existing dataset, which carries that dataset's shape over as a starting point; every prefilled value stays editable.
+**Admin → Managed Datasets** lists every declaration on the instance with its provisioning state, and is where new ones are declared.
+
+![The admin console: three declarations, one ready, one provisioning and one failed with its error and a Retry](/img/screenshots/admin-managed-datasets.png) You can also declare one from the catalog page of an existing dataset, which carries that dataset's shape over as a starting point; every prefilled value stays editable.
 
 A declaration is a name, an optional description, the groups allowed to write, and a list of columns.
 
@@ -54,13 +56,19 @@ A column cannot be named after one the record log or the underlying view already
 
 ### Provisioning
 
-Declaring a dataset creates real warehouse objects, so a declaration has a state rather than existing immediately. The admin console shows that state, reports the error when provisioning failed, and offers a retry.
+Declaring a dataset creates real warehouse objects, so a declaration has a state rather than existing immediately. The console shows that state (`ready`, `provisioning`, `failed`), prints the warehouse's own error on a failure, and offers a **Retry** on that row alone.
 
-A declaration with records in it cannot be deleted. Empty ones can.
+Writer groups are shown and chosen by name rather than by the group ids the declaration actually stores, so the column reads `admin, default` rather than a pair of numbers.
+
+Delete is offered on every row, and the server refuses it for a declaration that has records. Empty ones delete.
 
 ## Records
 
 On a contributed dataset's catalog page, a **Records** section sits below the header.
+
+![A managed dataset's page: the Records table, with edit and retract offered only on the rows this viewer's group owns](/img/screenshots/managed-dataset-records.png)
+
+The screenshot is worth reading for the last row. It was contributed by a group this viewer does not belong to, so it offers history and nothing else, while the three rows above it carry edit and retract as well.
 
 It has its own heading for a reason worth knowing if you go looking for it: the section used to render with none, which left an empty dataset showing a lone Add record button under a schema table with nothing saying what it would add a record to. The editor was reported as unfindable, and it was.
 
