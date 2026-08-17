@@ -12,7 +12,7 @@ What is **not** in this repository is any particular deployment: the per-environ
 
 ## What gets deployed
 
-Three releases, from three charts. The frontend and veodyn-api charts accept any release name. The query service chart does not: three of its worker templates (`adhocworker-`, `genericworker-` and `scheduledworker-deployment.yaml`) hardcode `http://flow-redash` in their health-check probe, and no value overrides that URL. Name the query service release something else and its workers probe a service that does not exist. So either install it as `flow`, or turn those probes off with `adhocWorker.disableHealthChecks` / `genericWorker.disableHealthChecks` / `scheduledWorker.disableHealthChecks`, which is what the example values do.
+Four charts, of which three are always installed. The frontend and veodyn-api charts accept any release name. The query service chart does not: three of its worker templates (`adhocworker-`, `genericworker-` and `scheduledworker-deployment.yaml`) hardcode `http://flow-redash` in their health-check probe, and no value overrides that URL. Name the query service release something else and its workers probe a service that does not exist. So either install it as `flow`, or turn those probes off with `adhocWorker.disableHealthChecks` / `genericWorker.disableHealthChecks` / `scheduledWorker.disableHealthChecks`, which is what the example values do.
 
 Release names also decide the Service names other releases have to reach: `flow-redash` for the query service, `veodyn-api-api` for the API. Those are the hosts the example values files point at, so the guide and the examples work together as written. The `-redash` suffix in that Service name comes from the chart's own templates and is not something the release name controls.
 
@@ -21,6 +21,9 @@ Release names also decide the Service names other releases have to reach: `flow-
 | `frontend-app` | `helm/charts/frontend` | `values.example.yaml` | The Next.js frontend (port 3000) |
 | `veodyn-api-api` | `helm/charts/veodyn-api` | `values.example.yaml` + `values.example-api.yaml` | The FastAPI sidecar (port 8000) |
 | `flow` | `helm/charts/flow/contrib-helm-chart` | `helm/charts/flow/values.example.yaml` | Query service: server, scheduler, ad-hoc worker, scheduled worker, generic worker |
+| optional | `helm/charts/veodyn-validator` | `values.example.yaml` | The [feed validator](/features/published-feeds#the-validator) (port 8000), needed only to publish feeds |
+
+The validator is the one a deployment can leave out, and leaving it out is a real choice rather than an oversight: an instance that publishes no feeds needs no validator, and one that does publishes nothing until the service exists. Its Service name is the release name exactly, with no suffix, and that is what `VEODYN_FEED_VALIDATOR_URL` on the sidecar has to point at.
 
 There is no veodyn-api worker release here. The veodyn-api chart can still
 install one, from the same generic deployment template, but the only recurring
