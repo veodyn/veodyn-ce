@@ -49,6 +49,14 @@ class DatasetOut(CamelModel):
     sources: list[str]
     tags: list[str]
     sample_query_id: int | None
+    # Where this dataset comes from, and whether this build can write to it.
+    # Both default to what a captured dataset is, so a community response is a
+    # true statement rather than a placeholder: nothing here is writable and
+    # everything here was captured. Feed Health reads `origin` off this model
+    # rather than off the internal source type, because build_feeds is handed
+    # DatasetOut and nothing else (services/feeds.py).
+    origin: str = "capture"
+    writable: bool = False
 
 
 class HubCounterOut(CamelModel):

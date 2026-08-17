@@ -14,7 +14,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { Slot, hasSlotContributor } from './slots'
-import { COUNTER, DASHBOARD, featureWith } from './slots.test-helpers'
+import { COUNTER, DASHBOARD, DATASET, featureWith } from './slots.test-helpers'
 import type { SingleSlotId, SlotProps } from './types'
 import type { HubCounter } from '@/types/catalog'
 
@@ -154,6 +154,7 @@ const SINGLE_EMPTY: { [Id in SingleSlotId]: SlotProps[Id] } = {
   'feedHealth.metrics': { datasets: [] },
   'publishedFeed.tokenPanel': { slug: 'vehicles-live' },
   'publishedFeed.blockedAttribution': { slug: 'vehicles-live', attemptId: 1 },
+  'dataset.records': { dataset: DATASET },
 }
 
 describe('a single slot with no contributor', () => {

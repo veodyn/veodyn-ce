@@ -236,6 +236,33 @@ def test_a_hub_on_a_warehouse_with_nothing_captured_is_empty_not_broken(domains_
 
 
 @respx.mock
+def test_a_hub_on_a_warehouse_with_no_historical_database_is_empty_not_broken(domains_api: TestClient) -> None:
+    """One step earlier than the case above: on a stack fresh enough that the
+    `historical` database itself has never been created, ClickHouse answers
+    UNKNOWN_DATABASE (code 81) rather than UNKNOWN_TABLE (code 60). Splitting
+    WarehouseTableMissing into two classes narrowed the except clause this hub
+    read used to rely on, so this case regressed to a 502 until the catch here
+    was widened back to both.
+    """
+    as_user(USER)
+    tagged([{"id": 1, "name": "Rail positions", "tags": [TRANSIT_TAG]}], [])
+    body = (
+        '{\n\t"meta":\n\t[\n\n\t],\n\n\t"data":\n\t[\n\n\t],\n\n\t"rows": 0,\n\n'
+        '\t"exception": "Code: 81. DB::Exception: Database historical does not exist. '
+        '(UNKNOWN_DATABASE) (version 25.3.14.14 (official build))"\n}\n'
+    )
+    respx.post(WAREHOUSE).mock(
+        return_value=httpx.Response(404, text=body, headers={"content-type": "application/json"})
+    )
+
+    response = domains_api.get("/domains/transit", cookies={"session": "s"})
+
+    assert response.status_code == 200
+    assert response.json()["datasetIds"] == []
+    assert response.json()["counters"] == []
+
+
+@respx.mock
 def test_a_hub_still_fails_when_the_warehouse_really_fails(domains_api: TestClient) -> None:
     """The control. Swallowing the missing registry must not swallow a warehouse
     that is genuinely refusing, or a hub would report "no datasets" for a
@@ -248,3 +275,18 @@ def test_a_hub_still_fails_when_the_warehouse_really_fails(domains_api: TestClie
 
     assert response.status_code == 502
     assert response.json()["error"]["id"] == "VEODYN_WAREHOUSE_UNREACHABLE"
+
+
+@respx.mock
+def test_an_unshadowed_table_keeps_its_own_name(domains_api: TestClient, db: Session) -> None:
+    as_user(USER)
+    tagged(queries=[{"id": 9, "name": "Trips", "tags": [TRANSIT_TAG]}], dashboards=[])
+    warehouse_catalog([{"table_name": "historical.q_trips_9"}])
+    body = domains_api.get("/domains/transit", cookies={"session": "s"}).json()
+    assert body["datasetIds"] == ["q_trips_9"]
+
+
+# The shadow-id tests (a single rename, and a chain of renames) live in
+# test_domains_shadowing.py: adding the chain test here pushed this file past
+# the 300-line block, the same reason test_registry_providers.py split off
+# test_dataset_source_registry.py.

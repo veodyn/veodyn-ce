@@ -141,6 +141,8 @@ describe('search sources (real API mode)', () => {
             sources: [],
             tags: [],
             sampleQueryId: null,
+            origin: 'capture',
+            writable: false,
           },
         ])
       })

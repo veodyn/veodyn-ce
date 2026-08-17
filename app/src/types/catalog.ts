@@ -32,6 +32,15 @@ export interface Dataset {
   sources: string[] // upstream source / feed names
   tags: string[]
   sampleQueryId: number | null // seeds demo scenario (b): "Query this dataset"
+  /**
+   * Where this dataset came from, and whether this build can write to it.
+   * A community build always reports 'capture' and false: nothing in this
+   * tree contributes a dataset with any other origin, or writes to one. These
+   * two fields are the contract the enterprise pack's record editor and
+   * staleness surfaces read; they render on a pack build, not here.
+   */
+  origin: string
+  writable: boolean
 }
 
 export interface HubCounter {

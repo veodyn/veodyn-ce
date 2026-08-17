@@ -146,11 +146,13 @@ describe('neutral demo pack, shape', () => {
       'freshness',
       'id',
       'name',
+      'origin',
       'rowCount',
       'sampleQueryId',
       'schema',
       'sources',
       'tags',
+      'writable',
     ])
     expect(Object.keys(mockDomainHubs[0]).sort()).toEqual([
       'counters',

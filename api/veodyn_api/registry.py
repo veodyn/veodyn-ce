@@ -1,4 +1,4 @@
-"""The five seams the enterprise half registers through.
+"""The six seams the enterprise half registers through.
 
 Nothing in this file knows what a KPI is. Each registry is a list or a mapping
 that something else fills in at import time, and a build with nothing installed
@@ -6,7 +6,7 @@ simply finds them empty. That is the point: the community edition's behaviour
 with no packs is the default rather than a special case, so "the pack is not
 installed" and "the pack is broken" cannot end up looking alike.
 
-The five, and the community surface that resolves through each:
+The six, and the community surface that resolves through each:
 
 - **Routers**, read by `main.create_app`. An endpoint group arrives by being
   imported, in registration order.
@@ -20,6 +20,8 @@ The five, and the community surface that resolves through each:
   `services/domains.py`. Two registries rather than one, because a hub's
   counters are built per domain key and the list of keys is discovered
   separately; see the two call sites there.
+- **Dataset sources**, read by `services/catalog.build_catalog`. Where a
+  dataset comes from when the warehouse registry is not the answer.
 
 **The object-type descriptor carries authorization, not just a model class.** A
 `{kind: model}` dict was the first design and it does not work. `routers/tags.py`
@@ -46,6 +48,7 @@ from sqlalchemy.orm import Session
 from veodyn_api.auth import Identity
 from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.schemas.catalog import HubCounterOut
+from veodyn_api.services.clickhouse import ClickHouseClient
 
 CounterProvider = Callable[[Session, str, str], list[HubCounterOut]]
 """(db, org_slug, domain_key) -> the counters this provider contributes."""
@@ -109,11 +112,49 @@ class ScheduledJob:
     job_id: Callable[..., str]
 
 
+@dataclass(frozen=True)
+class DatasetSource:
+    """One dataset a provider contributes to the catalog.
+
+    The defaults describe a captured table, because that is what every dataset
+    here was before this seam existed: a row in the warehouse registry, counted
+    and described by the warehouse itself. A provider serving something else
+    fills in what the warehouse cannot answer for it.
+
+    `shadows` is the name of a physical table this entry replaces. It exists
+    because a pack can rename a captured table and put a view in its place, and
+    the community registry read has no way to know that happened: it still
+    returns a row for the renamed table. Without shadowing the catalog would
+    list the same dataset twice under two names, and every consumer that keys on
+    the id would take whichever arrived first.
+
+    `row_count` is None for "ask system.tables", which is right for a table and
+    useless for a view: a view stores no rows, so its total_rows is null and the
+    catalog would report every contributed dataset as empty.
+    """
+
+    table: str
+    database: str
+    name: str
+    query_id: int = 0
+    query_name: str = ""
+    origin: str = "capture"
+    shadows: str | None = None
+    row_count: int | None = None
+    description: str | None = None
+    writable: bool = False
+
+
+DatasetSourceProvider = Callable[[ClickHouseClient, str], Sequence[DatasetSource]]
+"""(warehouse, default_database) -> the datasets this provider contributes."""
+
+
 _ROUTERS: list[APIRouter] = []
 _JOBS: list[ScheduledJob] = []
 _OBJECT_TYPES: dict[str, ObjectType] = {}
 _COUNTER_PROVIDERS: list[CounterProvider] = []
 _DOMAIN_KEY_PROVIDERS: list[DomainKeyProvider] = []
+_DATASET_SOURCE_PROVIDERS: list[DatasetSourceProvider] = []
 
 
 def register_router(router: APIRouter) -> None:
@@ -209,6 +250,19 @@ def domain_keys(db: Session, org_slug: str) -> set[str]:
     return keys
 
 
+def register_dataset_source_provider(provider: DatasetSourceProvider) -> None:
+    _DATASET_SOURCE_PROVIDERS.append(provider)
+
+
+def dataset_sources(client: ClickHouseClient, default_database: str) -> list[DatasetSource]:
+    """Every provider's datasets, concatenated in registration order.
+
+    Order is the catalog's order, so the community registry read staying first
+    is what keeps a no-pack build's output in the sequence it has always been in.
+    """
+    return [source for provider in _DATASET_SOURCE_PROVIDERS for source in provider(client, default_database)]
+
+
 @contextmanager
 def restored_registries() -> Iterator[None]:
     """Put every registry back exactly as it was when the block ends."""
@@ -217,6 +271,7 @@ def restored_registries() -> Iterator[None]:
     saved_object_types = dict(_OBJECT_TYPES)
     saved_counters = list(_COUNTER_PROVIDERS)
     saved_domain_keys = list(_DOMAIN_KEY_PROVIDERS)
+    saved_dataset_sources = list(_DATASET_SOURCE_PROVIDERS)
     try:
         yield
     finally:
@@ -226,6 +281,7 @@ def restored_registries() -> Iterator[None]:
         _OBJECT_TYPES.update(saved_object_types)
         _COUNTER_PROVIDERS[:] = saved_counters
         _DOMAIN_KEY_PROVIDERS[:] = saved_domain_keys
+        _DATASET_SOURCE_PROVIDERS[:] = saved_dataset_sources
 
 
 @contextmanager
@@ -238,4 +294,5 @@ def empty_registries() -> Iterator[None]:
         _OBJECT_TYPES.clear()
         _COUNTER_PROVIDERS.clear()
         _DOMAIN_KEY_PROVIDERS.clear()
+        _DATASET_SOURCE_PROVIDERS.clear()
         yield

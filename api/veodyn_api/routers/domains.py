@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from veodyn_api.auth import Identity, caller_credential, get_redash_client, require_identity
 from veodyn_api.db import get_db
-from veodyn_api.routers.catalog import WarehouseDep
+from veodyn_api.routers.catalog import SettingsDep, WarehouseDep
 from veodyn_api.schemas.catalog import DomainHubOut
 from veodyn_api.services.domains import build_domain_hub, discover_keys
 from veodyn_api.services.redash import RedashClient
@@ -42,6 +42,7 @@ def list_domain_hubs(
     db: DbDep,
     redash: RedashDep,
     warehouse: WarehouseDep,
+    settings: SettingsDep,
     cookie: CookieHeader = None,
     authorization: AuthorizationHeader = None,
 ) -> list[DomainHubOut]:
@@ -56,6 +57,7 @@ def list_domain_hubs(
             org_slug=identity.org_slug,
             api_key=api_key,
             cookie=session_cookie,
+            default_database=settings.clickhouse_database,
         )
         for key in keys
     ]
@@ -68,6 +70,7 @@ def get_domain_hub(
     db: DbDep,
     redash: RedashDep,
     warehouse: WarehouseDep,
+    settings: SettingsDep,
     cookie: CookieHeader = None,
     authorization: AuthorizationHeader = None,
 ) -> DomainHubOut:
@@ -80,4 +83,5 @@ def get_domain_hub(
         org_slug=identity.org_slug,
         api_key=api_key,
         cookie=session_cookie,
+        default_database=settings.clickhouse_database,
     )

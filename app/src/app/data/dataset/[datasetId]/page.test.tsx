@@ -6,6 +6,17 @@ import { mockDatasets } from '@/lib/mock-data'
 import { required } from '@/lib/required'
 import DatasetDetailPage from './page'
 
+// The registry is stubbed EMPTY so this file asserts the community build in
+// EVERY tree it runs in, not only in this one. It runs in two: here, and
+// inside the composed tree an enterprise pack assembles, where the real
+// FEATURES is whatever that pack installs. The slot case below says "when
+// nothing is installed", and with the real registry it was quietly asserting
+// "when this checkout happens to install nothing", which stopped being the
+// same statement the first time a pack filled dataset.records. Same stub and
+// same reason as feed-health/page.test.tsx, whose own comment points at the
+// enterprise-side test that drives the real registry instead.
+vi.mock('@/features/generated-registry', () => ({ FEATURES: {} }))
+
 // Partial mock: wrap the real useDataset in a vi.fn so a single test can
 // force an error state, while every other test still exercises the real
 // hook reading from the mock data store.
@@ -138,6 +149,37 @@ describe('DatasetDetailPage', () => {
     await screen.findByText(unfiledDataset.name)
 
     expect(screen.queryByText(/^Domain:/)).not.toBeInTheDocument()
+  })
+
+  it('renders no wrapper element for the dataset.records slot when nothing is installed', async () => {
+    // No feature registers dataset.records here, because the registry is
+    // stubbed empty at the top of this file. An unfilled slot must cost no
+    // layout, so the schema section stays the last element in the page, with
+    // no trailing empty node for the slot -- a community build must look
+    // exactly as it does today.
+    await renderPage(railDataset.id)
+
+    const schemaSection = (await screen.findByText('Schema')).parentElement
+    expect(schemaSection?.parentElement?.lastElementChild).toBe(schemaSection)
+  })
+
+  it('hides the freshness badge for a contributed dataset, which no feed updates', async () => {
+    // The rail dataset above renders the badge and this one must not, off the
+    // same page and the same freshness value, so the origin is the only thing
+    // separating them. An empty contributed dataset is the case that makes
+    // this matter: it has no coverage end, so the catalog derives "stale" and
+    // the page would tell the reader a hand-maintained list had stopped
+    // updating on the day it was declared.
+    useDatasetSpy.mockReturnValue({
+      data: { ...railDataset, origin: 'contributed', writable: true },
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useCatalogModule.useDataset>)
+
+    await renderPage(railDataset.id)
+
+    await screen.findByText(railDataset.name)
+    expect(screen.queryByText(/stale|fresh|down/i)).not.toBeInTheDocument()
   })
 
   it('shows a distinct outage message when the dataset query errors, not the not-found message', async () => {

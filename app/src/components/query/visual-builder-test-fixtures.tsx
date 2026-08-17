@@ -22,6 +22,8 @@ function fixture(id: string, name: string, schema: Dataset['schema']): Dataset {
     sources: ['Fixture'],
     tags: [],
     sampleQueryId: null,
+    origin: 'capture',
+    writable: false,
   }
 }
 

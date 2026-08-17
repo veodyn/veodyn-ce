@@ -70,7 +70,10 @@ export interface FeatureRoute {
  * (see components/kpi/home-notable-changes.tsx); a hub counter tile replaces
  * one tile in a grid the community component still owns; the AI digest, the
  * annotation suggester and the dashboard promote action each occupy one hole
- * that has one right occupant.
+ * that has one right occupant. `dataset.records` is the same shape again: the
+ * catalog page is community and keeps its schema table and metadata card, and
+ * the record editor for a writable dataset is the one hole it cannot fill on
+ * its own.
  *
  * Two features filling one of these is a packaging mistake, and `<Slot>`
  * renders the first rather than refusing to render the surface at all.
@@ -84,6 +87,7 @@ export type SingleSlotId =
   | 'feedHealth.metrics'
   | 'publishedFeed.tokenPanel'
   | 'publishedFeed.blockedAttribution'
+  | 'dataset.records'
 
 /**
  * A slot every installed feature may fill, all of them rendered, with
@@ -173,6 +177,14 @@ export interface SlotProps {
   'favorites.section': Record<string, never>
   /** Whose profile this is. Ownership is by id, never by display name. */
   'profile.section': { userId: number }
+  /**
+   * The dataset itself, not just its id: a record editor needs the writable
+   * flag and the declared columns to render the right form, and both already
+   * live on the `Dataset` the detail page has already fetched. Passing the
+   * object keeps the pack from making its own catalog call for data the
+   * community surface is holding on screen.
+   */
+  'dataset.records': { dataset: Dataset }
 }
 
 /**

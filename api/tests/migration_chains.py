@@ -23,7 +23,17 @@ CE_MIGRATIONS = API_DIR / "migrations"
 CE_VERSION_TABLE = "alembic_version"
 EE_VERSION_TABLE = "alembic_version_ee"
 
-EE_TABLES = frozenset({"kpi", "kpi_history_point", "report", "external_access"})
+EE_TABLES = frozenset(
+    {
+        "kpi",
+        "kpi_history_point",
+        "report",
+        "external_access",
+        "managed_dataset",
+        "managed_dataset_column",
+        "managed_record",
+    }
+)
 """The enterprise chain's allowlist, restated rather than imported.
 
 The pack owns the authoritative copy in

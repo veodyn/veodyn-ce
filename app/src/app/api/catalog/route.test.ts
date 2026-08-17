@@ -23,7 +23,7 @@ describe('GET /api/catalog', () => {
   it('forwards to the backend and returns its datasets when configured', async () => {
     const fetchMock = vi.fn<typeof fetch>(
       async () =>
-        new Response(JSON.stringify([{ id: 'x', name: 'X' }]), {
+        new Response(JSON.stringify([{ id: 'x', name: 'X', origin: 'capture', writable: false }]), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         })
@@ -34,7 +34,7 @@ describe('GET /api/catalog', () => {
     const res = await GET(new Request('http://localhost/api/catalog?q=bus'))
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual([{ id: 'x', name: 'X' }])
+    expect(await res.json()).toEqual([{ id: 'x', name: 'X', origin: 'capture', writable: false }])
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('http://backend.test'),
       expect.objectContaining({ signal: expect.anything() })

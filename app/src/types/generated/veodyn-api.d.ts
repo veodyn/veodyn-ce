@@ -588,6 +588,11 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /**
+             * Origin
+             * @default capture
+             */
+            origin: string;
             /** Rowcount */
             rowCount: number;
             /** Samplequeryid */
@@ -598,6 +603,11 @@ export interface components {
             sources: string[];
             /** Tags */
             tags: string[];
+            /**
+             * Writable
+             * @default false
+             */
+            writable: boolean;
         };
         /** DomainHubOut */
         DomainHubOut: {

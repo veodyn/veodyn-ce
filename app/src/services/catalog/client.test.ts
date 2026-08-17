@@ -6,7 +6,14 @@ import { fetchCatalog, fetchDataset, fetchDomainHub, fetchDomainHubs, fetchFeeds
 
 describe('catalog client service', () => {
   it('fetchCatalog returns the datasets from /api/catalog', async () => {
-    server.use(http.get('/api/catalog', () => HttpResponse.json([{ id: 'a' }, { id: 'b' }])))
+    server.use(
+      http.get('/api/catalog', () =>
+        HttpResponse.json([
+          { id: 'a', origin: 'capture', writable: false },
+          { id: 'b', origin: 'capture', writable: false },
+        ])
+      )
+    )
     expect((await fetchCatalog()).map((d) => d.id)).toEqual(['a', 'b'])
   })
 
@@ -35,7 +42,14 @@ describe('catalog client service', () => {
   })
 
   it('fetchDataset finds one dataset by id', async () => {
-    server.use(http.get('/api/catalog', () => HttpResponse.json([{ id: 'a' }, { id: 'b' }])))
+    server.use(
+      http.get('/api/catalog', () =>
+        HttpResponse.json([
+          { id: 'a', origin: 'capture', writable: false },
+          { id: 'b', origin: 'capture', writable: false },
+        ])
+      )
+    )
     expect((await fetchDataset('b'))?.id).toBe('b')
     expect(await fetchDataset('missing')).toBeNull()
   })

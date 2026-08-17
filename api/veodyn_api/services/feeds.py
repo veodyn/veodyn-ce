@@ -147,6 +147,12 @@ def build_feeds(
     armed = alert_links or {}
     feeds: list[FeedOut] = []
     for dataset in datasets:
+        # Only a captured dataset is a feed. A contributed one has no cadence,
+        # no source and no schedule, so its row would say "last received" about
+        # something nobody sends. A shadowed dataset is still a capture and
+        # still belongs here.
+        if dataset.origin != "capture":
+            continue
         # A dataset with no last capture has never delivered anything. It is a
         # registry row for a table that exists and is empty, and putting it on a
         # freshness board as "last received: never" would give the reader a row

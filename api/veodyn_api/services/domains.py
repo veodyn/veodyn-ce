@@ -33,7 +33,7 @@ from sqlalchemy.orm import Session
 
 from veodyn_api import registry
 from veodyn_api.schemas.catalog import DomainHubOut
-from veodyn_api.services.clickhouse import ClickHouseClient, WarehouseTableMissing
+from veodyn_api.services.clickhouse import ClickHouseClient, WarehouseDatabaseMissing, WarehouseTableMissing
 from veodyn_api.services.redash import RedashClient
 
 TAG_PREFIX = "domain:"
@@ -72,18 +72,41 @@ def _tagged_ids(
     return ids
 
 
-def _dataset_ids(warehouse: ClickHouseClient, query_ids: list[int]) -> list[str]:
+def _resolve_shadow_chain(replacements: dict[str, str], name: str) -> str:
+    """Follow a chain of shadow declarations to its fixed point.
+
+    A shadowed table keeps its own real name, so it can itself be shadowed by
+    a later pack: one hop resolves the common case but stops short once that
+    happens, landing on the middle name instead of the one /catalog actually
+    serves. apply_shadowing does not have this problem because it removes
+    every declared target in one pass over the whole list; this walks the same
+    chain hop by hop to reach the same answer.
+
+    The `seen` set is a cycle guard. Two shadow declarations pointing at each
+    other would otherwise spin forever; a malformed pair like that should
+    resolve to whatever name it last reached rather than hang the endpoint.
+    """
+    seen = {name}
+    while name in replacements and replacements[name] not in seen:
+        name = replacements[name]
+        seen.add(name)
+    return name
+
+
+def _dataset_ids(warehouse: ClickHouseClient, query_ids: list[int], default_database: str) -> list[str]:
     """The captured tables belonging to a set of queries.
 
     Ids match the ones /catalog emits (the bare table name), because the domain
     page resolves them against that list. A tagged query with no capture yet is
     simply not a dataset, so it does not appear.
 
-    The same goes for a warehouse where nothing has been captured at all: the
+    The same goes for a warehouse where nothing has been captured at all, or
+    where the `historical` database itself has never been created: the
     registry table does not exist until Redash's first capture creates it, and
-    a hub on a fresh install is a hub with no datasets, not a failed read. Only
-    the missing table is swallowed; see services/catalog._entries, which reads
-    the same table and makes the same distinction.
+    a hub on a fresh install is a hub with no datasets, not a failed read. Both
+    the missing table and the missing database are swallowed here, matching
+    services/capture_sources.capture_sources, which reads the same table and
+    makes the same distinction.
     """
     if not query_ids:
         return []
@@ -92,13 +115,23 @@ def _dataset_ids(warehouse: ClickHouseClient, query_ids: list[int]) -> list[str]
         rows = warehouse.query(
             f"SELECT table_name FROM historical._catalog FINAL WHERE query_id IN ({wanted}) ORDER BY table_name"
         )
-    except WarehouseTableMissing:
+    except (WarehouseTableMissing, WarehouseDatabaseMissing):
         return []
     names = []
     for row in rows:
         qualified = str(row.get("table_name") or "")
         names.append(qualified.rpartition(".")[2] or qualified)
-    return [name for name in names if name]
+    # A pack can rename a captured table and put a view in its place under the
+    # original name. The registry then names the renamed table and /catalog
+    # names the view, and the hub page resolves these ids against /catalog by
+    # exact match, so without this the dataset drops out of its own hub while
+    # sitting in the catalog the whole time.
+    replacements = {
+        source.shadows: source.table
+        for source in registry.dataset_sources(warehouse, default_database)
+        if source.shadows
+    }
+    return [_resolve_shadow_chain(replacements, name) for name in names if name]
 
 
 def build_domain_hub(
@@ -110,6 +143,7 @@ def build_domain_hub(
     org_slug: str,
     api_key: str | None,
     cookie: str | None,
+    default_database: str,
 ) -> DomainHubOut:
     query_ids = _tagged_ids(redash, "queries", key, api_key=api_key, cookie=cookie)
     dashboard_ids = _tagged_ids(redash, "dashboards", key, api_key=api_key, cookie=cookie)
@@ -117,7 +151,7 @@ def build_domain_hub(
         key=key,
         label=humanize(key),
         icon=None,
-        dataset_ids=_dataset_ids(warehouse, query_ids),
+        dataset_ids=_dataset_ids(warehouse, query_ids, default_database),
         dashboard_ids=dashboard_ids,
         counters=registry.counters(db, org_slug, key),
     )

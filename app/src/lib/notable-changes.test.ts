@@ -15,6 +15,8 @@ function dataset(overrides: Partial<Dataset> = {}): Dataset {
     sources: [],
     tags: [],
     sampleQueryId: null,
+    origin: 'capture',
+    writable: false,
     ...overrides,
   }
 }

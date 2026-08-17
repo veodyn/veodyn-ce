@@ -18,6 +18,8 @@ const dataset: Dataset = {
   sources: ['Rail SCADA'],
   tags: ['rail', 'ridership'],
   sampleQueryId: null,
+  origin: 'capture',
+  writable: false,
 }
 
 function titleLink() {

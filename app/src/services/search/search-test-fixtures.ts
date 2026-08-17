@@ -72,5 +72,7 @@ export function makeDataset(id: string, name: string, tags: string[] = []): Data
     sources: [],
     tags,
     sampleQueryId: null,
+    origin: 'capture',
+    writable: false,
   }
 }

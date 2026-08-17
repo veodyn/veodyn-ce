@@ -38,6 +38,8 @@ function makeDataset(tags: string[]): Dataset {
     sources: [],
     tags,
     sampleQueryId: null,
+    origin: 'capture',
+    writable: false,
   }
 }
 

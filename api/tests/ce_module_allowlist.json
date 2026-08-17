@@ -99,6 +99,7 @@
     "services/ai_sql.py",
     "services/ai_viz_choice.py",
     "services/ai_written_query.py",
+    "services/capture_sources.py",
     "services/catalog.py",
     "services/clickhouse.py",
     "services/dataset_profile.py",

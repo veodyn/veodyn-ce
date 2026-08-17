@@ -33,6 +33,8 @@ export const mockDatasets: Dataset[] = [
     sources: ['Onboard Passenger Counters', 'Service Schedule'],
     tags: ['ridership', 'transit', 'daily'],
     sampleQueryId: null,
+    origin: 'capture',
+    writable: false,
   },
   {
     id: 'bike-share-availability',
@@ -53,6 +55,8 @@ export const mockDatasets: Dataset[] = [
     sources: ['Bike Share GBFS Feed'],
     tags: ['bike-share', 'availability', 'real-time'],
     sampleQueryId: bikeAvailabilityQueryId,
+    origin: 'capture',
+    writable: false,
   },
   {
     id: 'bike-share-daily-trips',
@@ -73,6 +77,8 @@ export const mockDatasets: Dataset[] = [
     sources: ['Bike Share Trip Ledger'],
     tags: ['bike-share', 'trips', 'daily'],
     sampleQueryId: bikeTripsQueryId,
+    origin: 'capture',
+    writable: false,
   },
   {
     id: 'rail-network-daily-ridership',
@@ -91,6 +97,8 @@ export const mockDatasets: Dataset[] = [
     sources: ['Rail SCADA'],
     tags: ['rail', 'ridership'],
     sampleQueryId: railRidershipQueryId,
+    origin: 'capture',
+    writable: false,
   },
   {
     id: 'traffic-incidents-weekly',
@@ -110,6 +118,8 @@ export const mockDatasets: Dataset[] = [
     sources: ['Incident Reporting Feed'],
     tags: ['traffic', 'incidents', 'safety'],
     sampleQueryId: trafficIncidentsQueryId,
+    origin: 'capture',
+    writable: false,
   },
   {
     id: 'fleet-vehicle-status',
@@ -128,6 +138,8 @@ export const mockDatasets: Dataset[] = [
     sources: ['Fleet Automatic Vehicle Location'],
     tags: ['fleet', 'vehicles', 'real-time'],
     sampleQueryId: fleetStatusQueryId,
+    origin: 'capture',
+    writable: false,
   },
   {
     id: 'traffic-cameras-by-city',
@@ -147,6 +159,8 @@ export const mockDatasets: Dataset[] = [
     sources: ['Camera Inventory Feed'],
     tags: ['cameras', 'cctv', 'traffic'],
     sampleQueryId: trafficCamerasQueryId,
+    origin: 'capture',
+    writable: false,
   },
   {
     id: 'air-quality-by-station',
@@ -167,6 +181,8 @@ export const mockDatasets: Dataset[] = [
     sources: ['Regional Air Quality Monitors'],
     tags: ['air-quality', 'environment', 'health'],
     sampleQueryId: airQualityQueryId,
+    origin: 'capture',
+    writable: false,
   },
 ]
 

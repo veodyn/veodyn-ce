@@ -28,6 +28,8 @@ const seededDatasets: Dataset[] = [
     sources: [],
     tags: [],
     sampleQueryId: null,
+    origin: 'capture',
+    writable: false,
   },
   {
     id: 'stale-feed',
@@ -41,6 +43,8 @@ const seededDatasets: Dataset[] = [
     sources: [],
     tags: [],
     sampleQueryId: null,
+    origin: 'capture',
+    writable: false,
   },
 ]
 

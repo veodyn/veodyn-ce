@@ -55,6 +55,8 @@ const dataset: Dataset = {
   sources: [],
   tags: [],
   sampleQueryId: null,
+  origin: 'capture',
+  writable: false,
 }
 
 // Back to the empty baseline the vi.mock factories set, so a test that seeds

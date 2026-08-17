@@ -1,111 +1,38 @@
-"""The Data Catalog, read out of the historical warehouse.
+"""The Data Catalog, assembled from every registered dataset source.
 
-Redash captures each scheduled query's result set into its own ClickHouse table
-and registers it in `historical._catalog` (node/redash/historical/catalog.py).
-That registry plus ClickHouse's own `system` tables is everything a catalog
-entry needs, so nothing is stored twice and nothing has to be kept in sync:
+A dataset is a row from `registry.dataset_sources`: the warehouse registry
+(services/capture_sources.py, reading `historical._catalog`,
+node/redash/historical/catalog.py) is one provider among however many are
+registered, not the only way a dataset can exist. This module's job is to take
+whatever the registry hands back and fill in the rest from ClickHouse's own
+`system` tables, wherever a provider left it unsaid:
 
-    _catalog          -> which query a table came from, and its name
-    system.tables     -> row count
-    system.columns    -> the schema
-    min/max captured_at -> coverage, and how fresh it is
+    dataset_sources()   -> id, name, database/table, origin, writability, and
+                            whatever else a provider already knows
+    system.tables        -> row count, when a provider does not supply its own
+    system.columns        -> the schema
+    min/max captured_at  -> coverage, and how fresh it is
 
-Every field the contract asks for is derived from one of those. Nothing is
-invented: a dataset with no rows reports no coverage rather than a plausible
-range, and `domain` is null because the warehouse has no notion of one.
+A capture's description, row count, origin and writability come from the
+defaults on DatasetSource; a contributed dataset supplies its own. Nothing is
+invented on top of what a provider states or ClickHouse reports: a dataset
+with no rows reports no coverage rather than a plausible range, and `domain`
+is null because nothing here has a notion of one.
 """
 
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from veodyn_api import registry
+from veodyn_api.registry import DatasetSource
 from veodyn_api.schemas.catalog import (
     DatasetColumnOut,
     DatasetCoverageOut,
     DatasetFreshnessOut,
     DatasetOut,
 )
-from veodyn_api.services.clickhouse import ClickHouseClient, WarehouseTableMissing
-
-
-@dataclass(frozen=True)
-class _Entry:
-    query_id: int
-    table: str
-    query_name: str
-    database: str
-    name: str
-
-
-def _split(qualified: str, default_database: str) -> tuple[str, str]:
-    database, _, table = qualified.partition(".")
-    return (database, table) if table else (default_database, qualified)
-
-
-# ClickHouse cannot bind an identifier as a query parameter, so the one
-# statement that names a table interpolates it. Registered names are generated
-# by slugify_query_name, which cannot produce anything else; a row that does not
-# match is not a table this service will name in a statement.
-def is_identifier(value: str) -> bool:
-    return (
-        bool(value)
-        and (value[0].isalpha() or value[0] == "_")
-        and all(char.isalnum() or char == "_" for char in value)
-    )
-
-
-def _iso(value: Any) -> str | None:
-    """ClickHouse DateTime64 arrives as 'YYYY-MM-DD HH:MM:SS.mmm'. The contract
-    wants ISO 8601, and the column is declared UTC, so it is stamped as UTC."""
-    if not value:
-        return None
-    text = str(value).strip()
-    if not text or text.startswith("1970-01-01 00:00:00"):
-        return None  # ClickHouse's zero value for an empty min()/max()
-    try:
-        parsed = datetime.fromisoformat(text)
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=UTC)
-    return parsed.astimezone(UTC).isoformat().replace("+00:00", "Z")
-
-
-def _entries(client: ClickHouseClient, default_database: str) -> list[_Entry]:
-    """The registry, or nothing when the registry table does not exist yet.
-
-    Redash creates `historical._catalog` the first time it captures a result,
-    so on a fresh install the table is genuinely absent and ClickHouse answers
-    UNKNOWN_TABLE. Until this was handled, /catalog, /domains and /feeds all
-    answered 502 on a stack that had just come up, which reads to a new user as
-    "the catalog service is broken" when the true answer is "nothing has been
-    captured yet". An empty warehouse is an empty catalog, not a failure.
-
-    Narrow on purpose: only the warehouse saying the table is not there is
-    swallowed. Any other refusal, and any connection failure, still raises, so
-    a warehouse that is genuinely broken is still reported as broken.
-    """
-    try:
-        rows = client.query(
-            "SELECT query_id, table_name, query_name FROM historical._catalog FINAL ORDER BY query_name, query_id"
-        )
-    except WarehouseTableMissing:
-        return []
-    entries = []
-    for row in rows:
-        database, table = _split(str(row.get("table_name", "")), default_database)
-        if not is_identifier(table) or not is_identifier(database):
-            continue
-        entries.append(
-            _Entry(
-                query_id=int(row.get("query_id") or 0),
-                table=table,
-                query_name=str(row.get("query_name") or "").strip(),
-                database=database,
-                name=str(row.get("query_name") or "").strip() or table,
-            )
-        )
-    return entries
+from veodyn_api.services.capture_sources import iso_utc
+from veodyn_api.services.clickhouse import ClickHouseClient, WarehouseColumnMissing, WarehouseTableMissing
 
 
 def _columns_by_table(client: ClickHouseClient, databases: set[str]) -> dict[str, list[dict[str, Any]]]:
@@ -135,7 +62,7 @@ def _rows_by_table(client: ClickHouseClient, databases: set[str]) -> dict[str, i
     return {f"{row.get('database')}.{row.get('name')}": int(row.get("total_rows") or 0) for row in rows}
 
 
-def _span(client: ClickHouseClient, entry: _Entry) -> tuple[str | None, str | None]:
+def _span(client: ClickHouseClient, entry: DatasetSource) -> tuple[str | None, str | None]:
     """Earliest and latest capture in one table.
 
     One statement per table: ClickHouse reads min/max off the primary index
@@ -146,7 +73,7 @@ def _span(client: ClickHouseClient, entry: _Entry) -> tuple[str | None, str | No
     )
     if not rows:
         return None, None
-    return _iso(rows[0].get("start")), _iso(rows[0].get("end"))
+    return iso_utc(rows[0].get("start")), iso_utc(rows[0].get("end"))
 
 
 # Both are written by the capture rather than by the query, and captured_at is
@@ -165,28 +92,57 @@ def _column_out(row: dict[str, Any]) -> DatasetColumnOut:
     return DatasetColumnOut(name=name, type=str(row.get("type") or ""), description=CAPTURE_COLUMN_ABOUT.get(name))
 
 
-def _describe(entry: _Entry, row_count: int) -> str:
+def _describe(entry: DatasetSource, row_count: int) -> str:
     """Says where the data came from and nothing more. Every claim here is one
-    the registry actually makes; there is no summary of what the data means,
-    because the warehouse does not know."""
+    the source actually makes; there is no summary of what the data means,
+    because the warehouse does not know.
+
+    A provider that knows better supplies its own sentence. Without this branch
+    a hand-typed dataset is described as captured from a Redash query, which is
+    a false statement about provenance rather than a cosmetic one.
+    """
+    if entry.description:
+        return entry.description
     captured = f"Captured from Redash query {entry.query_id}" if entry.query_id else "Captured from Redash"
     return f"{captured} on every scheduled run. {row_count:,} rows so far."
 
 
-def _matches(entry: _Entry, needle: str) -> bool:
+def _matches(entry: DatasetSource, needle: str) -> bool:
     return needle in entry.name.lower() or needle in entry.table.lower()
 
 
 def dataset_ids(client: ClickHouseClient, default_database: str) -> set[str]:
-    """Every dataset id the registry lists.
+    """Every dataset id any provider lists.
 
-    A dataset has no row of its own anywhere: its id is a ClickHouse registry
-    table name. So "does this dataset exist" is answered by reading the registry,
-    which is one small table this service already reads on every catalog request.
-    Exposed so the tag endpoint can refuse to hang a label on a table nobody
-    captured, rather than storing a row that will never be read back.
+    A dataset has no row of its own anywhere: its id is a table name. So "does
+    this dataset exist" is answered by asking every registered source, which for
+    a community build is one small registry table this service already reads on
+    every catalog request. Exposed so the tag endpoint can refuse to hang a label
+    on a table nobody captured or declared, rather than storing a row that will
+    never be read back.
+
+    Shadowing is applied here for the same reason build_catalog applies it: a
+    shadowed source's raw table name (the renamed physical table, before a pack
+    put a view in its place) never appears in a catalog response, so accepting
+    it as a tag target would store a label that can never be read back either.
     """
-    return {entry.table for entry in _entries(client, default_database)}
+    return {source.table for source in apply_shadowing(list(registry.dataset_sources(client, default_database)))}
+
+
+def apply_shadowing(sources: list[DatasetSource]) -> list[DatasetSource]:
+    """Drop every source another source has taken the place of.
+
+    A pack shadows a captured dataset by renaming its table and creating a view
+    under the original name. The warehouse registry knows nothing about that: it
+    still returns a row, now naming the renamed table. Listing both would put
+    the same dataset in the catalog twice, under two ids, and the frontend
+    resolves a dataset by matching the id exactly.
+
+    Shadowing a name nobody registered is a no-op rather than an error, because
+    a declaration is a state machine and the rename may not have run yet.
+    """
+    shadowed = {source.shadows for source in sources if source.shadows}
+    return [source for source in sources if source.table not in shadowed]
 
 
 def build_catalog(
@@ -198,33 +154,59 @@ def build_catalog(
     now: datetime | None = None,
     tags: dict[str, list[str]] | None = None,
 ) -> list[DatasetOut]:
-    entries = _entries(client, database)
+    sources = apply_shadowing(list(registry.dataset_sources(client, database)))
     needle = (q or "").strip().lower()
     if needle:
-        entries = [entry for entry in entries if _matches(entry, needle)]
-    if not entries:
+        sources = [source for source in sources if _matches(source, needle)]
+    if not sources:
         return []
 
-    databases = {entry.database for entry in entries}
+    # After shadowing, not before: a shadowed source can be the only reason a
+    # database is in this set, and reading system.columns for a database no
+    # surviving dataset lives in is a wasted round trip on every catalog request.
+    databases = {source.database for source in sources}
     columns = _columns_by_table(client, databases)
     row_counts = _rows_by_table(client, databases)
     moment = now or datetime.now(UTC)
     stale_before = moment - timedelta(minutes=stale_after_minutes)
 
     datasets = []
-    for entry in entries:
-        key = f"{entry.database}.{entry.table}"
-        start, end = _span(client, entry)
+    for source in sources:
+        key = f"{source.database}.{source.table}"
+        try:
+            start, end = _span(client, source)
+        except (WarehouseTableMissing, WarehouseColumnMissing):
+            # This one table is shaped differently: no `captured_at`, or gone
+            # between the registry read and now. Its own coverage is unknown
+            # and every other dataset in this response is unaffected. Before
+            # this guard, one such row answered 502 for the whole catalog,
+            # and for /feeds and /domains with it, because they are built on
+            # this.
+            #
+            # Narrow on purpose. Any other refusal, including a warehouse
+            # that is simply down, still raises: rendering an outage as "no
+            # coverage yet" would be indistinguishable from a fresh install.
+            #
+            # WarehouseDatabaseMissing is deliberately absent from this catch,
+            # unlike in capture_sources.py. There, an absent `historical`
+            # database is a fresh install and belongs with a missing table.
+            # Here, a source already came out of the registry naming a
+            # database, so that database not existing means the provider
+            # named one wrong: a deployment fault to surface, not a shape
+            # this one dataset happens to have.
+            start, end = None, None
         # No rows yet means no coverage to state. The registry row exists from
         # the first capture attempt, so an empty table is a real state.
         last_seen = end or ""
         fresh = end is not None and datetime.fromisoformat(end.replace("Z", "+00:00")) >= stale_before
-        row_count = row_counts.get(key, 0)
+        # A provider serving a view has to answer this itself: a view stores no
+        # rows, so system.tables reports null and the coercion below reads 0.
+        row_count = source.row_count if source.row_count is not None else row_counts.get(key, 0)
         datasets.append(
             DatasetOut(
-                id=entry.table,
-                name=entry.name,
-                description=_describe(entry, row_count),
+                id=source.table,
+                name=source.name,
+                description=_describe(source, row_count),
                 domain=None,
                 schema=[_column_out(row) for row in columns.get(key, [])],
                 freshness=DatasetFreshnessOut(
@@ -236,17 +218,24 @@ def build_catalog(
                     # contract from the start and left null until now, which
                     # left Feed Health's Datasets column reading 0 on every row
                     # even once the feeds themselves resolved.
-                    feed_id=entry.table,
+                    #
+                    # None for anything that is not a capture: build_feeds
+                    # deliberately excludes a contributed dataset (it has no
+                    # cadence and nothing feeds it), so naming one here would
+                    # advertise a feed link that resolves to nothing.
+                    feed_id=source.table if source.origin == "capture" else None,
                 ),
                 coverage=DatasetCoverageOut(start=start or "", end=end or ""),
                 row_count=row_count,
-                sources=[entry.query_name] if entry.query_name else [],
+                sources=[source.query_name] if source.query_name else [],
                 # Whatever the org has actually tagged this table with, and
                 # nothing else. Every dataset used to carry a literal
                 # "historical", which could not discriminate between them: a
                 # `?tag=historical` filter just meant "every dataset".
-                tags=(tags or {}).get(entry.table, []),
-                sample_query_id=entry.query_id or None,
+                tags=(tags or {}).get(source.table, []),
+                sample_query_id=source.query_id or None,
+                origin=source.origin,
+                writable=source.writable,
             )
         )
     return datasets

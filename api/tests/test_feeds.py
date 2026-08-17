@@ -98,7 +98,7 @@ def test_an_unscheduled_query_is_labelled_so_the_parser_gives_up_cleanly() -> No
 # ─── build_feeds: pure, so the whole board is testable without a backend ──────
 
 
-def dataset(id_: str, *, query_id: int, last: str, status: str = "fresh") -> DatasetOut:
+def dataset(id_: str, *, query_id: int, last: str, status: str = "fresh", origin: str = "capture") -> DatasetOut:
     return DatasetOut(
         id=id_,
         name=f"Query {query_id}",
@@ -111,6 +111,7 @@ def dataset(id_: str, *, query_id: int, last: str, status: str = "fresh") -> Dat
         sources=[],
         tags=[],
         sample_query_id=query_id,
+        origin=origin,
     )
 
 

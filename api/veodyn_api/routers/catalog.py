@@ -19,9 +19,10 @@ from sqlalchemy.orm import Session
 from veodyn_api.auth import Identity, require_identity
 from veodyn_api.db import get_db
 from veodyn_api.errors import ApiError, ErrorId
-from veodyn_api.registry import ObjectType, register_object_type
+from veodyn_api.registry import ObjectType, register_dataset_source_provider, register_object_type
 from veodyn_api.schemas.catalog import DatasetOut
 from veodyn_api.services import tags as tag_service
+from veodyn_api.services.capture_sources import capture_sources
 from veodyn_api.services.catalog import build_catalog, dataset_ids
 from veodyn_api.services.clickhouse import ClickHouseClient, get_clickhouse_client
 from veodyn_api.settings import Settings, get_settings
@@ -101,3 +102,10 @@ register_object_type(
         authorize_tag_write=_authorize_dataset_tag_write,
     )
 )
+
+# The warehouse registry, as one dataset source among however many are
+# registered. First, so a build with no packs lists its datasets in the order it
+# always has. Registered here rather than in the service because importing the
+# routers package is what triggers every built-in registration (extras.py:53),
+# and this module already registers the dataset object type above.
+register_dataset_source_provider(capture_sources)

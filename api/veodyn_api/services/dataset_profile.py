@@ -19,7 +19,7 @@ from datetime import datetime
 from typing import Any
 
 from veodyn_api.schemas.catalog import DatasetOut
-from veodyn_api.services.catalog import is_identifier
+from veodyn_api.services.capture_sources import is_identifier
 
 logger = logging.getLogger(__name__)
 

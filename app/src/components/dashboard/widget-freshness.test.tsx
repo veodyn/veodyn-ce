@@ -34,6 +34,8 @@ function dataset(over: Partial<Dataset['freshness']> = {}): Dataset {
     sources: [],
     tags: [],
     sampleQueryId: null,
+    origin: 'capture',
+    writable: false,
   }
 }
 

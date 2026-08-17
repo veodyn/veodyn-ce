@@ -175,6 +175,7 @@ def test_a_hub_shows_the_counters_a_provider_contributed(db: Session) -> None:
             org_slug="default",
             api_key=None,
             cookie=None,
+            default_database="historical",
         )
 
     assert [counter.label for counter in hub.counters] == ["from the pack"]

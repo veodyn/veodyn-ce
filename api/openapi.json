@@ -424,6 +424,11 @@
             "title": "Name",
             "type": "string"
           },
+          "origin": {
+            "default": "capture",
+            "title": "Origin",
+            "type": "string"
+          },
           "rowCount": {
             "title": "Rowcount",
             "type": "integer"
@@ -459,6 +464,11 @@
             },
             "title": "Tags",
             "type": "array"
+          },
+          "writable": {
+            "default": false,
+            "title": "Writable",
+            "type": "boolean"
           }
         },
         "required": [
