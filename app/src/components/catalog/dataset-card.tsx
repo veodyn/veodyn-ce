@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { PencilLine } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { TagsControl } from '@/components/shared/tags-control'
 import { visibleTags } from '@/lib/tags'
@@ -9,6 +11,11 @@ export function DatasetCard({ dataset }: { dataset: Dataset }) {
   // `domain:*` tags drive the hub filter above and are never chips, which is
   // the same rule TagsControl applies everywhere else.
   const tags = visibleTags(dataset.tags)
+  // A dataset people type into rather than one a scheduled query fills. A
+  // community build never sets this (`DatasetOut.origin`'s own comment), so
+  // the badge below is dead code here and live on a pack build, the same
+  // arrangement `writable` and the dataset.records slot already have.
+  const isContributed = dataset.origin === 'contributed'
 
   return (
     // The card is no longer one big anchor. It used to be, and a tag chip is a
@@ -39,7 +46,20 @@ export function DatasetCard({ dataset }: { dataset: Dataset }) {
         )}
       </CardHeader>
       <CardContent className="flex items-center justify-between gap-2">
-        <FreshnessBadge freshness={dataset.freshness} />
+        {/* Captures get freshness, contributed datasets get told apart, and
+            the same rule as the detail page's own header decides which: that
+            file already gates the badge on `origin === 'capture'`, and says
+            why. This card was the surface still showing every contributed
+            dataset as "Stale" on the day it was declared, and showing nothing
+            at all to distinguish one you can type into from the captures
+            either side of it in the grid. */}
+        {dataset.origin === 'capture' && <FreshnessBadge freshness={dataset.freshness} />}
+        {isContributed && (
+          <Badge variant="outline">
+            <PencilLine />
+            <span className="text-foreground">Managed</span>
+          </Badge>
+        )}
         <span className="font-mono text-xs tabular-nums text-muted-foreground">
           {dataset.rowCount.toLocaleString()} rows
         </span>

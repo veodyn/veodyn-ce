@@ -38,6 +38,28 @@ describe('DatasetCard', () => {
     expect(screen.getByText(/fresh/i)).toBeInTheDocument()
   })
 
+  // A dataset people type into has no scheduled capture to be fresh or stale
+  // about, and `build_catalog` fills the field anyway: an empty one arrives as
+  // "stale" with no timestamp, which reads as a broken feed on the day it is
+  // declared. The badge that replaces it is also the only thing marking a
+  // writable dataset out from the captures either side of it in the grid.
+  const contributed: Dataset = {
+    ...dataset,
+    origin: 'contributed',
+    writable: true,
+    freshness: { lastUpdatedAt: '', status: 'stale' },
+  }
+
+  it('marks a contributed dataset as managed', () => {
+    renderWithProviders(<DatasetCard dataset={contributed} />)
+    expect(screen.getByText(/managed/i)).toBeInTheDocument()
+  })
+
+  it('does not call a contributed dataset stale', () => {
+    renderWithProviders(<DatasetCard dataset={contributed} />)
+    expect(screen.queryByText(/stale/i)).toBeNull()
+  })
+
   it('renders the row count with tabular-nums', () => {
     renderWithProviders(<DatasetCard dataset={dataset} />)
     const rowCount = screen.getByText(/1,204,880/)
