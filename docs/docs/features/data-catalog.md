@@ -58,7 +58,7 @@ A contributed dataset gets the full page width, because it is a page you type in
 
 :::note Writing to a dataset is enterprise
 
-A community build renders no record editor, so a contributed dataset there is a catalog entry with nothing to type into. The editor, and the actions beside the dataset's name, come from the [enterprise](/editions) pack.
+A community build renders no record editor, so a contributed dataset there is a catalog entry with nothing to type into. The editor, and the actions beside the dataset's name, come from the [enterprise](/editions) pack. [Managed Datasets](/features/managed-datasets) covers declaring one and typing into it.
 
 :::
 

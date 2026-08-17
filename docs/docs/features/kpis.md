@@ -55,9 +55,44 @@ Three different situations, three different messages: *Unable to load KPIs. The 
 
 ![The New KPI form: details, the source query and value column, then the target and status bands](/img/screenshots/kpi-new.png)
 
-**Source**: the saved query that computes the metric, and which of its columns holds the number.
+**Source**: where the number comes from. See [What a KPI can measure](#what-a-kpi-can-measure) for the three kinds.
 
 **Target and status bands**: the target value, the **Direction**, the **At risk** threshold, the **Breached** threshold, and the **Notify when this KPI is breached** toggle.
+
+### What a KPI can measure
+
+A KPI used to mean one thing: a saved query, and which of its columns holds the number. It can now also measure a feed directly, which saves writing a query whose only job is to count how well a feed is behaving.
+
+| Source | You pick | The number is |
+|---|---|---|
+| **Query** | A saved query and one of its result columns | Whatever that column holds |
+| **Ingest feed** | A captured feed and a measure | Computed from what the feed has landed in the warehouse |
+| **Published feed** | A [published feed](/features/published-feeds) and a measure | Computed from its publish attempts |
+
+The two feed kinds are separate rather than one kind with a switch, because their identifiers are not the same thing: an ingest feed is keyed on its warehouse table name and a published feed on the slug an operator chose.
+
+The measures are a fixed list, each with its own unit and its own sense of which direction is good, so the form fills in the direction rather than making you reason it out.
+
+**Ingest feed:**
+
+| Measure | Unit | Good direction |
+|---|---|---|
+| Delivery ratio | % | Higher |
+| Longest gap | seconds | Lower |
+| Rows per capture | rows | Neither |
+| Seconds since last row | seconds | Lower |
+
+**Published feed:**
+
+| Measure | Unit | Good direction |
+|---|---|---|
+| Publish success rate | % | Higher |
+| Blocking rules now | rules | Lower |
+| Artifact age | seconds | Lower |
+
+Some measures take a parameter, usually the window to measure over, and delivery ratio also takes the interval the feed is expected to keep.
+
+A KPI measuring a feed that later disappears keeps its history rather than being deleted with it, so the record of what that feed used to do survives.
 
 ### You do not type the current value
 

@@ -58,10 +58,11 @@ is licensed commercially.
 | **Finding things** | Home, Discover, favorites, tags | ● | ● |
 | | Federated search across object types | ● | ● |
 | | Data catalog and domain pages | ● | ● |
-| | [Managed datasets](/features/data-catalog#where-a-dataset-comes-from) in the catalog, and writing records to one | | ● |
+| | [Managed datasets](/features/managed-datasets): declaring one, the record editor, writer groups, retraction and revision history | | ● |
 | | Movers, and the counter row on a domain page | | ● |
 | **Watching** | Feed Health and Schedules | ● | ● |
 | | KPIs: targets, thresholds, owners, cadence, history | | ● |
+| | [KPIs measured from a feed](/features/kpis#what-a-kpi-can-measure) rather than from a query | | ● |
 | | The alerts surface | | ● |
 | **Governing** | Users, groups, data sources, system status | ● | ● |
 | | Reports, with snapshots and four-eyes review | | ● |

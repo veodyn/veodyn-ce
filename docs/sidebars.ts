@@ -41,6 +41,7 @@ const sidebars: SidebarsConfig = {
         {type: 'doc', id: 'features/reports', className: 'menu-ee'},
         {type: 'doc', id: 'features/kpis', className: 'menu-ee'},
         {type: 'doc', id: 'features/alerts', className: 'menu-ee'},
+        {type: 'doc', id: 'features/managed-datasets', className: 'menu-ee'},
       ],
     },
     {
