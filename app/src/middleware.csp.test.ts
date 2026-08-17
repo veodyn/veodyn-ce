@@ -128,4 +128,24 @@ describe('content security policy', () => {
 
     expect(directive(middleware(request('/queries')), 'connect-src')).toContain('https://telemetry.example')
   })
+
+  // Carto serves the style JSON the map renderers hardcode from
+  // basemaps.cartocdn.com and the TileJSON, tiles, sprite and glyphs it points
+  // at from tiles.basemaps.cartocdn.com. Allowing only the first rendered every
+  // map on stage as bare geometry over white.
+  it('names the origin the basemap subresources come from, not just the style', async () => {
+    const middleware = await loadMiddleware('production')
+
+    const connect = directive(middleware(request('/dashboards/5')), 'connect-src')
+
+    expect(connect).toContain('https://basemaps.cartocdn.com')
+    expect(connect).toContain('https://*.basemaps.cartocdn.com')
+  })
+
+  it('names a configured tile host in connect-src', async () => {
+    vi.stubEnv('VEODYN_MAP__TILE_URL', 'https://tiles.example/style.json')
+    const middleware = await loadMiddleware('production')
+
+    expect(directive(middleware(request('/dashboards/5')), 'connect-src')).toContain('https://tiles.example')
+  })
 })

@@ -105,10 +105,16 @@ const IS_PROD = process.env.NODE_ENV === 'production'
  *
  * The map renderers hardcode Carto's two GL styles
  * (components/visualizations/map-renderer.tsx), and `map.tile_url` in the
- * instance config names a third, defaulting to MapLibre's demo tiles. MapLibre
- * fetches a style JSON, glyphs and sprites over connect-src, so that directive
- * needs these. Its tiles go through img-src, which allows `https:` wholesale
- * for an unrelated reason, so they are not listed there.
+ * instance config names a third, defaulting to MapLibre's demo tiles.
+ *
+ * **A style JSON and what it points at need not share an origin.** Carto serves
+ * the style from basemaps.cartocdn.com and its TileJSON, vector tiles, sprite
+ * and glyphs from tiles.basemaps.cartocdn.com, so listing only the first origin
+ * loads the style and blocks everything in it. MapLibre fetches all of them,
+ * vector tiles included, so connect-src governs the lot; img-src matters only
+ * for a raster style, and it allows `https:` wholesale for an unrelated reason.
+ * A custom tile_url pointing at a style whose subresources sit on a third
+ * origin needs that origin here too.
  *
  * **A tile_url set only in veodyn.config.yaml is invisible here.** Middleware
  * cannot read that file, so the deployment must also set the VEODYN_MAP__TILE_URL
@@ -117,7 +123,7 @@ const IS_PROD = process.env.NODE_ENV === 'production'
  * browser console names the blocked origin.
  */
 function mapOrigins(): string[] {
-  const origins = new Set(['https://basemaps.cartocdn.com'])
+  const origins = new Set(['https://basemaps.cartocdn.com', 'https://*.basemaps.cartocdn.com'])
   const configured = process.env.VEODYN_MAP__TILE_URL ?? 'https://demotiles.maplibre.org/style.json'
   try {
     origins.add(new URL(configured).origin)
