@@ -57,7 +57,9 @@ Switching to a different query clears the column mapping. A field mapped against
 
 ### Address
 
-The slug is the feed's address and half its identity: `vehicles-live`, not a number.
+The slug is the feed's address and half its identity: `vehicles-live`, not a number. It takes lowercase letters, digits and hyphens, has to start with a letter or a digit, and runs to 64 characters.
+
+One name is refused outright. `capabilities` is a real endpoint on the same collection, so a feed slugged that would sit at an address the API already answers on.
 
 Visibility is two options:
 

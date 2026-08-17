@@ -25,6 +25,12 @@ A user's detail page offers:
 - **Groups**: the user's memberships.
 - **Danger Zone**: disable (or re-enable) the account. Disabling revokes access immediately.
 
+### What an account link can and cannot do
+
+The three links this page can produce (verify, invite, password reset) are each scoped to their own purpose. One will not work at another's endpoint, so a verification link mailed to someone is not also a way to reset their password.
+
+They stop working once the password is set, rather than staying valid for the rest of their lifetime. That matters most for the copy-the-link case above: hand the same reset link out twice and the second use fails, so reissue it from this page instead of reusing the one you already copied.
+
 :::caution "User not found" can mean the request failed
 
 If a user's page cannot be read, a toast reports *Failed to load user* and the page then settles on **User not found.** The toast fades and the page text stays, so what remains on screen says the account does not exist when the request may simply have been refused or timed out.
