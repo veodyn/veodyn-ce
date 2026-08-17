@@ -1,5 +1,9 @@
 import { ReactElement } from 'react'
 import { render, RenderResult } from '@testing-library/react'
+import {
+  AppRouterContext,
+  type AppRouterInstance,
+} from 'next/dist/shared/lib/app-router-context.shared-runtime'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConfigProvider } from '@/components/config/config-provider'
 import { NEUTRAL_CONFIG, toClientConfig, type ClientConfig } from '@/lib/config-schema'
@@ -59,6 +63,26 @@ export function signInAsAdmin(overrides: Partial<CurrentUser> = {}): CurrentUser
 
 const NEUTRAL_CLIENT_CONFIG = toClientConfig(NEUTRAL_CONFIG)
 
+// A page under test renders outside Next's router; the real page never does.
+// `<Slot>` lets a feature contribute a component this tree cannot see, and one
+// of those calling useRouter fails the community suite that renders the page,
+// naming a component that suite never mentions.
+//
+// Navigating still throws, by name: a test that routes mocks next/navigation
+// and asserts on it, which is the convention everywhere else here.
+function refuses(method: string): never {
+  throw new Error(`router.${method}() needs vi.mock('next/navigation') in this test`)
+}
+
+const STUB_ROUTER: AppRouterInstance = {
+  push: () => refuses('push'),
+  replace: () => refuses('replace'),
+  back: () => refuses('back'),
+  forward: () => refuses('forward'),
+  refresh: () => refuses('refresh'),
+  prefetch: () => {},
+}
+
 export function renderWithProviders(
   ui: ReactElement,
   opts: { authenticated?: boolean; config?: Partial<ClientConfig> } = {}
@@ -87,7 +111,9 @@ export function renderWithProviders(
   function Wrapper({ children }: { children: React.ReactNode }) {
     return (
       <ConfigProvider value={value}>
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        <AppRouterContext.Provider value={STUB_ROUTER}>
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        </AppRouterContext.Provider>
       </ConfigProvider>
     )
   }
