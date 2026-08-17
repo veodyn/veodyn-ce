@@ -179,6 +179,20 @@ def test_an_empty_description_still_falls_back_to_the_capture_sentence() -> None
     assert catalog_service._describe(source, 12345) == expected
 
 
+def test_a_contributed_dataset_with_no_description_is_not_given_a_capture_one() -> None:
+    """The empty string is where the two rules above meet, and it is the case
+    that shipped wrong: a managed dataset declared without a description holds
+    `""`, which is falsy, so it fell through to the capture sentence and its
+    own page announced "Captured from Redash on every scheduled run" about rows
+    a person had typed in by hand. Origin settles this, not the description."""
+    from veodyn_api.services import catalog as catalog_service
+
+    source = DatasetSource(
+        table="restrooms", database="historical", name="Restrooms", origin="contributed", description=""
+    )
+    assert catalog_service._describe(source, 12) == ""
+
+
 def test_a_provider_row_count_wins_over_system_tables(monkeypatch: pytest.MonkeyPatch) -> None:
     """A view stores no rows, so system.tables reports null and the coercion
     turns it into 0. Every contributed dataset would read as empty."""

@@ -100,9 +100,22 @@ def _describe(entry: DatasetSource, row_count: int) -> str:
     A provider that knows better supplies its own sentence. Without this branch
     a hand-typed dataset is described as captured from a Redash query, which is
     a false statement about provenance rather than a cosmetic one.
+
+    That branch was not enough on its own. A provider supplies a description it
+    holds, and a managed dataset declared without one holds the empty string,
+    which is falsy: the first managed dataset on the stage instance therefore
+    read "Captured from Redash on every scheduled run" on its own page. The
+    origin, not the presence of a description, is what settles whether a
+    capture sentence may be written at all.
     """
     if entry.description:
         return entry.description
+    if entry.origin != "capture":
+        # Nothing truthful left to say about provenance: this provider knows
+        # where the rows come from and chose to say nothing. A row count is
+        # the one claim still supported, and it is already on the page beside
+        # this, so an empty description is the honest answer.
+        return ""
     captured = f"Captured from Redash query {entry.query_id}" if entry.query_id else "Captured from Redash"
     return f"{captured} on every scheduled run. {row_count:,} rows so far."
 

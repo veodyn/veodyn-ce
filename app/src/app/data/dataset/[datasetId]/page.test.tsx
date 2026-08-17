@@ -187,6 +187,50 @@ describe('DatasetDetailPage', () => {
     expect(screen.queryByText(/stale|fresh|down/i)).not.toBeInTheDocument()
   })
 
+  it('leaves the schema table off a contributed dataset, whose records already carry it', async () => {
+    // Every declared column appears under its own name in the record table
+    // the pack mounts below, so this restates them and adds two nobody
+    // declared: `captured_at` and `source` come from the log the view reads,
+    // not from the declaration.
+    useDatasetSpy.mockReturnValue({
+      data: { ...railDataset, origin: 'contributed', writable: true },
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useCatalogModule.useDataset>)
+
+    await renderPage(railDataset.id)
+
+    await screen.findByText(railDataset.name)
+    expect(screen.queryByText('Schema')).not.toBeInTheDocument()
+  })
+
+  it('gives a contributed dataset the full page width', async () => {
+    // A record table is as wide as the declaration is long, and the narrow
+    // column that keeps a description readable made a sixteen-column one
+    // scroll sideways inside it. The capture case above keeps `max-w-3xl`,
+    // so this is the only page that widens.
+    useDatasetSpy.mockReturnValue({
+      data: { ...railDataset, origin: 'contributed', writable: true },
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useCatalogModule.useDataset>)
+
+    await renderPage(railDataset.id)
+
+    await screen.findByText(railDataset.name)
+    expect(document.querySelector('.max-w-3xl')).toBeNull()
+  })
+
+  it('keeps a captured dataset narrow, which is the control for the width above', async () => {
+    // Without this, the width assertion passes for a page that lost its
+    // container entirely, or for a build where `narrow` stopped meaning
+    // max-w-3xl. Same page, same render path, origin the only difference.
+    await renderPage(railDataset.id)
+
+    await screen.findByText(railDataset.name)
+    expect(document.querySelector('.max-w-3xl')).not.toBeNull()
+  })
+
   it('shows a distinct outage message when the dataset query errors, not the not-found message', async () => {
     useDatasetSpy.mockReturnValue({
       data: undefined,

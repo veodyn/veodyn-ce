@@ -78,9 +78,14 @@ export default function DatasetDetailPage({ params }: { params: Promise<{ datase
   // (its id is a warehouse table name, not a row someone created), and curating
   // shared tables is a wiki-like surface rather than an owned one.
   const canEditTags = tagBackendAvailable && currentUser != null
+  // A dataset people type into. Its page is a table of rows to edit rather
+  // than a read-out about a capture, and the two want opposite geometry: the
+  // narrow column that keeps a description readable is the same column that
+  // makes a sixteen-column record table scroll sideways inside it.
+  const isContributed = dataset.origin === 'contributed'
 
   return (
-    <PageContainer width="narrow">
+    <PageContainer width={isContributed ? 'full' : 'narrow'}>
       <PageHeader
         title={dataset.name}
         description={dataset.description}
@@ -147,13 +152,22 @@ export default function DatasetDetailPage({ params }: { params: Promise<{ datase
         </CardContent>
       </Card>
 
-      <div className="mt-6">
-        <div className="mb-3 flex items-center gap-1">
-          <h2 className={SECTION_HEADING}>Schema</h2>
-          <CopySchemaJson schema={dataset.schema} />
+      {/* Not on a contributed dataset. Its columns are the ones somebody
+          declared, and the record table below already renders every one of
+          them under its own name, so this table restates them and then adds
+          two nobody asked for: `captured_at` and `source` belong to the log
+          the view is built from, not to the declaration. On a capture it is
+          the only place the shape is written down, which is why it stays
+          there rather than moving. */}
+      {!isContributed && (
+        <div className="mt-6">
+          <div className="mb-3 flex items-center gap-1">
+            <h2 className={SECTION_HEADING}>Schema</h2>
+            <CopySchemaJson schema={dataset.schema} />
+          </div>
+          <SchemaTable schema={dataset.schema} />
         </div>
-        <SchemaTable schema={dataset.schema} />
-      </div>
+      )}
 
       {/* Where the enterprise record editor mounts. Empty in a community build,
           which is the intended state and not a missing feature: writing to a
