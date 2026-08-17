@@ -15,7 +15,7 @@ can consume them without knowing anything about Veodyn.
 Today that standard is **GTFS-Realtime 2.0**. A published feed is a declaration
 that one query, mapped one way, is the source of one feed at one address.
 
-It lives at **Connect → Published Feeds** (`/connect/feeds`).
+It lives at **Connect → Feeds** in the sidebar (`/connect/feeds`), where the page itself is titled Published Feeds.
 
 ## Publishing is administered
 
@@ -39,6 +39,8 @@ Feed Health board next door is open to any member for exactly the opposite
 reason, since it changes neither.
 
 ## The list
+
+![The published feeds list: address over source query, standard, access and revision](/img/screenshots/connect-feeds.png)
 
 Four columns, and rows open the feed's own page.
 
@@ -65,6 +67,8 @@ draws.
 
 **Publish a feed** opens a form in five parts. Every part is a closed set where
 one exists: nothing here is free text that the API will later refuse.
+
+![The Publish a Feed form: source, address, shape, the field-to-column mapping table, and the on-failure modes](/img/screenshots/connect-feed-new.png)
 
 ### Source
 
@@ -123,6 +127,11 @@ Then the column map: each GTFS field against a column of the query's own result.
 Missing required fields are named on submit and update live as you map them,
 rather than freezing on whatever was missing at the first attempt.
 
+**A query that has never run has no columns to offer**, and the mapping table
+says exactly that rather than rendering eight dropdowns whose only selectable
+value is *Not mapped*. The mapping can still be saved in that state, and the
+page says so too, along with the consequence: nothing has checked it.
+
 ### On failure
 
 Two modes, and **their names read backwards from what they do at serving time**,
@@ -152,6 +161,8 @@ at it.
 
 `/connect/feeds/<slug>` is the whole record: what it is bound to, where it can
 be read, and every attempt to publish it.
+
+![A feed's page: Serving in the header, the public address, the binding, and a publish history holding a published attempt and a blocked one](/img/screenshots/connect-feed-detail.png)
 
 ### Serving status
 
