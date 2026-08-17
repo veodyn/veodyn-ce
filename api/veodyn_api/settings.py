@@ -49,15 +49,9 @@ class Settings(BaseSettings):
     # shortest capture schedule seen in a real deployment is 10 minutes, so an
     # hour is several missed runs rather than one late one.
     catalog_stale_after_minutes: int = 60
-    # Our own validator: `validator/` in this repo, an HTTP wrapper around the
-    # gtfs-rt-validator package (veodyn/gtfs-rt-validator, pinned to 0.2.0),
-    # deployed by the veodyn-validator chart. It is a service rather than an
-    # import because the prepared static archive costs ~48s and ~1.9 GB per
-    # feed, which every API replica would otherwise pay on a cold call; see
-    # services/feed_validator.py. NOT MobilityData's Java tool, which this
-    # comment named until 2026-08-17 and which that package exists to replace.
-    # Empty means no validator is configured, and a publish attempt then fails
-    # closed rather than publishing unvalidated bytes.
+    # Our `validator/` service, wrapping the gtfs-rt-validator package.
+    # Empty means a publish attempt fails closed rather than serving
+    # unvalidated bytes.
     feed_validator_url: str = ""
 
     # Dotted module paths, comma separated, imported at startup by both the API
