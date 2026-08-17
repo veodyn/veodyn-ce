@@ -242,6 +242,19 @@ FORBIDDEN_PATHS = (
         "who use it are. Anything in here that a public reader genuinely needs belongs in the "
         "published Docusaurus site under docs/, rewritten for that audience rather than moved.",
     ),
+    # --- Composition and cross-repository tooling --------------------------
+    (
+        "ci/assemble-sources.sh",
+        "The assemble step that composes a build context. It names both private pack "
+        "repositories and clones them with CI_JOB_TOKEN; the community tree is an input to "
+        "it, not a place it can run. Same class as scripts/dev-assemble.sh.",
+    ),
+    (
+        "scripts/check-tree-parity.py",
+        "Compares this tree against the community one, so it only means anything from the "
+        "side that has something to compare. Run in the community tree it would clone and "
+        "diff a repository against itself.",
+    ),
 )
 
 # Deliberately NOT forbidden, with an expiry. Printed on every run so it
