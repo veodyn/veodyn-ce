@@ -20,7 +20,7 @@ def findings_as_json(findings: tuple[Finding, ...]) -> list[dict[str, Any]]:
 
     `occurrenceCount` is on every finding even though it describes the notice
     they came out of, because the reader is looking at one finding at a time.
-    The validator caps exported samples per rule (1000 in 0.2.0) while
+    The validator caps exported samples per rule (1000 in 0.3.0) while
     reporting the true total separately, so past that ceiling the rows are a
     sample and only this field knows how many there really were.
     """

@@ -1,6 +1,6 @@
 # validator-service
 
-An HTTP wrapper around the `gtfs-rt-validator` PyPI package (0.2.0, pinned
+An HTTP wrapper around the `gtfs-rt-validator` PyPI package (0.3.0, pinned
 exactly), so the sidecar can validate a GTFS-Realtime feed over the network
 instead of holding a prepared archive (~1.9 GB, per feed) in every `veodyn-api`
 replica. Built to the contract in
@@ -47,9 +47,9 @@ addition per notice:
   the one place this matters.
 - `totalNotices` is the true count; `sampleNotices` is capped by the package's
   own `NoticeContainer` (`report.occurrence.MAX_EXPORTS_PER_RULE`, currently
-  1000 as installed at 0.2.0, not the smaller figure some earlier notes about
-  this package assumed (verified directly against the installed source, see
-  "Verified against the installed package" below). Either way, this service
+  1000 as installed at 0.3.0, not the smaller figure some earlier notes about
+  this package assumed), verified directly against the installed source; see
+  "Verified against the installed package" below. Either way, this service
   never re-samples or expands `sampleNotices`: the two numbers are read
   straight off the package and forwarded (see "Verified against the installed
   package" below for the exact figure).
@@ -135,22 +135,25 @@ is the regression test for this, run against the real package (not a mock).
 ## Verified against the installed package
 
 The brief flagged several things to confirm rather than assume once the
-package was actually installed (`gtfs-rt-validator==0.2.0`):
+package was actually installed, re-confirmed against the current pin
+(`gtfs-rt-validator==0.3.0`):
 
 - `prepare_feed`, `Mode`, `Request`, `resolve`, `validate`,
   `report.modern.build_report`, `report.manifest.rule` all exist and match the
   brief's signatures.
-- `report.occurrence.MAX_EXPORTS_PER_RULE` is **1000** in the installed 0.2.0,
-  not 1. This does not change anything about the design (samples are still
+- `report.occurrence.MAX_EXPORTS_PER_RULE` is **1000** in the installed 0.3.0,
+  not 1. This does not change anything about the design: samples are still
   capped and `totalNotices` is still the true count, which is the property
   this service actually depends on. It is worth flagging since a smaller
   figure was assumed going in.
+- `report.manifest.all_ids()` returns **61** ids (52 `E`, 9 `W`), the figure
+  the title lookup above is written against.
 - `Inputs`, `Source`, `url_cycle`, `MessageResult` are real, documented,
   version-pinned surface (`gtfs_rt_validator.runner.__all__` /
   `gtfs_rt_validator.api.__all__`), narrower than the six-name list in the
   brief but not private (`_`-prefixed) either. They are what makes the
   previous-message plumbing above possible; the exact pin
-  (`gtfs-rt-validator==0.2.0`) is what keeps a future package bump from moving
+  (`gtfs-rt-validator==0.3.0`) is what keeps a future package bump from moving
   this surface out from under the service without anything here noticing at
   install time.
 

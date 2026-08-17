@@ -18,7 +18,7 @@ is fine; mapping one back to a source row would need a regex per rule and is
 not something this design asks for.
 
 **Occurrences are SAMPLED and the count is not.** `sampleNotices` is capped at
-`MAX_EXPORTS_PER_RULE`, 1000 in 0.2.0, while `totalNotices` is the true number.
+`MAX_EXPORTS_PER_RULE`, 1000 in 0.3.0, while `totalNotices` is the true number.
 Below that ceiling the two agree; above it a rule that fired 4000 times arrives
 as `totalNotices: 4000` with 1000 samples, which is reachable for an agency
 running thousands of vehicles against a rule that trips on all of them.

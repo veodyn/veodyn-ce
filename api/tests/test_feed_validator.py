@@ -29,7 +29,7 @@ def test_each_sample_becomes_its_own_finding():
 def test_a_finding_carries_the_true_count_not_the_sample_count():
     """THE reason occurrence_count exists.
 
-    `sampleNotices` is capped (1000 per rule in 0.2.0) while `totalNotices` is
+    `sampleNotices` is capped (1000 per rule in 0.3.0) while `totalNotices` is
     the true number, so above that ceiling the rows are a sample. Reporting the
     sample size as the truth is a silent under-report, and it is precise enough
     to be believed.

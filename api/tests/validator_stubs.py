@@ -5,8 +5,8 @@
 same report, and two copies of it would be two things that can drift into
 testing two different validators.
 
-The shape was verified on 2026-08-16 by reading `report/modern.py` in the
-installed `gtfs-rt-validator` 0.2.0: one entry per rule, carrying the TRUE
+The shape was verified on 2026-08-17 by reading `report/modern.py` in the
+installed `gtfs-rt-validator` 0.3.0: one entry per rule, carrying the TRUE
 count and a sample of occurrences locatable only by a free-text prefix. The
 sample is capped at `MAX_EXPORTS_PER_RULE`, 1000, so the two agree below that
 and diverge above it.
