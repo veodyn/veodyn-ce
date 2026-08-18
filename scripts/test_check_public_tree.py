@@ -1,23 +1,14 @@
 """Unit tests for scripts/check-public-tree.py.
 
-The point these tests exist to make: a guard that has only ever been watched
-pass is indistinguishable from a guard that does nothing. Asserting that the
-checker exits clean against the real repository would keep passing if
-FORBIDDEN_PATHS were emptied, if path_matches always returned False, or if
-`git ls-files` were reading the wrong directory. So every test here that
-matters builds a throwaway git repository, plants a path the manifest
-forbids, and asserts the checker rejects that tree and names the path it
-found.
+Every test that matters builds a throwaway git repository, plants a path the
+manifest forbids, and asserts the checker rejects that tree and names the path
+it found. Two cover the guard silently stopping guarding instead:
 
-Two of them cover the ways this guard could quietly stop guarding rather
-than a path anyone plants:
-
-- `test_empty_repository_exits_2` covers passing vacuously. A checkout where
-  git lists nothing tracked must fail, not report a clean tree.
-- `test_every_phase_3_deletion_is_covered` covers the manifest drifting away
-  from what it was derived from. It replays a sample of the files the Phase 3
-  deletion actually removed and requires each to match some entry, so
-  dropping an entry fails here rather than the next time somebody merges.
+- `test_empty_repository_exits_2`: a checkout where git lists nothing tracked
+  must fail, not report a clean tree.
+- `test_every_phase_3_deletion_is_covered`: replays a sample of the files the
+  Phase 3 deletion removed, so dropping a manifest entry fails here rather than
+  the next time somebody merges.
 
 Stdlib-only, no pytest, same as scripts/test_scan_secrets.py: this runs on
 the bare python image the CI job uses, with nothing installed.
@@ -48,11 +39,9 @@ def _load(path, name):
 checker = _load(SCRIPTS_DIR / "check-public-tree.py", "check_public_tree_under_test")
 manifest = _load(SCRIPTS_DIR / "public_tree_forbidden_paths.py", "public_tree_forbidden_paths_under_test")
 
-# A sample of what `git diff --diff-filter=D --name-only 06a33c5..06099fa`
-# lists, one per manifest entry, kept as literal paths rather than read back
-# out of git: the assertion is about what the manifest covers, and it should
-# hold in a checkout with no history reachable (a CI clone with a shallow
-# fetch, or the public repository once it is squashed).
+# A sample of what `git diff --diff-filter=D --name-only 06a33c5..06099fa` lists,
+# one per manifest entry. Literal paths, not read back out of git, so this holds in
+# a checkout with no history reachable (a shallow CI clone, or a squashed repository).
 PHASE_3_DELETIONS = (
     "helm/envs/secrets",
     "helm/envs/veodyn-api-prod/values.yaml",
@@ -77,10 +66,10 @@ def git(root, *args):
 
 
 def make_repo(root, tracked=(), untracked=(), gitignore=None):
-    """Build a throwaway repository. `tracked` files are written and staged
-    (staged, not committed: `git ls-files` lists the index, so no commit and
-    therefore no user.name/user.email configuration is needed, which keeps
-    these tests runnable on a CI image with no git identity set).
+    """Build a throwaway repository. `tracked` files are written and staged.
+
+    Staged, not committed: `git ls-files` lists the index, so no git identity has to
+    be configured on a CI image.
     """
     git(root, "init", "-q")
     if gitignore is not None:
@@ -113,10 +102,9 @@ class TestPlantedPathIsRejected(unittest.TestCase):
             self.assertTrue(reason)
 
     def test_report_prints_the_offending_path(self):
-        # The finding is worth nothing if the operator cannot see which file
-        # tripped it, so assert on the printed report, not just the return
-        # value. Also asserts the report does NOT open the file: the word
-        # "placeholder" is this fixture's file content.
+        # Asserts on the printed report, not just the return value. "placeholder"
+        # is this fixture's file content, so its absence proves the report names
+        # the path without opening the file.
         with tempfile.TemporaryDirectory() as tmp:
             root = make_repo(Path(tmp), tracked=["README.md", "helm/envs/secrets"])
             tracked_matches, _ = checker.check_tree(root, manifest.FORBIDDEN_PATHS)
@@ -180,18 +168,12 @@ class TestGuardCannotPassVacuously(unittest.TestCase):
 class TestExportMode(unittest.TestCase):
     """`--export` checks the deferred paths as well, because a deferral does not travel.
 
-    DEFERRED_PATHS means "this repository may still hold it". The exported tree
-    is a different repository, it needs none of what is deferred, and under a
-    private-first flip its whole history publishes at once, so a deferred path
-    committed to the export and deleted before the flip is still published.
+    Under a private-first flip the export's whole history publishes at once, so a
+    deferred path committed there and deleted before the flip is still published.
     """
 
-    # A SYNTHETIC entry rather than manifest.DEFERRED_PATHS[0]. That tuple is empty
-    # as of 2026-08-18, and the version of this test that read it asserted itself
-    # vacuous and failed, which is the right way for a test to notice it has
-    # stopped testing anything. The behaviour has not gone anywhere: the next
-    # deferral will depend on `--export` checking it, and this proves it with no
-    # live deferral to borrow.
+    # Synthetic rather than manifest.DEFERRED_PATHS[0], which is empty as of
+    # 2026-08-18. The behaviour still has to hold for the next deferral.
     SYNTHETIC_DEFERRED = (("docs/synthetic-deferral/", "a deferral invented by this test"),)
 
     def test_a_deferred_path_passes_by_default_and_fails_on_export(self):
@@ -207,24 +189,22 @@ class TestExportMode(unittest.TestCase):
             self.assertEqual([entry for entry, _, _ in tracked], [deferred_entry])
             self.assertEqual([matched for _, _, matched in tracked], [[planted]])
 
+    def test_export_does_not_narrow_what_the_default_run_checks(self):
+        # The flag may only ADD. Swapping one list for the other would let every
+        # ordinary forbidden path through on the export.
+        combined = tuple(manifest.FORBIDDEN_PATHS) + tuple(manifest.DEFERRED_PATHS)
+        for entry in manifest.FORBIDDEN_PATHS:
+            self.assertIn(entry, combined)
+
     def test_docs_superpowers_is_forbidden_rather_than_deferred(self):
-        # The regression the whole change exists for. It sat in DEFERRED_PATHS past
-        # its own stated expiry, so check-public-tree reported clean for a week
-        # while five internal files sat in a public repository. Asserted by name,
-        # because "some deferral expired" is not something a later reader can act
-        # on.
+        # The regression this exists for: it sat in DEFERRED_PATHS past its own
+        # expiry, so the guard reported clean while five internal files sat in a
+        # public repository. Asserted by name, because "some deferral expired" is
+        # not something a later reader can act on.
         forbidden = {entry for entry, _ in manifest.FORBIDDEN_PATHS}
         deferred = {entry for entry, _ in manifest.DEFERRED_PATHS}
         self.assertIn("docs/superpowers/", forbidden)
         self.assertNotIn("docs/superpowers/", deferred)
-
-    def test_export_does_not_narrow_what_the_default_run_checks(self):
-        # The flag may only ADD. A version that swapped one list for the other
-        # would let every ordinary forbidden path through on the export, which
-        # is the run where it matters most.
-        combined = tuple(manifest.FORBIDDEN_PATHS) + tuple(manifest.DEFERRED_PATHS)
-        for entry in manifest.FORBIDDEN_PATHS:
-            self.assertIn(entry, combined)
 
 
 class TestMatchingRule(unittest.TestCase):
@@ -234,8 +214,7 @@ class TestMatchingRule(unittest.TestCase):
 
     def test_entry_without_a_trailing_slash_matches_exactly(self):
         self.assertTrue(checker.path_matches("docs/bugs.md", "docs/bugs.md"))
-        # A prefix rule would have claimed this file, which nobody decided
-        # anything about.
+        # A prefix rule would have claimed this file too.
         self.assertFalse(checker.path_matches("docs/bugs-triage.md", "docs/bugs.md"))
 
 
@@ -260,10 +239,8 @@ class TestManifest(unittest.TestCase):
         deferred = {entry for entry, _ in manifest.DEFERRED_PATHS}
         self.assertEqual(forbidden & deferred, set())
 
-    # No test here that the manifest holds no credential-shaped literal:
-    # scripts/scan-secrets.py already walks every tracked text file in this
-    # repository, this one included, and a second copy of that rule scoped to
-    # one file would only be a second place to keep it right.
+    # No credential-literal test here: scripts/scan-secrets.py already walks every
+    # tracked text file in this repository, this one included.
 
 
 if __name__ == "__main__":

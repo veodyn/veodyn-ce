@@ -48,6 +48,13 @@ DIVERGENT_PATHS = (
         "two-repository split, the release path and the deploy-only trees; the community "
         "copy describes a tree that has none of them.",
     ),
+    (
+        ".gitignore",
+        "The community copy ignores docs/superpowers/, which this tree tracks: 118 files that "
+        "are the internal design record and belong here. Carrying that entry back would refuse "
+        "`git add` for every new spec written in this repository, and the two copies therefore "
+        "state opposite and correct things about the tree each one sits in.",
+    ),
 )
 
 # (path, reason). Exists ONLY in the community tree. Same bar as above.

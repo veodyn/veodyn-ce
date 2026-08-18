@@ -1,42 +1,29 @@
 """The paths that must never exist in the public tree.
 
-Why this file exists: this repository is being split in two along a branch,
-not along a repo. `main` keeps the deployment configuration and the internal
-working documents; the public branch (`oss`) had them removed by the Phase 3
-deletion commits. Nothing about that split is enforced by git. A routine
-`git merge main` into `oss` restores every deleted file in one commit, with
-no conflict, no prompt and no diff anyone is likely to read line by line,
-and the public branch quietly stops being publishable. Several of the
-restored files hold live deploy credentials, so the failure is both silent
-and expensive.
+The public/private split here is along a branch, not a repository, and git
+enforces none of it: a routine `git merge main` into `oss` restores every
+deleted file in one commit with no conflict and no prompt, several of them
+holding live deploy credentials.
 
-This is the manifest half of the guard; `scripts/check-public-tree.py` is
-the half that fails. Keeping the list in its own module is deliberate: the
-list is the thing humans edit and reviewers read, and it should be possible
-to review a change to it without reading any matching logic.
+This is the manifest half of the guard and `scripts/check-public-tree.py` is
+the half that fails. The list lives in its own module so a change to it can be
+reviewed without reading any matching logic.
 
-Paths only. Never a credential value, never a fragment of one, never
-anything derived from one. The reason column says what kind of thing lived
-at the path and why it cannot ship, in terms a reader who has never seen the
-file can check. Same discipline as scripts/scan-secrets.py, and for the same
-reason: this file is itself public.
+Paths only. Never a credential value, never a fragment of one, never anything
+derived from one: this file is itself public. The reason column says what kind
+of thing lived at the path and why it cannot ship, in terms a reader who has
+never seen the file can check. An entry that never held anything is harmless,
+but an entry whose reason is invented is worse than no entry.
 
-Provenance: most entries below are a prefix of something the Phase 3
-deletion actually removed. The exact file list is
-`git diff --diff-filter=D --name-only 06a33c5..06099fa` (81 files); the
-entries here are the smallest set of prefixes covering it. The two image
-build files under the "Image builds" heading came later, in Phase 4, when
-the developer decided which half of the pipeline ships; they are marked as
-such so nobody looking for them in the Phase 3 diff concludes the manifest
-has drifted. Adding an entry that never held anything is harmless, but an
-entry whose reason is invented is worse than no entry, because the next
-person to weigh a false positive has nothing real to weigh it against.
+Provenance: most entries are a prefix of something the Phase 3 deletion
+removed, `git diff --diff-filter=D --name-only 06a33c5..06099fa` (81 files).
+The two under "Image builds" came later, in Phase 4, and are marked as such so
+their absence from that diff does not read as drift.
 
-Matching rule, implemented in check-public-tree.py and stated here because
-it governs how to write an entry: an entry ending in `/` matches any path
-under that directory; an entry not ending in `/` matches that one path
-exactly. Exact rather than prefix so that `docs/bugs.md` cannot be read as
-also claiming `docs/bugs-triage.md`, which nobody decided anything about.
+Matching rule, implemented in check-public-tree.py: an entry ending in `/`
+matches any path under that directory, and an entry not ending in `/` matches
+that one path exactly. Exact rather than prefix, so `docs/bugs.md` cannot be
+read as also claiming `docs/bugs-triage.md`.
 """
 
 # (path, reason). See the matching rule in this module's docstring.
@@ -71,11 +58,10 @@ FORBIDDEN_PATHS = (
     ),
     # --- Image builds (removed in Phase 4, not Phase 3) --------------------
     #
-    # The test jobs stay. These two do not, and the line between them is
-    # whether a fork outside the origin installation could run the job at
-    # all: the gates need a language runtime and this checkout, while the
-    # builds need push credentials to a private registry and, in two cases,
-    # read access to a private repository that is not part of this tree.
+    # The test jobs stay. The line is whether a fork outside the origin
+    # installation could run the job at all: the gates need a language runtime
+    # and this checkout, the builds need push credentials to a private registry
+    # and, in two cases, read access to a private repository.
     (
         "ci/build-dev.yaml",
         "The manual development-image builds, one per service. Two of them authenticate a "
@@ -148,22 +134,6 @@ FORBIDDEN_PATHS = (
         "landed in the same merge as docs/local-development.md and was left off here, which "
         "is the half that would have let it travel: the doc is blocked and the script it "
         "documents was not.",
-    ),
-    (
-        "scripts/dev-stack.sh",
-        "Brings the local stack up as one edition or the other. Forbidden for the same reason "
-        "as dev-assemble.sh above: it names the enterprise pack's checkout, its overlay "
-        "Dockerfiles and its compose overlay, and the ee path does not exist for a reader who "
-        "has only this tree. The ce path it also carries is exactly `docker compose up` "
-        "against the public compose.yaml, so nothing is lost there.",
-    ),
-    (
-        "scripts/dev-stack/",
-        "The enterprise fixture dev-stack.sh applies, holding rows for `kpi`, "
-        "`kpi_history_point` and `report`. Those tables are defined in the enterprise pack, so "
-        "the file is a description of a private schema. Its community counterpart is "
-        "compose/fixtures/, which stays public deliberately: everything in there is a table "
-        "this tree defines.",
     ),
     (
         "docs/secret-rotation.md",
@@ -272,6 +242,22 @@ FORBIDDEN_PATHS = (
         "diff a repository against itself.",
     ),
     (
+        "scripts/dev-stack.sh",
+        "Brings the local stack up as one edition or the other. Forbidden for the same reason "
+        "as dev-assemble.sh above: it names the enterprise pack's checkout, its overlay "
+        "Dockerfiles and its compose overlay, and the ee path does not exist for a reader who "
+        "has only this tree. The ce path it also carries is exactly `docker compose up` "
+        "against the public compose.yaml, so nothing is lost there.",
+    ),
+    (
+        "scripts/dev-stack/",
+        "The enterprise fixture dev-stack.sh applies, holding rows for `kpi`, "
+        "`kpi_history_point` and `report`. Those tables are defined in the enterprise pack, so "
+        "the file is a description of a private schema. Its community counterpart is "
+        "compose/fixtures/, which stays public deliberately: everything in there is a table "
+        "this tree defines.",
+    ),
+    (
         "docs/superpowers/",
         "Internal specs, plans and implementation notes: work in progress, naming internal "
         "incidents, unfixed weaknesses and private pack internals. It sat in DEFERRED_PATHS "
@@ -282,18 +268,17 @@ FORBIDDEN_PATHS = (
     ),
 )
 
-# Deliberately NOT forbidden, with an expiry. Printed on every run so it
-# cannot be forgotten, and carried as data rather than as a comment so that
-# nobody can delete the note without deleting the decision it records.
+# NOT forbidden, with an expiry. Printed on every run, and carried as data
+# rather than as a comment so the note cannot be deleted without deleting the
+# decision it records.
 #
-# Read this before adding anything here: an entry in this tuple is a path
-# that is known to be unfit for the public tree and is being kept anyway,
-# for a stated span. It is not a general escape hatch for a false positive.
-# A path that simply should not have been forbidden belongs out of
-# FORBIDDEN_PATHS entirely, with the reasoning recorded in the same commit.
+# An entry here is a path known to be unfit for the public tree and kept anyway
+# for a stated span. Not an escape hatch for a false positive: a path that
+# should never have been forbidden belongs out of FORBIDDEN_PATHS entirely,
+# with the reasoning recorded in the same commit.
+#
 # Empty, and the mechanism stays because the next deferral will want it. The one
-# entry this ever held, docs/superpowers/, is in FORBIDDEN_PATHS above: its
-# expiry passed unnoticed and five files reached a public repository in the gap.
-# A deferral that outlives its own expiry is worse than no deferral, because the
-# guard reports clean the whole time.
+# entry this ever held, docs/superpowers/, is now in FORBIDDEN_PATHS above: its
+# expiry passed unnoticed and five files reached a public repository in the gap,
+# with the guard reporting clean the whole time.
 DEFERRED_PATHS = ()
