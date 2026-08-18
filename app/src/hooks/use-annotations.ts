@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMockDataStore } from '@/stores/mock-data-store'
 import { USE_REAL_API } from '@/services/redash/config'
 import * as annotationsService from '@/services/redash/annotations'
+import { ANNOTATIONS_SUPPORTED } from '@/services/redash/annotations'
 import type { Annotation } from '@/types/annotation'
 
 export function useAnnotations(dashboardId: number) {
@@ -11,6 +12,11 @@ export function useAnnotations(dashboardId: number) {
   return useQuery({
     queryKey: ['annotations', dashboardId],
     queryFn: () => {
+      // The write surface is gated on ANNOTATIONS_SUPPORTED and this read was
+      // not, so every dashboard load asked a backend with no such route and
+      // took a 404 no reader ever saw. Nothing can be listed where nothing can
+      // be stored.
+      if (!ANNOTATIONS_SUPPORTED) return []
       if (USE_REAL_API) {
         return annotationsService.list(dashboardId)
       }
