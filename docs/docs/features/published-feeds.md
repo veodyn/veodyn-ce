@@ -212,7 +212,7 @@ Under block there is no staleness branch at all. Block governs whether a bad rea
 
 Conformance rules are not written here. They come from [`gtfs-rt-validator`](https://github.com/veodyn/gtfs-rt-validator), our own Python package, and `validator/` in the repository is a small HTTP wrapper around it that the sidecar calls over the network.
 
-It runs as its own service for one reason. The validator loads the agency's static GTFS archive to check against, which costs roughly 48 seconds and holds about 1.9 GB per feed. In-process, every API replica would carry its own copy and pay that on a cold call. One service holding one prepared archive answers in about half a second, and that is what makes validation possible inside a publish request at all.
+It runs as its own service for one reason. The validator loads the agency's static GTFS archive to check against, which costs roughly 48 seconds and holds about 584 MB per feed. In-process, every API replica would carry its own copy and pay that on a cold call. One service holding one prepared archive answers in about half a second, and that is what makes validation possible inside a publish request at all.
 
 :::caution A deployment with no validator configured publishes nothing
 
