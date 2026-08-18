@@ -28,17 +28,8 @@ import { SECTION_HEADING } from '@/lib/section-heading'
  * Why the publish control is being withheld, or null when it can be offered.
  *
  * Fails closed. The engine records a `failed` attempt for a result that is not
- * newer than the one already serving, so offering the button in that state lets
- * a press manufacture a failure that reads as a bug rather than report one. The
- * three states above it are worse, not better: while the lookup is pending, or
- * after it errored, or when Redash holds no cached result at all, this page has
- * established nothing, and a control that is live in exactly the states where
- * an attempt cannot succeed is a loading-state race with a red row at the end
- * of it.
- *
- * Each state gets its own sentence. Saying "the query has produced nothing new"
- * for a lookup that has not finished would be a claim nobody checked, which is
- * the same class of defect as rendering `bindingState` on a read.
+ * newer than the one already serving, so a button offered in any state where an
+ * attempt cannot succeed manufactures a failure rather than reporting one.
  */
 function publishHeldBack(
   lookup: { isPending: boolean; isError: boolean; resultId: number | null | undefined },
@@ -64,9 +55,8 @@ export default function FeedDetailPage({ params }: { params: Promise<{ slug: str
   const toast = useToast()
   const isAdmin = useAuthStore((s) => s.currentUser)?.isAdmin
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  // No router redirect after a delete: it stays on this page and swaps to the
-  // deleted state below, which needs nothing but Link and the mutation's own
-  // result.
+  // No router redirect after a delete: the page stays put and swaps to the
+  // deleted state below.
   const [deleted, setDeleted] = useState(false)
 
   const { data: feed, isLoading, isError } = usePublishedFeed(slug)
@@ -83,9 +73,8 @@ export default function FeedDetailPage({ params }: { params: Promise<{ slug: str
     )
   }
 
-  // A failed read is not a missing feed: saying "not found" for a backend that
-  // refused the request sends the reader looking for a deletion that never
-  // happened.
+  // A failed read is not a missing feed: "not found" for a refused request
+  // sends the reader looking for a deletion that never happened.
   if (isError || attemptsError) {
     return (
       <PageContainer width="narrow">
@@ -102,9 +91,6 @@ export default function FeedDetailPage({ params }: { params: Promise<{ slug: str
     )
   }
 
-  // Delete has no router redirect to reach for: the page stays put and swaps
-  // to this state, rather than needing an app-router context this route does
-  // not otherwise depend on.
   if (deleted) {
     return (
       <PageContainer width="narrow">
@@ -124,9 +110,8 @@ export default function FeedDetailPage({ params }: { params: Promise<{ slug: str
   }
 
   const list = attempts ?? []
-  // Newest by timestamp, not by array position: the fixtures and the store
-  // both hand this back newest-first already, but nothing in the contract
-  // promises it.
+  // Newest by timestamp, not by array position: nothing in the contract
+  // promises the newest-first order the store and fixtures happen to return.
   const newest = [...list].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )[0]

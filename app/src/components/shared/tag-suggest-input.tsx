@@ -1,20 +1,13 @@
 'use client'
 
-// The add-a-tag affordance, split out of TagsControl so that file stays chips
-// plus composition. Hand-built rather than assembled from the popover
-// primitive: this is a combobox over a filtered list, and the primitive would
-// bring a focus trap and a portal that fight an inline chip row.
+// The add-a-tag affordance, split out of TagsControl. Hand-built rather than
+// assembled from the popover primitive, whose focus trap and portal fight an
+// inline chip row.
 //
-// This control picks a candidate; it does not decide what gets stored. It hands
-// back a `TagCandidate`: the vocabulary's own spelling tagged `vocabulary`, or
-// exactly what was typed tagged `typed`, and the owner of the tag array decides
-// which of those gets normalized. Normalizing here as well would make the
-// owner's rule untestable, since it would never see a raw value.
-//
-// The "create <tag>" row is activated from this same listbox but is `typed`,
-// not `vocabulary`: it is text nobody has stored yet, so it is the case
-// normalization exists for. Which row was activated is not the question; where
-// the string came from is.
+// It picks a candidate, it does not decide what gets stored: it hands back a
+// `TagCandidate` tagged `vocabulary` (the vocabulary's own spelling) or `typed`
+// (exactly what was typed), and the owner of the tag array normalizes. The
+// "create <tag>" row is `typed`, since the string came from the input.
 
 import { useId, useState, type KeyboardEvent } from 'react'
 import { Plus } from 'lucide-react'
@@ -66,17 +59,15 @@ function buildItems(
     .slice(0, MAX_OPTIONS)
     .map<SuggestItem>((s) => ({
       key: normalizeTag(s.name),
-      // Verbatim, and marked as coming from the vocabulary so the owner stores
-      // it as spelled: tags written before normalization existed stay pickable
-      // as they are, rather than being rewritten into a second, sibling tag.
+      // Verbatim, so tags written before normalization existed stay pickable as
+      // spelled rather than being rewritten into a second, sibling tag.
       candidate: { source: 'vocabulary', value: s.name },
       count: s.count,
       label: s.name,
     }))
 
-  // "Create" is offered only when nothing in the vocabulary already is the tag
-  // being typed, so the person is never asked to choose between two rows that
-  // read the same.
+  // "Create" is offered only when no vocabulary row already is the tag being
+  // typed, so two rows never read the same.
   const exact = matches.some((m) => m.key === typed)
   if (!typed || exact || applied.has(typed)) return matches
   return [
@@ -183,9 +174,8 @@ export function TagSuggestInput({
               id={optionId(i)}
               role="option"
               aria-selected={i === active}
-              // mousedown, not click: the input's blur dismisses this list, and
-              // blur fires before click. preventDefault keeps focus put so the
-              // pick lands instead of the list vanishing under the pointer.
+              // mousedown, not click: blur fires first and dismisses this list.
+              // preventDefault keeps focus put so the pick lands.
               onMouseDown={(e) => {
                 e.preventDefault()
                 accept(item.candidate)

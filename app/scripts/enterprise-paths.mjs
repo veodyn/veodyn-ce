@@ -1,25 +1,17 @@
-// The 129 paths the enterprise pack owns: the whole of what "enterprise" means
-// to this repository, path by path.
-//
-// It was the move list for scripts/check-ce-build.mjs, a ratchet that moved
-// every entry aside, regenerated an empty feature registry and type-checked
-// what was left. That check reached zero and then EE-3 Task 6c carried the move
-// out for real, so the list stopped describing a rehearsal and became a
-// statement about this tree: none of these paths is here any more, and none of
-// them may come back. scripts/check-ce-tree.mjs is what enforces that.
+// The 129 paths the enterprise pack owns: what "enterprise" means to this
+// repository, path by path. None of them is in this tree and none may come back.
 //
 // Two readers, and neither re-lists a path:
 //   - scripts/check-ce-tree.mjs fails if any entry exists in this tree.
 //   - src/features/enterprise-route-links.test.ts derives its URL prefixes from
 //     the src/app/ entries, so a community module linking to /kpis fails there
-//     even though a URL is a string that no type-check can see.
+//     even though a URL is a string no type-check can see.
 //
-// The annotations below are kept as written. Each one records why a path is on
-// this side of the line, and several record why a NEIGHBOURING path is not
-// (src/lib/richtext.ts, src/lib/public-links.ts, src/stores/mock-data-store.ts).
-// Those are the corrections four separate audits made to a list that started as
-// a glob, and they are the part of this file worth reading before adding an
-// entry or arguing one away.
+// The annotations record why a path is on this side of the line, and several
+// record why a NEIGHBOURING path is not (src/lib/richtext.ts,
+// src/lib/public-links.ts, src/stores/mock-data-store.ts). Those are the
+// corrections four audits made to a list that started as a glob, so read them
+// before adding an entry or arguing one away.
 export const ENTERPRISE_PATHS = [
   // Feature packages, route directories, and their components: the original
   // 14-path baseline.
@@ -42,13 +34,9 @@ export const ENTERPRISE_PATHS = [
   // Service clients and API route handlers.
   'src/services/kpi',
   'src/services/report',
-  // The AI provider client for report generation, outlines, the Home digest
-  // and annotation suggestions, added by the EE-3 Task 6e audit. It sits in
-  // src/services/ai beside the community client.ts (SQL generation) and
-  // converse-client.ts (the Create-with-AI relay), which stay: the directory
-  // is shared, only this module is enterprise. Every function on it answers
-  // one of the four src/app/api/ai/* route directories already on this list,
-  // and after Task 6e the only hook that reaches it is use-report-ai.ts.
+  // The AI provider client for reports, outlines, the Home digest and annotation
+  // suggestions. The directory is shared: community client.ts (SQL generation)
+  // and converse-client.ts (the Create-with-AI relay) stay.
   'src/services/ai/report-client.ts',
   'src/services/ai/report-client.test.ts',
   'src/app/api/reports',
@@ -58,14 +46,8 @@ export const ENTERPRISE_PATHS = [
   'src/app/api/ai/outline',
   'src/app/api/ai/digest',
   'src/app/api/ai/suggest-annotations',
-  // The three suites over those four routes, and the shared harness they are
-  // driven from. None of it is a module the app ships: the harness
-  // dynamic-imports all four handlers above and nothing else, and the suites
-  // assert the posture the four share (the disabled gate, the demo mock, the
-  // real-mode proxy, caller auth, provider credentials). The harness was
-  // already on the ratchet; the suites arrived on it the moment the harness
-  // was named here, which is what a test sibling looks like from the mover's
-  // side.
+  // The three suites over those four routes and their shared harness, which
+  // dynamic-imports all four handlers and nothing else.
   'src/app/api/ai/ai-report-test-harness.ts',
   'src/app/api/ai/report-flow-routes.auth.test.ts',
   'src/app/api/ai/report-flow-routes.provider.test.ts',
@@ -81,12 +63,9 @@ export const ENTERPRISE_PATHS = [
   'src/hooks/use-kpis.real.test.tsx',
   'src/hooks/use-kpis.test.tsx',
   'src/hooks/use-kpis.ts',
-  // The four AI hooks Task 6e split out of use-ai.ts: report outlines, report
-  // blocks, the Home digest and suggested dashboard annotations. Each answers
-  // one of the src/app/api/ai/* route directories above, and all four call
+  // The four AI hooks over the src/app/api/ai/* routes above, all calling
   // services/ai/report-client.ts. The community use-ai.ts keeps useAiEnabled,
-  // useGenerateSql and useConverse, which is the half whose endpoints a
-  // community build ships.
+  // useGenerateSql and useConverse.
   'src/hooks/use-report-ai.test.tsx',
   'src/hooks/use-report-ai.ts',
   // The three report hooks Task 1 missed, and the reason it missed them: they
@@ -180,23 +159,14 @@ export const ENTERPRISE_PATHS = [
   'src/lib/report-snapshot.test.ts',
   'src/lib/report-snapshot.ts',
 
-  // The Shared Links console, end to end. Added by the EE-3 Task 6d link
-  // audit, which asked which side of the line src/lib/shared-links.ts is on:
-  // it builds /reports/<id> hrefs, and src/app/admin/shared-links (already
-  // here) is the only page that reaches any of it. The answer is enterprise,
-  // and it is enterprise as a whole rather than by half. fromRedash() shapes a
-  // dashboard or visualization link and fromReport() shapes a report one, but
-  // both exist only for that one console, which the approved CE/EE split moves
-  // to the pack because the reports descriptor already owns its nav row. The
-  // route handler, the hook, the table, the status vocabulary and the types
-  // are a closed island: nothing outside these paths and that page imports any
-  // of them (grep src/ for shared-link, and what is left is the nav href in
-  // the reports descriptor and three suites asserting it).
+  // The Shared Links console, end to end and not by half: nothing outside these
+  // paths and src/app/admin/shared-links imports any of it, so grep src/ for
+  // shared-link and what is left is the reports descriptor's nav href.
   //
-  // src/lib/public-links.ts is NOT here and must not be: it mints the
-  // dashboard and embed public paths this module calls, and share-dashboard-dialog,
-  // embed-dialog and use-dashboards call it too. Public sharing of a dashboard
-  // is community; the console that inventories every shared link is not.
+  // src/lib/public-links.ts is NOT here and must not be: it mints the dashboard
+  // and embed public paths, and share-dashboard-dialog, embed-dialog and
+  // use-dashboards all call it. Public sharing of a dashboard is community; the
+  // console that inventories every shared link is not.
   'src/lib/shared-links.ts',
   'src/lib/shared-links.test.ts',
   'src/lib/shared-link-status.ts',

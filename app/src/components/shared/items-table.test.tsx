@@ -45,8 +45,7 @@ describe('ItemsTable', () => {
   })
 
   it('actually reorders the rows, both ways', async () => {
-    // The table used to track a sort key, draw a chevron, and render the rows in
-    // the order it was handed them. The arrow moved and the data did not.
+    // Regression: the chevron moved while the rows stayed in caller order.
     const user = userEvent.setup()
     renderWithProviders(<ItemsTable columns={columns} items={items} rowKey={(i) => i.id} />)
 
@@ -185,11 +184,9 @@ describe('ItemsTable', () => {
   })
 
   it('does not swallow a row action button into the row itself when onRowClick is set', () => {
-    // Regression: a role="button" row computes its accessible name from all
-    // descendant text, so a "Restore" button inside a clickable row produced
-    // two role="button" elements both named "Restore" (queries archive tab).
-    // The row must stay out of the "button" role so the action button's own
-    // name is unambiguous and reachable on its own.
+    // Regression: a role="button" row takes its accessible name from descendant
+    // text, so a "Restore" button inside a clickable row produced two buttons
+    // named "Restore". The row must stay out of the "button" role.
     const columnsWithAction: Column<ItemFixture>[] = [
       ...columns,
       { key: 'action', title: '', render: () => <Button onClick={() => {}}>Restore</Button> },
@@ -218,25 +215,14 @@ describe('ItemsTable', () => {
   })
 
   it('sizes a sortable header label exactly like a non-sortable one', () => {
-    // Regression: the sort control used to be a raw <button> that inherited the
-    // th's `text-xs`. Rebuilt on the Button primitive, it picked up Button's
-    // base `text-sm` ON THE ELEMENT, which beats inheritance, so sortable
-    // headers rendered at 14px while the non-sortable `<span>` branch stayed at
-    // 12px. Two sizes in one header row, on all 14 consumers.
+    // Regression: Button's own `text-sm` beat the th's inherited `text-xs`, so
+    // sortable headers rendered at 14px beside 12px non-sortable ones. The
+    // assertion is the relationship, not a literal token, because a class the
+    // component renders can be overridden by one it renders later.
     //
-    // The honest assertion here is NOT "the button has text-xs": a class the
-    // component renders can still be overridden by one it renders later, which
-    // is exactly how the bug worked. Assert the relationship the bug broke, and
-    // pin it to the th rather than to a literal token so the two labels cannot
-    // drift together to some third size.
-    //
-    // Measured rather than computed: jsdom loads no stylesheet, so
-    // getComputedStyle(el).fontSize returns the initial keyword 'medium' for
-    // every element here and cannot see this defect at all (verified). The
-    // effective size is resolved from the class cascade instead: nearest
-    // declaration on self-or-ancestor wins, which is the rule the bug exploited.
-    // e2e/items-table-header.spec.ts makes the same assertion against real
-    // computed pixels in a browser.
+    // Resolved from the class cascade, not getComputedStyle: jsdom loads no
+    // stylesheet, so fontSize reads 'medium' everywhere and cannot see this
+    // defect. e2e/items-table-header.spec.ts asserts the same in a browser.
     renderWithProviders(<ItemsTable columns={columns} items={items} rowKey={(i) => i.id} />)
 
     const sortable = screen.getByRole('button', { name: /name/i })

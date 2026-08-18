@@ -1,18 +1,12 @@
-// Federation orchestrator. Maps over the pluggable sources, threads the
-// signal, and flattens the results in source order. allSettled keeps one dead
-// source from blanking the whole result set: a rejected source is logged
-// through the error registry and dropped, so the palette and /search stay
-// resilient for a partial failure. An aborted rejection (the search was
-// superseded by a newer keystroke) is neither logged nor counted as a
-// failure, since aborting is normal, expected traffic. If every source fails
-// for a real reason and nothing survives, the whole call throws so
-// useFederatedSearch surfaces isError and /search renders its error branch
-// instead of a misleading "No results".
+// Federation orchestrator: maps over the pluggable sources, threads the signal,
+// and flattens the results in source order. A failed source is logged and
+// dropped so one dead source cannot blank the set; an abort (superseded by a
+// newer keystroke) is neither logged nor counted. If nothing survives a real
+// failure the call throws, so useFederatedSearch surfaces isError and /search
+// renders its error branch instead of a misleading "No results".
 //
-// Which sources those are is not decided here and is no longer a fixed array:
 // assembleSearchSources composes the community sources with whatever the
-// installed features contribute. A caller may still pass its own list, which
-// is what every test in this file does.
+// installed features contribute; a caller may pass its own list instead.
 import { assembleSearchSources } from '@/features/search-sources'
 import { AppError, ErrorIds } from '@/lib/errorIds'
 import type { SearchResultItem, SearchSource } from './types'

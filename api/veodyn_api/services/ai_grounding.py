@@ -1,21 +1,16 @@
 """What the model is allowed to name: the lookups that answer it.
 
-Every AI route here answers with something that points at real content: an
-outline section names a query, a digest item names a KPI, a report block links a
-query id. None of those ids may come from the model. The model chooses FROM a
-list assembled out of these calls, and the caller checks its choice against the
-same list, so the worst a bad generation can do is point at the wrong real thing
-rather than at something that does not exist.
+No id may come from the model. It chooses FROM a list assembled out of these
+calls and the caller checks its choice against the same list, so the worst a bad
+generation can do is point at the wrong real thing.
 
 Per-kind assembly and its TTL cache are ai_converse_grounding.py. This file is
 the stateless half: one function per thing there is to look up.
 
-The credential is the Redash service account, not the reader. The relay in
-veodyn-de strips the browser cookie before calling out (the provider endpoint
-may be a third party), so this service has no way to know who is asking. The
-consequence is deliberate and worth stating: a suggestion can NAME a query the
-reader cannot open. It cannot show its contents, because reading a result still
-goes through Redash under the reader's own credential.
+The credential is the Redash service account, not the reader: the relay in
+veodyn-de strips the browser cookie before calling out. So a suggestion can NAME
+a query the reader cannot open, but not show its contents, because reading a
+result still goes through Redash under the reader's own credential.
 """
 
 import logging
@@ -31,17 +26,9 @@ from veodyn_api.services.redash import RedashClient
 # carrying any other type is carrying one somebody configured.
 TABLE_TYPE = "TABLE"
 
-# The catalog is the one grounding list with no ceiling of its own. Queries are
-# capped by ai_max_grounded_queries and columns by MAX_GROUNDED_COLUMNS, but
-# build_catalog answers with every table the warehouse has, so an instance
-# capturing two hundred feeds builds a system prompt nothing bounds. That does
-# not fail cleanly: it spends the budget the conversation needs, and past the
-# context window it surfaces as a provider 400 relayed as "AI is broken".
-#
-# Freshest first, because a chat about what is happening is a chat about a table
-# something is still writing to. What falls off the end is logged rather than
-# dropped quietly: a user asking for a table the model was never shown gets told
-# it does not exist, which is a confusing answer to debug from the outside.
+# build_catalog answers with every table the warehouse has, so this is the
+# catalog's own prompt ceiling: past the context window an unbounded list
+# surfaces as a provider 400. Freshest first, and what falls off is logged.
 MAX_GROUNDED_DATASETS = 40
 
 
@@ -71,8 +58,7 @@ class GroundedQuery:
     description: str
     tags: list[str]
     updated_at: str
-    # The data source it runs against, by name. See ai_data_sources.py for why a
-    # model that cannot see this answers questions about it from its priors.
+    # The data source it runs against, by name. See ai_data_sources.py.
     source: str = ""
 
     def as_prompt_row(self) -> dict[str, Any]:
@@ -92,8 +78,7 @@ class QueryVisualization:
 
     `options` is carried because a chart SHAPE is an option, not a type: five of
     the ids in ai_viz_choice.CHOICE_IDS are a CHART with a different
-    `globalSeriesType`, so matching "make it a bar chart" on the type alone would
-    answer with whichever chart the query happens to have.
+    `globalSeriesType`.
     """
 
     id: int
@@ -106,18 +91,12 @@ class DashboardWidget:
     widget_id: int
     query_id: int
     query_name: str
-    # What the widget draws TODAY. Without these an edit conversation is told
-    # which queries the dashboard holds and nothing about how they are drawn, so
-    # a model asked to improve the visualizations has to ask the analyst which
-    # ones are currently tables. They are also the fallback that keeps a widget
-    # whose visualization stops resolving mid-conversation from being proposed
-    # away: see _nothing_removed.
+    # What the widget draws TODAY, so an edit conversation can be told how each
+    # query is drawn. Also the fallback in _nothing_removed.
     viz_id: int = 0
     viz_type: str = ""
     # The chart's own options, because the SHAPE of a chart is an option and not
-    # a type. Without them every CHART on the dashboard is described to the model
-    # as a line chart, and "change the line charts and leave the bars alone"
-    # rewrites the bars.
+    # a type: without them every CHART is described to the model as a line chart.
     viz_options: dict[str, Any] = field(default_factory=dict)
 
 
@@ -128,12 +107,9 @@ def _text(value: Any, limit: int = 500) -> str:
 def list_queries(redash: RedashClient, api_key: str, limit: int, sources: dict[int, str]) -> list[GroundedQuery]:
     """Published queries the service account can see, newest first.
 
-    Redash excludes drafts from this listing, which is the behaviour we want: an
-    unfinished query is not something to build a report section on.
-
-    `sources` labels each row with the data source it reads (ai_data_sources.py).
-    An empty map leaves every label blank, which is the honest reading of a
-    lookup that did not answer.
+    Redash excludes drafts from this listing. `sources` labels each row with the
+    data source it reads (ai_data_sources.py); an empty map leaves every label
+    blank, which is the honest reading of a lookup that did not answer.
     """
     rows = redash.list_tagged("queries", "", api_key=api_key, page_size=min(limit, 250))
     queries = [
@@ -155,16 +131,10 @@ def list_queries(redash: RedashClient, api_key: str, limit: int, sources: dict[i
 def query_chart_config(redash: RedashClient, query_id: int, api_key: str) -> dict[str, Any] | None:
     """The query's own visualization, if it has one worth reusing.
 
-    A report block reuses what the query's author already configured rather than
-    inventing a chart. If there is nothing but the table, the caller falls back
-    to a table block, which every query can render.
-
-    Any type but TABLE, not CHART alone. A query whose best shape is a counter
-    or a heatmap had its report block degraded to a grid of numbers, which is the
-    same defect the shape guide in ai_viz_choice.py exists to stop upstream: no
-    point teaching the model to choose a heatmap if the report then ignores it.
-    The report renderer resolves the type through the plugin registry and
-    sanitizes options per type, so it draws whatever the query carries.
+    A report block reuses what the query's author configured; with nothing but
+    the table, the caller falls back to a table block. Any type but TABLE, not
+    CHART alone, since the report renderer resolves the type through the plugin
+    registry and sanitizes options per type.
     """
     payload = redash.get_query(query_id, api_key=api_key)
     for visualization in payload.get("visualizations") or []:
@@ -185,14 +155,8 @@ def query_chart_config(redash: RedashClient, query_id: int, api_key: str) -> dic
 def default_visualization(options: tuple[QueryVisualization, ...]) -> QueryVisualization | None:
     """The one a widget should point at when nobody asked for a shape.
 
-    A chart when the query's author configured one, its table otherwise. Any
-    configured shape beats the table Redash creates for every query, for the same
-    reason as query_chart_config above: a widget pointing at the table shows a
-    grid where the author built a counter.
-
-    None means the query has no visualization at all, which for a query that
-    exists means it went away between the listing and the lookup. The caller
-    drops that widget.
+    Any configured shape beats the table Redash creates for every query. None
+    means the query has no visualization at all, and the caller drops that widget.
     """
     return next((one for one in options if one.type != TABLE_TYPE), None) or next(iter(options), None)
 
@@ -200,13 +164,10 @@ def default_visualization(options: tuple[QueryVisualization, ...]) -> QueryVisua
 def query_result_columns(redash: RedashClient, query_id: int, api_key: str) -> tuple[str, ...]:
     """The column names a query's last cached result carried, or () if unknown.
 
-    A listing row does not carry columns, only `latest_query_data_id`, so this
-    costs a second call and a whole result body. That is why it is looked up for
-    the ONE query a proposal actually names rather than for the grounding list:
-    the same economy _dashboard_proposal already makes for visualization ids.
-
-    () is "we could not find out", never "it has none", and the caller treats it
-    that way. A KPI proposal is not worth refusing over a Redash hiccup.
+    A listing row carries only `latest_query_data_id`, so this costs a second
+    call and a whole result body: looked up for the ONE query a proposal names,
+    never for the grounding list. () is "we could not find out", never "it has
+    none", and the caller treats it that way.
     """
     try:
         payload = redash.get_query(query_id, api_key=api_key)
@@ -219,8 +180,7 @@ def query_result_columns(redash: RedashClient, query_id: int, api_key: str) -> t
         return ()
     # Walked with isinstance rather than chained .get(): the client only checks
     # that the top-level body is an object, so a result whose `data` is a string
-    # would raise AttributeError HERE, outside the except above, and take down a
-    # proposal this function exists to avoid refusing.
+    # would raise AttributeError outside the except above.
     result = data.get("query_result")
     inner = result.get("data") if isinstance(result, dict) else None
     columns = inner.get("columns") if isinstance(inner, dict) else None
@@ -262,12 +222,9 @@ def dashboard_widgets(redash: RedashClient, dashboard_id: int, api_key: str) -> 
 def query_visualizations(redash: RedashClient, query_id: int, api_key: str) -> tuple[QueryVisualization, ...]:
     """Every visualization the query has, so a chosen shape can be matched to one.
 
-    query_visualization_id below answers a narrower question ("which one should a
-    widget point at by default") and is still what a creation turn wants. This is
-    the edit turn's question: the model asked for a bar chart, and whether the
-    query already HAS one decides between pointing a widget at it and creating
-    it, which is the difference between an edit that touches only the dashboard
-    and one that has to write to a saved query somebody else owns.
+    The edit turn's question: whether the query already HAS the asked-for shape
+    decides between pointing a widget at it and writing to a saved query somebody
+    else owns. A creation turn wants default_visualization instead.
     """
     payload = redash.get_query(query_id, api_key=api_key)
     found: list[QueryVisualization] = []

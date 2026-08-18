@@ -3,24 +3,16 @@
  * Emit src/plugins/generated-registry.ts from the package directories present
  * under src/plugins/.
  *
- * The registry used to be hand-written, which meant installing a plugin was an
- * edit to a product file. A tenant pack would then have had to ship its own
- * copy of that file and overwrite it at image build, and every later edit to
- * the product's copy would diverge silently. Generating it instead makes
- * installing a package the act of putting its directory in place, so a pack
- * carries only its own code.
+ * Generated rather than hand-written, so installing a package is putting its
+ * directory in place and a pack carries only its own code.
  *
- * Still a static import map, for the reason the old hand-written one gave: the
- * bundler has to see the import to include the code, and a name resolved at
- * runtime defers a typo to the first person who opens the type selector.
+ * A static import map: the bundler has to see the import to include the code,
+ * and a name resolved at runtime defers a typo to whoever opens the type
+ * selector. Every package's index.ts exports `register`.
  *
- * Convention: every package's index.ts exports `register`.
- *
- * Runs automatically before `pnpm build` via the `prebuild` script in
- * package.json. That is a fail-closed guard for the overlay build, not a
- * convenience: without it, a pack that forgets (or mis-orders) `pnpm
- * gen:plugins` would build successfully against the stale, public-only
- * committed registry, silently shipping an image with no tenant plugins.
+ * `prebuild` runs this before `pnpm build`. Without that, a pack that skips
+ * `pnpm gen:plugins` builds against the stale committed registry and ships an
+ * image with no tenant plugins.
  */
 import { readdirSync, statSync, writeFileSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -67,17 +59,12 @@ function isSafeName(name) {
 /**
  * A package is a directory under src/plugins that has an index.ts.
  *
- * The index.ts check is not decoration: src/plugins also holds this file's
- * output and the registry's own tests, and a non-package directory would
- * otherwise be emitted as an import of nothing. But a directory that
- * contains TypeScript and still has no index.ts is not that case: it is a
- * package with the wrong entry filename (an `index.tsx` pack, say), and
- * silently dropping it would ship a build that reports success with the
- * tenant's plugins simply missing. That fails loud instead.
- *
- * Two directories whose names mangle to the same identifier (`my-plugin` and
- * `my.plugin`) would otherwise emit a duplicate `const` binding that only
- * TypeScript catches, long after the generator ran. Caught here instead.
+ * A directory with no TypeScript in it is skipped quietly (src/plugins also
+ * holds this file's output and its tests), but one that contains TypeScript and
+ * still has no index.ts fails loudly: that is a package with the wrong entry
+ * filename, and dropping it ships a green build with the plugins missing.
+ * Two names that mangle to the same identifier are refused here too, since the
+ * duplicate `const` binding would otherwise surface far from the generator.
  */
 function packages(dir) {
   if (!existsSync(dir)) return []

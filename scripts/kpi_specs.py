@@ -4,13 +4,12 @@ Data only. `seed-dev-kpis.py` is what writes any of it anywhere.
 
 Every query here returns exactly ONE row with ONE numeric column, because
 `kpi_eval.extract_value` reads the named column out of the LAST row of the
-result. A query whose last row is not the current reading produces a KPI that is
-confidently wrong, which is worse than one that errors.
+result. A query whose last row is not the current reading is confidently wrong.
 
 Thresholds are seeded from percentiles measured over 2026-07-22 to 2026-07-25
 (~3.2 days), the whole history the ClickHouse archive held when this was
 written. Each carries the observed numbers it came from. Re-derive them once
-there are two full weeks, and before trusting any of them across a weekend.
+there are two full weeks.
 """
 
 from typing import Any
@@ -19,34 +18,22 @@ from typing import Any
 # write queries against the wrong backend if the id differs per environment.
 DATA_SOURCE_NAME = "DE Historical"
 
-# Prefix on the Redash query names so the seeded queries are greppable and a
-# human can tell them apart from the hand-built ones.
-#
-# DO NOT "fix" the em dash below. This repo bans em dashes in prose, and this
-# is not prose: it is a lookup key. Both halves of seed-dev-kpis.py match a
-# saved query by `QUERY_PREFIX + spec["name"]` against the names already in the
-# target Redash, so changing a single character here stops matching every query
-# an earlier run created and the next --apply creates a duplicate set instead of
-# updating them. Changing it needs a rename pass over the existing titles in
-# every instance that has been seeded, not an edit here on its own.
+# Prefix on the Redash query names, and a lookup key rather than prose: both halves
+# of seed-dev-kpis.py match a saved query by `QUERY_PREFIX + spec["name"]` against
+# the names already in the target Redash. Changing one character (the em dash
+# included, which the prose ban does not reach) stops matching every query an
+# earlier run created, and the next --apply duplicates the set. A change needs a
+# rename pass over the existing titles in every seeded instance.
 QUERY_PREFIX = "Veodyn KPI — "
 
-# DO NOT edit the three STRING VALUES below, and DO NOT edit any `name` in
-# SPECS. They are the same class as QUERY_PREFIX above: the values are the
-# literal ClickHouse table names a seeded instance's queries read, and each
-# `name` is half of the key those queries are matched by. Neither is a label a
-# sweep gets to tidy. Editing one here does not rename anything anywhere else,
-# so a seeded query goes on reading the old table (or stops being found at all
-# and gets duplicated) while this file claims otherwise. Renaming them is a
-# migration over every seeded instance plus the warehouse, run deliberately,
-# not a find-and-replace in this file.
-#
-# The VARIABLE NAMES on the left are not in that class and never were. They are
-# local to this module, resolved at parse time, and referenced nowhere outside
-# it. A cross-model audit caught this file's identity occurrences being fenced
-# as one indivisible group when half of them were only ever a Python
-# identifier. The fence is on the right-hand side of these three lines and on
-# the `name` fields. It is not on anything else in this file.
+# DO NOT edit the three STRING VALUES below, or any `name` in SPECS. Same class as
+# QUERY_PREFIX: the values are the literal ClickHouse table names a seeded
+# instance's queries read, and each `name` is half of the key those queries are
+# matched by. Editing one here renames nothing anywhere else, so a seeded query
+# goes on reading the old table (or stops being found and gets duplicated) while
+# this file claims otherwise. Renaming is a migration over every seeded instance
+# plus the warehouse. The VARIABLE NAMES on the left are local to this module and
+# are not in that class.
 RAIL = "historical.q_riits_demo_transit_rail_vehicle_positions_21"
 BIKE = "historical.q_riits_demo_bikeshare_stations_32"
 PATROLS = "historical.q_riits_demo_transit_fsp_patrols_23"
@@ -163,9 +150,8 @@ WHERE speed > 0
         "domain": "rail",
         "direction": "higher-is-better",
         # Observed over 298 whole hours (>=20 moving samples each): p50 13.3, p25 12.98,
-        # p05 10.67, min 8.03, max 16.46. Deliberately NOT the 25 mph the hand-built
-        # "Average Rail Speed by Line" KPI carried: no hour in the archive has ever
-        # reached it, on any definition, so that target could only ever read breached.
+        # p05 10.67, min 8.03, max 16.46. NOT the 25 mph the hand-built "Average Rail
+        # Speed by Line" KPI carried: no hour in the archive has ever reached that.
         "target": 13,
         "at_risk": 11,
         "breached": 9,

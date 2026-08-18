@@ -3,19 +3,10 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * A clock, as an external store.
- *
- * Two callers need one and for the same reason. TimeAgo has always ticked, so
- * "2 minutes ago" does not sit frozen. FreshnessBadge derives Fresh/Stale/Down
- * from how old a dataset is, and it did not tick: a badge mounted just inside
- * two cadence periods stayed Fresh after crossing into Stale until some
- * unrelated render came along. A verdict that decays with time has to be
- * recomputed as time passes, not only when a parent happens to re-render.
- *
- * useSyncExternalStore rather than useState in an effect: time is external
- * state, and setting state synchronously from an effect is a cascading render.
- * One interval is shared across every subscriber, so a catalog page rendering a
- * dozen badges still runs a single timer.
+ * A clock, as an external store. Verdicts that decay with time (TimeAgo's
+ * "2 minutes ago", FreshnessBadge's Fresh/Stale/Down) have to recompute as time
+ * passes, not only when a parent re-renders. One interval is shared across every
+ * subscriber, so a catalog page rendering a dozen badges runs a single timer.
  */
 const TICK_MS = 60_000
 
@@ -48,8 +39,7 @@ function getSnapshot(): number {
 }
 
 // Zero on the server and on the hydrating render, so both produce identical
-// markup. Callers read zero as "no clock yet" and fall back to reading the time
-// directly, which is what these components did before there was a store.
+// markup. Callers read zero as "no clock yet" and read the time directly.
 function getServerSnapshot(): number {
   return 0
 }

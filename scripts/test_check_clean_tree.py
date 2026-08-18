@@ -1,28 +1,15 @@
 """Unit tests for scripts/check-clean-tree.py.
 
-A guard that has only ever been watched pass is indistinguishable from one
-that does nothing. Asserting this gate exits clean against the real repository
-would keep passing if the harvest returned nothing, if the alternation never
-matched, or if every verdict were wired to an empty list. So the tests that
-matter plant a term in a throwaway tree and assert the gate rejects it and
-names where.
+The tests that matter plant a term in a throwaway tree and assert the gate
+rejects it and names where. Two vacuous-pass shapes are covered by name:
+`test_the_floor_sits_below_the_real_harvest` (a floor set above the value it
+guards), and in the declarations file `test_every_declared_path_exists` and
+`test_every_baseline_path_is_tracked` (an assertion reading a field where it
+does not live).
 
-Three ways a guard in this repository has silently stopped guarding, all three
-shipped, and where each is covered:
-
-- A test file no discovery pattern matched, which exited 0 having collected
-  zero tests. All four files here have a `unittest.main()` block, and
-  ci/scan-secrets.yaml runs them under a wildcard pattern that matches every
-  one of their names.
-- A "not vacuously empty" floor set above the value it guarded, so it would
-  have failed on the correct answer: `test_the_floor_sits_below_the_real_harvest`.
-- An assertion reading a field where it does not live:
-  `test_every_declared_path_exists` and `test_every_baseline_path_is_tracked`,
-  in the declarations file, resolve every declared path through the filesystem
-  and through git.
-
-Three siblings were split off for file size, all discovered by the same
-wildcard. This file drives the scanner over planted terms;
+Three siblings were split off for file size. All four have a `unittest.main()`
+block and ci/scan-secrets.yaml discovers them under the wildcard below. This
+file drives the scanner over planted terms;
 test_check_clean_tree_patterns.py drives the value-free shape rules;
 test_check_clean_tree_ratchet.py drives the baseline comparison and the
 failure printing; test_check_clean_tree_declarations.py holds the shipped
@@ -57,10 +44,8 @@ class TestPlantedTermIsRejected(unittest.TestCase):
             self.assertEqual([lineno for lineno, _group in sites["src/thing.ts"]], [1])
 
     def test_a_term_in_a_FILENAME_is_found_even_with_generic_contents(self):
-        # The hole a second-model audit found: the matcher only ever ran over
-        # decoded contents, so a file NAMED after the customer passed as long
-        # as what was inside it was dull. `git ls-files` publishes every name
-        # in the tree, so the name is as public as any line of any file.
+        # `git ls-files` publishes every name in the tree, so a file NAMED after
+        # the customer is as public as any line of any file.
         with tempfile.TemporaryDirectory() as tmp:
             counts, sites, _patterns, _text, _name_only = scan_repo(
                 Path(tmp),
@@ -72,9 +57,8 @@ class TestPlantedTermIsRejected(unittest.TestCase):
             self.assertEqual([lineno for lineno, _group in sites[planted]], [gate.PATH_LINENO])
 
     def test_the_report_says_a_name_match_is_a_name_match(self):
-        # A different remedy from a line match (rename the file, do not edit a
-        # line), so printing it as `path:0` would send the reader looking for
-        # a line that does not exist.
+        # A different remedy from a line match (rename the file), and `path:0`
+        # would send the reader looking for a line that does not exist.
         buffer = io.StringIO()
         findings = ([("src/thing.ts", 1)], [], [], [], [], [], [])
         with redirect_stdout(buffer):
@@ -90,20 +74,16 @@ class TestPlantedTermIsRejected(unittest.TestCase):
 
 class TestGuardCannotPassVacuously(unittest.TestCase):
     def test_the_floor_sits_below_the_real_harvest(self):
-        # The failure this covers: a floor set ABOVE the value it guards, which
-        # fails on the correct answer instead of on a broken one. Both
-        # directions are asserted, because only checking that the harvest
-        # clears the floor would also pass with the floor set to 1.
+        # Both directions: only checking that the harvest clears the floor would
+        # also pass with the floor set to 1.
         self.assertGreater(len(TERMS), gate.MIN_HARVESTED_TERMS)
         self.assertGreaterEqual(gate.MIN_HARVESTED_TERMS, 5)
 
     def test_harvest_returns_terms_from_every_declared_source(self):
-        # "At least one term from each" is all this can assert without naming
-        # a per-source count that a normal edit would have to keep updating.
-        # A source going from ten terms to one therefore passes here, and the
-        # audit was right that nothing else caught it either: what does now is
-        # TERM_COUNT in the baseline, compared before every regeneration.
-        # See TestRegenerationRefusesAShrinkingHarvest in the ratchet file.
+        # "At least one term from each" is all this can assert without a per-source
+        # count that every normal edit would have to update. A source going from ten
+        # terms to one passes here; TERM_COUNT in the baseline is what catches it,
+        # see TestRegenerationRefusesAShrinkingHarvest in the ratchet file.
         sources = {source for _index, source, _pattern in TERMS}
 
         self.assertEqual(len(sources), len(manifest.IDENTITY_TERM_SOURCES))
@@ -156,9 +136,8 @@ class TestExclusions(unittest.TestCase):
             self.assertEqual(text_count, 1)
 
     def test_this_gates_own_modules_are_not_scanned(self):
-        # The baseline module's rows are file paths, and some of those paths
-        # contain a connector name that is itself a harvested term, so without
-        # this the gate would report itself.
+        # The baseline module's rows are file paths, and some contain a connector
+        # name that is itself a harvested term, so the gate would report itself.
         for self_path in manifest.SELF_REL_PATHS:
             with self.subTest(self_path=self_path), tempfile.TemporaryDirectory() as tmp:
                 counts, _sites, _p, _text, _names = scan_repo(
@@ -168,10 +147,9 @@ class TestExclusions(unittest.TestCase):
                 self.assertEqual(counts, {})
 
     def test_a_binary_files_contents_are_skipped_but_its_NAME_is_still_checked(self):
-        # Two assertions, and the second is the one the audit forced. A PNG
-        # cannot be decoded, so its pixels are not scanned and never were. What
-        # changed is that its path is: a capture saved under the customer's
-        # name identifies the customer without a single byte of it being text.
+        # A PNG cannot be decoded, so its pixels are not scanned, but its path is:
+        # a capture saved under the customer's name identifies the customer
+        # without a single byte of it being text.
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             make_repo(root, {"README.md": "clean\n"})
@@ -190,9 +168,8 @@ class TestExclusions(unittest.TestCase):
             self.assertEqual([lineno for lineno, _group in sites[named]], [gate.PATH_LINENO])
 
     def test_a_tree_of_only_binaries_exits_2_rather_than_reporting_clean(self):
-        # The name check must not become a reason to pass a run that read no
-        # text at all: that is the vacuous-pass shape this gate's own docstring
-        # warns about.
+        # The name check must not become a reason to pass a run that read no text
+        # at all.
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             git(root, "init", "-q")

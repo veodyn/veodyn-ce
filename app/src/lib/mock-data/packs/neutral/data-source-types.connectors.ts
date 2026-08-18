@@ -1,26 +1,15 @@
 // The transport/ITS connector family, split out of data-source-types.ts.
 //
 // These entries mirror runners built on the fork's `connector_base`
-// (node/redash/query_runner/connector_base.py), whose configuration
-// schemas carry long `description` strings. The data-source form renders
-// those as help text, so a mock that drops them shows a different screen
-// from the real backend, and keeping them makes each entry four to ten
-// times the size of a classic database entry. That size, not the domain,
-// is the seam: the file they came from was over the 300-line limit with
-// two of them in it.
-//
-// Every runner in this family gets four more fields appended by
-// `build_configuration_schema` in connector_base.py, after whatever the
-// runner itself declares. They are spelled out once in COMMON_CONNECTOR_FIELDS
-// and spread into each entry: a mock that drops them shows a form four fields
-// shorter than production, and the mock-backed screens are where that form
-// gets reviewed.
+// (node/redash/query_runner/connector_base.py), descriptions included, because
+// the data-source form renders those as help text. connector_base appends four
+// more fields to every runner in the family after whatever the runner declares;
+// they live once in COMMON_CONNECTOR_FIELDS and are spread into each entry.
 
 import type { ConfigSchemaProperty, MockDataSourceType } from '../types/data-source-types'
 
-// connector_base.build_configuration_schema, verbatim. The order is the order
-// the real schema appends them in, and each `order` array below ends with the
-// same four names.
+// connector_base.build_configuration_schema, verbatim and in the order the real
+// schema appends them. Each `order` array below ends with the same four names.
 const COMMON_CONNECTOR_FIELDS: Record<string, ConfigSchemaProperty> = {
   request_timeout: { type: 'number', title: 'Request Timeout (seconds)', default: 30 },
   redis_url: { type: 'string', title: 'Redis URL for PubSub (optional)', default: '' },
@@ -86,17 +75,10 @@ export const connectorDataSourceTypes: MockDataSourceType[] = [
   },
   {
     // Mirrors TMDD.configuration_schema() in
-    // node/redash/query_runner/tmdd_config.py, descriptions included, plus
-    // the four common fields spread in at the end.
-    //
-    // Two things the real schema carries are left out, both for the same
-    // reason and both deliberate: an `enum` of one value on tmdd_version, and
-    // the `minLength`/`maxLength` facets on endpoint_url, username, password
-    // and organization_id. Neither ConfigSchemaProperty nor
-    // components/forms/schema-fields.ts reads either, so copying them here
-    // would add fields to a fixture that nothing renders from. What the mock
-    // must not differ on is the SET of properties, which is what the form
-    // walks, and neutral.test.ts asserts that set literally.
+    // node/redash/query_runner/tmdd_config.py, plus the four common fields.
+    // The real schema's `enum` and `minLength`/`maxLength` facets are omitted:
+    // nothing in schema-fields.ts reads them. The property SET is what must
+    // match, and neutral.test.ts asserts it literally.
     type: 'tmdd',
     name: 'TMDD Center-to-Center',
     configuration_schema: {

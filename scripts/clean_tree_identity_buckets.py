@@ -1,61 +1,42 @@
 """How a finding is grouped when the run reports it, and what each group means.
 
-Split out of `scripts/clean_tree_identity_manifest.py` for file size, the same
-way `clean_tree_report.py` was split out of the gate. Read that manifest first:
-it holds the rule that governs this file too, which is that **no identity term
-is named here**. A bucket is described by the KIND of file it selects, never by
-the strings those files carry, and every selector below is a path shape or a
-question asked of the harvest at run time rather than a literal.
+Read `scripts/clean_tree_identity_manifest.py` first: its rule governs this
+file too, which is that **no identity term is named here**. A bucket is
+described by the KIND of file it selects, never by the strings those files
+carry, and every selector below is a path shape or a question asked of the
+harvest at run time rather than a literal.
 
-## Why there is more than one bucket outside the documentation site
-
-Because one number that means four things is its own kind of defect. Until
-2026-08-07 everything outside `docs/docs/` sat in a single catch-all reported
-as one open decision, and it was the largest apparent obstacle in the export.
-`docs/superpowers/specs/2026-08-07-identity-rename-scoping.md` measured it and
-found four slices with nothing in common: most of it is test vocabulary that a
-find-and-replace fixes, a fifth of it is a question that is already answered,
-some is documentation whose shipping status is a different question, and what
-is left is the part that actually needs a person to read it. Grouped together
-they read as one expensive migration. Declared apart, each one says what it
-would cost.
-
-## Open and closed
+The reason there is more than one bucket outside the documentation site is
+that one number meaning four things overstates whichever slice is cheapest to
+fix. `docs/superpowers/specs/2026-08-07-identity-rename-scoping.md` measured
+the old catch-all and found four slices with nothing in common.
 
 A bucket carries a status. `OPEN` is a question nobody has answered yet.
-`CLOSED` is a question that has been answered, kept here because the answer has
-a size and the size has to keep being checked.
+`CLOSED` is one that has been answered, kept here because the answer has a
+size and the size has to keep being checked.
 
-**A closed bucket is not an exemption.** Nothing about it is skipped: its files
-are scanned like any others, a new one fails as a new baseline row, and a
-recorded count that moves in either direction fails as `grew`, `swapped` or
-`stale`. The only thing the status changes is which heading the run prints it
-under, so that a settled question stops being read as an outstanding one.
+**A closed bucket is not an exemption.** Nothing about it is skipped: its
+files are scanned like any others, a new one fails as a new baseline row, and
+a recorded count that moves in either direction fails as `grew`, `swapped` or
+`stale`. The status changes only which heading the run prints it under.
 """
 
 # How a bucket selects its files. `bucket_for` takes the first bucket whose
-# selector matches, so ORDER IS MEANING here: the buckets that follow are
-# written to be read top to bottom, and the catch-all has to stay last.
+# selector matches, so ORDER IS MEANING here and the catch-all stays last.
 #
-# The kinds, and why there are three rather than one:
-#
-#   BY_PREFIX          a path prefix, matched from the left. The original and
-#                      still the right shape for a bucket that is a PLACE:
-#                      a directory whose whole contents share one decision.
+#   BY_PREFIX          a path prefix, matched from the left. For a bucket that
+#                      is a PLACE: a directory sharing one decision.
 #   BY_PATH_SHAPE      a regex over the whole path. For a bucket that is a KIND
-#                      of file rather than a place, because test files and
-#                      documentation are scattered across all three codebases
-#                      and no prefix collects them.
+#                      of file, since test files and documentation scatter
+#                      across all three codebases and no prefix collects them.
 #   BY_A_NAME_THAT_IS_A_TERM
 #                      the file's own name, with a test prefix or suffix
 #                      stripped, IS one of the harvested terms in full, and the
 #                      path additionally matches the regex given as the value.
-#                      This is the one kind that could not be written as a
-#                      literal without naming a term, which is exactly why it
-#                      is asked of the harvest instead. The bounding regex is
-#                      not decoration: without it, a term that is an ordinary
-#                      word would silently pull an unrelated file into a
-#                      settled bucket.
+#                      Asked of the harvest because it could not be written as
+#                      a literal without naming a term. Without the bounding
+#                      regex, a term that is an ordinary word would pull an
+#                      unrelated file into a settled bucket.
 BY_PREFIX = "prefix"
 BY_PATH_SHAPE = "path-shape"
 BY_A_NAME_THAT_IS_A_TERM = "name-is-a-term"
@@ -64,11 +45,8 @@ OPEN = "open"
 CLOSED = "closed"
 
 # (selector, label, status, reason). The catch-all is (BY_PREFIX, "") and must
-# stay last.
-#
-# None of these is resolved by being listed here. The point of the grouping is
-# that the run prints the question, the count and who owns it, every time,
-# rather than letting a flat exception list read as "handled".
+# stay last. Nothing is resolved by being listed here: the run prints the
+# question, the count and who owns it every time.
 OPEN_DECISION_BUCKETS = (
     (
         (BY_PREFIX, "docs/docs/"),

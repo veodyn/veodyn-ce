@@ -1,23 +1,16 @@
 'use client'
 
-// Home's non-AI insight surface (demo scenario a).
+// Home's non-AI insight surface (demo scenario a). The `home.notableChanges`
+// slot renders the full strip when the KPI feature is installed; this file is
+// the fallback, showing what the community can compute alone, which is freshness.
 //
-// The section is the community edition's; its contents are the
-// `home.notableChanges` slot's. With the KPI feature installed the slot renders
-// the full strip: movers read off live KPI evaluations, freshness, and recent
-// threshold breaches. With nothing installed, this file renders what the
-// community can compute on its own, which is freshness.
-//
-// The whole section is the slot rather than one column of it, because a mover's
-// value, delta and direction come from the KPI behind the counter, not from the
-// counter. Composing a community movers group with an enterprise one would show
-// the same metric twice with two different numbers, which is exactly what a
-// "notable changes" strip must never do.
+// The whole section is the slot, not one column of it: composing a community
+// movers group with an enterprise one would show the same metric twice with two
+// different numbers.
 //
 // Datasets, not feeds: these cards come from useCatalog and link to
 // /data/dataset/:id. A feed is a separate resource behind useFeeds, which is
-// what /feed-health reports on, and one word for two resources reads as a
-// contradiction between the two pages.
+// what /feed-health reports on.
 import Link from 'next/link'
 import { useCatalog } from '@/hooks/use-catalog'
 import { Slot } from '@/features/slots'

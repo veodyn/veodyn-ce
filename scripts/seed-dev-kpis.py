@@ -4,26 +4,19 @@
     ./scripts/seed-dev-kpis.py --redash-url URL --api-url URL          # plan
     ./scripts/seed-dev-kpis.py --redash-url URL --api-url URL --apply  # write
 
-Both URLs are required (or supplied as REDASH_URL and VEODYN_API_URL). There
-is deliberately no default: a seeding script that picks its own target writes
-to whatever its author last worked on, which is the wrong instance for
-everyone else.
+Both URLs are required (or supplied as REDASH_URL and VEODYN_API_URL); there is no
+default target.
 
-Two systems are written to, in this order, because the second depends on the
-first:
+Written in this order, because the second depends on the first:
 
-  1. Redash gets one saved query per KPI (see kpi_specs.py for the definitions
-     and where their thresholds came from).
+  1. Redash gets one saved query per KPI (definitions and thresholds: kpi_specs.py).
   2. veodyn-api gets one KPI per query, bound to that query id and column.
 
 Both halves are idempotent, matched on name: a second run updates the query text
 and leaves an existing KPI alone rather than creating duplicates.
 
-Schedules are deliberately left null. A development Redash seeded from a copy of
-a production database has every query in that copy unscheduled on purpose, and
-the KPI worker runs these itself on the KPI's own cadence. Setting a schedule
-here would re-arm that instance's scheduler against the upstream API, which is
-the thing the unscheduling exists to prevent.
+`schedule` is never sent. The KPI worker runs these itself on the KPI's own cadence,
+and setting one here would re-arm that instance's scheduler against the upstream API.
 """
 
 from __future__ import annotations
@@ -49,12 +42,7 @@ class SeedError(RuntimeError):
 
 
 def read_api_key() -> str:
-    """The write credential. Called only on the --apply path, never on a plan.
-
-    A dry run exists so someone can see what this would do before deciding to
-    trust it with a key, which is not much of a guarantee if running it reads
-    the key anyway (this used to load it out of app/.env.local unconditionally).
-    """
+    """The write credential. Called only on the --apply path, never on a plan."""
     key = os.environ.get("REDASH_INTERNAL_API_KEY")
     if key:
         return key
@@ -139,11 +127,7 @@ def upsert_query(redash: Http, spec: dict[str, Any], data_source_id: int, existi
 
 
 def run_query(redash: Http, query_id: int) -> Any:
-    """Execute once so the KPI's first evaluation has a warm cache to read.
-
-    Returns the result data, the only useful proof that the query is shaped the
-    way the evaluator needs.
-    """
+    """Execute once so the KPI's first evaluation has a warm cache to read."""
     result = redash("POST", f"/api/queries/{query_id}/results", {"max_age": 0})
     job = result.get("job")
     if job is not None:
@@ -191,9 +175,8 @@ def describe(spec: dict[str, Any], found: dict[str, Any] | None, kpi: dict[str, 
 def describe_planned(spec: dict[str, Any]) -> None:
     """The same plan without having contacted anything.
 
-    A dry run holds no credential, so whether each of these already exists is
-    genuinely unknown here rather than left out for brevity. --apply prints the
-    resolved form above before it writes.
+    A dry run holds no credential, so whether each of these already exists is unknown
+    here. --apply prints the resolved form above before it writes.
     """
     print(f"  {spec['name']}")
     print(f"    query: {QUERY_PREFIX + spec['name']!r} on data source {DATA_SOURCE_NAME!r}")
@@ -209,8 +192,7 @@ def seed_one(redash: Http, api: Http, spec: dict[str, Any], source_id: int, foun
         created = api("POST", "/kpis", kpi_payload(spec, query_id))
         print(f"    created KPI {created['id']}")
     elif kpi["source"].get("queryId") != query_id:
-        # Repointing a KPI deletes its history by design, so this is said out
-        # loud rather than done quietly.
+        # Repointing a KPI deletes its history, so say it rather than doing it.
         print(f"    NOTE: KPI points at query {kpi['source'].get('queryId')}, not {query_id}. Left as-is.")
 
 

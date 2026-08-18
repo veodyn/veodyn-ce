@@ -1,18 +1,12 @@
-// What the Visual builder offers as a visualization, which is not the same list
-// as the registered types.
+// What the Visual builder offers, flattened from the registry. A chart shape is
+// a Redash *option* (`globalSeriesType` in a CHART's options), not a type, so
+// one CHART type yields several tiles. VisualQuerySpec.chartType still means a
+// Redash type.
 //
-// A chart shape is a Redash *option*, not a type: `globalSeriesType` lives in a
-// CHART visualization's options. So the registry has one CHART type while an
-// analyst thinks in five shapes. Each plugin declares its own builder tiles, so
-// this is now a flattening of the registry rather than a second hand-written
-// list that could disagree with it. VisualQuerySpec.chartType keeps meaning a
-// Redash type, so an AI-authored spec is unaffected by anything here.
-//
-// This module is also where instance visibility is applied, for both the
-// builder tiles and the type selector: the `visualizations.enabled` allowlist
-// and the `visualizations.audience` overrides. It is the CREATION side of the
-// registry: `getVisualization` and the renderer stay unfiltered on purpose, so
-// a widget saved before an operator hid its type still draws.
+// Instance visibility (`visualizations.enabled`, `visualizations.audience`) is
+// applied here, the CREATION side only: `getVisualization` and the renderer
+// stay unfiltered, so a widget saved before an operator hid its type still
+// draws.
 import type { VizThumbnail } from '@/components/visualizations/viz-thumbnails'
 import {
   listVisualizations,
@@ -35,12 +29,8 @@ export interface VizChoice {
 
 /**
  * The instance's view of which types may be created, as it arrives from
- * `useConfig().visualizations`.
- *
- * Taken as one object rather than as loose arguments because the two fields
- * are read together everywhere and answer halves of the same question. Passing
- * only `enabled`, which is what every caller used to do, silently skipped the
- * audience rule.
+ * `useConfig().visualizations`. Both fields travel together: passing only
+ * `enabled` skips the audience rule.
  */
 export interface VisualizationVisibility {
   /** Allowlist. Null or undefined means everything registered. */
@@ -56,8 +46,7 @@ export interface AdhocViz {
   options: Record<string, unknown>
 }
 
-// A plugin with no choices is absent from the builder by design: the builder is
-// a grid of pictures and would have nothing to draw for it. Such a type is
+// A plugin with no choices is absent from the builder (nothing to draw), but is
 // still creatable from the type selector in the edit dialog.
 function choicesOf(plugins: readonly VisualizationPlugin[]): VizChoice[] {
   return plugins.flatMap((plugin) =>
@@ -74,9 +63,8 @@ function choicesOf(plugins: readonly VisualizationPlugin[]): VizChoice[] {
 /** Every tile this build can draw, before any instance visibility rule. */
 export const VIZ_CHOICES: VizChoice[] = choicesOf(listVisualizations())
 
-// One warning per unrecognized name per process. The allowlist is instance
-// config: it does not change while the app runs, so the same name would warn on
-// every render of every picker and bury the one line an operator needs to read.
+// One warning per unrecognized name per process: the allowlist does not change
+// while the app runs, so re-warning on every picker render is pure noise.
 const warnedUnknownTypes = new Set<string>()
 
 function warnUnknownTypes(enabled: readonly string[]): void {
@@ -92,12 +80,8 @@ function warnUnknownTypes(enabled: readonly string[]): void {
 }
 
 /**
- * Who a type is offered to, once the instance has had its say.
- *
- * Config wins over the plugin's own declaration, in both directions: an
- * instance can promote a type its author called internal, or demote one it
- * did not. A type that declares nothing is for analysts, which keeps every
- * plugin written before this field existed exactly where it was.
+ * Who a type is offered to. Config overrides the plugin's own declaration in
+ * both directions; a type that declares nothing is for analysts.
  */
 export function effectiveAudience(
   plugin: VisualizationPlugin,
@@ -107,17 +91,10 @@ export function effectiveAudience(
 }
 
 /**
- * The visualization types an instance offers for CREATION: the type selector in
- * the edit dialog, and the source of the builder tiles below.
- *
- * A name in `enabled` with no registered plugin is warned about once and
- * ignored rather than throwing, so rolling back to an image without some plugin
- * degrades the UI instead of stopping the app.
- *
- * Internal types are dropped here and nowhere else. They stay registered, keep
- * rendering, and are still reachable by anything that names a type directly (an
- * API call, a dashboard promoted from another instance); they are simply not
- * offered to someone picking one.
+ * The visualization types an instance offers for CREATION. An `enabled` name
+ * with no registered plugin is ignored rather than thrown on, so a rollback
+ * degrades the UI instead of stopping the app. Internal types are dropped here
+ * and nowhere else: they stay registered and keep rendering.
  */
 export function visibleVisualizations(
   visibility?: VisualizationVisibility | null
@@ -131,8 +108,7 @@ export function visibleVisualizations(
 
 /**
  * The builder tiles an instance offers, under the same rules. An empty
- * allowlist means an empty grid, not everything: a list that names nothing is
- * still a list.
+ * allowlist means an empty grid, not everything.
  */
 export function visibleVizChoices(visibility?: VisualizationVisibility | null): VizChoice[] {
   return choicesOf(visibleVisualizations(visibility))
@@ -141,17 +117,10 @@ export function visibleVizChoices(visibility?: VisualizationVisibility | null): 
 export const DEFAULT_VIZ_ID = 'table'
 
 /**
- * The choice for an id, falling back to the table rather than throwing. A draft
- * carrying an id this build no longer offers is a stale value, and answering it
- * with the plainest visualization is better than taking the editor down.
- *
- * The fallback looks the default up by id rather than taking the first tile:
- * tile order now comes from registration order, and "first" would quietly stop
- * meaning the table the day someone registers a plugin ahead of it.
- *
- * Deliberately reads the unfiltered list: a draft written before an operator
- * hid a type still resolves to what it says, the same way a saved
- * visualization of a hidden type still renders.
+ * The choice for an id, falling back to the table rather than throwing on a
+ * stale draft. The fallback is looked up by id, not taken as the first tile,
+ * because tile order follows registration order. Reads the unfiltered list, so
+ * a draft naming a hidden type still resolves.
  */
 export function resolveVizChoice(id: string): VizChoice {
   return (

@@ -2,24 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-// Whether a plugin visualization draws in an embed is decided by module graph,
-// not by anything in the embed route itself. Registration is a side effect of
-// importing '@/plugins', that import lives in src/app/providers.tsx, and the
-// embed page reaches it only because the ROOT layout wraps every route in
-// <Providers>. Nothing in src/app/embed mentions any of that, so the coupling
-// is invisible at the point where it would break.
+// Whether a plugin visualization draws in an embed is decided by module graph.
+// Registration is a side effect of importing '@/plugins', that import lives in
+// src/app/providers.tsx, and the embed page reaches it only because the ROOT
+// layout wraps every route in <Providers>. Nothing in src/app/embed mentions
+// any of that, so the coupling is invisible where it would break.
 //
-// Measured both ways before writing this, with a plugin type on a mock
-// visualization: a stock build renders "Unsupported visualization type: X"
-// naming the plugin's own type string, and a build with
-// NEXT_PUBLIC_VEODYN_PLUGINS set to a tenant package renders that plugin's
-// renderer instead. So the chain works today; this is what notices when a
-// link in it is removed.
-//
-// The realistic break is a nested layout that declares its own <html>, which
-// replaces the root layout for that segment rather than nesting inside it. The
-// embed page would keep working for core types and silently lose every plugin
-// one, on that route only.
+// The realistic break is a nested layout declaring its own <html>, which
+// replaces the root layout for that segment: the embed page would keep working
+// for core types and silently lose every plugin one, on that route only.
 
 const APP = join(__dirname, '..')
 

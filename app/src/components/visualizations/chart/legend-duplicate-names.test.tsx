@@ -5,25 +5,12 @@ import { LineAreaChart } from './line-area-chart'
 import type { ResolvedChartConfig } from './resolve-config'
 import type { QueryResultData } from '@/lib/mock-data'
 
-// Fix 3(b) from the phase 2 review fix brief claimed recharts de-duplicates
-// the legend payload by displayed value before ChartLegend ever sees it, so
-// two differently coloured series both renamed "Total" would collapse into
-// one legend item.
-//
-// Reading the installed recharts@3.8.0 source
-// (node_modules/recharts/es6/component/Legend.js and
-// util/payload/getUniqPayload.js) shows this is conditional, not automatic:
-// getUniqPayload only drops duplicates when the Legend's `payloadUniqBy` prop
-// is `true` or a function; legendDefaultProps does not set it, so it is
-// `undefined` by default, and getUniqPayload's fallthrough branch
-// (`return payload`) returns every entry unchanged. Every `<Legend>` in this
-// tree (bar-chart.tsx, line-area-chart.tsx, pie-chart.tsx, scatter-chart.tsx)
-// renders `<Legend content={<ChartLegend />} />` with no `payloadUniqBy`, so
-// none of them opt into de-duplication. The claim does not hold for this
-// codebase's actual usage, so Fix 3(b) changes nothing: this test locks in
-// today's real (non-deduplicating) behaviour as a regression guard, since
-// this is the exact kind of claim someone will reintroduce by adding
-// `payloadUniqBy` later without reading this file.
+// recharts de-duplicates the legend payload only when `payloadUniqBy` is set:
+// getUniqPayload (recharts@3.8.0, util/payload/getUniqPayload.js) otherwise
+// falls through to `return payload`, and legendDefaultProps leaves the prop
+// undefined. No `<Legend>` in this tree passes it, so two series sharing a
+// display name both keep their legend item. Locked in here, because adding
+// `payloadUniqBy` later would silently change it.
 beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
     width: 800,
@@ -57,8 +44,8 @@ const config: ResolvedChartConfig = {
   reverseX: false,
   showDataLabels: false,
   donut: false,
-  // Two distinct columns deliberately given the same display name: a user
-  // choice that produces an ambiguous chart, not a bug to disambiguate.
+  // Two distinct columns given the same display name: a user choice that makes
+  // an ambiguous chart, not a bug to disambiguate.
   seriesOptions: { a: { name: 'Total' }, b: { name: 'Total' } },
   yAxis: [],
   referenceLines: [],

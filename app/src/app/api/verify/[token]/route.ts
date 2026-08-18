@@ -1,17 +1,13 @@
 /**
  * Verify email: proxies the fork's GET /verify/<token>.
  *
- * Redash's /verify/<token> is not a JSON API: it is a GET that performs the
- * verification as a side effect and renders an HTML page
- * (node/redash/handlers/authentication.py:211). It returns verify.html with
- * status 200 on success, or error.html with status 400 on a bad or expired
- * token. The status code is the entire contract, so this route never parses
- * the HTML body, it only reads the status and translates it into a small
- * JSON payload the client can read.
+ * That endpoint is not a JSON API: it verifies as a side effect and renders
+ * HTML, 200 on success and 400 on a bad or expired token
+ * (node/redash/handlers/authentication.py:211). The status is the entire
+ * contract, so this route reads it and never parses the body.
  *
- * The token comes from a URL a user clicked, so it is untrusted input: it is
- * percent-encoded before being placed in the upstream path and it is never
- * logged.
+ * The token comes from a URL a user clicked, so it is untrusted input:
+ * percent-encoded into the upstream path, and never logged.
  */
 import { NextResponse } from 'next/server'
 import { REDASH_URL, redashFetch } from '@/lib/redash-server'

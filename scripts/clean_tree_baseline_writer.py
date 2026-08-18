@@ -1,15 +1,9 @@
 """Generating the ratchet for scripts/check-clean-tree.py, and refusing to.
 
-Split out of clean_tree_report.py when the bucket declarations grew a second
-selector kind and a status, purely to keep both files under this repo's
-file-size limit. The seam is the one that module's own docstring already
-named: everything here runs only under `--write-baseline`, and nothing here
-runs on a checking run.
-
-It takes `per_term` already counted rather than the raw sites, so it needs
-nothing from clean_tree_report.py and nothing from this family is on
-sys.path. check-clean-tree.py loads it by file path like every other module
-here.
+Everything here runs only under `--write-baseline`, and nothing here runs on a
+checking run. It takes `per_term` already counted rather than the raw sites, so
+it needs nothing from clean_tree_report.py; check-clean-tree.py loads it by file
+path like every other module here.
 
 No identity term is written here, by the same rule that governs
 scripts/clean_tree_identity_manifest.py.
@@ -21,19 +15,13 @@ import sys
 def regeneration_is_refused(previous, term_count, row_count, allow_shrink):
     """Compare the baseline about to be replaced against what is replacing it.
 
-    The hole this closes: --write-baseline wrote the new fingerprint and the
-    new counts without ever loading the old ones, so nothing in the documented
-    regeneration path could notice the harvest getting smaller. A source whose
-    extraction shape breaks (an array reformatted past the parser, ten terms
-    becoming one) still clears the floor in MIN_HARVESTED_TERMS and still
-    contributes "at least one term" to every per-source assertion, and once the
-    new fingerprint is written every later run trusts it. That is a guard that
-    cannot fail, reached through the command the docstring tells people to run.
-
-    So: a shrinking term list refuses the write. Any shrink, not a threshold.
-    Legitimate shrinks exist, above all the cutover scrub that takes the list
-    to nothing, and they are exactly the moments a human should have to type
-    --accept-fewer-terms and say why in the commit message.
+    A shrinking term list refuses the write: any shrink, not a threshold, because a
+    source whose extraction shape breaks (an array reformatted past the parser, ten
+    terms becoming one) still clears MIN_HARVESTED_TERMS and still contributes "at
+    least one term" to every per-source assertion, and once the new fingerprint is
+    written every later run trusts it. A legitimate shrink, above all the cutover
+    scrub that takes the list to nothing, is where a human types --accept-fewer-terms
+    and says why in the commit message.
 
     Returns True when the caller must not write.
     """
@@ -87,17 +75,14 @@ commit message why a number moved. A row is (path, total, ((term index, occurren
 that governs scripts/clean_tree_identity_manifest.py. An index resolves against the\n\
 harvest sources that manifest declares, and TERM_FINGERPRINT below fails the run if\n\
 those sources changed, so an index cannot come to mean a different term.\n\n\
-The per-term column is not decoration. Without it the ratchet compared totals, and a\n\
-swap nets zero: drop one occurrence of a term a file already carried, add a reference\n\
-to a different term elsewhere in the same file, and the new one was absorbed silently.\n\n\
-A row is not permission. It is the recorded size of an open decision, grouped and\n\
-restated on every run by OPEN_DECISION_BUCKETS in clean_tree_identity_buckets.py.\n\
-Growth fails, and reaching zero fails too, so a row cannot outlive the thing it\n\
-describes. That holds for the buckets declared CLOSED as much as for the open ones:\n\
-a settled question still has a size, and the size is still checked.\n\n\
+The per-term column is what catches a swap: on totals alone, dropping one occurrence\n\
+of a term a file already carried while adding a different term elsewhere in it nets\n\
+zero.\n\n\
+A row is the recorded size of an open decision, grouped by OPEN_DECISION_BUCKETS in\n\
+clean_tree_identity_buckets.py. Growth fails and reaching zero fails, for the buckets\n\
+declared CLOSED as much as for the open ones.\n\n\
 TERM_COUNT is how many terms the harvest yielded when this file was written. The next\n\
---write-baseline compares against it and refuses a shrinking term list, so a source\n\
-whose extraction quietly broke cannot be locked in by the regeneration path itself.\n"""\n'
+--write-baseline compares against it and refuses a shrinking term list.\n"""\n'
     body = [
         header,
         f'\nTERM_FINGERPRINT = "{fingerprint}"\n',

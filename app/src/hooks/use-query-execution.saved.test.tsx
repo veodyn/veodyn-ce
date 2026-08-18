@@ -1,20 +1,14 @@
 /**
  * Which endpoint a run goes to, which is not cosmetic for parameters.
  *
- * The ad hoc endpoint builds `ParameterizedQuery(query, org=...)` with NO
- * schema (redash/handlers/query_results.py:169), so `join_parameter_list_values`
- * falls back to a bare "," with no quoting: a multi-value list arrives in the
- * SQL as `Open,Closed`. The saved-query endpoint uses `query.parameterized`,
- * which carries the schema, so the query's own multiValuesOptions (prefix,
- * suffix, separator) are applied server-side.
+ * The ad hoc endpoint builds `ParameterizedQuery` with no schema
+ * (redash/handlers/query_results.py:169), so a multi-value list joins to a bare
+ * `Open,Closed`. The saved-query endpoint carries the schema and applies the
+ * query's multiValuesOptions server-side, and it validates enums with
+ * `_is_value_within_options`, so a client-joined string is rejected outright.
  *
- * Pre-joining on the client is not an alternative: the saved endpoint validates
- * an enum with `_is_value_within_options`, which would reject the joined string
- * outright. So a multi-value parameter is only correct when the list is sent as
- * a list, to the saved-query endpoint.
- *
- * The editor keeps the ad hoc path, because the buffer it runs may differ from
- * what is saved.
+ * The editor stays on the ad hoc path: the buffer it runs may differ from what
+ * is saved.
  */
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'

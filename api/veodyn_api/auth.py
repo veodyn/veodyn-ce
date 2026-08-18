@@ -31,17 +31,16 @@ def identity_credential(cookie: str | None, authorization: str | None) -> tuple[
     """Pick the ONE credential that establishes identity, as (cookie, authorization).
 
     Exactly one wins, and only that one is ever forwarded to Redash for a later
-    authorization check. That rule closes a real bypass: Redash resolves an API
-    key against the *route* it is used on, so a saved query's API key is
-    unresolvable on /api/session (no query_id view arg, so it falls back to the
-    session cookie) but fully resolvable on /api/queries/<id>, where it grants
-    that query's groups. Sending both credentials therefore authenticated the
-    caller as the cookie user while the source check passed on the query key,
-    letting anyone attach a query their own identity cannot read.
+    authorization check. That closes a real bypass: Redash resolves an API key
+    against the *route* it is used on, so a saved query's key is unresolvable on
+    /api/session (it falls back to the session cookie) but fully resolvable on
+    /api/queries/<id>, where it grants that query's groups. Sending both
+    authenticated the caller as the cookie user while the source check passed on
+    the query key, letting anyone attach a query their identity cannot read.
 
     The cookie wins when both are present because that is the browser path
-    through the Next.js proxy. A caller with only an API key still authenticates
-    with it, and a user API key resolves to a real user on /api/session.
+    through the Next.js proxy. A user API key resolves to a real user on
+    /api/session, so a caller with only a key still authenticates.
     """
     if cookie:
         return cookie, None
@@ -66,10 +65,8 @@ def caller_credential(cookie: str | None, authorization: str | None) -> tuple[st
     """The (api_key, cookie) pair to run a Redash call as this caller.
 
     Applies the same one-credential rule that established the identity, so a
-    credential that did NOT authenticate the caller is never forwarded. Sending
-    both would let a saved query's API key authorize access to that query while
-    the cookie supplied the identity, which is exactly the bypass
-    `identity_credential` exists to close.
+    credential that did NOT authenticate the caller is never forwarded. See the
+    bypass `identity_credential` closes.
     """
     session_cookie, session_authorization = identity_credential(cookie, authorization)
     return caller_api_key(session_authorization), session_cookie
@@ -84,11 +81,9 @@ def get_redash_client() -> RedashClient:
 # dump or a log of this dict does not hand out sessions.
 _session_cache: dict[str, tuple[float, Identity]] = {}
 
-# One entry per distinct credential, and a long-lived process sees a lot of
-# them: every sign-in, every API key, every stale cookie that is never
-# presented again. Nothing reads an expired entry, but without a sweep they
-# accumulate for the life of the process. Prune once the dict crosses this,
-# which is cheap and bounded because it only runs on a miss.
+# One entry per distinct credential, and a long-lived process sees a lot of them.
+# Nothing reads an expired entry, but without a sweep they accumulate for the life
+# of the process, so prune on a miss once the dict crosses this.
 _SESSION_CACHE_PRUNE_AT = 1024
 
 

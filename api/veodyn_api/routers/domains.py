@@ -1,18 +1,15 @@
 """Domain hub endpoints.
 
-Authorization: `require_identity` resolves the caller through Redash, then the
-tag lookups run as that same caller, so Redash's own group permissions decide
-what a hub contains. Two readers of the same domain can therefore see different
-members, which is the correct answer rather than a bug.
+Authorization: the tag lookups run as the caller `require_identity` resolved, so
+Redash's group permissions decide what a hub contains and two readers of the
+same domain can see different members.
 
-Paths are `/domains` and `/domains/{key}` because veodyn-de's proxies call
-`CATALOG_API_URL/domains` and `CATALOG_API_URL/domains/<key>`
+Paths are `/domains` and `/domains/{key}` to match veodyn-de's proxy
 (app/src/app/api/domains/[key]/route.ts).
 
-There is deliberately no 404 for an unknown key. This service has no registry of
-which domains exist (the tenant's list lives in veodyn-de's config), so it
-cannot tell "not a domain" from "a domain nothing is filed under yet". It
-answers with an empty hub, and the page says the sections are empty.
+An unknown key answers an empty hub, not a 404: this service has no registry of
+which domains exist (that list lives in veodyn-de's config), so it cannot tell
+"not a domain" from "a domain nothing is filed under yet".
 """
 
 from typing import Annotated

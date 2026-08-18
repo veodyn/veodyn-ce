@@ -1,32 +1,25 @@
 """Verdicts and reporting for scripts/check-clean-tree.py.
 
-Split out of that script purely to keep it under this repo's file-size limit;
-check-clean-tree.py loads this by file path, the same way scan-secrets.py
-loads scan_secrets_exceptions.py, and for the same reason. It re-exports
-classify() and check_pattern_hits() as its own attributes, so a caller or a
-test still reaches them where that script's docstring says the verdict is
-reached. Baseline GENERATION was split off again, into
-clean_tree_baseline_writer.py, for the same file-size reason and along the
-obvious seam: none of it runs on a checking run.
+Loaded by that script by file path, which re-exports classify() and
+check_pattern_hits() as its own attributes so a caller or a test reaches them
+where its docstring says the verdict is reached. Baseline GENERATION is
+further split into clean_tree_baseline_writer.py; none of it runs on a
+checking run.
 
-classify() and check_pattern_hits() are pure: they take counts and hits and
-return verdicts, touching no file and no repository, which is what lets the
-tests drive them with a plain dict.
+classify() and check_pattern_hits() are pure, touching no file and no
+repository, which is what lets the tests drive them with a plain dict.
 
-Everything printed from here obeys the rule the manifest sets out: a path, a
-line number and a term's index in its source list, never the term. This
-output goes into a public CI log.
-
-This module declares no identity term of its own, so it is not in the
-manifest's SELF_REL_PATHS.
+Everything printed here obeys the manifest's rule: a path, a line number and
+a term's index in its source list, never the term. This output goes into a
+public CI log. The module declares no identity term of its own, so it is not
+in the manifest's SELF_REL_PATHS.
 """
 
 
 def per_term_counts(sites):
     """{path: {term index: occurrences}} from the sites the scan collected.
 
-    Indices, never values, the same rule that governs everything else printed
-    or recorded by this gate.
+    Indices, never values.
     """
     counted = {}
     for path, path_sites in sites.items():
@@ -42,19 +35,15 @@ def classify(counts, sites, manifest, baseline):
     with dicts instead of a repository.
 
     A baseline row is (path, count, per_term), per_term being a sorted tuple
-    of (term index, occurrences). The total alone was the hole a second-model
-    audit found: drop one occurrence of a term a file already carried, add a
-    reference to a DIFFERENT term somewhere else in the same file, and the
-    ratchet nets zero and absorbs the new one in silence. `swapped` is that
-    finding and nothing else, so it is only collected when the total did NOT
-    grow: a growing total already fails as `grew`, and reporting both would
-    say the same thing twice.
+    of (term index, occurrences). The per-term half is what catches a swap:
+    drop one occurrence of a term a file already carried, add a reference to a
+    DIFFERENT term in the same file, and the total nets zero. `swapped` is
+    only collected when the total did NOT grow, since a growing total already
+    fails as `grew`.
 
-    What this still cannot see, stated rather than implied: one occurrence of
-    a term replaced by another occurrence of the SAME term in the same file.
-    That is the same term in the same file at a different line, which is not
-    new exposure, and pinning line numbers instead would make every row churn
-    on any unrelated edit above them.
+    Not covered: one occurrence of a term replaced by another occurrence of
+    the SAME term in the same file. That is not new exposure, and pinning line
+    numbers would churn every row on any unrelated edit above them.
     """
     load_bearing = {path for path, _reason in manifest.LOAD_BEARING}
     recorded = {path: count for path, count, _per_term in baseline}
@@ -106,11 +95,9 @@ def check_pattern_hits(pattern_hits, manifest):
     return fatal, over, sorted(key for key in declared if key not in seen)
 
 
-# The two bucket statuses, mirrored from clean_tree_identity_buckets.py rather
-# than imported, because nothing in this family is on sys.path. They cannot
-# drift: test_check_clean_tree_declarations.py asserts every declared status is
-# one of these, so a third status added over there fails there rather than
-# printing under no heading here.
+# Mirrored from clean_tree_identity_buckets.py rather than imported, because
+# nothing in this family is on sys.path. test_check_clean_tree_declarations.py
+# asserts every declared status is one of these, so they cannot drift.
 OPEN = "open"
 CLOSED = "closed"
 
@@ -135,9 +122,8 @@ def bucket_for(path, buckets):
 
 def _print_sites(path, sites):
     # Line 0 is check-clean-tree.py's PATH_LINENO: the term is in the file's
-    # NAME, not in a line of its contents. No file has a line 0, so the two
-    # cannot be confused, and the remedy is different enough (rename the file,
-    # rather than edit a line) that the output has to say which it is.
+    # NAME. The remedy differs (rename the file, rather than edit a line), so
+    # the output has to say which it is.
     for lineno, group in sites.get(path, []):
         where = " (in the file name)" if lineno == 0 else f":{lineno}"
         print(f"    {path}{where}: identity term #{group[1:]}")
@@ -180,10 +166,8 @@ def print_failures(findings, sites, buckets):
 
 
 def print_declarations(manifest, reported, terms, improved):
-    """Printed on every run, including a clean one. A declaration only
-    visible to whoever opens the manifest is a declaration that gets
-    forgotten; the run that says "clean" is the one that has to keep saying
-    "clean, and here is what it is not looking at".
+    """Printed on every run, including a clean one: the run that says "clean"
+    is the one that has to keep saying what it is not looking at.
     """
     print("\ncheck-clean-tree: declarations in force on this run:")
     for path, reason, count in reported:
@@ -203,14 +187,11 @@ def print_declarations(manifest, reported, terms, improved):
 def print_open_decisions(baseline, buckets):
     """The declared buckets, counted and restated every run.
 
-    This is the part that must not read as an exception list. Each bucket
-    prints the question, its current size and who owns it, so a run that
-    otherwise passes still says out loud what has not been decided.
-
-    Printed under two headings, because one number covering several questions
-    is a number that overstates whichever of them is cheapest to fix. A closed
-    bucket still prints and still carries its count: the heading says the
-    question has an answer, not that the files stopped being watched.
+    Each bucket prints the question, its current size and who owns it, so this
+    does not read as an exception list. Two headings, because one number
+    covering several questions overstates whichever is cheapest to fix. A
+    closed bucket still prints and still carries its count: the heading says
+    the question has an answer, not that the files stopped being watched.
     """
     grouped = {}
     for path, count, _per_term in baseline:

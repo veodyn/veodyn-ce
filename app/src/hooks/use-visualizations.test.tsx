@@ -1,23 +1,10 @@
-// Two layers of cover for one fix, written independently on two branches and
-// kept both ways round on merge.
+// The visualization tab strip reads only from `useQueryById`, keyed
+// `['query', id]`. Invalidating `['queries']` alone is the LIST prefix and does
+// not match that singular key, so a created, renamed or deleted visualization
+// never reached the editor.
 //
-// A visualization is not a top-level resource in this app: it is reached
-// through the query that owns it, and the only place its tab strip reads from
-// is `useQueryById`, keyed `['query', id]`. These three mutations invalidated
-// `['queries']` alone, which is the LIST prefix and does not match the singular
-// key, so the query editor kept serving the visualizations it had already
-// fetched. Against the real backend that made Save look like it did nothing:
-// the POST landed, the tab never appeared. In mock mode a reload would show the
-// new tab but would also throw the change away, so adding, editing or deleting
-// a visualization silently did nothing until a developer stumbled onto one.
-//
-// The first describe asserts the MECHANISM (the right cache entries went
-// stale), the second asserts the BEHAVIOUR (the change is readable through the
-// hook the page actually uses) without naming a cache key at all. The second
-// is what a user would notice; the first says why when it breaks. Task 5's
-// Playwright spec is what originally went looking for a Heatmap tab that was
-// never there, and jsdom could have caught it all along: this is cache wiring,
-// not layout, and nothing exercised the round trip before now.
+// First describe asserts the mechanism (the right cache entries went stale),
+// second asserts the behaviour through the hook the page actually uses.
 import { describe, expect, it, beforeEach } from 'vitest'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -41,11 +28,8 @@ function readBackWrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => {
   readBackClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  // Every mutation below writes straight into the shared, in-memory Zustand
-  // store with no reset of its own: without restoring it here, the "edit" tests
-  // permanently rename a query's first visualization and the "delete" tests
-  // permanently remove one, corrupting whatever test happens to run after them
-  // in the same process.
+  // The mutations write into the shared in-memory Zustand store, which has no
+  // reset of its own, so an edit or delete would leak into later tests.
   useMockDataStore.setState({
     queries: mockQueries.map((q) => ({ ...q, visualizations: [...q.visualizations] })),
   })

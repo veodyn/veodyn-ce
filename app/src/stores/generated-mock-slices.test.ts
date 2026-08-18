@@ -2,20 +2,16 @@
 // src/features/generated-registry.test.ts pins the registry half: the emitted
 // file is checked in, so it can go stale, and this is what stops that.
 //
-// The refusal cases below are the same three the registry generator learned the
-// hard way, asked of the new input this one reads. That input is a descriptor's
-// SOURCE TEXT, which is a narrower thing to get wrong than a directory listing:
-// every way of writing `mockSlices` that cannot be resolved by reading text has
-// to fail loudly, because emitting nothing for a feature that declared a slice
-// would ship a mock store missing that feature's actions with nothing red.
+// The generator reads a descriptor's SOURCE TEXT, so every way of writing
+// `mockSlices` that cannot be resolved by reading text has to fail loudly:
+// emitting nothing for a feature that declared a slice would ship a mock store
+// missing that feature's actions with nothing red.
 //
 // Every fixture tree below is built in os.tmpdir(), NOT under src/features, and
-// that is load-bearing rather than tidy. A fixture package directory sitting in
-// src/features is visible to any suite that scans the real tree at the same
-// moment, and vitest runs test FILES in parallel: the first draft of this file
-// made generated-registry.test.ts fail intermittently by existing. The
-// generator's --dir containment check exempts --stdout-slices for exactly this,
-// and its own comment says why the check does not apply there.
+// that is load-bearing: vitest runs test FILES in parallel, so a fixture package
+// directory in src/features is visible to any suite scanning the real tree at the
+// same moment, which made generated-registry.test.ts fail intermittently. The
+// generator's --dir containment check exempts --stdout-slices for exactly this.
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -34,9 +30,8 @@ function generate(featuresDir: string): string {
 }
 
 /**
- * The package directories actually present under src/features, read off disk
- * rather than asked of the generator, for the reason generated-registry.test.ts
- * gives: asking the generator what a package is would compare it to itself.
+ * The package directories present under src/features, read off disk rather than
+ * asked of the generator, which would compare it to itself.
  */
 function packageDirsOnDisk(): string[] {
   return readdirSync(FEATURES_DIR)
@@ -65,27 +60,21 @@ function descriptorWith(specifiers: string[]): string {
 }
 
 /**
- * A real module under src/stores, named where a fixture has to survive the
+ * A real module under src/stores, for fixtures that have to survive the
  * generator's existence check while running against the REAL app root.
  *
  * The CLI computes its own app root from the script's location and takes no
  * override, so a `--dir` fixture can point the features tree anywhere but the
- * slice specifier still has to resolve under `app/src/stores/`. Every enterprise
- * slice module left this tree with the extraction, so `@/stores/kpi-slice` (the
- * old fixture) resolves to nothing here and the CLI refuses it, correctly, for
- * the reason it exists to refuse a typo. This is a community module standing in
- * as a contributed slice: the generator only asks whether the file is there, so
- * nothing about feed-slice's own shape is being asserted.
+ * slice specifier still has to resolve under `app/src/stores/`. A community
+ * module standing in as a contributed slice: the generator only asks whether the
+ * file is there, so nothing about feed-slice's own shape is asserted.
  */
 const RESOLVABLE_SLICE = '@/stores/feed-slice'
 
 /**
  * A throwaway APP root holding the given slice modules, so a case can name
  * several contributed slices without any of them existing in the real tree.
- *
- * `sliceContributions` takes the app root explicitly (the CLI does not), which
- * is what lets the ordering and duplicate-claim cases below own both halves of
- * their fixture rather than borrowing unrelated real modules.
+ * `sliceContributions` takes the app root explicitly; the CLI does not.
  */
 function withStores(modules: string[], run: (appRoot: string) => void): void {
   const root = mkdtempSync(join(tmpdir(), 'veodyn-mock-slices-root-'))
@@ -99,36 +88,31 @@ function withStores(modules: string[], run: (appRoot: string) => void): void {
 }
 
 describe('the generated mock-slice module', () => {
-  // The file is checked in rather than gitignored, so `tsc --noEmit` and a
-  // fresh clone both work with no build step. The cost of checking in generated
-  // output is that it can go stale, and this is what stops that.
+  // Checked in rather than gitignored, so `tsc --noEmit` and a fresh clone both
+  // work with no build step. The cost is that it can go stale.
   it('matches what the generator produces from the descriptors on disk', () => {
     const expected = renderMockSlices(sliceContributions(ROOT, FEATURES_DIR, packageDirsOnDisk()))
     expect(readFileSync(GENERATED, 'utf8')).toBe(expected)
   })
 
-  // The assertion above compares the checked-in file to the two functions. This
-  // one compares the two functions to the CLI that `pnpm gen:features`, and so
-  // `prebuild`, actually runs, so a generator wired to emit the registry and
-  // quietly skip this file could not pass both.
+  // The case above compares the checked-in file to the two functions; this one
+  // compares those functions to the CLI that `pnpm gen:features` (and so
+  // `prebuild`) runs, so a generator that emitted the registry and quietly
+  // skipped this file could not pass both.
   it('emits through the CLI exactly what the renderer produces', () => {
     withPackages({ kpis: descriptorWith([RESOLVABLE_SLICE]) }, (dir) => {
       expect(generate(dir)).toBe(renderMockSlices([{ pkg: 'kpis', index: 0, specifier: RESOLVABLE_SLICE }]))
     })
   })
 
-  // The composition order IS behaviour: two slices declaring the same key
-  // resolve to whichever is spread last. Asserted against the emitted text
-  // rather than against the generator's own sort, so a reordering shows up here
-  // as a diff a reader can see.
+  // The composition order IS behaviour: two slices declaring the same key resolve
+  // to whichever is spread last. Asserted against the emitted text rather than
+  // against the generator's own sort, so a reordering shows up as a diff.
   //
-  // Against a FIXTURE, not against the checked-in file, and that is the change
-  // the extraction forced. The checked-in file is empty in a build that installs
-  // no feature package, so reading it would assert nothing at all here; and even
-  // when it was populated it could only ever pin the one arrangement this repo
-  // happened to ship. The fixture declares the packages in reverse alphabetical
-  // order and gives the second-sorting one two slices, so both halves of the
-  // rule (sort by package, then keep the descriptor's own order) are doing work.
+  // Against a FIXTURE, because the checked-in file is empty in a build that
+  // installs no feature package. The fixture declares the packages in reverse
+  // alphabetical order and gives the second-sorting one two slices, so both halves
+  // of the rule (sort by package, then keep the descriptor's order) do work.
   it('emits every declared slice once, sorted by package and then by declaration order', () => {
     withStores(['zebra-slice', 'alpha-slice', 'alpha-extra-slice'], (appRoot) => {
       withPackages(
@@ -149,18 +133,17 @@ describe('the generated mock-slice module', () => {
     })
   })
 
-  // The public product's own shape, and what the checked-in file holds in this
-  // tree. A module that could not be emitted empty would make a community build
-  // impossible, which is why this is asserted through a fixture as well: the
-  // checked-in copy could be replaced by an overlay and this case would still
-  // be the one that catches a generator that stopped handling zero packages.
+  // The public product's own shape, and what the checked-in file holds here. A
+  // module that could not be emitted empty would make a community build
+  // impossible, so this goes through a fixture too: an overlay can replace the
+  // checked-in copy, and this case still catches a generator that stopped
+  // handling zero packages.
   it('emits a valid empty module when no feature is installed', () => {
     withPackages({}, (dir) => {
       const output = generate(dir)
       expect(output).toContain('export type ContributedSlices = Record<never, never>')
-      // Nothing is imported from a feature's slice at all: the type-only
-      // imports of StateCreator and MockDataState are erased at compile time
-      // and pull no code into the module graph, which is what this guards.
+      // Nothing is imported from a feature's slice: the type-only imports of
+      // StateCreator and MockDataState are erased and pull in no code.
       expect(output).not.toMatch(/^import createSlice_/m)
       expect(output).toContain(
         'createContributedSlices: StateCreator<MockDataState, [], [], ContributedSlices> = () => ({})'
@@ -222,9 +205,9 @@ describe('the generator refuses what would silently corrupt the mock store', () 
     })
   })
 
-  // A renderer that dropped a contribution, or spread one it never imported,
-  // would produce a file that still compiled in the build that HAS the feature
-  // and failed only in the one that does not.
+  // A renderer that dropped a contribution, or spread one it never imported, would
+  // produce a file that compiled in the build that HAS the feature and failed only
+  // in the one that does not.
   it('imports exactly what it spreads', () => {
     const output = renderMockSlices([
       { pkg: 'my-feature', index: 0, specifier: '@/stores/a-slice' },

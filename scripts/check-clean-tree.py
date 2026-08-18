@@ -14,19 +14,17 @@ baseline it would replace, because a regeneration that cannot notice its own
 vocabulary shrinking is a guard that cannot fail. Add --accept-fewer-terms
 when the loss is deliberate, and say in the commit message what left.
 
-Why this exists, and what it is not: `scripts/scan-secrets.py` owns
-credentials and `scripts/check-public-tree.py` owns forbidden paths. Neither
-can see the third way this tree stops being publishable, which is that the
-customer stays identifiable from it. That is not a credential and not a path.
-It is a vocabulary spread across comments, fixtures, example values, file
-NAMES and documentation, and it grows one harmless-looking line at a time.
+`scripts/scan-secrets.py` owns credentials and
+`scripts/check-public-tree.py` owns forbidden paths. Neither can see the third
+way this tree stops being publishable: the customer staying identifiable from
+a vocabulary spread across comments, fixtures, example values, file NAMES and
+documentation.
 
 Read scripts/clean_tree_identity_manifest.py first. It carries the
 declarations, the reasons, and the decision that shapes everything here: this
 gate names no identity term in its own source. It harvests them at runtime
-from the guards in this tree that already carry them, and it reports a
-position and a term index, never a value, because its CI log is public. Same
-discipline as both sibling guards: name a position, never a value.
+from the guards in this tree that already carry them, and reports a position
+and a term index, never a value, because its CI log is public.
 
 How the verdict is reached, in order:
 
@@ -91,10 +89,8 @@ def _load_by_path(name, path):
     return module
 
 
-# Two modules, loaded at module scope rather than inside main(), and their
-# names re-exported so they stay attributes of THIS module: that is where this
-# file's docstring says the verdict is reached, and where the tests reach them.
-# Both were split off for file size and nothing else.
+# Loaded at module scope and re-exported so these stay attributes of THIS
+# module, which is where the tests reach them.
 #
 #   clean_tree_harvest    what to look for: reading the declared sources,
 #                         fingerprinting the result, compiling the matchers
@@ -134,13 +130,10 @@ def git_tracked_paths(root):
 def read_text_if_text(path):
     """None for anything that is not decodable UTF-8 text.
 
-    A real gap, not a safe one: a term absolutely can reach a file this
-    returns None for, because this tree ships screenshots of the running
-    product and the plan before this one recaptured most of them for showing
-    the tenant on screen. Declared in the manifest's NOT_CHECKED, which names
-    the guard that does cover painted text. The PATH of an undecodable file is
-    still matched below, so a file NAMED after the tenant is caught whatever
-    its bytes are.
+    A real gap: a term can reach a file this returns None for, because this
+    tree ships screenshots of the running product. Declared in the manifest's
+    NOT_CHECKED, which names the guard that covers painted text. The PATH of
+    an undecodable file is still matched below.
     """
     try:
         return path.read_bytes().decode("utf-8")
@@ -158,14 +151,13 @@ def scan(root, rel_paths, combined, rules, manifest):
     """Return (counts_by_path, sites_by_path, pattern_hits, text_count, name_only_count).
 
     Every path that is not skipped outright is matched twice: once as a path
-    string, and once line by line if it decodes as UTF-8. Matching the path was
-    missing until the second-model audit found it: a file whose CONTENTS are
-    generic but whose NAME is the customer identifies the customer just as
-    well, and `git ls-files` publishes every name in the tree.
+    string, and once line by line if it decodes as UTF-8. The path is matched
+    because `git ls-files` publishes every name in the tree, so a file whose
+    contents are generic but whose NAME is the customer identifies them.
 
-    The shape rules run over contents only. They detect an email address, a
-    token-authenticated clone URL and a registry image path, none of which is a
-    shape a filename can hold.
+    The shape rules run over contents only: an email address, a
+    token-authenticated clone URL and a registry image path are none of them
+    shapes a filename can hold.
     """
     counts, sites, pattern_hits, text_count, name_only_count = {}, {}, [], 0, 0
     deferred = tuple(prefix for prefix, _reason in manifest.DEFERRED_PREFIXES)
@@ -216,9 +208,8 @@ def main(argv):
     if "--write-baseline" in argv:
         load_bearing = {path for path, _reason in manifest.LOAD_BEARING}
         rows = sum(1 for path in counts if path not in load_bearing)
-        # Load the baseline being REPLACED before replacing it. Writing first
-        # and comparing never was how a regeneration could notice the harvest
-        # getting smaller; see regeneration_is_refused for what that cost.
+        # Load the baseline being REPLACED before replacing it, or the harvest
+        # getting smaller cannot be noticed. See regeneration_is_refused.
         previous = None
         if BASELINE_MODULE_PATH.is_file():
             previous = _load_by_path("clean_tree_identity_baseline", BASELINE_MODULE_PATH)

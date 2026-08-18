@@ -20,30 +20,22 @@ const hex = z.string().regex(HEX, 'must be a #rrggbb hex color')
 export const CHART_SURFACE_LIGHT = '#FFFFFF'
 export const CHART_SURFACE_DARK = '#12161F'
 
-// The accent, per scope. Both mirror a --primary in globals.css, and the dark
-// one is hand-picked rather than derived from the light one for the same reason
-// the dark palette below is: selected beats derived. themeStyle() emits this
-// pair, so a build that has not overridden theme.accent gets exactly the tokens
-// the stylesheet was designed around.
+// The accent, per scope. Both mirror a --primary in globals.css; the dark one
+// is hand-picked, not derived from the light one.
 export const DEFAULT_ACCENT = '#475569'
 export const DEFAULT_ACCENT_DARK = '#7FA9E0'
 
 // Categorical slots, in order: indigo, green, violet, blue, mauve, gold, teal,
-// rust. The ORDER is the accessibility mechanism, not a cosmetic choice: charts
-// draw series in slot order, so adjacent slots are what a reader compares, and
-// these two columns were selected together to clear the adjacent CVD and
-// normal-vision floors in their own mode. Do not reorder, and do not edit a hex
-// without re-running the gate in chart-palette.test.ts.
-//
-// Eight entries, one per slot. The previous 6-entry palette was cycle-filled
-// across 8 slots by themeStyle(), so slots 7 and 8 repeated slots 1 and 2 and an
-// 8-series chart painted two pairs identically.
+// rust. The ORDER is the accessibility mechanism: charts draw series in slot
+// order, so adjacent slots clear the adjacent CVD and normal-vision floors. Do
+// not reorder or edit a hex without re-running chart-palette.test.ts.
+// Eight entries, one per slot, so an 8-series chart never repeats a colour.
 export const DEFAULT_PALETTE = [
   '#485EA7', '#2B7E4E', '#A37AC7', '#3570A2', '#89435E', '#BF8A32', '#1D9999', '#B25630',
 ]
 
-// Same eight hues, re-stepped for the dark card. Not an automatic flip of the
-// light column and not derived: hand-selected, then validated as a set.
+// Same eight hues, re-stepped for the dark card: hand-selected, not derived
+// from the light column.
 export const DEFAULT_PALETTE_DARK = [
   '#4A61AA', '#2B7E4E', '#754998', '#4D8FC8', '#A05771', '#BF861D', '#1D9999', '#B55933',
 ]
@@ -60,8 +52,7 @@ const aiSchema = z
     path: ['endpoint'],
   })
 
-// The unbranded instance is Veodyn's own, so it ships Veodyn's mark
-// (public/images/veodyn-mark.svg) rather than a wordmark with nothing beside it.
+// The unbranded instance is Veodyn's own, so it ships Veodyn's mark.
 export const DEFAULT_BRAND_NAME = 'Veodyn'
 export const DEFAULT_BRAND_LOGO = '/images/veodyn-mark.svg'
 
@@ -78,9 +69,7 @@ export const veodynConfigSchema = z.object({
     .strict()
     .default({})
     // The bundled mark is filled in only while the name is still Veodyn's. A
-    // tenant that renamed and supplied no logo of their own gets no logo at
-    // all, which BrandMark already handles, rather than someone else's eye
-    // sitting next to their name.
+    // renamed tenant with no logo of its own gets none, which BrandMark handles.
     .transform((brand) => ({
       ...brand,
       logo: brand.logo ?? (brand.name === DEFAULT_BRAND_NAME ? DEFAULT_BRAND_LOGO : null),
@@ -128,17 +117,12 @@ export const veodynConfigSchema = z.object({
     .strict()
     .default({}),
   ai: aiSchema,
-  // Surfaces an instance can switch off. Default false, not true: a feature
-  // that ships on has to be worth its nav row on every instance, and Query
-  // Snippets is an empty shelf until someone writes one.
+  // Surfaces an instance can switch off. Default false, not true.
   features: z
     .object({
       query_snippets: booleanish.default(false),
-      // The draft workflow: authors decide when a query joins the shared list,
-      // and until they do it is listed only for them. Off by default because
-      // it puts a step between writing a query and colleagues finding it, and
-      // most teams would rather everything they save be findable. With it off,
-      // saving a query shares it and the word "draft" never appears.
+      // The draft workflow: a query is listed only for its author until they
+      // publish it. Off means saving a query shares it and "draft" never appears.
       query_drafts: booleanish.default(false),
     })
     .strict()
@@ -149,16 +133,9 @@ export const veodynConfigSchema = z.object({
     })
     .strict()
     .default({}),
-  // Two sections nothing in THIS edition reads, and they are declared anyway.
-  //
-  // `reports.require_separate_approver` is read by the report governance rule
-  // and `wall_mode.default_dashboard` by the wall screen, both of which the
-  // enterprise pack owns. This schema is `.strict()`, so an instance config
-  // naming a key it does not declare fails to parse: leaving these out would
-  // mean an enterprise deployment's own veodyn.config.yaml was rejected by the
-  // community half of its own app, and the only fix would be an overlay that
-  // patches this file. Same argument as the two backend URLs in lib/env.ts.
-  // Declaring an unread key is inert; refusing one is not.
+  // Two sections nothing in this edition reads: the enterprise pack owns both
+  // readers. The schema is `.strict()`, so an undeclared key fails to parse and
+  // an enterprise config would be rejected by the community half of its own app.
   reports: z
     .object({
       require_separate_approver: booleanish.default(true),
@@ -171,24 +148,16 @@ export const veodynConfigSchema = z.object({
     })
     .strict()
     .default({}),
-  // Which visualization types an instance offers when someone CREATES a
-  // visualization. Omitted (or null) means everything this build registers;
-  // a list is an allowlist.
+  // Which visualization types an instance offers on CREATION. Null means
+  // everything this build registers; a list is an allowlist.
   //
-  // The names are deliberately NOT checked against the registry here. This
-  // module is parsed server-side at boot while the registry lives in the
-  // client bundle, and more importantly an operator rolling back to an image
-  // without some plugin should get a degraded UI rather than a container that
-  // will not start. An unrecognized name is warned about once and dropped
-  // where the list is read (src/lib/viz-choices.ts).
+  // Names are NOT checked against the registry here (it lives in the client
+  // bundle, and a rollback should degrade the UI rather than refuse to boot).
+  // An unrecognized name is warned about once and dropped in
+  // src/lib/viz-choices.ts.
   //
-  // `audience` overrides a type's own declared audience, either direction. A
-  // plugin declares whether it is something to analyse with, and this is where
-  // an instance disagrees: an image panel promoted to 'analyst' because this
-  // deployment does build reports out of it, or a core type demoted to
-  // 'internal' because its readers are wall screens. Separate from `enabled`
-  // because they answer different questions: `enabled` is whether the type
-  // exists here at all, `audience` is who gets offered it.
+  // `audience` overrides a type's own declared audience in either direction.
+  // `enabled` is whether the type exists here; `audience` is who is offered it.
   visualizations: z
     .object({
       enabled: z.array(z.string()).nullable().default(null),

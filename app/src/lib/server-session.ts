@@ -1,21 +1,12 @@
 /**
- * Reads the caller's Redash session on the SERVER, during the render of the
- * root layout, so the browser is handed an app that already knows who it is.
+ * Reads the caller's Redash session on the SERVER, during the render of the root
+ * layout, so the answer travels with the HTML instead of costing the client a
+ * round trip after hydration.
  *
- * Why this exists. The session used to be fetched from a `useEffect` in
- * SessionProvider, which put three round trips in front of the first byte of
- * page data: download the bundle, hydrate, ask /api/auth/session, and only then
- * let the page mount and fire its own queries. The whole app was replaced by
- * the words "Loading session..." for the middle two. The cookie that answers
- * the question is already on the request that renders the layout, and
- * src/middleware.ts already reads it to decide whether to serve this page at
- * all, so the answer can travel with the HTML instead.
- *
- * This is a read. It deliberately does NOT do the `redash_api_key` self-heal
- * that GET /api/auth/session performs, because a server component cannot set a
- * cookie. `needsApiKeyHeal` reports the condition instead, and SessionProvider
- * fires that route in the background, off the critical path, only when it is
- * true.
+ * A read only: it does NOT do the `redash_api_key` self-heal that
+ * GET /api/auth/session performs, because a server component cannot set a
+ * cookie. `needsApiKeyHeal` reports the condition and SessionProvider fires that
+ * route in the background when it is true.
  */
 
 import { cookies, headers } from 'next/headers'
@@ -30,11 +21,10 @@ export async function readServerSession(): Promise<InitialSession> {
 
   const requestHeaders = await headers()
 
-  // A share link, an embed, or an invite. Nothing on those routes reads the
-  // session, so asking Redash would put a round trip in front of HTML that
-  // will not use the answer. `null` rather than `anonymous` because this is not
-  // a claim about the reader: a signed-in person opening a share link still
-  // gets their own chrome once the client asks for itself.
+  // A share link, an embed, or an invite: nothing there reads the session.
+  // `null` rather than `anonymous`, because this is not a claim about the
+  // reader, and a signed-in person still gets their own chrome once the client
+  // asks for itself.
   if (requestHeaders.get(PUBLIC_ROUTE_HEADER) === '1') return null
 
   const cookieStore = await cookies()

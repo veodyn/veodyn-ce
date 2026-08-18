@@ -15,20 +15,13 @@ interface VisualizationRendererProps {
 }
 
 /**
- * Stands in for a renderer whose code has not arrived yet.
+ * Stands in for a renderer whose code has not arrived yet. Fills the pane it was
+ * given rather than guessing a height; min-h-24 only stops an unconstrained
+ * parent collapsing it to a zero-height box.
  *
- * Sized to fill whatever pane it was given rather than to a guess: a fixed
- * height here would be a second opinion about how tall a widget is, and the one
- * that already exists (the grid item, the dialog pane, the slide) is the
- * correct one. min-h-24 is only so an unconstrained parent does not collapse it
- * to nothing and flash a zero-height box.
- *
- * Decorative, not announced. VisualizationProblems below is a role="status"
- * region in this same subtree, and a second one would put "loading" in
- * competition with the reason a visualization cannot draw. The surfaces that
- * mount this each announce their own not-ready state already (the dashboard
- * widget has one for its query), and what is being waited on here is a script
- * chunk, not an answer from a backend.
+ * aria-hidden, because VisualizationProblems below is a role="status" region in
+ * this same subtree and a second one would put "loading" in competition with the
+ * reason a visualization cannot draw.
  */
 function RendererFallback() {
   return (
@@ -40,13 +33,9 @@ function RendererFallback() {
 }
 
 /**
- * Dispatches through the registry rather than a switch. The switch used to be
- * the only place four types were mentioned at all, which is how they came to
- * render while being impossible to create.
- *
- * The lookup is deliberately not filtered by the instance allowlist: a widget
- * saved before an operator disabled its type must still draw, otherwise
- * turning a type off silently blanks existing dashboards.
+ * Dispatches through the registry rather than a switch. The lookup is not
+ * filtered by the instance allowlist: a widget saved before an operator disabled
+ * its type must still draw, or turning a type off blanks existing dashboards.
  */
 export function VisualizationRenderer({
   visualization,
@@ -63,29 +52,22 @@ export function VisualizationRenderer({
     )
   }
 
-  // Every renderer takes the same props now. Ones that do not use annotations
-  // simply ignore them, which is cheaper than keeping a per-type call site.
+  // Every renderer takes the same props; ones that do not use annotations ignore
+  // them, which is cheaper than a per-type call site.
   const { Renderer } = plugin
   const options = (visualization.options ?? {}) as Record<string, unknown>
   const problems = validateVisualization(visualization.type, options, data)
 
-  // The theme boundary sits here rather than inside each renderer because this
-  // is the one place every visualization passes through, core and plugin alike,
-  // and because a renderer with three early returns would otherwise have to
-  // wrap all three. For the default ('auto') it is a display:contents element,
-  // so this is the same shape as the fragment it replaced.
+  // The theme boundary sits here because this is the one place every
+  // visualization passes through, core and plugin alike. For the default
+  // ('auto') it renders a display:contents element.
   return (
     <WidgetThemeBoundary theme={readWidgetTheme(options)}>
-      {/* Registered renderers are lazy (see lib/visualizations/lazy-components.ts),
-          so this boundary is what every render surface gets for free by going
-          through this component. It wraps the renderer ALONE: the problems list
-          is derived from options and data with no code to fetch, and putting it
-          inside would hide the reason a visualization cannot draw behind the
-          load of the thing that cannot draw it.
-
-          Keyed by type so switching type in the edit dialog remounts the
-          boundary rather than reusing a resolved one, which is what stops the
-          previous type's renderer staying on screen while the next one loads. */}
+      {/* Registered renderers are lazy (lib/visualizations/lazy-components.ts).
+          The boundary wraps the renderer ALONE, so the problems list is not
+          hidden behind the load of the thing that cannot draw. Keyed by type so
+          switching type in the edit dialog remounts it rather than leaving the
+          previous renderer on screen while the next one loads. */}
       <VisualizationProblems problems={problems} />
       <Suspense key={visualization.type} fallback={<RendererFallback />}>
         <Renderer visualization={visualization} data={data} annotations={annotations} />

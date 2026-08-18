@@ -1,21 +1,14 @@
 """Feed Health, derived from the catalog rather than assembled beside it.
 
-A feed in this product is a scheduled Redash query that captures into the
-historical warehouse. That is not what the frontend fixtures depict (they show
-upstream providers: "AirNow Air Quality" delivered by "EPA AirNow"), and it is
-worth being explicit that nothing in this stack records those. `_catalog` knows
-which query captured which table and against which Redash connection; nobody
-stores that the connection is fed by the EPA. So a feed is named after its query
-and sourced by its Redash data source, which is the honest version of the same
-board.
+A feed here is a scheduled Redash query that captures into the historical
+warehouse. Nothing in this stack records the upstream provider the frontend
+fixtures depict: `_catalog` knows which query captured which table over which
+Redash connection, not that the connection is fed by the EPA. So a feed is named
+after its query and sourced by its Redash data source.
 
-Built ON TOP of build_catalog, not next to it, and that is the load-bearing
-decision here. The defect that produced this endpoint was two surfaces
-disagreeing about freshness: Home showed two fresh feeds from /catalog while
-Feed Health showed none, because /feeds did not exist and the page rendered the
-404 as an empty list. A second freshness computation would have been a slower
-way to earn the same disagreement back. Deriving from the catalog makes the two
-answers the same answer by construction, and it costs no extra warehouse reads.
+Built ON TOP of build_catalog, not next to it: a second freshness computation is
+how the two surfaces come to disagree about whether a feed is fresh. Deriving
+from the catalog makes them one answer, at no extra warehouse read.
 """
 
 import logging
@@ -37,22 +30,20 @@ CADENCE_NAMES = {60: "minutely", 3600: "hourly", 86400: "daily", 604800: "weekly
 # Largest unit first, so 300 reads "every 5 min" rather than "every 300 sec".
 CADENCE_UNITS = ((604800, "week"), (86400, "day"), (3600, "hour"), (60, "min"), (1, "sec"))
 
-# A query in the registry with no schedule was captured by hand at least once.
-# It still belongs on the board (it produced a table somebody reads), but it has
-# no cadence to be late against. Deliberately unparseable by `cadenceToMs`,
-# which returns null for it, so `deriveFeedStatus` falls back to the status
-# below instead of inventing a period out of nothing.
+# A query in the registry with no schedule was captured by hand at least once, so
+# it belongs on the board with no cadence to be late against. Unparseable by
+# `cadenceToMs`, which returns null, so `deriveFeedStatus` falls back to the
+# status this service computed instead of inventing a period.
 NO_SCHEDULE = "not scheduled"
 
 
 def cadence_label(interval_seconds: int) -> str:
     """A Redash schedule interval as a string lib/feed-status.ts can parse back.
 
-    The round trip is the contract: whatever this returns, `cadenceToMs` must
-    turn back into the same number of seconds, because the browser decides
-    fresh/stale/down by comparing that period against the last capture. Emitting
-    a label it cannot parse is not a cosmetic bug, it silently disables the
-    derivation and leaves every feed on this service's coarser verdict.
+    The round trip is the contract: whatever this returns, `cadenceToMs` must turn
+    back into the same number of seconds, because the browser decides
+    fresh/stale/down by comparing that period against the last capture. A label it
+    cannot parse silently disables that derivation.
     """
     if interval_seconds <= 0:
         return NO_SCHEDULE
@@ -93,15 +84,12 @@ def query_facts(
     """Schedule and data source for every query this caller can list.
 
     Empty is "we could not find out", and build_feeds treats it that way: a feed
-    with no facts keeps its name, its id and its last capture, and loses only its
-    cadence and its source. Refusing the whole board because a labelling call
-    failed would reproduce the defect this endpoint exists to fix.
+    with no facts keeps its name, id and last capture, and loses only its cadence
+    and source.
 
     Redash excludes drafts and archived queries from this listing, and it is one
-    page. A captured table whose query has since been archived is therefore still
-    listed as a feed, with no cadence: the capture happened, and pretending the
-    table has no history because its query was tidied away would be a worse lie
-    than an unlabelled row.
+    page, so a captured table whose query was since archived is still a feed with
+    no cadence.
     """
     try:
         rows = redash.list_tagged("queries", "", api_key=api_key, cookie=cookie)
@@ -131,32 +119,24 @@ def build_feeds(
 ) -> list[FeedOut]:
     """One feed per captured dataset, in the catalog's own order.
 
-    Pure: every warehouse read already happened in build_catalog, and the three
-    lookups are passed in. So the whole shape of this board is testable without
-    a ClickHouse or a Redash on the other end, which is the reason the router
-    below has almost nothing in it.
+    Pure: every warehouse read already happened in build_catalog and the three
+    lookups are passed in, so this board is testable with no ClickHouse or Redash.
 
-    `expectations` wins over the schedule, keyed by feed id. It is a person
-    saying how often data should arrive, which beats Redash's record of who is
-    supposed to run the capture, and on this instance the two disagree about
-    every feed: nothing is scheduled and everything is delivering. The schedule
-    stays as the fallback because where it is set it is a true statement and
-    needs no one to maintain it.
+    `expectations` wins over the schedule, keyed by feed id: it is a person saying
+    how often data should arrive, and on this instance nothing is scheduled while
+    everything is delivering. The schedule stays as the fallback.
     """
     declared = expectations or {}
     armed = alert_links or {}
     feeds: list[FeedOut] = []
     for dataset in datasets:
-        # Only a captured dataset is a feed. A contributed one has no cadence,
-        # no source and no schedule, so its row would say "last received" about
-        # something nobody sends. A shadowed dataset is still a capture and
-        # still belongs here.
+        # Only a captured dataset is a feed: a contributed one has no cadence and
+        # no source, so its row would say "last received" about something nobody
+        # sends. A shadowed dataset is still a capture and still belongs here.
         if dataset.origin != "capture":
             continue
-        # A dataset with no last capture has never delivered anything. It is a
-        # registry row for a table that exists and is empty, and putting it on a
-        # freshness board as "last received: never" would give the reader a row
-        # they cannot act on.
+        # A dataset with no last capture has never delivered anything, so it is a
+        # row nobody can act on.
         if not dataset.freshness.last_updated_at:
             continue
         fact = facts.get(dataset.sample_query_id or 0)
@@ -165,8 +145,7 @@ def build_feeds(
         feeds.append(
             FeedOut(
                 # The dataset id, so freshness.feedId on the catalog side points
-                # here and the board's Datasets column resolves. See
-                # services/catalog.py, where that field is set to the same value.
+                # here (services/catalog.py sets it to the same value).
                 id=dataset.id,
                 name=dataset.name,
                 source=sources.get(fact.data_source_id, "") if fact else "",

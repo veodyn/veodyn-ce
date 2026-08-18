@@ -1,26 +1,12 @@
 // Drawing fewer rows than the query returned, when there are far more of them
-// than the plot has pixels.
+// than the plot has pixels (the chart this was written for plots about 1,400
+// rows per series into roughly 700 pixels).
 //
-// The chart this was written for plots six series of minute-resolution capture
-// over a day: about 1,400 rows per series into roughly 700 pixels, so every
-// line is two samples deep in every column of the plot and none of them can be
-// followed. Most of that ink is not information, it is overdraw.
-//
-// Two rules the reduction holds to, and they are the reason this is a
-// selection rather than an aggregation:
-//
-// 1. Every drawn point is a row the query really returned. Nothing here
-//    averages, interpolates or smooths, so a value read off this chart, out of
-//    its tooltip, or out of the text summary is a number that came from the
-//    warehouse. A bucketed mean would be a figure with no source, which is the
-//    thing this codebase refuses to put in front of a reader.
-// 2. Every series keeps its own highest and lowest row. A reduction that drops
-//    a spike does not simplify the chart, it removes the event, and the reader
-//    has no way to know it happened. Those rows are pinned before anything
-//    else is chosen.
+// A selection, never an aggregation: every drawn point is a row the query
+// really returned, and every series keeps its own highest and lowest row, so a
+// reduction cannot drop a spike.
 
-// Roughly one point per pixel on a wide plot. Past this the extra rows land on
-// pixels that are already painted.
+// Roughly one point per pixel on a wide plot.
 export const MAX_PLOTTED_ROWS = 800
 
 function isNumeric(value: unknown): value is number {
@@ -31,8 +17,7 @@ function isNumeric(value: unknown): value is number {
  * The indices of the rows holding each series' minimum and maximum.
  *
  * Per series rather than overall: the maximum of the busiest line says nothing
- * about where the quietest one peaked, and a chart that keeps only the former
- * flattens every series but one.
+ * about where the quietest one peaked.
  */
 function extremeIndices(rows: Record<string, unknown>[], seriesNames: string[]): Set<number> {
   const keep = new Set<number>()
@@ -82,9 +67,8 @@ export function downsampleRows(
   keep.add(0)
   keep.add(rows.length - 1)
 
-  // Evenly spaced fill for whatever budget the pinned rows left. Even spacing
-  // rather than shape-fitting: the spikes are already pinned above, so what is
-  // left to do is cover the span without clumping.
+  // Evenly spaced fill for whatever budget the pinned rows left: the spikes are
+  // already pinned, so what is left is covering the span without clumping.
   const remaining = maxRows - keep.size
   if (remaining > 0) {
     const step = (rows.length - 1) / (remaining + 1)
@@ -93,8 +77,7 @@ export function downsampleRows(
     }
   }
 
-  // Pinned rows alone can exceed the budget when a document has many series.
-  // They are the ones worth keeping, so the budget yields rather than the
-  // spikes: this is a readability measure, not a hard cap.
+  // Pinned rows alone can exceed the budget when a document has many series, so
+  // `maxRows` is a readability measure rather than a hard cap.
   return [...keep].sort((a, b) => a - b).map((index) => rows[index])
 }

@@ -1,44 +1,25 @@
-// Emitting src/stores/generated-mock-slices.ts, split out of
-// scripts/generate-feature-registry.mjs for file size only. That script is the
-// entry point; this holds the scanning and rendering.
+// Emitting src/stores/generated-mock-slices.ts. The entry point is
+// scripts/generate-feature-registry.mjs; this holds the scanning and rendering.
 //
-// WHY A GENERATED STATIC IMPORT MAP IS NOT A HOLE IN THE DESCRIPTOR BOUNDARY
-//
-// A FeatureDescriptor may only ever hold a DEFERRED import of its feature's
-// code, because src/features/index.ts is reached from the server root layout
-// through src/lib/theme-preference.ts: a static import there would put feature
-// implementation on every route's pre-paint path. That rule is enforced by
-// src/features/feature-boundary.test.ts and is not relaxed by anything here.
-//
-// The mock store cannot live inside it. `FeatureDescriptor.mockData` carries
-// mock ROWS through a loader, but a slice carries ACTIONS (`addKpi`,
-// `transitionReport`), and those have to exist on the object `create()` builds
-// at module scope. There is no point at which a promise could be spread into
-// it.
-//
-// So the descriptor names its slice module as a STRING, which is inert data the
-// boundary guard has no quarrel with, and this generator turns that string into
-// a real static import in a module that is NOT a descriptor and is NOT on the
-// pre-paint path: src/stores/generated-mock-slices.ts is imported by
-// src/stores/mock-data-store.ts and by nothing else. In a build with no feature
-// packages it is EMPTY, which is the same fail-closed property
-// src/features/generated-registry.ts already has, and `prebuild` regenerates
-// both.
+// A FeatureDescriptor may only hold a DEFERRED import of its feature's code,
+// enforced by src/features/feature-boundary.test.ts, because
+// src/features/index.ts is reached from the server root layout. A slice cannot
+// obey that: it carries ACTIONS, which have to exist on the object `create()`
+// builds at module scope, so no promise can be spread into it. The descriptor
+// therefore names its slice module as an inert STRING and this generator turns
+// it into a static import in a module that is not a descriptor and not on the
+// pre-paint path, imported by src/stores/mock-data-store.ts and nothing else.
+// With no feature packages it emits an empty map, and `prebuild` regenerates it.
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
- * Where a contributed slice module may live, and what its specifier may look
- * like.
+ * Where a contributed slice module may live: `@/stores/<name>` only.
  *
- * `@/stores/<name>` only, and deliberately not `src/features/<pkg>/...`. The
- * boundary guard scans EVERY file under a package directory, not just its
- * index.ts, so a slice moved in there would fail it the moment it imported
- * `@/types/kpi`. Task 2 hit exactly that. The slices stay in src/stores/ and
- * left this tree with the enterprise pack like any other enterprise module.
- *
- * Pinning the prefix also guarantees the emitted import resolves: every
- * specifier below is written into the generated file verbatim.
+ * Not `src/features/<pkg>/...`, because the boundary guard scans every file
+ * under a package directory and a slice there fails it as soon as it imports
+ * `@/types/kpi`. Pinning the prefix also guarantees the emitted import
+ * resolves, since every specifier is written into the generated file verbatim.
  */
 const SPECIFIER = /^@\/stores\/[A-Za-z0-9_.-]+$/
 
@@ -159,20 +140,15 @@ const HEADER = [
   '// copy is asserted against the generator in generated-mock-slices.test.ts, so a',
   '// stale one fails the suite.',
   '//',
-  '// The mock store composes its slices synchronously, so an installed feature',
-  "// cannot hand it one through a descriptor's deferred loader: a slice carries",
-  '// ACTIONS, and those have to be on the object create() builds at module scope.',
-  '// The descriptor names its slice module as an inert STRING instead, and this',
-  '// file is where that string becomes a real static import. It is imported by',
-  '// src/stores/mock-data-store.ts and by nothing else, so no feature code',
-  '// reaches the pre-paint path through it, and in a build with no feature',
-  '// packages it is empty. See scripts/generate-mock-slices.mjs for the argument',
-  '// in full.',
+  '// The mock store composes slices synchronously, so a descriptor cannot hand it',
+  '// one through its deferred loader: a slice carries ACTIONS, which have to be on',
+  '// the object create() builds at module scope. This file is where the',
+  "// descriptor's inert string specifier becomes a static import. See",
+  '// scripts/generate-mock-slices.mjs for the argument in full.',
   '//',
-  '// ORDER IS BEHAVIOUR: slices are emitted by feature package name, then in the',
-  '// order that descriptor lists them. Two slices declaring the same key resolve',
-  '// to whichever is spread last, so this order is sorted rather than left to',
-  '// however the packages happened to be found.',
+  '// ORDER IS BEHAVIOUR: emitted by feature package name, then in the order that',
+  '// descriptor lists them, because two slices declaring the same key resolve to',
+  '// whichever is spread last.',
   '',
   "import type { StateCreator } from 'zustand'",
   "import type { MockDataState } from './mock-data-store'",

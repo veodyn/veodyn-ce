@@ -1,11 +1,9 @@
 // Derives a dark-scope accent from a tenant's light one.
 //
-// Separate from chart-palette.ts (which supplies the colour maths below) because
-// the constraint is a different one. A chart colour has to be distinguishable
-// from the seven beside it; an accent has no neighbours, and instead has to be
-// readable as `text-primary` on a dark card and behind `--primary-foreground`
-// on a primary button. deriveDarkColumn solves the first problem and lands the
-// accent at roughly 2.9:1 for the second, which is unreadable.
+// Separate from chart-palette.ts (which supplies the colour maths) because the
+// constraint differs: a chart colour has to be distinguishable from its seven
+// neighbours, an accent has to be readable as text on a dark card.
+// deriveDarkColumn lands an accent at roughly 2.9:1, which is unreadable.
 import {
   contrast,
   hueRadians,
@@ -36,11 +34,9 @@ const C_STEP = 0.002
 // as something else entirely. Same round-trip tolerance chart-palette uses.
 const TOLERANCE = 0.02
 
-// Hue has to be re-checked alongside L and C, not assumed held. Clamping can
-// leave both of those inside tolerance while rotating the hue: checking only
-// L and C let #7C3AED through at a 2.5 degree drift, which is chart-palette's
-// own documented trap ("the old check let a clipped candidate through when only
-// hue drifted") reproduced here. Half a degree, matching that file.
+// Hue is re-checked alongside L and C, not assumed held: clamping can leave both
+// inside tolerance while rotating the hue, which let #7C3AED through at 2.5
+// degrees of drift. Half a degree, matching chart-palette.ts.
 const HUE_TOLERANCE_RADIANS = (0.5 * Math.PI) / 180
 
 function angularDelta(a: number, b: number): number {
@@ -70,16 +66,12 @@ function mostChromaAt(L: number, hue: number, want: number): string | null {
  * Holds the hue, keeps as much chroma as sRGB allows, and lifts lightness until
  * the colour clears AA on a dark card.
  *
- * The order matters and is the whole trick. Searching chroma first, which is
- * the obvious reading of "get it to 4.5", desaturates before it lightens: a
- * #DC2626 brand red comes back as #7A7A7A, a dead grey, because dropping chroma
- * raises luminance faster than raising lightness does. Lifting lightness at
- * maximum chroma instead keeps red red (#E73430), blue blue and violet violet,
- * and leaves accents that already clear the floor (a mid amber, a mid green)
- * completely untouched.
+ * Lightness is searched before chroma: dropping chroma raises luminance faster,
+ * so a chroma-first search turns a #DC2626 brand red into #7A7A7A grey, where
+ * this one returns #E73430.
  *
- * Returns null when no step at this hue works, which callers should read as
- * "fall back to the hand-picked default" rather than papering over with a grey.
+ * Null when no step at this hue works, which callers should read as "fall back
+ * to the hand-picked default".
  */
 export function deriveDarkAccent(lightHex: string): string | null {
   const source = normalizeHex(lightHex)

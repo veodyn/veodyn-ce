@@ -5,20 +5,15 @@
 // copy is asserted against the generator in generated-mock-slices.test.ts, so a
 // stale one fails the suite.
 //
-// The mock store composes its slices synchronously, so an installed feature
-// cannot hand it one through a descriptor's deferred loader: a slice carries
-// ACTIONS, and those have to be on the object create() builds at module scope.
-// The descriptor names its slice module as an inert STRING instead, and this
-// file is where that string becomes a real static import. It is imported by
-// src/stores/mock-data-store.ts and by nothing else, so no feature code
-// reaches the pre-paint path through it, and in a build with no feature
-// packages it is empty. See scripts/generate-mock-slices.mjs for the argument
-// in full.
+// The mock store composes slices synchronously, so a descriptor cannot hand it
+// one through its deferred loader: a slice carries ACTIONS, which have to be on
+// the object create() builds at module scope. This file is where the
+// descriptor's inert string specifier becomes a static import. See
+// scripts/generate-mock-slices.mjs for the argument in full.
 //
-// ORDER IS BEHAVIOUR: slices are emitted by feature package name, then in the
-// order that descriptor lists them. Two slices declaring the same key resolve
-// to whichever is spread last, so this order is sorted rather than left to
-// however the packages happened to be found.
+// ORDER IS BEHAVIOUR: emitted by feature package name, then in the order that
+// descriptor lists them, because two slices declaring the same key resolve to
+// whichever is spread last.
 
 import type { StateCreator } from 'zustand'
 import type { MockDataState } from './mock-data-store'

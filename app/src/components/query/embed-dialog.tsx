@@ -22,32 +22,17 @@ interface EmbedDialogProps {
    * The share token this visualization already carries, from
    * `visualization.api_key` on the owning query. Redash sends it only to an
    * admin or the query's owner, so null means either no link exists or the
-   * caller may not read it back, and both come to the same thing here.
-   *
-   * Reading it matters more than it looks: without it the dialog offered
-   * "Create embed link" on every open, and each click used to mint a second
-   * live token that revoking never reached.
+   * caller may not read it back. Without it every open offers "Create embed
+   * link" and each click mints a second live token that revoking never reaches.
    */
   shareToken?: string | null
 }
 
 /**
- * What an embed link is, now that there is one.
- *
- * The URL this dialog used to offer was not public. It pointed at
- * /embed/query/:id/visualization/:id, a page that fetches through the
- * same-origin proxy and authenticates from the reader's session cookie, so an
- * external iframe got a 401 and the label "Public URL" was simply false. An
- * earlier version was worse: it appended the query author's email address as
- * ?api_key=, publishing a real person's address into the markup, history and
- * referrer logs of every site the snippet was pasted into, without the page
- * ever reading the parameter.
- *
- * The fix is a real credential rather than a better-looking fake one: a
- * per-visualization share token, minted the way a dashboard share link is, and
- * a page at /embed/public/<token> that resolves it anonymously. So the token in
- * the URL is the whole of what an embed grants, which is one visualization and
- * one result, and revoking it kills every copy of the snippet at once.
+ * What an embed link is: a per-visualization share token, minted the way a
+ * dashboard share link is, resolved anonymously by /embed/public/<token>. The
+ * token is the whole of what an embed grants (one visualization, one result),
+ * and revoking it kills every copy of the snippet at once.
  */
 export function EmbedDialog({
   open,
@@ -74,9 +59,7 @@ export function EmbedDialog({
   const publicUrl = token ? publicLinkUrl(embedPublicPath(token)) : ''
   const iframeCode = `<iframe src="${publicUrl}" width="${width}" height="${height}" frameborder="0"></iframe>`
 
-  // Why there is no minting control, when there is no minting control. Both
-  // reasons are stated rather than drawn as a disabled button, because a greyed
-  // out control that never says why is the thing this panel is replacing.
+  // Stated rather than drawn as a disabled button that never says why.
   const blockedReason = !canPublish
     ? 'You do not have permission to publish this visualization. An administrator can grant publish_visualization to your group.'
     : !USE_REAL_API
@@ -104,9 +87,8 @@ export function EmbedDialog({
   if (!isSafe) {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        {/* size="md" preserves the wrapper's own default: it never passed a
-            size on this branch, and the wrapper defaulted to md, one step
-            wider than DialogContent's own sm default. */}
+        {/* size="md" is the wrapper's own default, one step wider than
+            DialogContent's sm. */}
         <DialogContent size="md">
           <DialogHeader>
             <DialogTitle>Embed Visualization</DialogTitle>
@@ -156,9 +138,8 @@ export function EmbedDialog({
                 </div>
               </div>
               <InputWithCopy label="IFrame Code" value={iframeCode} />
-              {/* Only what this session actually asked for. A token that
-                  arrived on a prop carries no expiry we know about, and
-                  guessing one would be a promise the product cannot keep. */}
+              {/* Only what this session asked for: a token that arrived on a
+                  prop carries no expiry we know about. */}
               {minted && expiry ? (
                 <p className="text-xs text-muted-foreground">
                   This link stops working on {new Date(expiry).toLocaleString()}.

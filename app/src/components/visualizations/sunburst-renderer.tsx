@@ -11,23 +11,19 @@ import { FILLABLE_PANEL_HEIGHT } from '@/lib/chart-marks'
 import { SERIES_ANIMATION } from './chart/animation'
 import { buildSunburstModel, type SunburstNode } from './sunburst-model'
 
-// The hole in the middle, and the one piece of recharts' ring geometry whose
-// default is a flat pixel count rather than a share of the box: 50px. In a tile
-// shorter than 100px that hole is wider than the chart, and a sector whose
-// outerRadius falls below its innerRadius is dropped entirely, so the chart
-// empties out as the tile shrinks. Zero has no such threshold.
+// The hole in the middle. recharts defaults it to a flat 50px, so in a tile
+// under 100px the hole is wider than the chart and every sector (outerRadius
+// below innerRadius) is dropped. Zero has no such threshold.
 const INNER_RADIUS = 0
 
-// The gap between rings. Named here rather than left to recharts' identical
-// default because outerRadiusFilling below solves recharts' own ring equation,
-// and a term that equation depends on must not be free to drift out from under
-// it.
+// The gap between rings. Named rather than left to recharts' identical default
+// because outerRadiusFilling below solves recharts' ring equation and depends
+// on this term.
 const RING_PADDING = 2
 
-// recharts labels every sector with its own value, and its default text options
-// (SunburstChart.js defaultTextProps) are black glyphs behind a white halo, both
-// hardcoded, so the labels stay black-on-white over a dark card. Same halo, in
-// the surface and foreground tokens instead.
+// recharts' default sector text (SunburstChart.js defaultTextProps) hardcodes
+// black glyphs behind a white halo, unreadable over a dark card. Same halo, in
+// the surface and foreground tokens.
 const SECTOR_LABEL = {
   fill: 'var(--foreground)',
   stroke: 'var(--card)',
@@ -39,11 +35,9 @@ const SECTOR_LABEL = {
 
 /**
  * A tree in the shape recharts draws: every node carries the total it is sized
- * by and the colour it is filled with.
- *
- * A type alias rather than an interface because recharts' SunburstData declares
- * a string index signature, and only an alias gets the implicit one that makes
- * it assignable to that.
+ * by and the colour it is filled with. A type alias, not an interface, because
+ * recharts' SunburstData declares a string index signature and only an alias
+ * gets the implicit one that makes it assignable to that.
  */
 type PaintedNode = {
   name: string
@@ -53,18 +47,11 @@ type PaintedNode = {
 }
 
 /**
- * Roll values up and paint one branch.
- *
- * recharts sizes each arc from the node's OWN value and never sums its
- * children, where the d3 layout this replaced ran hierarchy().sum() first.
- * buildSunburstModel puts a value only on the leaf that ends a path, so without
- * this every node above a leaf would size to nothing. Own value PLUS
- * descendants, which is what .sum() computed: a node that both ends one path
- * and continues another carries both.
- *
- * The colour is the branch's, not the node's: a descendant at any depth is
- * filled with the colour resolved for the top-level node it hangs off, so an
- * override targeting that top-level name reaches its whole branch.
+ * Roll values up and paint one branch. recharts sizes each arc from the node's
+ * OWN value and never sums its children, while buildSunburstModel puts a value
+ * only on the leaf ending a path, so each node gets its own value plus its
+ * descendants'. The colour is the branch's: every descendant is filled with the
+ * colour resolved for the top-level node it hangs off.
  */
 function paint(node: SunburstNode, fill: string): PaintedNode {
   const children = node.children?.map((child) => paint(child, fill))
@@ -74,10 +61,8 @@ function paint(node: SunburstNode, fill: string): PaintedNode {
 }
 
 /**
- * How many rings this tree draws.
- *
- * Not the same as its depth: the synthetic root is a node but never a ring,
- * because recharts begins drawing at the root's children.
+ * How many rings this tree draws. Not its depth: recharts begins drawing at the
+ * root's children, so the synthetic root is a node but never a ring.
  */
 function ringsOf(node: PaintedNode): number {
   if (!node.children || node.children.length === 0) return 0
@@ -86,19 +71,11 @@ function ringsOf(node: PaintedNode): number {
 
 /**
  * The outerRadius that lands the outermost ring on the edge of the box.
- *
  * recharts spreads its rings over (outerRadius - innerRadius) divided by the
- * depth of the tree it was handed, and that depth counts the synthetic root it
- * never draws. The drawing therefore stops one ring short of the box it was
- * given: half the available radius for a single level, two thirds for two, a
- * quarter of the area thrown away in the worst case. Solving that same equation
- * for the outerRadius that puts the last ring on the edge hands the rings back
- * the share the undrawn root was holding.
- *
- * The radius passed in is the one recharts measured for itself, so every length
- * here still tracks the widget. This buys the full radius without pinning the
- * drawing to a fixed pixel size, which is the whole reason the chart is
- * `responsive` in the first place.
+ * tree's depth, and that depth counts the synthetic root it never draws, so the
+ * drawing stops one ring short: half the available radius for a single level,
+ * two thirds for two. This solves the same equation for the full radius. The
+ * radius passed in is the one recharts measured, so lengths track the widget.
  */
 function outerRadiusFilling(radius: number, rings: number): number {
   if (rings < 1) return 0
@@ -107,14 +84,11 @@ function outerRadiusFilling(radius: number, rings: number): number {
 }
 
 /**
- * Report the box recharts measured for itself.
- *
- * Deliberately not a second ResizeObserver of our own: `responsive` already put
- * one on the wrapper and published what it saw, and the ring math above has to
- * agree with the number recharts is dividing up, not with an independent
- * measurement that could differ by a padding or a rounding. Rendered as a child
- * of the chart because that is where the chart's store is in scope; it draws
- * nothing.
+ * Report the box recharts measured for itself, rather than adding a second
+ * ResizeObserver: the ring math above has to agree with the number recharts is
+ * dividing up, not with an independent measurement that could differ by a
+ * padding or a rounding. Rendered as a child of the chart because that is where
+ * the chart's store is in scope; it draws nothing.
  */
 function ReportRadius({ onMeasure }: { onMeasure: (radius: number) => void }) {
   const width = useChartWidth()
@@ -129,13 +103,11 @@ function ReportRadius({ onMeasure }: { onMeasure: (radius: number) => void }) {
 }
 
 /**
- * The hover panel, in the app's own tokens.
- *
- * Recharts owns the sector markup now, so the per-node `<title>` the hand-drawn
- * arcs carried is gone with them, and the drawn labels are bare numbers. This is
- * the only place a wedge says which node it is. Not recharts' default tooltip:
- * that one inlines an opaque white background as a style attribute, which no
- * stylesheet reaches and viz-chrome-tokens.test.ts cannot see.
+ * The hover panel, in the app's own tokens. The drawn sector labels are bare
+ * numbers, so this is the only place a wedge says which node it is. Not
+ * recharts' default tooltip: that one inlines an opaque white background as a
+ * style attribute, which no stylesheet reaches and viz-chrome-tokens.test.ts
+ * cannot see.
  */
 // Partial for the reason ChartTooltip is: recharts clones this element and
 // supplies the props itself, so the call site passes none.
@@ -171,11 +143,9 @@ export function SunburstRenderer({ visualization, data }: SunburstRendererProps)
     // among the top-level slices.
     const children = branches.map((branch, index) => paint(branch, resolveSeriesColor(branch.name, index)))
     const value = children.reduce((total, child) => total + child.value, 0)
-    // A tree that sums to zero is degraded, not drawn: recharts scales the
-    // angles against the root's total, and a zero domain sends every sector to
-    // the same made-up angle, so a query returning all-zero rows would paint
-    // equal wedges that mean nothing. The d3 layout gave each of them zero
-    // width and this renderer dropped them, landing here too.
+    // A tree summing to zero is degraded, not drawn: recharts scales the angles
+    // against the root's total, so a zero domain paints every sector at the
+    // same made-up angle.
     if (children.length === 0 || value <= 0) return null
     return { name: model.name, value, children }
   }, [options, data])
@@ -190,19 +160,15 @@ export function SunburstRenderer({ visualization, data }: SunburstRendererProps)
   const outerRadius = outerRadiusFilling(radius, ringsOf(tree))
 
   return (
-    // Height, not the 400px this box used to hardcode: the chart's percentage
-    // height needs a containing block whose height is definite, and now that the
-    // drawing scales with its box, a surface that opts into filling its space
-    // (the fill custom property) grows the rings instead of leaving a 360px
-    // circle marooned in the middle of a taller panel. role/aria-label sit here
-    // because recharts owns the svg and passes it nothing but width and height.
+    // The chart's percentage height needs a containing block whose height is
+    // definite. role/aria-label sit here because recharts owns the svg and
+    // passes it nothing but width and height.
     <div className="p-4" style={{ height: FILLABLE_PANEL_HEIGHT }} role="img" aria-label="Sunburst">
       <SunburstChart
         data={tree}
-        // The pair that makes it track the widget: percentage sizes for the
-        // box, and `responsive` for the ResizeObserver that re-reads that box
-        // when the dashboard tile changes size. Percentages alone are measured
-        // once, at mount.
+        // Both are needed to track the widget: percentages alone are measured
+        // once, at mount, and `responsive` adds the ResizeObserver that re-reads
+        // the box when the dashboard tile changes size.
         responsive
         width="100%"
         height="100%"
@@ -210,16 +176,13 @@ export function SunburstRenderer({ visualization, data }: SunburstRendererProps)
         outerRadius={outerRadius > 0 ? outerRadius : undefined}
         ringPadding={RING_PADDING}
         // Reached only by a node with no fill of its own, which paint() never
-        // produces. Named anyway so the fallback is not the near-black recharts
-        // hardcodes for it.
+        // produces. Named so the fallback is not recharts' hardcoded near-black.
         fill="var(--muted)"
         stroke="var(--card)"
         textOptions={SECTOR_LABEL}
         // Sunburst draws plain Sectors with no Animate wrapper, so it has
-        // nothing to opt out of today. Spread regardless: this is the one prop
-        // whose absence turns a recharts chart silently blank under React 19,
-        // and a version that starts animating these arcs should not be able to
-        // do it here first.
+        // nothing to opt out of today. Spread regardless: this is the prop whose
+        // absence turns a recharts chart silently blank under React 19.
         {...SERIES_ANIMATION}
       >
         <ReportRadius onMeasure={setRadius} />

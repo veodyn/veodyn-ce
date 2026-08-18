@@ -12,23 +12,18 @@ import {
   type FeatureDescriptor,
 } from './index'
 
-// Two synthetic descriptors, and the reason they are synthetic rather than the
-// real ones this repository used to hold.
-//
-// Every helper below is a function OVER a registry, and what it has to get
+// Two synthetic descriptors rather than the real ones this repository used to
+// hold. Every helper below is a function OVER a registry, and what it has to get
 // right is the traversal: sorted by key, one row per matching section, a
-// searchType only where a descriptor declares one, the first route pattern
-// that matches. None of that is a property of which features an edition ships,
-// and asserting it through whatever `FEATURES` happens to hold made the suite
-// silently depend on the build it ran in. It passed for months and then failed
-// on the commit that emptied the registry, without a single one of these
-// functions having changed.
+// searchType only where a descriptor declares one, the first route pattern that
+// matches. None of that is a property of which features an edition ships, so
+// asserting it through whatever `FEATURES` happens to hold made the suite depend
+// on the build it ran in.
 //
-// So the mechanism is pinned here against a fixture, and the CONTENT (which
-// rows a shipped feature contributes, which routes it claims) is asserted by
-// the build that installs it, in a suite that ships with it. `beta` sorts
-// after `alpha`, and it is declared FIRST, so featureList's sort is doing work
-// rather than agreeing with the literal order.
+// The mechanism is pinned here against a fixture; the CONTENT (which rows a
+// shipped feature contributes, which routes it claims) is asserted by the build
+// that installs it. `beta` sorts after `alpha` and is declared FIRST, so
+// featureList's sort is doing work rather than agreeing with the literal order.
 const STUB: Record<string, FeatureDescriptor> = {
   beta: {
     id: 'beta',
@@ -62,12 +57,10 @@ describe('featureNavRows', () => {
     expect(everySection).toHaveLength(3)
   })
 
-  // A row carries no admin flag of its own: section: 'admin' is the only
-  // gating signal, because the 'admin' sidebar section itself renders only for
-  // admins. This proves that gating actually holds end to end, through the
-  // consumer that matters, rather than asserting a flag that nothing reads.
-  // Driven through buildSidebarSections's own featureNav parameter so it is the
-  // splicing logic under test and not the installed registry.
+  // A row carries no admin flag of its own: section: 'admin' is the only gating
+  // signal, because the 'admin' sidebar section itself renders only for admins.
+  // Driven through buildSidebarSections's own featureNav parameter so the
+  // splicing logic is under test and not the installed registry.
   it('gates an admin row behind canAccessAdmin, via the admin section it lives in', () => {
     const base: SidebarModelInput = {
       domains: [],
@@ -130,20 +123,14 @@ describe('the registry itself', () => {
   })
 })
 
-// The empty case, passed EXPLICITLY rather than relied on as the default.
-//
-// The stock build installs no package, so `featureNavRows('library')` and
-// `featureNavRows('library', {})` return the same thing here and the bare form
-// looks like the more honest one to write. It is not, and the reason is the
-// other direction: an overlay build assembles feature packages into this tree
-// and runs this same file, where every bare call would answer with four
-// installed features and every assertion below would be false. A suite that
-// only passes in one of the two builds it ships to is a suite that has to be
-// excluded from a run, and an excluded suite guards nothing.
+// The empty case, passed EXPLICITLY rather than relied on as the default. The
+// stock build installs no package, so the bare call and `{}` agree here, but an
+// overlay build assembles feature packages into this tree and runs this same
+// file, where every bare call would answer with installed features and every
+// assertion below would be false.
 //
 // So nothing in this file reads the default registry. What each build's own
-// registry actually holds is that build's business, asserted where the packages
-// are.
+// registry holds is asserted where the packages are.
 describe('the registry helpers against an empty registry', () => {
   it('featureList returns nothing', () => {
     expect(featureList({})).toEqual([])
@@ -170,14 +157,12 @@ describe('the registry helpers against an empty registry', () => {
   })
 
   // The predicate the community-repository invariants guard themselves with.
-  // Pinned against fixtures for the same reason as everything else in this
-  // file: what the DEFAULT registry holds is a fact about the build, and this
-  // suite runs in two of them.
+  // Pinned against fixtures, because what the DEFAULT registry holds is a fact
+  // about the build and this suite runs in two of them.
   it('installsNoFeaturePackages answers for the registry it is given', () => {
     expect(installsNoFeaturePackages({})).toBe(true)
     expect(installsNoFeaturePackages(STUB)).toBe(false)
-    // One package is enough. The question is whether ANY feature is installed,
-    // not whether the four this pack happens to ship all are.
+    // One package is enough: the question is whether ANY feature is installed.
     expect(installsNoFeaturePackages({ alpha: STUB.alpha })).toBe(false)
   })
 })

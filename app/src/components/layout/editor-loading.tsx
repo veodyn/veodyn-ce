@@ -1,17 +1,11 @@
 /**
  * What the two query-editor routes show while their segment is on the way.
  *
- * A sibling of PageLoading rather than a knob on it. PageLoading renders inside
- * PageContainer, whose `p-6` and max width are exactly what the editor does not
- * use: query-editor-page.tsx is a full-height `flex flex-col h-screen` with a
- * header, a rail and a results pane, so the page skeleton would have promised a
- * shape the route never takes and the layout would jump on arrival.
- *
- * The same reasoning PageLoading gives applies here, including why it announces:
- * every route in this app renders the same document title, so Next's route
- * announcer never fires and a silent skeleton is silence for the whole wait.
- * And as there, this matches roughly where the big blocks are rather than the
- * route's furniture.
+ * A sibling of PageLoading rather than a knob on it: PageLoading renders inside
+ * PageContainer's `p-6` and max width, while query-editor-page.tsx is a
+ * full-height `flex flex-col h-screen`. It announces because every route in
+ * this app renders the same document title, so Next's route announcer never
+ * fires and a silent skeleton is silence for the whole wait.
  */
 export function EditorLoading() {
   return (

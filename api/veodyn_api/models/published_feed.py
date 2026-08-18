@@ -1,19 +1,18 @@
 """A query declared to publish a standard feed.
 
-Keyed (org_slug, slug) for the reason FeedExpectation is keyed (org_slug,
-feed_id): a cross-tenant row must not be addressable by id alone. The slug is
-also the public URL path, so the pair is both the identity and the address.
+Keyed (org_slug, slug), like FeedExpectation, so a cross-tenant row is not
+addressable by id alone. The slug is also the public URL path, so the pair is
+both the identity and the address.
 
-`revision` is bumped by any edit that changes what a feed is validated
-against, and it is half of an artifact's identity. Without it a binding edit
-would silently reuse an artifact produced under the old mapping, and the
-endpoint would serve bytes nothing had validated in its current shape.
+`revision` is bumped by any edit that changes what a feed is validated against,
+and it is half of an artifact's identity: without it a binding edit would reuse
+an artifact produced under the old mapping, and the endpoint would serve bytes
+nothing had validated in its current shape.
 
-One `static_gtfs_ref`, because a node serves one agency. That is the tier
-boundary the design turns on: a hub aggregating several agencies needs one
-schedule per contributing node, since GTFS trip, route and stop identifiers
-are not unique across agencies. Making this column plural is how this table
-would become a hub table, and it is deliberately not.
+One `static_gtfs_ref`, because a node serves one agency. A hub aggregating
+several agencies needs one schedule per contributing node, since GTFS trip,
+route and stop identifiers are not unique across agencies, so making this column
+plural is how this table would become a hub table.
 """
 
 from datetime import datetime
@@ -28,11 +27,10 @@ from veodyn_api.models.base import Base
 class PublishedFeed(Base):
     __tablename__ = "published_feed"
     __table_args__ = (
-        # `last_good` without a cap is an unbounded promise to serve stale
-        # bytes, and a cap on `block` is that same promise under a name that
-        # denies it. Both are refused here rather than in a validator, so a
-        # direct database write cannot produce a binding the engine would have
-        # to guess about.
+        # `last_good` without a cap is an unbounded promise to serve stale bytes,
+        # and a cap on `block` is that promise under a name that denies it.
+        # Refused here rather than in a validator, so a direct database write
+        # cannot produce a binding the engine would have to guess about.
         CheckConstraint(
             "(on_error = 'last_good') = (last_good_max_age_seconds IS NOT NULL)",
             name="ck_published_feed_cap_matches_mode",
@@ -45,20 +43,15 @@ class PublishedFeed(Base):
             "visibility IN ('private', 'public')",
             name="ck_published_feed_visibility",
         ),
-        # The primary key makes a slug unique within one org, which is all the
-        # authenticated endpoints ever needed. `GET /public/feeds/<slug>` has no
-        # org segment, so a slug shared by two `public` feeds leaves it unable
-        # to say which was meant, and refusing that case at read time turns the
-        # collision into a weapon: any other org's administrator could claim a
-        # victim's slug, publish nothing, and take the victim's live feed dark.
-        # Unique here instead, so the collision cannot be created.
+        # `GET /public/feeds/<slug>` has no org segment, so a slug shared by two
+        # `public` feeds leaves it unable to say which was meant, and refusing
+        # that at read time would let any other org's administrator claim a
+        # victim's slug and take their live feed dark. Unique here instead, so the
+        # collision cannot be created. Partial, because a private feed is not
+        # anonymously addressable and cannot collide.
         #
-        # Partial on purpose. A private feed is not anonymously addressable and
-        # cannot collide, so private slugs stay per-org exactly as before.
-        #
-        # It is also the index that lookup needs: `slug` is the primary key's
-        # SECOND column and therefore unusable as a leading key, so without this
-        # every anonymous request cost a sequential scan of the table.
+        # It is also the index the anonymous lookup needs: `slug` is the primary
+        # key's SECOND column and so unusable as a leading key.
         Index(
             "uq_published_feed_public_slug",
             "slug",
@@ -70,16 +63,14 @@ class PublishedFeed(Base):
     org_slug: Mapped[str] = mapped_column(Text, primary_key=True)
     slug: Mapped[str] = mapped_column(Text, primary_key=True)
 
-    # `server_default`, never a Python-side `default=`, and the same for
-    # `on_error` and `visibility` below. `0011_published_feed.py` gives all
-    # three a server default, so a model carrying only an ORM default describes
-    # a different table from the one a migrated database has: the schema
-    # `Base.metadata.create_all()` builds has no defaults at all, and a raw
-    # INSERT that omits the column fails there while succeeding in production.
-    # Nothing reports the divergence, because `migrations/env.py` configures
-    # `compare_type` and not `compare_server_default`, so autogenerate never
-    # looks at a default it did not create. Keep these equal to the migration
-    # by hand; `FeedExpectation.updated_at` is the same arrangement.
+    # `server_default`, never a Python-side `default=`, here and for `on_error`
+    # and `visibility` below. `0011_published_feed.py` gives all three a server
+    # default, and `Base.metadata.create_all()` is what the test schema is built
+    # from, so an ORM default would let a raw INSERT that omits the column fail in
+    # tests and succeed in production. Nothing reports the divergence:
+    # `migrations/env.py` configures `compare_type` and not
+    # `compare_server_default`. Keep these equal to the migration by hand;
+    # `FeedExpectation.updated_at` is the same arrangement.
     revision: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     query_id: Mapped[int] = mapped_column(Integer, nullable=False)
 

@@ -3,30 +3,14 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { HeatmapRenderer } from './heatmap-renderer'
 
-// Task 5 fix round 3, important finding 2 (again). Round 2 tested the
-// colorFor/inkFor memoization dependency with a jsdom spy counting how many
-// times getSequentialScale/getSequentialInk were CALLED. The review pointed
-// out (and this file's own math, run independently against chart-palette.ts,
-// confirmed) that this asserted the wrong thing: getSequentialScale reads no
-// token at all and cannot go stale by construction, so a call-count
-// assertion on it asserts a non-requirement. Worse, the same style of
-// assertion on getSequentialInk would have BLOCKED a strictly better future
-// fix (resolving its tokens lazily inside the returned closure, which would
-// make it live and remove the need for themeVersion as a memo dependency
-// entirely). A test that blocks a better implementation is worse than no
-// test, so that whole approach is replaced here with the actually OBSERVABLE
-// behaviour: does the ink a cell paints change correctly on a real theme
+// Asserts the observable thing: the ink a cell paints changes on a real theme
 // toggle.
 //
-// Real default tokens (not invented ones), matching chart-colors.test.ts's
-// own LIGHT_TOKENS/DARK_TOKENS: with these, normalize() gives the domain's
-// MAX value a mix of exactly 100% (bare --chart-1, no --card blended in),
-// and light vs dark sit on OPPOSITE sides of the resulting contrast
-// crossover for that specific colour. That is not a coincidence for this
-// data: any dataset's own max-value cell lands at the same 100% mix, so the
-// existing Tuesday/Evening: 34 fixture (already used by the "adaptive ink"
-// test in heatmap-renderer.test.tsx) is the cell this test needs with no
-// changes.
+// Real default tokens, matching chart-colors.test.ts's own LIGHT_TOKENS and
+// DARK_TOKENS. normalize() gives any domain's max value a mix of exactly 100%
+// (bare --chart-1, no --card blended in), and light and dark sit on opposite
+// sides of that colour's contrast crossover, so the max cell in this fixture
+// (Tuesday/Evening: 34) is the cell this test needs.
 const LIGHT_TOKENS = { card: '#FFFFFF', chart1: '#485EA7', foreground: '#1C1B18' }
 const DARK_TOKENS = { card: '#12161F', chart1: '#4A61AA', foreground: '#E7E9EE' }
 
@@ -79,10 +63,9 @@ describe('HeatmapRenderer ink on a real theme toggle', () => {
     expect(maxCell).toHaveStyle({ color: 'var(--card)' })
 
     // A real theme toggle: the class change useThemeTokenVersion's
-    // MutationObserver watches, AND the token values a browser's own .dark
-    // selector would actually resolve to (jsdom runs no real CSS cascade, so
-    // toggling the class alone would not otherwise change what
-    // getComputedStyle returns for these custom properties).
+    // MutationObserver watches, plus the values a browser's .dark selector would
+    // resolve to. jsdom runs no CSS cascade, so the class alone changes nothing
+    // getComputedStyle returns for these custom properties.
     setTokens(DARK_TOKENS)
     await act(async () => {
       document.documentElement.classList.add('dark')

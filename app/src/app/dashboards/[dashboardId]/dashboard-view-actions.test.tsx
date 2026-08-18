@@ -1,9 +1,6 @@
-// The community dashboard toolbar: what it shows on a build that has no
-// feature filling dashboard.viewActions.
-//
-// The contributed action itself, and the report it writes, are covered in
-// dashboard-promote.test.tsx, which goes with the reports feature. What is
-// asserted here is the shape the toolbar keeps without it.
+// The community dashboard toolbar: what it shows on a build with no feature
+// filling dashboard.viewActions. The contributed action itself is covered in
+// dashboard-promote.test.tsx, which goes with the reports feature.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/utils'
@@ -17,27 +14,20 @@ vi.mock('next/navigation', () => ({
 }))
 
 /**
- * A build that has the wall package, stated rather than looked up.
+ * A build that has the wall package, stated rather than looked up, so the two
+ * cases below are about the gate rather than about whatever the tree happens to
+ * have installed. Present is community markup pointing at /present, which the
+ * wall package owns, so it is GATED on the package rather than contributed.
  *
- * Present is community markup pointing at /present, which the wall package
- * owns, so it is GATED on that package rather than contributed by it, and
- * `hasFeature` asks only whether the key is there. Naming the registry is what
- * lets the two cases below be about the gate: driven by whatever the tree had
- * installed, the first one re-asserted the enterprise answer where the package
- * was present and said nothing where it was not.
- *
- * The descriptor contributes no slots, so `dashboard.viewActions` is still
- * unfilled here. That is the other half of the first case and it has to stay
- * that way: a toolbar with a Present button and no contributed action is
- * exactly the shape being pinned.
+ * The descriptor contributes no slots, so `dashboard.viewActions` stays
+ * unfilled: a Present button with no contributed action is the shape pinned.
  */
 const WALL_INSTALLED: Record<string, FeatureDescriptor> = {
   wall: { id: 'wall', nav: [], routes: [] },
 }
 
 // Wrapping the real hasFeature rather than faking its answer, so the real
-// lookup runs against each registry, the same way
-// authenticated-layout.registry.test.tsx does it for featureRouteFor.
+// lookup runs against each registry.
 let mockRegistry: Record<string, FeatureDescriptor> = WALL_INSTALLED
 vi.mock('@/features', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features')>()
@@ -65,13 +55,10 @@ describe('DashboardViewActions', () => {
   it('renders its own actions without waiting on a contributed one', () => {
     renderActions()
 
-    // Read synchronously, on purpose. A slot contribution cannot be on screen
-    // before its loader resolves, so this first paint IS what a build with no
-    // contributor renders: the toolbar is whole, and the contributed action is
-    // the only thing missing from it. Present is here because the registry
-    // above says the wall package is, which is the gate and not a slot.
-    // role=button, not link: Present is a ui/button rendered as an anchor, and
-    // the primitive stamps its own role on the element it renders into.
+    // Read synchronously: a slot contribution cannot be on screen before its
+    // loader resolves, so this first paint is what a build with no contributor
+    // renders. role=button, not link: Present is a ui/button rendered as an
+    // anchor, and the primitive stamps its own role on that element.
     expect(screen.getByRole('button', { name: /present/i })).toHaveAttribute(
       'href',
       '/present/1'
@@ -81,10 +68,8 @@ describe('DashboardViewActions', () => {
     expect(screen.queryByRole('button', { name: /promote to report/i })).not.toBeInTheDocument()
   })
 
-  // The other half of the same toolbar: a build with no wall package has no
-  // /present to send anyone to, so the button is absent rather than dead. The
-  // rest of the row is untouched, which is the property worth pinning: gating
-  // one action must not take a community one with it.
+  // A build with no wall package has no /present to send anyone to, so the
+  // button is absent rather than dead, and gating it takes nothing else.
   it('drops Present, and only Present, on a build with no wall package', () => {
     mockRegistry = {}
 

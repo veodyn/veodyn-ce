@@ -10,18 +10,15 @@ import { formatLabelValue } from '@/lib/chart-format'
 import { resolveSeriesColor } from '@/lib/chart-colors'
 import { CHART_INITIAL_DIMENSION, FILLABLE_PANEL_HEIGHT } from '@/lib/chart-marks'
 
-// Sankey is not a recharts Cartesian chart, so chart/axis-config.ts is the
-// wrong home for this: it is the node label text size, named locally instead
-// of spelled out at the call site.
+// Sankey is not a recharts Cartesian chart, so chart/axis-config.ts does not
+// cover its node label size.
 const NODE_LABEL_FONT_SIZE = 12
 
 function SankeyNode({ x, y, width, height, index, payload }: NodeProps) {
-  // ResponsiveContainer reports its initialDimension for one frame, before the
+  // ResponsiveContainer reports its initialDimension for one frame before the
   // mount effect measures the real layout. recharts' own shapes no-op on a
-  // non-positive size, but a custom node renderer must guard it explicitly or
-  // it emits invalid SVG (NaN coordinates) for that frame. Still needed with
-  // CHART_INITIAL_DIMENSION, whose width is negative precisely so nothing
-  // mounts early: this is the belt to that pair of braces.
+  // non-positive size, but a custom node renderer must guard it or it emits NaN
+  // coordinates for that frame.
   if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) {
     return null
   }
@@ -45,17 +42,10 @@ function SankeyNode({ x, y, width, height, index, payload }: NodeProps) {
 /**
  * The hover panel, in the app's own tokens.
  *
- * This was a bare `<Tooltip formatter={...} />`, and recharts' DEFAULT tooltip
- * is not themed: it inlines an opaque white background and a light grey border
- * as style ATTRIBUTES, which no stylesheet reaches. Read straight out of the
- * rendered DOM in a jsdom probe. In dark mode that is a white card on a dark
- * chart, and viz-chrome-tokens.test.ts could not see it, because that guard
- * scans this source for colour literals and the literals were in recharts.
- *
- * Every other chart in this repo already passes `content`, so this file was the
- * only one still on the default. Shaped like ChartTooltip rather than reusing
- * it: that one leads with an x-axis `label` a flow diagram has no equivalent of,
- * so reuse would have printed "undefined" as the heading.
+ * recharts' default tooltip inlines an opaque white background and a light grey
+ * border as style attributes, which no stylesheet reaches, so it stays white in
+ * dark mode. Shaped like ChartTooltip rather than reusing it: that one leads
+ * with an x-axis `label` a flow diagram has no equivalent of.
  */
 // Partial, for the reason ChartTooltip is: recharts clones this element and
 // supplies the props itself, so the call site passes none.
@@ -65,13 +55,8 @@ export function SankeyTooltip({ active, payload }: Partial<TooltipContentProps<n
 
   // `name` and nothing else. recharts builds it for both shapes this chart can
   // hover (Sankey.js, getPayloadOfTooltip): a node gets its own name, a link
-  // gets "source - target" already joined. The first version of this read
-  // `payload.source.name` and `payload.target.name` to write its own "A to B",
-  // which never once ran: recharts' own comment there says it passes number
-  // INDEXES as source and target, so both lookups were undefined and every
-  // tooltip fell through to this line. Found by hovering one in Chrome; the
-  // unit test had asserted the dead branch against a payload shape recharts
-  // does not produce.
+  // gets "source - target" already joined. A link's own `source` and `target`
+  // are number indexes, not nodes, so they cannot be read for a label here.
   const title = String(entry.name ?? '')
 
   return (

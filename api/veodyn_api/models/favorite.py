@@ -9,21 +9,13 @@ from veodyn_api.models.base import Base
 class Favorite(Base):
     """One person's star on one object.
 
-    Everything about this table is the primary key: the org, the person, what
-    kind of thing it is and which one. That makes the row itself the fact, so
-    starring twice is the same state as starring once and needs no uniqueness
-    constraint of its own. It also makes a cross-tenant or cross-user row
-    impossible to address by object id alone, the same reason org_slug is part
-    of the key on Kpi and Report.
+    Every column is in the primary key, so starring twice is the same state as
+    starring once and a cross-tenant or cross-user row cannot be addressed by
+    object id alone. The user id is Redash's, never a display name: a name would
+    follow the wrong person after a rename.
 
-    The user id is Redash's, never a display name: this service stores no users,
-    and a row keyed on a name would follow the wrong person after a rename.
-
-    object_type is a plain string rather than an enum type. The set is small and
-    checked at the route (`kpi`, `report`), and a database enum would need a
-    migration to add the next kind for no integrity this does not already have:
-    a row pointing at nothing is prevented by looking the object up before the
-    write, not by the column type.
+    object_type is a plain string, not a database enum, and is checked at the
+    route (`kpi`, `report`); the object is looked up before the write.
     """
 
     __tablename__ = "favorite"

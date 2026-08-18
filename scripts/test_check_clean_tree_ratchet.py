@@ -5,18 +5,11 @@ patterns and declarations files, and discovered by the same
 `test_check_clean_tree*.py` wildcard in ci/scan-secrets.yaml.
 
 Everything here drives classify(), regeneration_is_refused() and the failure
-printing with plain dicts and stubs rather than a repository: a per-path
-total, the sites behind it, a baseline row, and the baseline module a
-regeneration is about to overwrite. That is the whole reason those are pure.
+printing with plain dicts and stubs rather than a repository.
 
-Two audit findings live here, and both are about a record that could not
-notice a change:
-
-- The ratchet compared totals and nothing else, so a swap nets zero and a new
-  identity term could enter a file that shed an old one in silence.
-- --write-baseline wrote the new fingerprint without loading the old one, so
-  the documented regeneration path could not notice its own vocabulary
-  getting smaller.
+Two records that could not notice a change are covered: the ratchet compared
+totals only, so a swap nets zero; and --write-baseline wrote the new
+fingerprint without loading the old one, so a shrinking harvest passed.
 
 No identity term is written into this file; see clean_tree_test_support.py.
 
@@ -44,9 +37,8 @@ class TestRatchet(unittest.TestCase):
         self.assertIn(("src/other.ts", "baseline records 1 but the path now matches nothing"), stale)
 
     def test_the_report_names_the_file_and_the_term_index_but_not_the_value(self):
-        # The finding is worth nothing if the operator cannot see what tripped
-        # it, and worth less than nothing if the CI log then carries the
-        # customer's name, so the value must NOT be in the output.
+        # The output must name what tripped it without putting the customer's
+        # name in the CI log, so the value must NOT appear.
         buffer = io.StringIO()
         findings = ([("src/thing.ts", 1)], [], [], [], [], [], [])
         with redirect_stdout(buffer):
@@ -83,12 +75,8 @@ class TestRatchet(unittest.TestCase):
         self.assertEqual(improved, [("src/thing.ts", 2, 1)])
 
     def test_a_swap_that_nets_zero_fails(self):
-        # The audit finding: the ratchet compared a per-file total against the
-        # recorded total, so removing one occurrence of a term the file already
-        # carried and adding a reference to a DIFFERENT term elsewhere in the
-        # same file summed to the same number and was absorbed in silence.
         # Recorded: 3 of term #2. Now: 2 of term #2 and 1 of term #9. Total
-        # unchanged at 3.
+        # unchanged at 3, so a per-file total alone absorbs the new term.
         sites = {"src/thing.ts": [(1, "t2"), (5, "t2"), (40, "t9")]}
         _r, new, grew, _stale, improved, swapped = gate.classify(
             {"src/thing.ts": 3}, sites, manifest, (("src/thing.ts", 3, ((2, 3),)),)
@@ -98,9 +86,9 @@ class TestRatchet(unittest.TestCase):
         self.assertEqual(swapped, [("src/thing.ts", 9, 0, 1, 3, 3)])
 
     def test_a_swap_hiding_under_a_FALLING_total_fails_too(self):
-        # A drop is reported as an improvement and does not fail, so a swap
-        # that also sheds an occurrence would otherwise be the quietest way
-        # through: recorded 4 of term #2, now 2 of #2 and 1 of #9.
+        # A drop is reported as an improvement and does not fail, so a swap that
+        # also sheds an occurrence is the quietest way through: recorded 4 of
+        # term #2, now 2 of #2 and 1 of #9.
         sites = {"src/thing.ts": [(1, "t2"), (5, "t2"), (40, "t9")]}
         _r, _new, _grew, _stale, improved, swapped = gate.classify(
             {"src/thing.ts": 3}, sites, manifest, (("src/thing.ts", 4, ((2, 4),)),)
@@ -110,10 +98,9 @@ class TestRatchet(unittest.TestCase):
         self.assertEqual(swapped, [("src/thing.ts", 9, 0, 1, 4, 3)])
 
     def test_the_same_terms_at_different_lines_are_not_a_swap(self):
-        # The limit, asserted rather than implied. Line numbers are not
-        # recorded, because pinning them would churn every row on any edit
-        # above them, so the same term moving within a file reads as no
-        # change. It is the same term in the same file: not new exposure.
+        # Line numbers are not recorded, because pinning them would churn every
+        # row on any edit above them, so the same term moving within a file reads
+        # as no change.
         sites = {"src/thing.ts": [(80, "t2"), (91, "t2")]}
         _r, new, grew, _stale, improved, swapped = gate.classify(
             {"src/thing.ts": 2}, sites, manifest, (("src/thing.ts", 2, ((2, 2),)),)
@@ -137,9 +124,8 @@ class TestRatchet(unittest.TestCase):
 
 
 class _PreviousBaseline:
-    """The attributes regeneration_is_refused() reads off the module it is
-    about to overwrite. A stub, so a test can say "the last one had 25 terms"
-    without regenerating the real file.
+    """The attributes regeneration_is_refused() reads off the module it is about to
+    overwrite, stubbed so a test can say "the last one had 25 terms".
     """
 
     TERM_FINGERPRINT = "0000000000000000"
@@ -151,12 +137,11 @@ class _PreviousBaseline:
 
 
 class TestRegenerationRefusesAShrinkingHarvest(unittest.TestCase):
-    """--write-baseline wrote the new fingerprint and counts without loading
-    the old ones, so the documented regeneration path could not notice its own
-    vocabulary getting smaller: a source whose extraction shape broke from ten
-    terms to one still cleared MIN_HARVESTED_TERMS, still satisfied every
-    per-source "at least one term" assertion, and every later run then trusted
-    the fingerprint it had just written.
+    """A shrinking harvest must refuse the write.
+
+    A source whose extraction shape broke from ten terms to one still clears
+    MIN_HARVESTED_TERMS and every per-source "at least one term" assertion, and
+    every later run then trusts the fingerprint just written.
     """
 
     def _refused(self, previous, term_count, allow_shrink=False):
@@ -171,9 +156,8 @@ class TestRegenerationRefusesAShrinkingHarvest(unittest.TestCase):
         self.assertTrue(refused)
 
     def test_one_term_fewer_is_enough_to_refuse(self):
-        # Any shrink, not a threshold. "Substantially smaller" is a judgement
-        # this file cannot make, and being wrong in one direction costs a typed
-        # flag while being wrong in the other leaves a disarmed gate.
+        # Any shrink, not a threshold: being wrong one way costs a typed flag,
+        # being wrong the other leaves a disarmed gate.
         refused, _out = self._refused(_PreviousBaseline(25), 24)
 
         self.assertTrue(refused)

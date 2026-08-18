@@ -19,48 +19,32 @@ import { AXIS_LINE, AXIS_TICK, GRID, referenceLinesFor, yAxisPropsFor } from './
 import { planXAxis } from './x-axis-config'
 import type { QueryResultData } from '@/lib/mock-data'
 
-// The two ends of a bubble's size channel, in the unit recharts actually wants:
-// the symbol's AREA in square pixels, not its radius (Scatter derives
-// radius = sqrt(size / PI) from it). Area is also the channel to encode into,
-// since that is the quantity the eye compares between two discs.
-//
-// The low end is recharts' own default mark area (its implicit z-axis range is
-// [64, 64], radius ~4.5), so the smallest bubble is exactly the dot a plain
-// scatter draws and never shrinks to something unhoverable. The high end is 16x
-// that area, radius ~18, which is the largest mark that still reads as a
-// measurement in a 400px plot rather than as overlapping blobs.
-//
-// Deliberately a scale rather than Redash's own arithmetic. Plotly takes the
-// raw cell as a pixel diameter times a coefficient (prepareBubbleSeries in the
-// fork), so a size column of ratios draws points too small to see and one of
-// revenue figures draws a single disc over the whole plot. Mapping the column's
-// own range onto a fixed range of areas reads the same whatever its units are.
+// The two ends of a bubble's size channel, in square pixels of mark AREA, not
+// radius (Scatter derives radius = sqrt(size / PI)). 64 is recharts' own default
+// mark area (its implicit z-axis range is [64, 64], radius ~4.5), so the
+// smallest bubble is the dot a plain scatter draws; 1024 is 16x that, radius
+// ~18, the largest mark that still reads as a measurement in a 400px plot.
+// Mapping the column's range onto fixed areas reads the same whatever its units
+// are, unlike Plotly's raw-cell-as-pixel-diameter arithmetic.
 const BUBBLE_SIZE_RANGE = [64, 1024] as const
 
-// Anchored at zero, so a mark's area reads against the origin the way the value
-// does: twice the value is twice the area above the floor, and a row whose size
-// value is 0 still draws, at the smallest mark rather than at no mark. Scaling
-// from dataMin instead would hand the smallest point in the result the floor
-// however close to the largest it is, redrawing a 99-to-100 spread as the same
-// picture as a 1-to-100 one.
+// Anchored at zero, so twice the value is twice the area above the floor and a
+// size of 0 still draws at the smallest mark. Scaling from dataMin instead would
+// redraw a 99-to-100 spread as the same picture as a 1-to-100 one.
 //
 // The anchor holds because resolveChartConfig withholds sizeCol for a column
-// carrying a negative value, NOT because recharts honours this floor. It does
-// not: ZAxis passes implicitZAxis.allowDataOverflow, a hardcoded false, in place
-// of any prop, and extendDomain then grows a user domain to cover the data
-// rather than clipping the data to it, so one negative row would quietly
-// replace this 0 with dataMin. Asserted against the installed recharts, where
-// sizes of -10, -1, 0 and 1 drew areas of 64, 849, 64 and 1024.
+// carrying a negative value, NOT because recharts honours this floor: ZAxis
+// passes a hardcoded allowDataOverflow: false, and extendDomain then grows the
+// domain to cover the data rather than clipping it, so one negative row replaces
+// this 0 with dataMin (measured: sizes -10, -1, 0, 1 drew areas 64, 849, 64, 1024).
 //
-// Scatter's other rule, that an exact 0 is "no z value" and takes range[0],
-// survives that and is harmless: range[0] is where this domain maps 0 anyway,
-// so the special case and the scale agree rather than drawing one value at two
-// sizes. It is why the range floor and the unsized mark have to stay one number.
+// Scatter also reads an exact 0 as "no z value" and gives it range[0], which is
+// where this domain maps 0 anyway, so the range floor and the unsized mark have
+// to stay one number.
 //
-// 'dataMax' rather than recharts' own 'auto' default, which resolves to the data
-// max on an axis with no ticks to round for but DOES round on the x and y axes,
-// so inheriting it would make the top of this scale depend on a rounding rule
-// that has nothing to do with size. scatter-chart.bubble.test.tsx pins all of it.
+// 'dataMax' rather than recharts' 'auto' default, which rounds on the x and y
+// axes, so inheriting it would tie the top of this scale to a rounding rule that
+// has nothing to do with size. scatter-chart.bubble.test.tsx pins all of it.
 const BUBBLE_SIZE_DOMAIN = [0, 'dataMax'] as const
 
 interface ScatterChartRendererProps {
@@ -75,19 +59,16 @@ export function ScatterChart({ config, data, patterns }: ScatterChartRendererPro
   const leftAxis = yAxisPropsFor(0, config)
   const xAxis = useMemo(() => planXAxis(config, data.rows, patterns), [config, data.rows, patterns])
   // Chrome tokens win over the plan's styling, with one exception: a tick
-  // ELEMENT from the plan is the time axis's own two-line renderer (the label
-  // plus the date it sits under), not styling, so swapping in the token
-  // object would drop the context line and the formatted label with it.
+  // ELEMENT from the plan is the time axis's two-line renderer, not styling, so
+  // the token object would drop the context line and the formatted label.
   const xTick = isValidElement(xAxis.props.tick) ? xAxis.props.tick : AXIS_TICK
 
   const seriesGroups = config.seriesCol
     ? groupBy(xAxis.data, config.seriesCol)
     : new Map([['', xAxis.data]])
 
-  // Every row in data.rows carries the yCol key regardless of grouping, so
-  // the summary is computed straight off it rather than off any pivot: a
-  // single series name, [yCol], describes the one value column every point
-  // shares.
+  // Every row in data.rows carries the yCol key regardless of grouping, so the
+  // summary comes straight off it rather than off any pivot.
   const summary = chartSummary(config, data.rows, [yCol], patterns)
 
   return (
@@ -99,10 +80,9 @@ export function ScatterChart({ config, data, patterns }: ScatterChartRendererPro
       <ResponsiveContainer initialDimension={CHART_INITIAL_DIMENSION}>
         <RechartsScatterChart>
           <CartesianGrid {...GRID} />
-          {/* The plan owns what this axis means (its dataKey, and its scale
-              and ticks once the x column is temporal); the chrome tokens come
-              after it and win on presentation. See xTick above for the one
-              prop the tokens do not take over. */}
+          {/* The plan owns what this axis means (dataKey, plus scale and ticks
+              once the x column is temporal); the chrome tokens come after it and
+              win on presentation, except for xTick above. */}
           <XAxis {...xAxis.props} {...AXIS_LINE} tick={xTick} />
           <YAxis
             dataKey={yCol}
@@ -113,12 +93,10 @@ export function ScatterChart({ config, data, patterns }: ScatterChartRendererPro
             niceTicks={leftAxis.niceTicks}
             tickFormatter={formatCompactNumber}
           />
-          {/* What makes a bubble chart a bubble chart. A virtual axis: it draws
-              no ticks and no line of its own, it only sizes the marks below.
-              Mounted only when config.sizeCol is set, which resolveChartConfig
-              limits to a column the result has and can encode as an area, so a
-              plain scatter keeps drawing the uniform dots it always drew rather
-              than depending on this range's low end happening to match. */}
+          {/* A virtual axis: it draws no ticks and no line, it only sizes the
+              marks below. Mounted only when config.sizeCol is set, so a plain
+              scatter keeps drawing uniform dots rather than depending on this
+              range's low end happening to match. */}
           {config.sizeCol != null && (
             <ZAxis
               dataKey={config.sizeCol}
@@ -159,11 +137,10 @@ export function ScatterChart({ config, data, patterns }: ScatterChartRendererPro
   )
 }
 
-// A row whose series column is null or missing must not surface as the
-// literal string "undefined" in the legend: that reads as a bug, not a
-// category. Grouped under one honest label instead, via the shared rule in
-// resolve-config so the editor's per-series section lists exactly the group
-// names these seriesOptions lookups will use.
+// A row whose series column is null or missing must not surface as the literal
+// string "undefined" in the legend. The shared rule in resolve-config names
+// those groups, so the editor's per-series section lists the same keys these
+// seriesOptions lookups use.
 function groupBy(rows: Record<string, unknown>[], key: string): Map<string, Record<string, unknown>[]> {
   const groups = new Map<string, Record<string, unknown>[]>()
   for (const row of rows) {

@@ -4,19 +4,11 @@ import type { Feed } from '@/types/feed'
 
 /**
  * A dataset's freshness, judged the same way the Feed Health board judges the
- * feed behind it.
- *
- * The catalog used to print `freshness.status` verbatim. Feed Health derives
- * its verdict from cadence and age. Same underlying fact, two answers: the
- * catalog called Fleet Vehicle Status "Fresh, 3 days ago" while Feed Health
- * called its every-one-minute feed Down. Whichever number is right, a reader
- * cannot be shown both.
+ * feed behind it, so the two screens cannot disagree.
  *
  * The dataset's own `lastUpdatedAt` is what gets aged, not the feed's
- * `lastReceivedAt`: a feed can be delivering while this particular dataset has
- * stopped being rebuilt from it. `deriveFeedStatus` then takes the worse of the
- * derived verdict and the declared one, so an upstream that knows it is down is
- * still believed.
+ * `lastReceivedAt`: a feed can be delivering while this dataset has stopped
+ * being rebuilt from it.
  */
 const SEVERITY: Record<Feed['status'], number> = { fresh: 0, stale: 1, down: 2 }
 
@@ -34,10 +26,8 @@ export function resolveDatasetStatus(
   // the only thing there is.
   if (!feed) return freshness.status
 
-  // Three claims, and the worst one wins. Passing the dataset's status in as the
-  // feed's would have discarded the feed's own: a feed reporting Down whose
-  // dataset had just been rebuilt read as Fresh, which is the exact "believe an
-  // upstream that knows it is broken" case deriveFeedStatus exists to honour.
+  // Three claims (derived, feed-declared, dataset-declared) and the worst wins,
+  // so an upstream that knows it is down is still believed.
   const derived = deriveFeedStatus({ ...feed, lastReceivedAt: freshness.lastUpdatedAt }, now)
   return worst(worst(derived, feed.status), freshness.status)
 }

@@ -2,32 +2,17 @@
 
 Companion to public_tree_forbidden_paths, and a different question. That
 module answers "may this path exist publicly at all". This one answers "these
-two copies are not byte-identical, is that allowed". Kept separate because the
-two lists are edited by different changes for different reasons, and a
-reviewer weighing a parity exception should not have to read a credential
-manifest to do it.
+two copies are not byte-identical, is that allowed".
 
 `scripts/check-tree-parity.py` is the half that fails. Everything tracked in
 both trees and not named here must match byte for byte.
 
-WHY THIS GUARD EXISTS. Only docs/ was compared before, and everything else was
-left to whoever remembered. It was not remembered. Six files under node/ sat
-for weeks at the state of the initial community import while this tree moved
-on twice: two of the tenant's realtime runners were still declared as blocking
-manual migrations after their runners had moved into the pack, and a
-credential-detector test file that a 300-line split created here never existed
-there at all. Neither side failed anything. The community tree was in a
-half-ported state rather than an old one, which is what makes this class of
-drift hard to spot by reading: bin/report_data_source_types.py already
-expected the new shape while legacy_types.py beside it did not.
-
-THE BAR FOR AN ENTRY, and it is deliberately high: the difference has to be a
-consequence of what the two repositories ARE, not of when someone last edited
-them. "The deploy pipeline has a `default:` docker-in-docker block and the
-community one does not" qualifies. "This was changed here and nobody copied it
-over" does not, and is the exact failure this list must never be used to paper
-over. If the structural reason does not fit in a sentence, the honest fix is
-to make the two files match.
+THE BAR FOR AN ENTRY is high: the difference has to be a consequence of what
+the two repositories ARE, not of when someone last edited them. "The deploy
+pipeline has a `default:` docker-in-docker block and the community one does
+not" qualifies. "This was changed here and nobody copied it over" does not. If
+the structural reason does not fit in a sentence, the honest fix is to make the
+two files match.
 
 Matching rule, same as the forbidden manifest: an entry ending in `/` matches
 anything beneath it, an entry without one matches that path exactly.

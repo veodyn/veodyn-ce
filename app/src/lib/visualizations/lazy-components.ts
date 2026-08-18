@@ -1,33 +1,17 @@
 // The drawing and configuring halves of every core visualization, loaded on
-// demand.
+// demand. ./core registers plugins as an import side effect and is reached from
+// providers.tsx on every route, so importing the components directly pulled
+// maplibre-gl, recharts and d3 into every entry graph: measured 2026-08-02, the
+// sign-in page downloaded 1,601 KB of JS, 792 KB of it maplibre + recharts.
 //
-// WHY this file exists, since it looks like indirection for its own sake:
-// registration is a side effect of importing ./core, and ./core is reached from
-// src/app/providers.tsx, which the root layout mounts on EVERY route. While
-// ./core imported these components directly, the entry graph of every page
-// contained all fifteen renderers and all fifteen editors, and through them
-// maplibre-gl, recharts and d3. Measured on 2026-08-02: the sign-in page
-// downloaded 1,601 KB of JavaScript, 792 KB of it a maplibre + recharts pair,
-// to draw an email field and a password field.
+// `Renderer` and `Editor` SUSPEND on first render of each type, so every call
+// site needs a Suspense boundary. The two that exist own one:
+// components/visualizations/visualization-renderer.tsx and
+// components/visualizations/edit-visualization-dialog.tsx.
 //
-// A plugin's METADATA is what registration needs (type, displayName, icon,
-// defaultOptions, publicOptions, validate, inferOptions). None of that is a
-// component. So the registry keeps holding a component-shaped value, it is just
-// one React resolves when something actually renders it. Registration stays
-// synchronous, the registry stays populated at import time, and the cycle note
-// in ./index.ts is untouched.
-//
-// The consequence to know about: `Renderer` and `Editor` are now lazy
-// components, which SUSPEND on first render of each type. Every call site must
-// sit under a Suspense boundary. There are two, both of which own one:
-// components/visualizations/visualization-renderer.tsx (drawing) and
-// components/visualizations/edit-visualization-dialog.tsx (configuring).
-//
-// A note on `.then(m => ({ default: m.X }))`: these modules use named exports,
-// which React.lazy does not accept, and renaming thirty exports to default is
-// the worse trade. The mapping is written out per component rather than hidden
-// behind a generic helper so that the bundler sees a static import specifier in
-// every case; a helper taking the module path as a parameter would not split.
+// `.then(m => ({ default: m.X }))` adapts these named exports for React.lazy.
+// Written out per component so the bundler sees a static import specifier; a
+// helper taking the module path as a parameter would not split.
 import { lazy } from 'react'
 
 // ── Renderers ──────────────────────────────────────────────────────────────
@@ -81,8 +65,8 @@ export const WordCloudRenderer = lazy(() =>
 // ── Editors ────────────────────────────────────────────────────────────────
 //
 // Split from the renderers rather than sharing a chunk per type: an editor is
-// reached only by opening the edit dialog, which most readers of a dashboard
-// never do, so pairing them would put the configuring UI on the viewing path.
+// reached only through the edit dialog, so pairing them would put the
+// configuring UI on the viewing path.
 
 export const BoxPlotEditor = lazy(() =>
   import('@/components/visualizations/editors/box-plot-editor').then((m) => ({ default: m.BoxPlotEditor }))

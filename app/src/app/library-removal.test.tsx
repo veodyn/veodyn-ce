@@ -1,24 +1,13 @@
 // A way to remove the thing, on every community library page at once.
 //
-// An author could create five kinds of content here and take back two and a
-// half of them: dashboards and reports had no removal anywhere, and the query
-// archive was buried on a detail page. Every one of those was invisible from
-// inside the page that lacked it, because a missing control has no test of its
-// own to fail. This suite is the one that fails, and it fails for the SIXTH
-// library type too, on the day someone adds one and wires everything but this.
-//
 // THREE pages here, not five. /kpis and /reports are feature routes and their
 // halves of this suite are src/app/kpis/library-conventions.test.tsx and
 // src/app/reports/library-conventions.test.tsx, which make the same two
-// assertions. The sixth-library-type guard therefore covers the community
-// pages, and each feature page covers itself.
+// assertions.
 //
-// It also pins the verb, not just the presence of a menu. The two backends
-// disagree about what removal means (Redash archives queries and dashboards
-// recoverably, veodyn-api and Redash delete the other three outright), and the
-// whole point of lib/removal.ts is that a page cannot quietly promise the wrong
-// one. A page that shipped "Delete" over an archive would pass a presence
-// check and lie to the person clicking it.
+// It pins the verb, not just the presence of a menu: Redash archives queries
+// and dashboards recoverably while the other three are deleted outright, so a
+// page shipping "Delete" over an archive would pass a presence check and lie.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -61,10 +50,9 @@ function renderPage(Page: ComponentType) {
 }
 
 // Signed in, because three of the five pages gate their menu on the viewer's id
-// and resetStores() leaves currentUser null. An admin, which is what mock mode
-// signs you in as, so this asks "did any page forget to wire removal at all".
-// It deliberately does NOT carry the ownership matrix: owner vs non-owner vs
-// non-owning admin is asserted per page, against each backend's own rule.
+// and resetStores() leaves currentUser null. An admin, so this asks only "did a
+// page forget to wire removal at all". The ownership matrix is asserted per
+// page, against each backend's own rule.
 beforeEach(() => {
   useAuthStore.setState({
     isAuthenticated: true,
@@ -84,9 +72,7 @@ describe('every library list offers a way to remove what it lists', () => {
     renderPage(Page)
 
     // findAllBy, so this waits for the list to load rather than asserting
-    // against an empty skeleton. A page that renders no rows at all cannot
-    // satisfy this, which is the failure mode a queryBy-based version of this
-    // test would have passed straight through.
+    // against an empty skeleton: a page that renders no rows cannot satisfy it.
     const menus = await screen.findAllByRole('button', { name: /^Actions for / })
     expect(menus.length).toBeGreaterThan(0)
   })
@@ -103,13 +89,9 @@ describe('every library list offers a way to remove what it lists', () => {
       const menu = await screen.findByRole('menu')
       const { verb } = removalCopy(kind, 'anything')
 
-      // What this proves, precisely: that the page passed removalCopy its OWN
-      // kind. Every page labels its item `copy.verb`, so this cannot catch
-      // removal.ts being wrong about a verb (removal.test.ts asserts those
-      // against literals). It catches the copy-paste error that actually
-      // happens when the fourth page is written from the third: /dashboards
-      // asking for 'kpi' renders "Delete" over a recoverable archive, and fails
-      // here. Verified by mutation, both ways round.
+      // Proves the page passed removalCopy its OWN kind, not that removal.ts
+      // has the right verb (removal.test.ts asserts those against literals).
+      // Verified by mutation, both ways round.
       expect(within(menu).getByRole('menuitem', { name: verb })).toBeInTheDocument()
     }
   )

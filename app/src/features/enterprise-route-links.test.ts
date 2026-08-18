@@ -1,20 +1,15 @@
 // The enterprise routes community code is allowed to name, and the ones it is
 // not.
 //
-// This guard exists because a URL is a string, and no compiler can see one.
-// src/app/kpis is not in this tree, so `<Link href="/kpis">` in a community
-// file type-checks, lints and unit-tests perfectly and 404s in the browser.
-// Nothing else in this project reports that class of defect: seven of the nine
-// sites that existed when this file was written type-checked clean, and the
-// ratchet that then measured the extraction was a type-check too.
+// A URL is a string and no compiler can see one: src/app/kpis is not in this
+// tree, so `<Link href="/kpis">` in a community file type-checks, lints and
+// unit-tests perfectly and 404s in the browser. Seven of the nine sites that
+// existed when this file was written type-checked clean.
 //
-// Same shape and intent as feature-boundary.test.ts next door, and the same
-// allowlist-not-denylist structure: the enterprise routes are DERIVED from
-// scripts/enterprise-paths.mjs (see routePrefixes in enterprise-route-scan.ts),
-// never re-listed, so a route directory added to that list arms this guard for
-// it on the same commit. A denylist of today's URLs would be strictly weaker,
-// and a hand-copied allowlist of them would drift, which is the failure mode
-// this task exists to close.
+// Same allowlist-not-denylist structure as feature-boundary.test.ts next door:
+// the enterprise routes are DERIVED from scripts/enterprise-paths.mjs (see
+// routePrefixes in enterprise-route-scan.ts), never re-listed, so a route
+// directory added to that list arms this guard for it on the same commit.
 //
 // The scanning mechanics live in enterprise-route-scan.ts, split out for file
 // size only.
@@ -37,18 +32,11 @@ import {
  * A community file that may name an enterprise route, the exact literals it
  * may name, and why.
  *
- * The reason is required, and it is not decoration: without one this list rots
- * into a record of everything anyone ever added, which is the same thing as no
- * guard at all. The LITERALS are pinned as well as the path, so an entry
- * excuses the link that was actually argued for and not the file: a second,
- * different enterprise link added to an allowlisted file still fails.
- *
- * Two files the nine did not need an entry for, and neither is excused any
- * more. src/lib/ai-digest.ts became an enterprise path at EE-3 Task 6e, so the
- * scanner skips it by path; src/app/feed-health/page.tsx was seamed at Task 6f
- * and no longer names an enterprise route at all. Both were previously carried
- * by a skip that read the CE-build ratchet's baseline, which the extraction
- * retired along with the ratchet.
+ * The reason is required: without one this list rots into a record of everything
+ * anyone ever added, which is the same thing as no guard at all. The LITERALS
+ * are pinned as well as the path, so an entry excuses the link that was argued
+ * for and not the file: a second, different enterprise link added to an
+ * allowlisted file still fails.
  */
 interface Exemption {
   file: string
@@ -95,17 +83,12 @@ function isAllowed(link: RouteLink): boolean {
 // route that leaves with the pack, because in this build those routes do not
 // exist and the link would 404.
 //
-// A composed tree is the build where they DO exist, and where linking to them
-// is the correct thing for a community surface to do. The scanner cannot tell
-// the difference, because it reads paths and not the registry: it skips a file
-// that lives under an enterprise path, and every allowlisted community file
-// still holds its literal there. So this case is skipped where the destinations
-// are installed, rather than rewritten into something that passes in both and
-// asserts nothing in either.
+// A composed tree is the build where they DO exist, and where linking to them is
+// correct. The scanner cannot tell the difference, because it reads paths and
+// not the registry, so this case is skipped where the destinations are installed
+// rather than rewritten into something that asserts nothing in either build.
 //
-// The self-checks below are NOT skipped. They prove the scanner reads real
-// code, derives the right prefixes and holds a live allowlist, and every one of
-// them is true of any build.
+// The self-checks below are NOT skipped: every one of them is true of any build.
 describe.skipIf(!installsNoFeaturePackages())('enterprise routes named by community code', () => {
   it('no community module links to a route the enterprise pack takes with it', () => {
     expect(scanTree().filter((link) => !isAllowed(link)).map(format)).toEqual([])
@@ -126,20 +109,15 @@ describe('enterprise route guard, self-checks', () => {
     }
   })
 
-  // Asserted through isSkipped rather than through FILES, and the difference
-  // matters now that the extraction has happened. `FILES` cannot contain
+  // Asserted through isSkipped rather than through FILES: `FILES` cannot contain
   // src/app/kpis/page.tsx because that file is not in this tree at all, so
-  // `expect(FILES).not.toContain(...)` would pass with the skip branch deleted:
-  // it would be checking the extraction, not the guard. isSkipped answers for a
-  // path whether or not it exists, which is what an overlay build (where those
-  // files ARE present, and where this same suite runs) depends on.
+  // `expect(FILES).not.toContain(...)` would pass with the skip branch deleted.
+  // isSkipped answers for a path whether or not it exists, which is what an
+  // overlay build (where those files ARE present) depends on.
   it('skips a path the enterprise pack owns, and scans a community one', () => {
     expect(isSkipped(join('src', 'app', 'kpis', 'page.tsx'))).toBe(true)
     expect(isSkipped(join('src', 'lib', 'ai-digest.ts'))).toBe(true)
-    // A community module inside no owned directory is scanned. Feed Health was
-    // the last file the old ratchet baseline excused; its /kpis links left with
-    // the feedHealth.metrics slot at EE-3 Task 6f, and it is an ordinary
-    // scanned module now.
+    // A community module inside no owned directory is scanned.
     expect(isSkipped(join('src', 'app', 'feed-health', 'page.tsx'))).toBe(false)
     expect(FILES).toContain('src/app/feed-health/page.tsx')
   })
@@ -175,11 +153,10 @@ describe('enterprise route guard, self-checks', () => {
     expect(routeLinksIn('x.ts', `const a = '/kpis?tag=x'`).map((l) => l.literal)).toEqual(['/kpis?tag=x'])
   })
 
-  // The case the scanner is deliberately blind to, and why it is not a finding:
-  // heatmap-grid-chrome.ts explains a layout rule by naming `/present` in a
-  // sentence. A route in prose is not a link, unlike an import specifier in a
-  // comment, which is why this file strips comments where feature-boundary-scan
-  // refuses to.
+  // The case the scanner does not report: heatmap-grid-chrome.ts explains a
+  // layout rule by naming `/present` in a sentence. A route in prose is not a
+  // link, unlike an import specifier in a comment, which is why this file strips
+  // comments where feature-boundary-scan does not.
   it('does not read a route named in a comment as a link', () => {
     const source = code('src/components/visualizations/heatmap-grid-chrome.ts')
     expect(source).toContain('/present')

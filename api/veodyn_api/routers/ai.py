@@ -3,37 +3,23 @@
 Two of them: SQL generation for the query editor's prompt bar, and one turn of
 the Create-with-AI interview. The other four (outline, report, digest,
 annotations) are routers/ai_ee.py, which mounts under the same prefix and reuses
-the gate below. That split is why services/ai_digest and its reach into
-services/kpi_view are not named anywhere in this module: an AI router that
-imported them would make a build without the enterprise half fail at import
-rather than simply serve fewer endpoints.
+the gate below. Nothing here may import services/ai_digest or services/kpi_view,
+or a build without the enterprise half would fail at import rather than serve
+fewer endpoints.
 
-Authorization here is deliberately unlike every other router in this service.
-The others resolve the caller through Redash and scope every row to their org.
-These cannot: veodyn-de's AI relay strips the browser's cookie before calling
-out, because the configured provider may be a third party and forwarding a
-Redash session to it would hand over the reader's account. What arrives is one
-bearer token, shared between the relay and this service.
-
-Two consequences, both intended:
+Authorization is unlike every other router in this service. veodyn-de's AI relay
+strips the browser's cookie before calling out, because the configured provider
+may be a third party, so what arrives is one bearer token shared between the
+relay and this service. Two consequences:
 
 1. This service cannot know who is asking, so it grounds on the Redash service
    account and can NAME a query the reader may not be able to open. Reading a
-   result still goes through Redash under the reader's own credential, so
-   nothing here discloses data TO THE READER.
-
-   That last clause used to stop at "discloses data", which was wrong about
-   this module's own behaviour. The profile block attached below
-   (`_profile_block`, and `services/dataset_profile` under it) reads the
-   warehouse on the SERVICE account and puts real column values in the prompt:
-   the three most common values of every non-numeric column, and the min and
-   max of every numeric or time one. That prompt goes to whatever `AI_ENDPOINT`
-   names, which may be a third party.
-
-   So the boundary stated accurately: a reader gains nothing they could not
-   already read, and the configured AI provider sees a sample of the table.
-   Whether that trade is acceptable is a deployment decision, and the lever is
-   whether a profile is attached at all.
+   result still goes through Redash under the reader's own credential.
+   `_profile_block` does read the warehouse on the SERVICE account and puts real
+   column values in the prompt (the three most common values of every
+   non-numeric column, the min and max of every numeric or time one), so the
+   configured AI provider sees a sample of the table. The lever is whether a
+   profile is attached at all.
 2. The bearer is the entire gate. It is compared in constant time, and an unset
    key answers 503 rather than letting everyone through.
 
@@ -98,13 +84,11 @@ RelayDep = Annotated[None, Depends(require_relay)]
 
 
 def service_key(settings: Settings) -> str:
-    """The Redash account this service grounds on. Without it there is no list
-    of real queries to choose from, and an ungrounded outline is worse than
-    none.
+    """The Redash account this service grounds on, or a 503: without it there is
+    no list of real queries to choose from.
 
-    Public rather than underscored because routers/ai_ee.py calls it: three of
-    the four enterprise endpoints ground on the same account, and a second copy
-    of this refusal there would be a second place for the 503 to drift.
+    Public rather than underscored because routers/ai_ee.py calls it, and a
+    second copy of this refusal there would be a second place to drift.
     """
     if not settings.redash_service_api_key:
         raise ApiError(
@@ -119,25 +103,21 @@ def _profile_block(settings: Settings, redash: RedashClient, table: str) -> str 
     """What the named table currently holds, or None when nothing can say.
 
     Looked up SERVER-SIDE against this service's own catalog, never taken from
-    the request. The browser sends the column list it is already showing the
-    analyst, and that stays what it is; a request naming something the catalog
-    does not have costs the generation its profile and can never name a table.
+    the request: a request naming something the catalog does not have costs the
+    generation its profile and can never name a table.
 
-    build_grounding rather than build_catalog, for its TTL cache: the query
-    editor's prompt bar is pressed repeatedly and a full ClickHouse
-    introspection per press is a wait for nothing. The `query` kind assembles
-    the catalog alone and makes no Redash call, which is why a missing service
-    account leaves this route working instead of turning it into a 503.
+    build_grounding rather than build_catalog, for its TTL cache. The `query`
+    kind assembles the catalog alone and makes no Redash call, which is why a
+    missing service account leaves this route working instead of 503ing.
     """
     if not settings.clickhouse_url:
         return None
     grounding = build_grounding(
         "query", redash=redash, api_key=settings.redash_service_api_key or "", settings=settings
     )
-    # Catalog ids are unqualified, and the editor sends whichever form the
-    # dataset it was opened with carries, so the database part is dropped before
-    # the match. It is still a lookup: a name that is not in the list resolves to
-    # nothing.
+    # Catalog ids are unqualified and the editor sends whichever form its dataset
+    # carries, so the database part is dropped before the match. Still a lookup:
+    # a name that is not in the list resolves to nothing.
     wanted = table.strip().rpartition(".")[2]
     dataset = next((one for one in grounding.datasets if one.id == wanted), None)
     if dataset is None:
@@ -152,10 +132,8 @@ def post_generate_sql(
 ) -> GenerateSqlOut:
     """Natural language to one read-only SELECT over the given dataset.
 
-    Given the same warehouse profile the interview gets: this is the query
-    editor's own prompt bar, calling the same generator, and a statement written
-    against real cardinality and real ranges is the point of the profile
-    wherever it is written from.
+    Given the same warehouse profile the interview gets, so the statement is
+    written against real cardinality and real ranges.
     """
     return generate_sql(llm, payload, profile_block=_profile_block(settings, redash, payload.dataset.table))
 
@@ -170,27 +148,19 @@ def post_converse(
     list are assembled here, so a modified client cannot make the model believe
     in a table that does not exist.
     """
-    # A comment rather than another docstring paragraph, because a route's
-    # docstring is its `description` in the generated schema and this is a note
-    # to whoever splits the package, not to the client.
-    #
-    # A `report` turn can converge on a report OUTLINE, and does so on a build
-    # with no enterprise pack: ReportOutlineOut is a community schema for
-    # exactly this reason. What such a build has no route for is turning that
-    # outline into drafted blocks.
+    # A `report` turn can converge on a report OUTLINE even on a build with no
+    # enterprise pack, which is why ReportOutlineOut is a community schema. What
+    # such a build has no route for is turning an outline into drafted blocks.
     api_key = service_key(settings)
 
     def visualization(query_id: int) -> tuple[QueryVisualization, ...]:
         """Every visualization the query has, or none so the widget degrades.
 
         A query that was in the listing and is gone by the time it is looked up
-        is a dropped widget, not a 422 in the middle of a conversation. Anything
-        else (Redash unreachable, a rejected credential) still surfaces.
-
-        All of them rather than one id, because an edit turn has to know whether
-        the shape the model asked for is one the query ALREADY has. That is the
-        difference between pointing a widget at an existing visualization and
-        writing a new one to a saved query somebody else may own.
+        is a dropped widget, not a 422 mid-conversation. Anything else (Redash
+        unreachable, a rejected credential) still surfaces. All of them rather
+        than one id, because an edit turn has to know whether the shape the model
+        asked for is one the query ALREADY has.
         """
         try:
             return query_visualizations(redash, query_id, api_key)
@@ -207,9 +177,7 @@ def post_converse(
     grounding = build_grounding(payload.kind, redash=redash, api_key=api_key, settings=settings)
     # Read here rather than taken from the request, so an edit conversation is
     # grounded on the dashboard as it actually is. A target that cannot be read
-    # degrades to an ordinary creation turn instead of failing the whole
-    # conversation: the model then proposes a list and the browser, which knows
-    # what is really on the dashboard, still diffs against the truth.
+    # degrades to an ordinary creation turn rather than failing the conversation.
     editing: tuple[DashboardWidget, ...] = ()
     if payload.kind == "dashboard" and payload.target_dashboard_id is not None:
         try:
@@ -221,9 +189,7 @@ def post_converse(
     # the newest `ai_max_grounded_queries`, and neither is in the listing above.
     grounding = with_widget_queries(grounding, editing)
     # Built once per request rather than per lookup: one turn can profile the
-    # focused table and write four queries, and each of those profiles its own
-    # table too. None when no warehouse is configured, which is the state every
-    # part of this path already treats as "no profile" rather than as an error.
+    # focused table and write four queries that each profile their own.
     warehouse = get_clickhouse_client(settings) if settings.clickhouse_url else None
     return converse(
         llm,

@@ -1,16 +1,9 @@
 """What one warehouse table actually holds, for the model that must query it.
 
-The catalog says a table exists and names its columns. That is enough to write
-SQL that parses and not enough to write SQL that is right: nothing in it says
-whether a column holds five boroughs or three hundred station ids, what the
-numbers range over, or how much of it is null. This module answers that from the
-warehouse itself.
-
-Value facts are read from the LATEST SNAPSHOT only. Every table here is an
-append-only capture, so "what does this data look like" means the current state;
-averaging a column over months of re-captures describes the capture schedule as
-much as the data. Table facts (span, row count, snapshot count) come from the
-whole table, where they are read off the primary index and cost nothing.
+Value facts are read from the LATEST SNAPSHOT only: these are append-only
+captures, so averaging a column over months of re-captures describes the capture
+schedule as much as the data. Table facts (span, row count, snapshot count) come
+from the whole table, off the primary index.
 """
 
 import logging
@@ -23,19 +16,15 @@ from veodyn_api.services.capture_sources import is_identifier
 
 logger = logging.getLogger(__name__)
 
-# The ceiling the prompt already applies to a table's columns. A profile wider
-# than the description it accompanies would describe columns the model is never
-# shown.
+# The ceiling the prompt already applies to a table's columns.
 MAX_PROFILED_COLUMNS = 60
 
-# What counts as few enough values to be a category rather than an identifier.
-# The same ceiling the shape guide gives a bar chart, so a column the binder
-# calls a category is a column a bar chart can hold.
+# Few enough values to be a category rather than an identifier. The same ceiling
+# the shape guide gives a bar chart.
 MAX_CATEGORY_DISTINCT = 25
 
-# At or above this share of distinct values, a column identifies its row rather
-# than describing it. Not 1.0: a capture with a handful of duplicate rows in one
-# snapshot is still keyed by that column.
+# At or above this share of distinct values, a column identifies its row. Not 1.0:
+# a snapshot with a few duplicate rows is still keyed by that column.
 IDENTIFIER_SHARE = 0.9
 
 EXAMPLE_VALUES = 3
@@ -71,10 +60,8 @@ class DatasetProfile:
     def as_prompt_block(self) -> dict[str, Any]:
         """The profile as the prompt carries it: facts, no prose.
 
-        Cadence is stated in seconds and described as approximate by the prompt
-        that renders it. It is span / (snapshots - 1), which is a lie for an
-        irregular schedule, so the snapshot count and the span are stated too and
-        the model can see the derivation is rough.
+        Cadence is in seconds and is span / (snapshots - 1), which is wrong for an
+        irregular schedule, so the snapshot count and span are stated alongside it.
         """
         block: dict[str, Any] = {
             "table": self.table,
@@ -106,20 +93,15 @@ def _column_block(column: ColumnProfile) -> dict[str, Any]:
 
 
 def unwrap(declared: str) -> str:
-    """`Nullable(LowCardinality(String))` is a String. The wrappers say how it is
-    stored; the model is choosing what to do with the value.
+    """`Nullable(LowCardinality(String))` is a String.
 
-    Loops until nothing changes rather than walking the wrappers once each. One
-    pass per wrapper depends on the nesting order: peeling `LowCardinality(`
-    reveals a `Nullable(` that the pass for `Nullable(` has already gone by, so
-    `LowCardinality(Nullable(DateTime))` came out as `Nullable(DateTime)`, which
-    is not a time to _is_time, so the column was profiled with topK instead of a
-    range and handed to the model with the wrong role.
+    Loops until nothing changes, because the wrappers nest in either order and one
+    pass each would leave `LowCardinality(Nullable(DateTime))` as
+    `Nullable(DateTime)`.
 
-    `SimpleAggregateFunction(` is deliberately not here: its first argument is a
-    function name, not a type, so stripping it yields "sum, UInt64". Nothing in
-    a capture table can be one (node/redash/historical/schema.py maps every column to
-    a Nullable scalar), and a wrong answer is worse than an unrecognized one.
+    `SimpleAggregateFunction(` is not here: its first argument is a function name,
+    so stripping it yields "sum, UInt64". Nothing in a capture table can be one
+    (node/redash/historical/schema.py maps every column to a Nullable scalar).
     """
     inner = declared.strip()
     changed = True
@@ -143,8 +125,7 @@ def _is_time(declared: str) -> bool:
 def role_of(name: str, declared: str, distinct: int, rows: int) -> str:
     """What this column is FOR, as far as the shape of its values can say.
 
-    A hint the model may overrule, not a decision: it is offered beside the raw
-    counts so an intent that wants to plot an id against time can still say so.
+    A hint the model may overrule, offered beside the raw counts.
     """
     if name == CAPTURE_COLUMN or _is_time(declared):
         return "time"
@@ -163,8 +144,7 @@ def _table_facts(client: Any, table: str) -> dict[str, Any] | None:
     """Span, volume and snapshot count in one read.
 
     count() and min/max over the ORDER BY key come off the primary index, so this
-    does not scan the data. countIf with the scalar subquery gets the latest
-    snapshot's size in the same pass rather than in a second statement.
+    does not scan the data.
     """
     rows = client.query(
         f"SELECT count() AS rows, uniqExact({CAPTURE_COLUMN}) AS snapshots, "
@@ -189,9 +169,7 @@ def _column_expressions(name: str, declared: str) -> list[str]:
 def _snapshot_facts(client: Any, table: str, columns: list[tuple[str, str]]) -> dict[str, Any]:
     """Every column's values, from the latest snapshot, in one statement.
 
-    Sixty columns of three aggregates over a few hundred rows is one cheap read;
-    sixty statements would be sixty round trips inside a turn someone is waiting
-    on.
+    One statement rather than sixty round trips inside a turn someone waits on.
     """
     selects = ["count() AS n"]
     for name, declared in columns:
@@ -243,9 +221,8 @@ def _column_profile(name: str, declared: str, row: dict[str, Any], rows: int) ->
 def profile_dataset(client: Any, dataset: DatasetOut) -> DatasetProfile | None:
     """The profile, or None when the warehouse cannot answer.
 
-    None rather than an exception: every caller of this is assembling a prompt,
-    and a prompt with no profile in it is the prompt we shipped last week. A
-    warehouse that is down must not take the interview down with it.
+    None rather than an exception: a warehouse that is down must not take the
+    interview down with it.
     """
     table = dataset.id
     if not is_identifier(table):
@@ -257,9 +234,8 @@ def profile_dataset(client: Any, dataset: DatasetOut) -> DatasetProfile | None:
         facts = _table_facts(client, table)
         snapshot = _snapshot_facts(client, table, columns) if columns else {}
     except Exception:
-        # Deliberately broad. Below this are httpx errors, ApiError, and a
-        # ClickHouse response shape nobody predicted, and the answer to all three
-        # is the same: no profile.
+        # Broad: httpx errors, ApiError and an unexpected response shape all get
+        # the same answer, no profile.
         logger.warning("could not profile %s; the prompt will carry the catalog entry alone", table, exc_info=True)
         return None
     if facts is None:

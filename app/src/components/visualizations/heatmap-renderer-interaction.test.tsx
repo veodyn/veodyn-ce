@@ -4,23 +4,16 @@ import { describe, expect, it } from 'vitest'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { HeatmapRenderer } from './heatmap-renderer'
 
-// Task 5: making a cell's value reachable without a mouse. Split out of
-// heatmap-renderer.test.tsx (which was already at the file-size hook's limit)
-// rather than folded in there, since this is its own seam: hover/focus/tooltip
-// wiring, not aggregation, density, or clipping.
+// Hover, focus and tooltip wiring for the heatmap grid: reaching a cell's value
+// without a mouse.
 //
-// The grid uses roving tabIndex (exactly one cell is ever a Tab stop; arrow
-// keys move it), not tabIndex={0} on every cell: with tabIndex={0} on all
-// xCategories.length * yCategories.length cells, a keyboard user needed one
-// Tab press per cell to get past a grid, which the 150-cell density
-// threshold this same file's sibling test exercises proves is a real size.
-// Whether the computed accessible name (not just the aria-label attribute)
-// is correct cannot be proven here: dom-accessibility-api, which jest-dom's
-// toHaveAccessibleName uses under jsdom, does not implement the "name from:
-// prohibited" rule role="generic" carries in the real accname spec, so it
-// reports a name for a bare aria-label div regardless of role. Only a real
-// browser's accessibility tree (e2e/heatmap-interaction.spec.ts) can catch
-// that defect; see this project's own finding about it.
+// The grid roves tabIndex (exactly one cell is ever a Tab stop, arrow keys move
+// it), because tabIndex={0} on every cell costs a keyboard user one Tab press
+// per cell. Whether the computed accessible name is right cannot be proven
+// here: dom-accessibility-api, behind jest-dom's toHaveAccessibleName under
+// jsdom, does not implement the "name from: prohibited" rule role="generic"
+// carries, so it reports a name for a bare aria-label div whatever its role.
+// Only e2e/heatmap-interaction.spec.ts can catch that.
 
 const visualization: MockVisualization = {
   id: 1,
@@ -52,10 +45,9 @@ const data: QueryResultData = {
 
 describe('HeatmapRenderer cell reachability and the tooltip', () => {
   it('gives a data-bearing cell an accessible name carrying row, column, and the EXACT value, not the compact form', () => {
-    // count: 1_500 would print as "1.5K" under formatCompactNumber; the
-    // accessible name (and the tooltip built from the same description) must
-    // not, since a dense grid hides the printed number and the accessible
-    // name becomes the only place it survives at all.
+    // count: 1_500 prints as "1.5K" under formatCompactNumber. A dense grid
+    // hides the printed number, so the accessible name (and the tooltip built
+    // from the same description) is the only place the exact value survives.
     const bigViz: MockVisualization = { ...visualization, options: { ...visualization.options, showValues: 'always' } }
     const bigData: QueryResultData = {
       columns: data.columns,
@@ -68,10 +60,9 @@ describe('HeatmapRenderer cell reachability and the tooltip', () => {
   })
 
   it('bounds an average to 2 decimal places instead of printing raw floating-point division', () => {
-    // 10 + 20 + 25, divided by 3, is 18.333333333333332 in IEEE 754: a
-    // repeating decimal that floating-point division cannot represent
-    // exactly. formatCompactNumber's rounded cell text was never at risk of
-    // this; the exact-value description (accessible name and tooltip) was.
+    // 10 + 20 + 25, divided by 3, is 18.333333333333332 in IEEE 754. The
+    // rounded cell text was never at risk of that, the exact-value description
+    // (accessible name and tooltip) was.
     const avgViz: MockVisualization = {
       ...visualization,
       options: { ...visualization.options, aggregation: 'avg' },
@@ -132,9 +123,8 @@ describe('HeatmapRenderer cell reachability and the tooltip', () => {
     expect(tabbable).toHaveLength(1)
     expect(tabbable[0]).toBe(screen.getByLabelText('Tuesday / Evening: 34'))
 
-    // ArrowRight/ArrowDown clamp at the last row/column rather than wrapping
-    // or throwing: Tuesday is the last x category and Evening is the last y
-    // category in this fixture, so both are no-ops here.
+    // ArrowRight/ArrowDown clamp at the last row/column rather than wrapping.
+    // Tuesday and Evening are the last categories here, so both are no-ops.
     await user.keyboard('{ArrowRight}{ArrowDown}')
     expect(screen.getByLabelText('Tuesday / Evening: 34')).toHaveFocus()
     tabbable = screen.getAllByRole('gridcell').filter((el) => el.getAttribute('tabindex') === '0')
@@ -142,27 +132,20 @@ describe('HeatmapRenderer cell reachability and the tooltip', () => {
   })
 
   it('moves ArrowLeft and ArrowUp too, not just ArrowRight/ArrowDown', async () => {
-    // Only ArrowRight/ArrowDown were covered before this test: an
-    // implementation with ArrowLeft mapped to xi + 1 by mistake would still
-    // pass every assertion above. This test proves ArrowLeft/ArrowUp move
-    // focus for real (the walk-back below) and that the grid tolerates being
-    // asked to move past its own edge without throwing or landing on an
-    // invalid cell. It does NOT independently prove the min-edge clamp
-    // (Math.max(_, 0)) is present: at index 0, a working clamp and a
-    // dropped one produce the identical DOM-observable outcome (focus does
-    // not move either way, since xCategories[-1] is undefined and
-    // focusCellAt's optional chaining silently no-ops on it). The clamp
-    // itself is asserted directly, as a plain index comparison, in
-    // use-heatmap-grid-interaction.test.ts's nextRovingIndices tests.
+    // Proves ArrowLeft/ArrowUp really move focus (the walk-back below) and that
+    // the grid tolerates being pushed past its own edge. It does NOT prove the
+    // min-edge clamp is present: at index 0 a working clamp and a dropped one
+    // look identical in the DOM, since xCategories[-1] is undefined and
+    // focusCellAt's optional chaining no-ops on it. The clamp is asserted
+    // directly in use-heatmap-grid-interaction.test.ts's nextRovingIndices tests.
     const user = userEvent.setup()
     render(<HeatmapRenderer visualization={visualization} data={data} />)
 
     await user.tab()
     expect(screen.getByLabelText('Monday / Morning: 12')).toHaveFocus()
 
-    // Already at the first column and first row: pressing ArrowLeft/ArrowUp
-    // here must not move focus somewhere invalid or throw, whatever the
-    // underlying reason turns out to be.
+    // Already at the first column and row: ArrowLeft/ArrowUp here must not move
+    // focus somewhere invalid or throw.
     await user.keyboard('{ArrowLeft}')
     expect(screen.getByLabelText('Monday / Morning: 12')).toHaveFocus()
     await user.keyboard('{ArrowUp}')
@@ -246,9 +229,8 @@ describe('HeatmapRenderer cell reachability and the tooltip', () => {
     render(<HeatmapRenderer visualization={visualization} data={data} />)
 
     // Monday/Morning and Tuesday/Evening share neither weekday nor period, so
-    // hovering one must not ring the other: a fixture where every pair of
-    // cells shared a row or column would make this assertion pass whether or
-    // not the row/column comparison was implemented at all.
+    // hovering one must not ring the other. A fixture where every pair shared a
+    // row or column would pass with no row/column comparison implemented.
     const hovered = screen.getByLabelText('Monday / Morning: 12')
     const sameRow = screen.getByLabelText('Tuesday / Morning: no data')
     const unrelated = screen.getByLabelText('Tuesday / Evening: 34')

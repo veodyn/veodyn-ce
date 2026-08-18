@@ -1,14 +1,7 @@
 """What the Create-with-AI interview says to the model.
 
-Split out of ai_converse.py because the two halves fail differently. This half
-is prose: getting it wrong makes the model unhelpful. The other half checks the
-answer against real ids: getting that wrong puts a dangling reference in front of
-a reader. Keeping them apart means the file that carries the safety rule stays
-small enough to read in one sitting.
-
-The forced tool's SHAPE is ai_converse_schema.py, split from here on the same
-reasoning one step down: this file is what the model is told, that one is what it
-must answer with, and only one of them is prose a human argues about.
+The forced tool's SHAPE is ai_converse_schema.py: this file is what the model is
+told, that one is what it must answer with.
 
 Nothing here decides what is true. Every id the model names after reading these
 prompts is looked up again in ai_converse_proposals.py.
@@ -26,18 +19,12 @@ from veodyn_api.services.dataset_profile import DatasetProfile
 from veodyn_api.services.llm import compact_json
 
 # The kinds whose proposal carries a vizChoiceId the MODEL chooses, and so the
-# kinds that are sent the shape guide.
-#
-# A KPI can now write its source query, but is deliberately not here. Its source
-# is the series its sparkline and history read, so the shape is known from the
-# kind (KPI_SOURCE_VIZ below) and sending the whole of VIZ_RULES to a KPI
-# interview would spend the transcript's prompt budget on a field with one right
-# answer. A snippet has nothing to draw at all.
+# kinds that are sent the shape guide. A KPI's shape is known from the kind
+# (KPI_SOURCE_VIZ below) and a snippet has nothing to draw.
 VIZ_KINDS: tuple[CreateKind, ...] = ("query", "dashboard", "report")
 
-# The shape a KPI's written source query is drawn as. A KPI is a number over
-# time: the scorecard reads the latest value and the sparkline reads the series
-# behind it, so a line is what its own surfaces already expect.
+# The shape a KPI's written source query is drawn as: its scorecard reads the
+# latest value and its sparkline the series behind it.
 KPI_SOURCE_VIZ = "chart-line"
 
 DIRECTIONS: tuple[KpiDirection, ...] = ("higher-is-better", "lower-is-better")
@@ -47,21 +34,17 @@ CADENCES: tuple[KpiCadence, ...] = ("hourly", "daily", "weekly")
 # dozen they spend prompt budget the transcript needs.
 MAX_GROUNDED_COLUMNS = 60
 
-# A catalog description is written for the reader of the Data page and can run
-# to paragraphs. The first few sentences say what the feed is; the rest spends
-# the prompt budget the transcript needs.
+# A catalog description can run to paragraphs; the first few sentences say what
+# the feed is and the rest spends the prompt budget the transcript needs.
 MAX_DESCRIPTION_CHARS = 300
 
 # How many queries one dashboard proposal may write. Each is its own generation
-# plus the SQL safety check and its retry, all inside the turn the analyst is
-# waiting on, so eight of them is a minute of silence and a relay timeout. Four
-# covers the shape people ask for (a situational dashboard with a couple of
-# existing queries and a few new angles) and keeps the turn answerable.
+# plus the SQL safety check and its retry, inside the turn the analyst is waiting
+# on, so eight of them is a minute of silence and a relay timeout.
 MAX_NEW_QUERIES_PER_DASHBOARD = 4
 
-# The same ceiling for a report, for the same reason: a report is three to six
-# sections, and one that has to write SQL for every one of them is the same
-# minute of silence. A KPI needs no cap, structurally: it reads one source.
+# The same ceiling for a report, for the same reason. A KPI needs no cap: it
+# reads one source.
 MAX_NEW_QUERIES_PER_REPORT = 4
 
 _Choice = TypeVar("_Choice", bound=str)
@@ -89,9 +72,8 @@ Rules:
 - Never claim a result, a number or a trend. Nothing has run.
 - Plain sentences. No markdown, no preamble."""
 
-# What every kind that can write SQL is told about doing it. Shared, because the
-# four rules below were drifting into four descriptions of one mechanism: the
-# model describes an intent and the service generates and checks the statement.
+# What every kind that can write SQL is told about doing it, shared by the four
+# rules below.
 WRITES_SQL = (
     "You do NOT write the SQL yourself: name the table and describe the intent, and the service generates "
     "the statement and safety-checks it before the analyst sees it."
@@ -152,17 +134,14 @@ EDIT_RULES = (
 def _editing_row(widget: DashboardWidget) -> dict[str, Any]:
     """One widget of the dashboard being edited, as the prompt carries it.
 
-    `shownAs` is the field that makes "turn the tables into charts" answerable.
-    It is written in the same vocabulary as `vizChoiceId`, so the model reads a
-    shape id and writes a shape id back rather than translating between what it
-    was told and what it is asked for. Omitted when Redash reported no type,
+    `shownAs` is written in the same vocabulary as `vizChoiceId`, so the model
+    reads a shape id and writes one back. Omitted when Redash reported no type,
     which is a widget nobody can say anything about rather than a table.
     """
     row: dict[str, Any] = {"queryId": widget.query_id, "query": widget.query_name}
     if widget.viz_type:
         # With the options, not the type alone: five of the shape ids are a CHART
-        # told apart by `globalSeriesType`, so the type by itself describes every
-        # existing chart as a line chart and invites the model to "fix" the bars.
+        # told apart by `globalSeriesType`.
         row["shownAs"] = choice_id_for(widget.viz_type, widget.viz_options)
     return row
 
@@ -170,11 +149,9 @@ def _editing_row(widget: DashboardWidget) -> dict[str, Any]:
 def _dataset_row(dataset: DatasetOut) -> dict[str, Any]:
     """One catalog entry as the prompt carries it.
 
-    Everything here except the columns was already computed by build_catalog and
-    dropped on the floor. A model that cannot see the coverage window proposes a
-    year-on-year comparison over a table with three months in it, and a model
-    that cannot see freshness proposes a live dashboard over a feed that stopped
-    writing in May.
+    Coverage and freshness are carried because a model that cannot see them
+    proposes a year-on-year comparison over three months of data, or a live
+    dashboard over a feed that stopped writing.
     """
     row: dict[str, Any] = {
         "table": dataset.id,
@@ -210,18 +187,16 @@ def system_prompt(
     """The rules, plus the closed list of things that exist.
 
     The grounding goes in the SYSTEM block rather than into the transcript as a
-    fake opening user message. Two reasons: it is not re-sent per turn, and a
-    later user turn cannot be read as amending it.
+    fake opening user message: it is not re-sent per turn, and a later user turn
+    cannot be read as amending it.
     """
     parts = [BASE_SYSTEM, KIND_RULES[kind]]
     if kind in VIZ_KINDS:
         parts.append(VIZ_RULES)
     if editing:
-        # An edit is still asked for the WHOLE widget list rather than a set of
-        # operations. The model is bad at bookkeeping and good at describing an
-        # end state, and the difference between what it returns and what is
-        # here is arithmetic the browser can do exactly, against real widget
-        # ids, instead of the model being trusted to name what to remove.
+        # An edit asks for the WHOLE widget list rather than a set of operations,
+        # so the difference against what is here is arithmetic the browser does
+        # against real widget ids.
         parts.append(EDIT_RULES)
         parts.append(
             "The dashboard you are editing currently holds these widgets: "
@@ -233,11 +208,9 @@ def system_prompt(
         # in them, and it is useless to a kind that was given none.
         parts.append(CAPTURE_SEMANTICS)
     if profile is not None:
-        # The deep look at the one table this conversation settled on. It arrives
-        # a turn late by design (the model names the table, the service profiles
-        # it, the next turn carries it), so it is appended rather than merged
-        # into the table list: the list is what exists, this is what one of them
-        # currently holds.
+        # Arrives a turn late (the model names the table, the service profiles it,
+        # the next turn carries it), so it is appended rather than merged into the
+        # table list: the list is what exists, this is what one of them holds.
         parts.append(f"What {profile.table} currently holds: {compact_json(profile.as_prompt_block())}")
     if queries:
         parts.append(f"Queries you may use: {compact_json([one.as_prompt_row() for one in queries])}")
@@ -251,10 +224,9 @@ def transcript(messages: list[ConverseMessageIn]) -> list[dict[str, str]]:
     """The turns as the Messages API will accept them.
 
     It requires the list to start with a user turn and to alternate, and answers
-    400 otherwise. The composer always sends that shape, but the composer is the
-    half of this an attacker can rewrite, and a provider 400 reaches the reader
-    as "AI is broken" rather than as the malformed request it is. So leading
-    assistant turns are dropped and same-role runs are joined.
+    400 otherwise, which reaches the reader as "AI is broken". The composer is the
+    half of this an attacker can rewrite, so leading assistant turns are dropped
+    and same-role runs are joined here.
     """
     turns: list[dict[str, str]] = []
     for message in messages:
@@ -274,15 +246,9 @@ def text_of(value: Any, limit: int = 500) -> str:
 def picked_id(value: Any) -> int | None:
     """A model-supplied id, or None if it is not one.
 
-    `isinstance(True, int)` is True in Python, and `{1: query}.get(True)` finds
-    query 1 because True hashes and compares equal to 1. So a tool result of
-    `{"queryId": true}` silently resolved to whichever query happens to be id 1
-    and shipped it as a grounded source. Every id path goes through here rather
-    than testing `isinstance(x, int)` at each site, which is the check that
-    looked right and was not.
-
-    Here beside text_of and one_of because it is the same kind of thing: the
-    clamp between what the model said and what a builder is allowed to act on.
+    `isinstance(True, int)` is True and `{1: query}.get(True)` finds query 1, so
+    a tool result of `{"queryId": true}` resolves to whichever query has id 1.
+    Every id path goes through here rather than testing `isinstance(x, int)`.
     """
     return value if isinstance(value, int) and not isinstance(value, bool) else None
 
@@ -290,10 +256,8 @@ def picked_id(value: Any) -> int | None:
 def one_of(value: Any, allowed: tuple[_Choice, ...], fallback: _Choice) -> _Choice:
     """A closed-list string, clamped rather than refused.
 
-    Only ever used for a cosmetic pick: a chart shape, a cadence, a direction.
-    Clamping an ID would be inventing one, which is the thing this whole design
-    exists to prevent; clamping a chart shape shows a table instead of a pie in
-    a card the analyst edits before pressing Create.
+    Only for a cosmetic pick: a chart shape, a cadence, a direction. Clamping an
+    ID would be inventing one, which is what this design exists to prevent.
     """
     picked = text_of(value, 64)
     return next((one for one in allowed if one == picked), fallback)

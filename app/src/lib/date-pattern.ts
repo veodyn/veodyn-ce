@@ -2,30 +2,21 @@
 // chart can use: reshaped to the precision an axis is drawing at, and rendered
 // against an instant's UTC components.
 //
-// Two things live here because a chart needs both and neither belongs in
-// format-datetime.ts:
+// The rule: the SETTING decides the form (field order, separators, 12h versus
+// 24h) and the axis's own span decides the precision.
 //
-//   * **Reshaping.** A time axis stepping in days already states the year on its
-//     second line, so its tick labels want the configured date pattern minus the
-//     year, not a second pattern invented here. The rule the whole module serves
-//     is that the SETTING decides the form (field order, separators, 12h versus
-//     24h) and the axis's own span decides the precision.
-//   * **Rendering in UTC.** chart-time-axis.ts places ticks on round UTC
-//     boundaries, because parseDateValue reads a naive backend timestamp as UTC.
-//     format-datetime.ts renders in local time, which is right for a table cell
-//     and wrong here: it would slide every label off the boundary its tick sits
-//     on. Rebuilding a local Date from UTC components and formatting that would
-//     mostly work, but a local time that does not exist (02:30 in a zone that
-//     springs forward at 02:00) is normalised an hour forward, so one day a year
-//     the axis would label a tick as the wrong hour. The tokens are read
-//     directly off the UTC components instead, so no zone is ever involved.
+// Rendering is UTC because chart-time-axis.ts places ticks on round UTC
+// boundaries (parseDateValue reads a naive backend timestamp as UTC).
+// format-datetime.ts renders in local time, which would slide every label off
+// its tick, and a local time that does not exist (02:30 where the zone springs
+// forward at 02:00) normalises an hour forward. Tokens are read straight off the
+// UTC components, so no zone is involved.
 
 import { DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT } from './format-datetime'
 
 /**
- * The two moment-style patterns Settings > Formats stores. Named to match
- * `Formats` (use-formats.ts), which extends this, so the hook's value can be
- * handed straight to anything asking for patterns.
+ * The two moment-style patterns Settings > Formats stores. Field names match
+ * `Formats` (use-formats.ts), which extends this.
  */
 export interface DisplayPatterns {
   dateFormat: string
@@ -66,8 +57,7 @@ export function withoutDay(pattern: string): string {
 
 /**
  * Just the year, as the pattern writes it. A two-digit setting keeps its two
- * digits here rather than being widened: an operator who reads every other date
- * in the product as 07/25/26 is not helped by one axis that disagrees.
+ * digits rather than being widened, so no axis disagrees with the rest of the UI.
  */
 export function yearOnly(pattern: string): string {
   return YEAR_TOKEN.exec(pattern)?.[0] ?? 'YYYY'
@@ -75,8 +65,8 @@ export function yearOnly(pattern: string): string {
 
 /**
  * The time pattern without seconds. An axis stepping in minutes would otherwise
- * print ":00" under every tick, three characters that carry nothing and cost
- * ticks: recharts drops labels that no longer clear minTickGap.
+ * print ":00" under every tick, and recharts drops labels that no longer clear
+ * minTickGap.
  */
 export function withoutSeconds(pattern: string): string {
   return dropField(pattern, SECOND_TOKEN)
@@ -104,9 +94,8 @@ const MONTHS_LONG = [
 const MONTHS_SHORT = MONTHS_LONG.map((month) => month.slice(0, 3))
 
 // Longest form of each field first, so 'YYYY' is not read as 'YY' twice. The
-// bracket alternative is moment's escape for literal text; the pattern set in
-// Settings has none, but honouring it costs one branch and a stored pattern
-// from Redash itself may carry one.
+// bracket alternative is moment's escape for literal text, which a stored
+// pattern from Redash itself may carry.
 const MOMENT_TOKEN = /\[([^\]]*)\]|YYYY|YY|MMMM|MMM|MM|M|DD|D|HH|H|hh|h|mm|m|ss|s|A|a/g
 
 function pad2(value: number): string {
@@ -115,12 +104,8 @@ function pad2(value: number): string {
 
 /**
  * An instant rendered against a moment-style pattern, reading its **UTC**
- * components.
- *
- * A second interpreter of the same token vocabulary as format-datetime.ts's
- * translation table, and deliberately so: that one hands the pattern to date-fns
- * to render in local time, which no axis can use (see the module header). The
- * two must agree on what a token means, not on where the fields land.
+ * components. A second interpreter of format-datetime.ts's token vocabulary
+ * (that one renders in local time); the two must agree on what a token means.
  */
 export function formatUtcPattern(ts: number, pattern: string): string {
   if (!Number.isFinite(ts)) return ''

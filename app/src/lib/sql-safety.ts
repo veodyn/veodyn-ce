@@ -1,23 +1,18 @@
 // SQL safety primitives shared by the deterministic SQL composers (the Visual
-// query compiler and the AI mock generator).
+// query compiler and the AI mock generator). Both build SQL out of
+// browser-supplied names and values, so nothing reaches the string by
+// concatenation alone. Two rules:
 //
-// Both composers build SQL text out of names and values that originate in the
-// browser (a field picker, a grounding payload posted to /api/ai/*), so nothing
-// may reach the SQL string by concatenation alone. Two rules:
+//   1. Identifiers (dataset, column, alias) are matched against a strict
+//      allowlist and REFUSED on a miss. They are emitted bare, so validation is
+//      the only guard: no engine-specific quoting style is assumed.
+//   2. Values are emitted as one quoted literal with the quote AND the
+//      backslash escaped, so a payload cannot terminate the literal it sits in.
+//      ClickHouse honours backslash escapes inside string literals.
 //
-//   1. Anything in an identifier position (dataset, column, alias) is matched
-//      against a strict allowlist pattern and REFUSED if it does not match.
-//      Identifiers are emitted bare, so validation is the only thing standing
-//      between a field name and the parser: no engine-specific quoting style
-//      (double quote, backtick) is assumed.
-//   2. Anything in a value position is emitted as a single quoted literal with
-//      the quote and the backslash escaped, so a payload cannot terminate the
-//      literal it sits in. ClickHouse honours backslash escapes inside string
-//      literals, hence the backslash doubling and not just the quote doubling.
-//
-// Callers with schema metadata should additionally check names against the real
-// column list (see compileVisualQuery's `columns` option). This module is the
-// floor, not the ceiling.
+// Callers with schema metadata should also check names against the real column
+// list (compileVisualQuery's `columns` option). This is the floor, not the
+// ceiling.
 
 import { AppError, ErrorIds } from '@/lib/errorIds'
 
@@ -25,9 +20,9 @@ import { AppError, ErrorIds } from '@/lib/errorIds'
 // 63 characters at most (the Postgres identifier limit; ClickHouse is looser).
 const IDENTIFIER_PART = /^[A-Za-z_][A-Za-z0-9_]{0,62}$/
 
-// Numeric column families, matched on the normalised base type. Deliberately
-// exact so near-misses ("interval", "string") do not read as numeric: a wrong
-// "numeric" verdict would let a value through unquoted.
+// Numeric column families, matched exactly on the normalised base type so
+// near-misses ("interval", "string") do not read as numeric: a wrong "numeric"
+// verdict would let a value through unquoted.
 const NUMERIC_TYPE =
   /^(?:u?int\d*|integer|tinyint|smallint|mediumint|bigint|float\d*|double(?: precision)?|decimal|numeric|number|real|u?serial\d*|bigserial|smallserial|money|fixed)$/
 
@@ -37,18 +32,16 @@ const NUMERIC_TYPE =
 const DATE_TYPE = /^(?:date\d*|datetime\d*|timestamp(?: with(?:out)? time zone)?|smalldatetime)$/
 
 // A date, optionally with a time, in the one shape every engine here parses.
-// Deliberately strict: a partial value like "2026" or "07/22/2026" is refused
-// rather than guessed at.
+// Strict: a partial value like "2026" or "07/22/2026" is refused, not guessed.
 const DATE_LITERAL = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}(?::\d{2})?))?$/
 
 // Nullability / cardinality wrappers the catalog carries through from
 // ClickHouse. These are transparent: the element type decides numericness.
-// `Array(...)` is deliberately NOT here, so an Array(Int32) does not read as a
-// numeric column and never gets aggregated with sum().
+// `Array(...)` is NOT here, so an Array(Int32) does not read as numeric and
+// never gets aggregated with sum().
 const TYPE_WRAPPER = /^(?:nullable|lowcardinality)\((.*)\)$/
 
-// Written without an escape sequence on purpose: a literal NUL in source is
-// invisible in review and easy to mangle in transit.
+// Not an escape sequence: a literal NUL in source is invisible in review.
 const NUL = String.fromCharCode(0)
 
 export function sqlSafetyError(message: string, context: Record<string, unknown> = {}): AppError {
@@ -122,15 +115,13 @@ export function isDateOnlySqlType(type: string): boolean {
 }
 
 /**
- * A date or timestamp a database will parse, normalised to the one form they
- * all accept: `YYYY-MM-DD` or `YYYY-MM-DD hh:mm:ss`. Null when the text is not
- * one.
+ * A date or timestamp normalised to the one form every engine here accepts:
+ * `YYYY-MM-DD` or `YYYY-MM-DD hh:mm:ss`. Null when the text is not one.
  *
- * ClickHouse's DateTime parser takes the space-separated form; the `T` an
- * <input type="datetime-local"> produces is accepted by newer versions only, so
- * it is rewritten here rather than depending on the server's build. A bare year
- * ("2026") is refused: it is the shape that made a filter compile into valid
- * SQL and then fail at the database with CANNOT_PARSE_DATETIME.
+ * ClickHouse's DateTime parser takes the space-separated form, and only newer
+ * builds accept the `T` an <input type="datetime-local"> produces, so the `T` is
+ * rewritten here. A bare year ("2026") is refused: it compiles to valid SQL and
+ * then fails at the database with CANNOT_PARSE_DATETIME.
  */
 export function normalizeSqlDateLiteral(value: string): string | null {
   if (typeof value !== 'string') return null

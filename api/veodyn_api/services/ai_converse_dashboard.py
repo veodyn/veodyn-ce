@@ -1,13 +1,11 @@
 """Turning the model's widget list into one a dashboard can be built from.
 
-Split out of ai_converse_proposals.py for the same reason ai_converse_outline.py
-was: it is the longest of the five builders and the only one with a second
-dimension to resolve. The others answer "which query", this one answers "which
-query, drawn how", and the second half is where an EDIT differs from a creation.
+The other builders answer "which query"; this one answers "which query, drawn
+how", and the second half is where an EDIT differs from a creation.
 
-The rule is the one the whole feature rests on, unchanged: the model writes
-words, this module assigns ids. It names a query from the grounded list and a
-SHAPE from a closed vocabulary, and every id in the result was looked up here.
+The rule the feature rests on: the model writes words, this module assigns ids.
+It names a query from the grounded list and a SHAPE from a closed vocabulary,
+and every id in the result was looked up here.
 """
 
 from collections.abc import Callable
@@ -33,13 +31,10 @@ from veodyn_api.services.ai_written_query import as_new_query
 from veodyn_api.services.clickhouse import ClickHouseClient
 from veodyn_api.services.llm import LlmClient, as_objects
 
-# A dashboard widget points at a visualization, so the proposal needs a second
-# real id per widget. Injected as a callable rather than resolved from a Redash
-# client here, so this module does no I/O of its own.
-#
-# Every visualization rather than one id: an edit turn asks "does this query
-# already HAVE a bar chart", and the answer decides between pointing a widget at
-# one and telling the client to create it. One call per named query either way.
+# A widget points at a visualization, so the proposal needs a second real id per
+# widget. Injected as a callable, so this module does no I/O of its own. Every
+# visualization rather than one id, because an edit turn asks whether the query
+# already HAS the asked-for shape.
 VisualizationResolver = Callable[[int], tuple[QueryVisualization, ...]]
 
 
@@ -47,26 +42,16 @@ VisualizationResolver = Callable[[int], tuple[QueryVisualization, ...]]
 class Built:
     """A proposal, and whatever could not be put into one.
 
-    Defined here rather than beside build_proposal because a dashboard is the
-    only kind that can come back partial: the other four resolve one source and
-    are all-or-nothing. build_proposal adopts it as its uniform return so a
-    caller reads one shape whichever kind answered.
-
-    Before this, a single unresolvable widget threw away the whole answer. Six
-    widgets resolved, one did not, and the analyst was told "I could not resolve
-    query 50, so I have not proposed anything yet". `dropped` is what lets the
-    survivors be offered while still naming what is missing, rather than quietly
-    shipping a shorter list than the model described.
-
-    `proposal` is None only when nothing survived, which is still a degraded turn.
+    A dashboard is the only kind that can come back partial; the other four
+    resolve one source and are all-or-nothing. `dropped` lets the survivors be
+    offered while still naming what is missing. `proposal` is None only when
+    nothing survived, which is still a degraded turn.
     """
 
     proposal: AnyProposalOut | None
     dropped: str = ""
     # Whether a partial answer put widgets back that the model left out. The
-    # reader has to be told: they may have ASKED for one of those to go, and a
-    # card that quietly keeps it under a reply promising it is gone is the
-    # failure this whole change is about.
+    # reader has to be told: they may have ASKED for one of those to go.
     held_removals: bool = False
 
 
@@ -80,24 +65,19 @@ def _widget_over_existing_query(
 
     Three cases, told apart by the shape the model asked for:
 
-    * No shape asked for. The widget is being kept as it is drawn, so it points
-      at what it points at today. A widget being ADDED has no "today", so the
-      query's own default is used instead: the same first-configured-shape rule
-      query_visualization_id applies to a creation turn.
-    * A shape the query already has. The widget points at that visualization and
-      nothing is written to the query.
-    * A shape it does not have. The id is left null and the shape carried
-      instead, which is the client's instruction to create one. That is the only
-      branch that writes to a saved query, and the client checks who owns it
-      before it does.
+    * No shape asked for: it points at what it points at today, or at the query's
+      own default when the widget is being added and has no "today".
+    * A shape the query already has: it points at that visualization.
+    * A shape it does not have: the id is left null and the shape carried, which
+      is the client's instruction to create one. That is the only branch that
+      writes to a saved query, and the client checks who owns it first.
     """
     asked = text_of(row.get("vizChoiceId"), 64)
     options = resolve(query.id) if resolve else ()
     title = text_of(row.get("title")) or query.name
     if not asked:
         if current is not None and current.viz_id:
-            # What it is drawn as today, named so the client can see this widget
-            # is being kept rather than changed.
+            # What it is drawn as today, so the client reads this widget as kept.
             return DashboardWidgetProposalOut(
                 title=title,
                 query_id=query.id,
@@ -139,29 +119,19 @@ def dashboard_proposal(
 ) -> Built:
     """A dashboard of existing queries, queries to be written, or both.
 
-    A widget naming a `queryId` is assembled from what exists. A widget naming a
-    `datasetTable` instead is written here, by the same generator the query
-    conversation uses, and the card creates it before it hangs it on the
-    dashboard. Writing them is what this kind could not do before: it was
-    grounded on the query list alone, so the only honest answer to "build me a
-    dashboard of things that do not exist yet" was to send the analyst away to
-    make each one by hand.
+    A widget naming a `queryId` is assembled from what exists; one naming a
+    `datasetTable` is written here by the same generator the query conversation
+    uses, and the card creates it before hanging it on the dashboard.
 
     Two passes, because writing is the slow half. The first classifies every row
-    without calling the model, which is where the cap is spent and therefore why
-    which widgets get written does not depend on which thread got there first.
-    The second runs the writes together.
+    without calling the model, so which widgets get written does not depend on
+    which thread got there first. The second runs the writes together.
 
-    A row that cannot be resolved drops that ROW rather than the answer. The
-    all-or-nothing version turned one widget the model named badly into "I have
-    not proposed anything yet" for the five it named well, and on an edit the
-    widget that fails is usually one nobody asked to touch.
+    A row that cannot be resolved drops that ROW rather than the answer.
     """
     known = {one.id: one for one in grounding.queries}
     # What the dashboard draws today, by query, so a kept widget keeps its own
     # visualization rather than being re-resolved to the query's default.
-    # Without it an edit that changed nothing still proposed a different picture
-    # for any query whose author added a chart after the widget was made.
     on_dashboard = {widget.query_id: widget for widget in editing}
     rows = as_objects(raw.get("widgets"))
     built: dict[int, DashboardWidgetProposalOut] = {}
@@ -180,9 +150,8 @@ def dashboard_proposal(
         if query is None:
             reasons[index] = f"query {picked}"
             continue
-        # Only the picked queries are looked up. Resolving the whole grounding
-        # list would be sixty HTTP calls per ready turn for the six ids that
-        # were named, which is the economy post_report already makes.
+        # Only the picked queries are looked up: resolving the whole grounding
+        # list would be sixty HTTP calls per ready turn for the six ids named.
         widget = _widget_over_existing_query(row, query, on_dashboard.get(query.id), resolve)
         if isinstance(widget, str):
             reasons[index] = widget
@@ -220,24 +189,18 @@ def _nothing_removed(
 ) -> list[DashboardWidgetProposalOut]:
     """The proposal, plus every widget still on the dashboard it does not name.
 
-    Only for a PARTIAL answer, and it is what stops dropping a row from turning
-    into deleting a panel. The client reads this list as the dashboard's END
+    Only for a PARTIAL answer. The client reads this list as the dashboard's END
     STATE and removes anything missing from it, which is right when the model
-    answered about the whole dashboard and wrong when a row fell out on the way:
-    a model that garbled query 11 into query 4242 would have the widget for 11
-    deleted for it.
-
-    Appended drawn exactly as they are now, so they arrive as `keep` rather than
-    as changes. The rule this buys is worth stating plainly: a partial answer
-    changes what it resolved and removes nothing.
+    answered about the whole dashboard and wrong when a row fell out on the way.
+    Appended drawn exactly as they are now, so they arrive as `keep`: a partial
+    answer changes what it resolved and removes nothing.
     """
     named = {one.query_id for one in widgets if one.query_id is not None}
     kept = list(widgets)
     for widget in editing:
-        # A widget with no visualization id cannot be pointed at, so there is
-        # nothing to put in the list for it. dashboard_widgets only yields
-        # widgets that HAVE a visualization, so this is a Redash payload that
-        # reported one without an id rather than a case anyone can reach.
+        # A widget with no visualization id cannot be pointed at. dashboard_widgets
+        # only yields widgets that HAVE one, so this needs a Redash payload that
+        # reported a visualization without an id.
         if widget.query_id in named or not widget.viz_id:
             continue
         named.add(widget.query_id)

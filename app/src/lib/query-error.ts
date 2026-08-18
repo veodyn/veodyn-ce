@@ -1,18 +1,9 @@
 // Turning a failed run into something worth reading.
 //
-// Redash hands back whatever the data source said, verbatim. For ClickHouse
-// that is the entire response object, so a mistyped filter used to reach the
-// analyst as
-//
-//   Error: { "meta": [ ], "data": [ ], "rows": 0, "exception": "Code: 41.
-//   DB::Exception: Cannot parse DateTime: while converting '2026' to
-//   DateTime64(3, 'UTC'). (CANNOT_PARSE_DATETIME) (version 25.7.5.34 (official
-//   build))" }
-//
-// with the one sentence that matters buried in the middle of it. Nothing is
-// thrown away: the original is kept alongside for the details disclosure, since
-// a version string and an error code are exactly what gets pasted into a bug
-// report.
+// Redash hands back whatever the data source said, verbatim, and for ClickHouse
+// that is the whole response object with the one useful sentence buried in its
+// `exception` field. Nothing is thrown away: the original is kept alongside for
+// the details disclosure, which is what gets pasted into a bug report.
 
 export interface QueryError {
   /** The sentence to show. */

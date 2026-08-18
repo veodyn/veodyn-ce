@@ -1,20 +1,12 @@
 """How to read an append-only capture, said once.
 
-Every table the AI can query is written by node/redash/historical/tasks.py:
-each scheduled run re-inserts the source query's WHOLE result set, stamped with
-one captured_at per run. That is not a detail of storage. It changes the meaning
-of the two things a model reaches for first: count(*) counts rows times
-snapshots, and avg(x) over a whole table is weighted by how often the capture
-happened to run.
+Every table the AI can query is written by node/redash/historical/tasks.py: each
+scheduled run re-inserts the source query's WHOLE result set, stamped with one
+captured_at per run. So count(*) counts rows times snapshots, and avg(x) over a
+whole table is weighted by how often the capture ran. No downstream validator
+catches either, which is why the prompt says it.
 
-Nothing said this. The only thing the prompt carried about the column was
-"Added by the capture, not by the query", which reads as permission to ignore it.
-So this is prose rather than a schema field: the failure it prevents is a
-plausible statement that returns a confident wrong number, which no validator
-downstream can catch.
-
-Shared by the interview prompt and the SQL writer, which is why it lives in its
-own module: ai_sql.py must not import the interview's prompt module.
+Its own module because ai_sql.py must not import the interview's prompt module.
 """
 
 CAPTURE_SEMANTICS = """How these tables are written:

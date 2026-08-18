@@ -8,24 +8,16 @@ import { Command, CommandInput, CommandItem, CommandList } from '@/components/ui
 import { Popover, PopoverContent } from '@/components/ui/popover'
 import { UserAvatar } from '@/components/shared/user-avatar'
 
-// ---------------------------------------------------------------------------
 // Members tab: the group's member list plus an admin-only user search to add
-// new members. Extracted from group-detail.tsx to keep that file under the
-// file-size seam; owns the search/typeahead state locally and reports
-// add/remove actions back to the parent, which owns the member list itself.
+// members. The parent owns the member list; this owns the search state.
 //
 // The input and the result list sit under one Command root: cmdk needs both in
 // the same tree to drive arrow-key and Enter navigation across them, even
-// though the list itself renders into the popover's portal.
+// though the list renders into the popover's portal.
 //
-// The input is the popover's ANCHOR, not its trigger. It used to be the
-// trigger via `render`, which broke the keyboard path outright: a trigger
-// claims Enter and Space to toggle itself, so Enter never reached cmdk and a
-// keyboard-only admin could highlight a result but never add it. Clicking
-// worked, which is why it went unnoticed. Nothing here needs trigger
-// behaviour anyway, because `open` is derived from whether the search returned
-// rows, so anchoring gives the same positioning with none of the key stealing.
-// ---------------------------------------------------------------------------
+// The input is the popover's ANCHOR, not its trigger. A trigger claims Enter
+// and Space to toggle itself, so Enter would never reach cmdk and a
+// keyboard-only admin could highlight a result but never add it.
 
 interface RedashGroupMember {
   id: number
@@ -61,9 +53,8 @@ export function GroupMembers({
     Array<{ id: number; name: string; email: string }>
   >([])
   const [resultsQuery, setResultsQuery] = useState('')
-  // State-backed rather than a plain ref: the positioner reads the anchor
-  // during its own render, and a ref assigned by a child would still be null
-  // on the pass that first opens the popup.
+  // State-backed, not a ref: the positioner reads the anchor during its own
+  // render, where a child-assigned ref would still be null on the opening pass.
   const [anchor, setAnchor] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -84,11 +75,8 @@ export function GroupMembers({
     return () => clearTimeout(timer)
   }, [memberSearch, members])
 
-  // Search results are only meaningful while there is a query, and only once
-  // they belong to the current query text: gating on resultsQuery (set
-  // alongside setSearchResults in the fetch success path) avoids flashing
-  // stale results from a prior query while the new debounced fetch is still
-  // in flight, without an eager state write in the effect body.
+  // Gating on resultsQuery keeps a prior query's results off screen while the
+  // new debounced fetch is still in flight.
   const visibleResults = resultsQuery === memberSearch.trim() ? searchResults : []
 
   const handleAdd = async (userId: number) => {
@@ -97,8 +85,8 @@ export function GroupMembers({
       setMemberSearch('')
       setSearchResults([])
     } catch {
-      // Add failed (parent already surfaced the error). Leave the search text
-      // and results in place so the admin can retry without re-typing.
+      // The parent already surfaced the error. Keep the search text so the
+      // admin can retry without re-typing.
     }
   }
 

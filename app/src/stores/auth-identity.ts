@@ -1,9 +1,6 @@
 // Identity shapes and the pure functions that build them, split out of
-// auth-store so the store file holds the state machine and nothing else.
-//
-// Everything here is side-effect free except the two browser helpers at the
-// bottom, which are the store's only durable client state: the mock session
-// cookie and the signed-out marker.
+// auth-store. Everything here is side-effect free except the two browser helpers
+// at the bottom, which are the store's only durable client state.
 
 import type { MockUser } from '@/lib/mock-data'
 
@@ -24,14 +21,13 @@ export type Permission =
   | 'list_data_sources'
   | 'schedule_query'
   | 'publish_report'
-  // External publishing. Like publish_report these belong to this product, not
-  // to Redash, so no built-in group carries them and an admin qualifies by
-  // being an admin (see buildPolicy).
+  // External publishing. Like publish_report these belong to this product, so no
+  // built-in group carries them and an admin qualifies by being an admin (see
+  // buildPolicy).
   | 'publish_dashboard'
   | 'publish_visualization'
-  // A DENY flag, and the only one in this union. Everything else here grants;
-  // this one takes export away from a group that carries it. See policy.ts for
-  // why it is inverted.
+  // A DENY flag, and the only one in this union: it takes export away from a
+  // group that carries it. See policy.ts.
   | 'no_export_data'
 
 // ─── CurrentUser (mirrors client/app/services/auth.js currentUser object) ───
@@ -62,9 +58,8 @@ export interface ClientConfig {
 }
 
 // ─── The server-read session, as it travels to the client ───────────────────
-// Declared here rather than beside the reader in src/lib/server-session.ts so
-// the store can name it without a type-only import into a module whose runtime
-// half pulls next/headers and the server env boundary.
+// Declared here rather than beside the reader in src/lib/server-session.ts, whose
+// runtime half pulls next/headers and the server env boundary.
 
 /** Exactly what Redash's GET /api/session answers, and what the store consumes. */
 export interface SessionPayload {
@@ -78,18 +73,14 @@ export interface SessionPayload {
 /**
  * What the server managed to decide about this request, as a serializable prop.
  *
- * `null` is its own answer and not a synonym for anonymous: it means this
- * render could not decide, so the client keeps the old behaviour and asks for
- * itself. Mock mode is the ordinary case (there is no backend to ask), a public
- * route is the second, and a backend unreachable from the server is the third.
+ * `null` is its own answer and not a synonym for anonymous: this render could not
+ * decide, so the client asks for itself. Mock mode is the ordinary case (no
+ * backend to ask), a public route the second, a server-side unreachable backend
+ * the third.
  *
- * What `null` does NOT do, despite reading like it should: rescue a signed-in
- * reader from an outage. The client fallback it defers to is `loadSession`,
- * which maps every non-OK response to signed-out, so two consecutive Redash
- * 500s still end at /login. `null` keeps this layer from ASSERTING something it
- * cannot know; making the outage case degrade properly means teaching
- * loadSession to tell 5xx from 401, which is a product decision about what an
- * unreachable backend should look like and is not made here.
+ * It does NOT rescue a signed-in reader from an outage: the client fallback is
+ * `loadSession`, which maps every non-OK response to signed-out, so two
+ * consecutive Redash 500s still end at /login.
  */
 export type InitialSession =
   | { status: 'authenticated'; payload: SessionPayload; needsApiKeyHeal: boolean }
@@ -130,12 +121,10 @@ export function buildCurrentUser(raw: Record<string, unknown>): CurrentUser {
 }
 
 // ─── Mock helpers ───────────────────────────────────────────────────────────
-// Deliberately WITHOUT publish_report. Redash's built-in admin group carries a
-// fixed list that will never contain it, because publish_report belongs to this
-// product rather than to Redash: an admin publishes by being an admin, which is
-// the rule `buildPolicy` and the server both apply. Granting it here made the
-// mock admin the one account that could not reproduce what every real admin
-// saw, which is how a Publishing panel that refused its own admin shipped.
+// WITHOUT publish_report: Redash's built-in admin group carries a fixed list that
+// will never contain it, and an admin publishes by being an admin, the rule
+// `buildPolicy` and the server both apply. Granting it here made the mock admin
+// the one account that could not reproduce what every real admin saw.
 const ADMIN_PERMISSIONS: Permission[] = [
   'admin', 'super_admin', 'list_users', 'create_query', 'edit_query',
   'view_query', 'view_source', 'execute_query', 'list_dashboards',
@@ -186,10 +175,8 @@ export const defaultClientConfig: ClientConfig = {
 // ─── Durable client state ───────────────────────────────────────────────────
 // Mock mode has no backend, so login is client-only and sets no server cookie.
 // Same-origin API routes that must recognise a signed-in caller (the AI relay
-// authenticates before it will run, even in demo mode) still need a marker, so
-// the demo session drops a plain `session` cookie the server can see. It is
-// inert for every other route: in mock mode they either 503 or are never
-// called.
+// authenticates even in demo mode) still need a marker, so the demo session drops
+// a plain `session` cookie the server can see.
 const MOCK_SESSION_COOKIE = 'session=mock-demo-session'
 
 export function setMockSession(present: boolean) {
@@ -199,12 +186,10 @@ export function setMockSession(present: boolean) {
     : 'session=; path=/; Max-Age=0; SameSite=Lax'
 }
 
-// A first visit in mock mode signs itself in: that is the point of a demo that
-// needs no backend. A deliberate Sign Out is different, and used not to be
-// honoured at all, because loadSession() ran again on the next navigation and
-// handed back the same admin identity. This marker is what tells those two
-// cases apart, and it survives a reload, because the reload undoing the sign
-// out was the complaint.
+// A first visit in mock mode signs itself in, which is the point of a demo that
+// needs no backend. This marker is what tells a deliberate Sign Out apart from
+// that, and it survives a reload: without it loadSession() runs again on the next
+// navigation and hands back the same admin identity.
 const SIGNED_OUT_KEY = 'veodyn.signed-out'
 
 export function readSignedOut(): boolean {
@@ -212,9 +197,8 @@ export function readSignedOut(): boolean {
   try {
     return window.localStorage.getItem(SIGNED_OUT_KEY) === '1'
   } catch {
-    // Private browsing and blocked storage: fall back to signing in, which is
-    // the demo's normal state, rather than locking the user out of a mock app
-    // whose sign-in screen accepts anything.
+    // Private browsing and blocked storage: fall back to signing in, the demo's
+    // normal state, rather than locking the user out.
     return false
   }
 }
@@ -225,7 +209,7 @@ export function writeSignedOut(signedOut: boolean) {
     if (signedOut) window.localStorage.setItem(SIGNED_OUT_KEY, '1')
     else window.localStorage.removeItem(SIGNED_OUT_KEY)
   } catch {
-    // Same reasoning as readSignedOut: storage is a convenience here, not a
-    // security boundary. Mock mode has no secrets to protect.
+    // Same reasoning as readSignedOut: storage is a convenience, not a security
+    // boundary.
   }
 }

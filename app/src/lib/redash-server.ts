@@ -23,27 +23,20 @@ export interface VerifiedSession {
 }
 
 /**
- * Every Redash path this app may reach with the internal API key, mapped to
- * the permission Redash's own handler demands of the caller.
+ * Every Redash path this app may reach with the internal API key, mapped to the
+ * permission Redash's own handler demands of the caller.
  *
- * THE RULE: the gate in front of the internal key must be at least as strong
- * as the gate Redash puts on the endpoint being proxied.
+ * THE RULE: the gate in front of the internal key must be at least as strong as
+ * the gate Redash puts on the endpoint being proxied. The key is a Redash
+ * *user* api_key, run with its owner's super_admin permissions and never the
+ * caller's, so a route gated on `admin` would hand an org admin an
+ * instance-wide endpoint Redash itself refuses them.
  *
- * Why the rule needs stating, and why this is a table rather than a boolean
- * flag on the fetch: the internal key is a Redash *user* api_key. Redash
- * resolves it to its owning user and runs the request with that user's
- * permissions, never the caller's, and the owner has to hold super_admin for
- * these endpoints to answer at all. So a route that checks the caller for
- * `admin` and then presents the key hands an org admin an instance-wide
- * endpoint Redash itself refuses them: a confused deputy. Checking `admin`
- * reads like enough right up until you notice the key is not the caller.
- *
- * Adding a route that needs the key: open the Redash handler, read the
- * decorator on it, and add the path here with that permission. `redashFetch`
- * refuses the key for a path with no entry, and refuses it for a session that
- * does not satisfy the entry, so a new route cannot pick its own weaker gate.
- * `src/lib/internal-key-gate.test.ts` reads the Redash sources and fails if an
- * entry here is weaker than the decorator it claims to mirror.
+ * Adding a route that needs the key: read the decorator on the Redash handler
+ * and add the path here with that permission. `redashFetch` refuses the key for
+ * an undeclared path or an insufficient session, and
+ * `src/lib/internal-key-gate.test.ts` fails if an entry here is weaker than the
+ * decorator it mirrors.
  */
 export const INTERNAL_KEY_ENDPOINTS = {
   // redash/handlers/__init__.py: @login_required @require_super_admin
@@ -72,10 +65,9 @@ export interface RedashFetchOptions {
   /** Cookie header string to forward (typically request.headers.get('cookie')) */
   cookie?: string | null
   /**
-   * Authenticate with the internal API key on behalf of this session instead
-   * of with cookies. Not a boolean on purpose: the caller has to hand over the
-   * session it verified, which is checked here against INTERNAL_KEY_ENDPOINTS
-   * for `path` before the key goes anywhere.
+   * Authenticate with the internal API key on behalf of this session instead of
+   * with cookies. A session rather than a boolean: it is checked against
+   * INTERNAL_KEY_ENDPOINTS for `path` before the key goes anywhere.
    */
   internalKeyFor?: VerifiedSession
   /** Abort signal forwarded to the underlying fetch so callers can cancel. */
@@ -189,13 +181,10 @@ export function forwardSetCookies(from: Response, to: Response): void {
 }
 
 /**
- * Verify the caller's OWN session against Redash, the same round-trip the
- * session check and the permission gate use. Returns the session user, or null
- * when the cookie is missing, expired, or not a real session. Unlike
- * requirePermission it imposes no permission requirement: it is the gate for
- * routes that must know a request comes from a signed-in user but do not need
- * a permission (e.g. the AI relay, which must not spend the instance's
- * provider quota for an anonymous caller).
+ * Verify the caller's OWN session against Redash. Returns the session user, or
+ * null when the cookie is missing, expired, or not a real session. Imposes no
+ * permission requirement: the gate for routes that need a signed-in user and
+ * nothing more (the AI relay, which must not spend provider quota anonymously).
  */
 export async function requireSession(
   cookie: string | null,

@@ -1,17 +1,11 @@
 """The columns a statement will return, asked for without running it.
 
-A chart is bound to column NAMES, and the names in a generated statement are its
-aliases, not the source table's columns: `avg(speed_kph) AS speed` produces
-`speed`, which no catalog entry mentions. So the only honest source for a chart
-mapping is the statement's own result shape, and ClickHouse will describe it
-without executing anything.
+A chart binds to column NAMES, and a generated statement's names are its aliases:
+`avg(speed_kph) AS speed` produces `speed`, which no catalog entry mentions.
 
-Two rules this module keeps. The statement must already have passed
-validate_sql: DESCRIBE plans whatever it is given, and planning an unvalidated
-statement is a boundary this service does not cross. And a failure here is an
-empty shape, never an exception: everything downstream of it is cosmetic, and a
-chart that falls back to the frontend's own inference is last week's behaviour
-rather than a broken turn.
+Two rules. The statement must already have passed validate_sql, because DESCRIBE
+plans whatever it is given. And a failure here is an empty shape, never an
+exception: the chart falls back to the frontend's own inference.
 """
 
 import logging
@@ -20,9 +14,8 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# How a value is stored, not what it means. LowCardinality is a compression
-# choice and Nullable is a column property; both wrap the type a chart cares
-# about, and they nest in either order.
+# Storage, not meaning: both wrap the type a chart cares about, and they nest in
+# either order.
 WRAPPERS = ("Nullable(", "LowCardinality(")
 
 NUMERIC_PREFIXES = ("Int", "UInt", "Float", "Decimal")
@@ -32,8 +25,8 @@ TIME_PREFIXES = ("Date", "DateTime")
 @dataclass(frozen=True)
 class ResultColumn:
     name: str
-    # The unwrapped type. A chart cares that a column is a String, not that the
-    # warehouse stores it as a LowCardinality(Nullable(String)).
+    # Unwrapped: a chart cares that a column is a String, not that it is stored as
+    # LowCardinality(Nullable(String)).
     type: str
     kind: str
 

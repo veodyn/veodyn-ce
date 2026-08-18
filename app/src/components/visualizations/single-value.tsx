@@ -15,50 +15,28 @@ interface SingleValueProps {
  * One number, as large as its box allows, centred. Shared by the counter
  * visualization and by a TABLE whose result is a single numeric cell.
  *
- * h-full + overflow-hidden, not padding: a fixed py-12 plus a fixed text-5xl
- * came to roughly 172px, which is taller than a one-row widget, so the box it
- * sits in grew a scrollbar around a number that would otherwise have fitted.
+ * h-full + overflow-hidden rather than padding: a fixed py-12 plus text-5xl came
+ * to roughly 172px, taller than a one-row widget, so the box grew a scrollbar.
  *
  * [container-type:size] makes the cq units below resolve against this box, so
- * the value tracks the widget it is in rather than a hardcoded size. clamp()
- * keeps it readable in a small widget and stops it running away in a large
- * one.
+ * the value tracks the widget rather than a hardcoded size.
  *
- * aspect-ratio is what makes that safe where the parent has NO definite
- * height, which is over half the call sites: a report block renders this in a
- * bare <figure>, and the embed route inside a `min-h-screen` div, both of
- * which are auto-height. `h-full` against an auto-height parent computes to
- * `auto`, and size containment means the box then does NOT grow to fit its
- * children, so it collapsed to 24px around a 30px number and overflow-hidden
- * cropped the digits: a counter in a report showed the bottom sliver of its
- * value and nothing else.
+ * aspect-ratio covers the parents with no definite height (a report block's bare
+ * <figure>, the embed route's `min-h-screen` div): `h-full` computes to `auto`
+ * there, and size containment stops the box growing to fit its children, so it
+ * collapsed to 24px around a 30px number and cropped the digits. A min-height
+ * cannot substitute, because the smallest dashboard tile is minH 2 at rowHeight
+ * 50 (~60px of content area) and any floor tall enough would bring the scrollbar
+ * back; edit-visualization-dialog.tsx records the same conclusion. aspect-ratio
+ * yields because it applies only while the height is auto: inert under a
+ * definite-height parent (measured at a 60px and a 200px tile), and in the 720px
+ * report column it lands the box at 180px.
  *
- * A min-height cannot fix this. The smallest dashboard tile is minH 2 at
- * rowHeight 50, so roughly 60px of content area once the widget header is
- * taken off, and any floor tall enough to hold this content would push that
- * tile into the very scrollbar the box shape above exists to avoid.
- * edit-visualization-dialog.tsx reaches the same conclusion in its own words:
- * "a min-height that yields when there is no room is not expressible".
- *
- * aspect-ratio does yield, because it applies only while the height is auto.
- * Definite-height parent (dashboard tile, wall slide, editor preview):
- * `h-full` wins and this is inert, measured at both a 60px and a 200px tile.
- * Auto-height parent (report, embed): the height comes from the
- * always-definite width, so the box has a real size, cqh has something to
- * read, and nothing is clipped. The report column is 720px, which lands this
- * at 180px.
- *
- * The ratio alone still left a residual, because the number is sized from the
- * height it was just given, so a taller box means taller content and the two
- * chase each other: below about 600px of width the trend row and the label
- * did not fit. No ratio up to 5/2 cleared 280px.
- *
- * The @container rules below close it from the other end, by dropping the
- * supporting lines instead of growing the box. The box is itself the size
- * container, so its own children can query its height. Under 7rem the trend
- * row goes, under 4.5rem the label goes too, leaving the value. That also
- * fixes a case that predates any of this: the smallest dashboard tile is about
- * 60px of content area, and its label has always been clipped there.
+ * The ratio alone left a residual, since the number is sized from the height it
+ * was just given: below about 600px of width the trend row and the label did not
+ * fit, and no ratio up to 5/2 cleared 280px. The @container rules below close it
+ * from the other end, dropping the trend row under 7rem of height and the label
+ * under 4.5rem.
  */
 export function SingleValue({ value, label, trend }: SingleValueProps) {
   return (

@@ -1,8 +1,7 @@
 'use client'
 
 // The query editor's results pane: in-flight status, a failed run, or the
-// visualizations of the run that succeeded. Extracted from
-// query-editor-page.tsx so the page stays a layout.
+// visualizations of the run that succeeded.
 import { VisualizationTabs } from './visualization-tabs'
 import { QueryExecutionStatus } from './query-execution-status'
 import { getVisualization } from '@/lib/visualizations'
@@ -21,21 +20,13 @@ const ADHOC_TABLE: MockVisualization[] = [
 const ADHOC_CHART_ID = -1
 
 /**
- * What a run from the Visual builder lands in.
+ * What a run from the Visual builder lands in: the picked visualization plus
+ * the table. The saved query's own visualizations are left out, because they
+ * were configured against the columns the saved query returns.
  *
- * The builder composes a visualization as well as a query, so its Run shows the
- * one that was picked, with the table beside it. The saved query's own
- * visualizations are deliberately not in this list: they were configured
- * against the columns the saved query returns, and composed SQL generally
- * returns different ones, so offering them here is offering a chart of a shape
- * its options do not describe.
- *
- * The picked visualization's own options are layered over the type's defaults,
- * which is how a chart shape arrives: Bar is a CHART carrying
- * `globalSeriesType: 'bar'`. Nothing beyond that is invented here. Every
- * renderer already falls back to positional inference when `columnMapping` is
- * empty (first column as x, the next as y, the first numeric one as the value),
- * so the inference keeps one owner.
+ * Options layer over the type's defaults, which is how a chart shape arrives:
+ * Bar is a CHART carrying `globalSeriesType: 'bar'`. Column mapping is left
+ * empty so each renderer's own positional inference stays the one owner.
  */
 function adhocVisualizations(viz: AdhocViz): MockVisualization[] {
   // Picking Table means the table, not a second tab that also says Table.
@@ -91,9 +82,7 @@ export function QueryEditorResults({
         <div role="alert" className="space-y-2 p-4 text-sm">
           <p className="whitespace-pre-wrap text-destructive">{failure.message}</p>
           {failure.detail != null && (
-            // The code and the version are worth keeping, and worth keeping out
-            // of the way: this used to be the whole response object, braces and
-            // all, standing in for the message.
+            // The code and the version are worth keeping, out of the way.
             <details className="text-muted-foreground">
               <summary className="cursor-pointer text-xs">What the data source said</summary>
               <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words text-xs">

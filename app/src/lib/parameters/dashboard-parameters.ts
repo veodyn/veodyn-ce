@@ -1,17 +1,14 @@
 /**
- * Dashboard-level parameters, derived from the mappings each widget already
- * stores under `options.parameterMappings`.
+ * Dashboard-level parameters, derived from each widget's
+ * `options.parameterMappings`.
  *
- * Mapping types are Redash's:
- * - `dashboard-add-new` / `dashboard-map-to-existing` put one control on the
- *   dashboard under `mapTo`, feeding every widget bound to that name;
- * - `static-value` is fixed by whoever added the widget and never rendered;
- * - `widget-level` belongs to the widget alone.
+ * Redash mapping types: `dashboard-add-new` / `dashboard-map-to-existing` put
+ * one control on the dashboard under `mapTo`, feeding every widget bound to
+ * that name; `static-value` is fixed and never rendered; `widget-level` belongs
+ * to the widget alone.
  *
- * Every widget gets a value for every parameter its query declares, mapped or
- * not. `ParameterizedQuery.missing_params` applies no defaults, so a saved
- * query executed with a parameter missing is refused outright rather than run
- * with the value it was saved with.
+ * `ParameterizedQuery.missing_params` applies no defaults, so a query run with
+ * a parameter missing is refused rather than run with its saved value.
  */
 import type { MockQueryParameter, ParameterValue } from '@/lib/mock-data'
 
@@ -45,9 +42,7 @@ function parametersOf(widget: WidgetLike): MockQueryParameter[] {
 
 /**
  * The controls to render above the grid: one per distinct `mapTo`, carrying the
- * source parameter's own definition so the right control is drawn (an enum
- * without its options can only be a text box, which means typing a value that
- * has to match an option exactly).
+ * source parameter's own definition so the right control is drawn.
  */
 export function collectDashboardParameters(widgets: WidgetLike[]): MockQueryParameter[] {
   const byName = new Map<string, MockQueryParameter>()
@@ -58,9 +53,8 @@ export function collectDashboardParameters(widgets: WidgetLike[]): MockQueryPara
       if (!DASHBOARD_KINDS.includes(mapping?.type ?? '')) continue
 
       const definition = definitions.find((p) => p.name === paramName)
-      // A mapping left behind by a parameter that has since been renamed or
-      // removed. Rendering it would offer a control for something no query
-      // reads, so it is dropped rather than guessed at.
+      // A mapping left behind by a renamed or removed parameter: no query
+      // reads it, so it gets no control.
       if (!definition) continue
 
       const name = mapping.mapTo || paramName
@@ -80,9 +74,8 @@ export function widgetParameters(
   const mappings = mappingsOf(widget)
   const values: Record<string, unknown> = {}
 
-  // Keyed off the query's own parameters rather than off the mappings, so a
-  // widget with no mappings at all still sends the defaults it was saved with
-  // instead of being refused for missing values.
+  // Keyed off the query's parameters, not the mappings: a widget with no
+  // mappings still has to send a value for every one of them.
   for (const definition of parametersOf(widget)) {
     const mapping = mappings[definition.name]
 

@@ -5,37 +5,24 @@ Run it with no arguments, from anywhere:
 
     python3 scripts/check-public-tree.py
 
-Why this exists: the public/private split in this repository is a branch
-split, not a repository split. `main` keeps the deployment configuration and
-the internal working documents; the public branch had them deleted. Git
-enforces none of that. `git merge main` restores all 81 deleted files in a
-single commit with no conflict to resolve and no prompt, several of them
-holding live deploy credentials, and the public branch silently stops being
-publishable. A documented review step does not close that: the whole failure
-mode is that nobody looks. This does, because a job fails.
+The public/private split here is a branch split, not a repository split, and
+git enforces none of it: `git merge main` restores all 81 deleted files in
+one commit with no conflict and no prompt, several of them holding live
+deploy credentials.
 
-The list of paths lives in scripts/public_tree_forbidden_paths.py, on
-purpose: reviewing a change to the list should not require reading any
-matching logic, and the list is what people will actually edit. This module
-holds only the matching and the reporting.
+The list of paths lives in scripts/public_tree_forbidden_paths.py so a change
+to it can be reviewed without reading any matching logic; this module holds
+only the matching and the reporting.
 
-What it inspects, and why both:
+Two surfaces are inspected. Tracked files (`git ls-files`) are the
+publication surface and what a merge changes. Untracked files git is not
+ignoring (`--others --exclude-standard`) are one `git add -A` from being
+tracked. Ignored paths are not inspected at all, since git already refuses to
+publish them. Both are fatal and reported separately, because a tracked hit
+needs `git rm -r` and an untracked one needs the file moved or ignored.
 
-- **Tracked files** (`git ls-files`). This is the publication surface and
-  the thing a merge from `main` changes. It is the check that matters.
-- **Untracked files that git is not ignoring**
-  (`git ls-files --others --exclude-standard`). One `git add -A` away from
-  being tracked. Ignored paths are deliberately not inspected: git already
-  refuses to publish those, so failing on them would only train people to
-  weaken this script.
-
-Both are fatal, but they are reported separately, because the fix differs: a
-tracked hit needs `git rm -r`, an untracked hit needs the file moved out of
-the tree or added to .gitignore.
-
-It never opens a matched file. It reports the path and the manifest's stated
-reason and nothing else, so its output stays safe to paste into a public CI
-log even when what it found was a file full of secrets. Same rule as
+It never opens a matched file: it prints the path and the manifest's reason
+and nothing else, so its output is safe in a public CI log. Same rule as
 scripts/scan-secrets.py: name a position, never a value.
 
 Stdlib only, no pytest, no third-party imports, so it runs on a bare
@@ -50,18 +37,16 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_MODULE_PATH = Path(__file__).resolve().parent / "public_tree_forbidden_paths.py"
 
-# Exit codes. 1 means the guard found something and did its job; 2 means the
-# guard could not do its job at all, which must never be confused with a
-# clean tree. scripts/scan-secrets.py uses the same two-code split for the
-# same reason.
+# 1 means the guard found something and did its job; 2 means it could not do
+# its job at all, which must never read as a clean tree. Same split as
+# scripts/scan-secrets.py.
 EXIT_FOUND = 1
 EXIT_CANNOT_CHECK = 2
 
 
 def _load_by_path(name, path):
     """Load a module by file path rather than by package import, so this
-    script needs nothing on sys.path and no package layout around it. Same
-    approach, and the same reasoning, as scripts/scan-secrets.py.
+    script needs nothing on sys.path. Same as scripts/scan-secrets.py.
     """
     import importlib.util
 
@@ -138,9 +123,8 @@ def check_tree(root, forbidden_paths):
     """Inspect one checkout. Returns (tracked_matches, untracked_matches).
 
     Exits 2 rather than returning if git lists no tracked files at all: that
-    is a broken invocation (wrong directory, no repository, a `git ls-files`
-    that silently returned nothing), and a guard that passes because it
-    looked at nothing is worse than no guard, since it reports success.
+    is a broken invocation, and a guard that passes having looked at nothing
+    reports success.
     """
     tracked = _git_paths(root)
     if not tracked:
@@ -167,10 +151,8 @@ def _print_matches(heading, matches, remedy):
 def _print_deferred(deferred_paths):
     """Print the known exclusions on every run, including a clean one.
 
-    An exclusion that is only visible to whoever opens the manifest is an
-    exclusion that gets forgotten. Printing it on the passing path is the
-    point: the run that says "clean" is the one that has to keep saying
-    "clean, and here is what it is not looking at".
+    The run that says "clean" is the one that has to keep saying what it is
+    not looking at.
     """
     if not deferred_paths:
         return
@@ -182,31 +164,18 @@ def _print_deferred(deferred_paths):
 def _parse_args(argv):
     """`--root <dir>` and `--export`, both for checking an EXPORT rather than this tree.
 
-    The export is the tree pushed to the public repository, which is no longer
-    this repository: the community edition lives in its own repo now, produced
-    from this one. Two things follow, and they are why these flags exist.
-
-    `--root` because the tree to check is not the tree the script lives in.
+    `--root` because the community edition lives in its own repository now, so
+    the tree to check is not the tree this script lives in.
 
     `--export` because DEFERRED_PATHS means "not checked HERE, yet", and that
-    answer does not survive the trip. A deferred path is one this monorepo is
-    still allowed to hold, docs/superpowers/ being the whole of it: the specs
-    and plans the remaining work is executed against, which cannot be deleted
-    here without deleting the instructions for their own deletion. None of that
-    reasoning applies to the exported tree, which needs none of it and must not
-    carry it.
+    permission does not travel. Promoting the deferral to FORBIDDEN instead
+    would redden this repository's own gate on the branch the export is cut
+    from, which is the one place the directory has to keep existing.
 
-    The flag is what keeps both facts true at once, and it is the reason the
-    deferral is NOT simply promoted to FORBIDDEN. Promoting it would redden this
-    repository's own gate on the branch the export is cut from, which is the one
-    place the directory has to keep existing.
-
-    It matters more under a private-first flip than it would have otherwise.
     The public repository starts private and is made public later, so its whole
-    HISTORY publishes at that moment, not just its final tree. A deferred path
-    committed now and deleted before the flip is still there in history. The
-    only safe time to exclude it is the initial commit, which is what this flag
-    is checked against.
+    HISTORY publishes at the flip: a deferred path committed now and deleted
+    before then is still published. The initial commit is the only safe place
+    to exclude it, and it is what this flag is checked against.
     """
     root, export = REPO_ROOT, False
     rest = list(argv)

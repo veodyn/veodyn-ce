@@ -3,23 +3,18 @@
 
 Run this after a legitimate change to a file listed in
 node/tests/query_runner/credential_scan_known_exceptions.py (a credential
-rotated with the same shape, or one added/removed on purpose), then paste
+rotated with the same shape, or one added or removed on purpose), then paste
 its output into that file's `suppressed_positions` tuple for the matching
-path. Never hand-write an entry: it must come from actually re-scanning the
-file's current content, the same way scripts/scan-secrets.py will at scan
-time, or the two can drift apart silently.
+path. Never hand-write an entry: it must come from re-scanning the file's
+current content the same way scripts/scan-secrets.py will at scan time, or the
+two can drift apart silently.
 
-This script never prints a credential value, or anything derived from one.
-It records identity by position and shape (line number, detector, and
-length), not a hash: see credential_scan_known_exceptions.py's own
-docstring for why a hash of the value was tried first and reverted (an
-unsalted digest of a short, human-chosen password is practically
-brute-forceable, and this repository is headed for a public release, where
-that digest would sit crackable in the first public commit forever).
+This script never prints a credential value, or anything derived from one. It
+records identity by position and shape (line number, detector, and length), not
+a hash: see credential_scan_known_exceptions.py's own docstring for why.
 
-It takes one or more repo-relative paths (defaulting to every path already
-in KNOWN_EXCEPTIONS) so a single new exception can be computed without
-needing every existing one recomputed alongside it.
+It takes one or more repo-relative paths, defaulting to every path already in
+KNOWN_EXCEPTIONS.
 
 Usage:
     python3 scripts/compute_known_exception_positions.py [path ...]
@@ -34,10 +29,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CREDENTIAL_SCAN_MODULE_PATH = REPO_ROOT / "node" / "tests" / "query_runner" / "credential_scan.py"
 EXTRA_ALLOWLIST_MODULE_PATH = Path(__file__).resolve().parent / "scan_secrets_extra_allowlist.py"
 
-# Same shape descriptions scripts/scan-secrets.py itself prints in a
-# finding: duplicated rather than imported, the same call that script's own
-# _shape_description makes (see its module docstring on why re-deriving a
-# tiny piece of presentation logic beats adding an import for it).
+# Same shape descriptions scripts/scan-secrets.py prints in a finding, duplicated
+# rather than imported; see its module docstring for why.
 _UUID_SHAPE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 _HEX_SHAPE = re.compile(r"^[0-9a-fA-F]{24,}$")
 

@@ -1,17 +1,11 @@
-"""Is this binding capable of producing a feed at all?
+"""Is this binding capable of producing a feed at all? Runs when a binding is
+saved, long before any bytes are produced.
 
-The cheapest gate in the system, and the one that catches most operator error:
-it runs when a binding is saved, long before any bytes are produced.
+Pure. The caller supplies the query's known column names, because discovering them
+costs a whole result body (see `ai_grounding.query_result_columns`).
 
-Pure. The caller supplies the query's known column names, because discovering
-them costs a whole result body (see `ai_grounding.query_result_columns`) and
-that economy is the caller's to make.
-
-The field vocabulary is not restated here. `REQUIRED_FIELDS` and
-`SUPPORTED_FIELDS` come from the serializer, which is the module that actually
-writes the fields: a second copy would drift, and it would drift silently,
-because a binding this module called fine is one the serializer would then
-refuse at publish time.
+`REQUIRED_FIELDS` and `SUPPORTED_FIELDS` come from the serializer, the module that
+actually writes the fields, so the vocabulary cannot drift between the two.
 """
 
 from dataclasses import dataclass
@@ -23,10 +17,9 @@ from veodyn_api.services.gtfs_rt_serializer import REQUIRED_FIELDS, SUPPORTED_FI
 class BindingCheck:
     """`ok` may publish, `invalid` never may, `unvalidated` may not yet.
 
-    The three-way split exists because "we could not read the query's columns"
-    and "the query does not have those columns" are different facts, and
-    treating the first as the second would refuse a binding for a query that
-    has simply never run.
+    Three-way because "could not read the query's columns" and "the query does not
+    have those columns" are different facts: conflating them refuses a binding for
+    a query that has simply never run.
     """
 
     state: str
@@ -50,16 +43,14 @@ def check_column_map(
     missing = sorted(required - set(column_map))
     problems.extend(f"required field {field!r} is not mapped" for field in missing)
 
-    # A key the serializer does not write is a typo (`timestamps` for
-    # `timestamp`) or a GTFS field nobody implemented, and either way the column
-    # behind it never reaches the feed. Caught at bind time because that is
-    # where the person who wrote the key is still looking at it; the serializer
-    # refuses the same map later, when the only reader is a failed attempt row.
+    # A key the serializer does not write (`timestamps` for `timestamp`) never
+    # reaches the feed. Caught here because the serializer refuses the same map
+    # later, when the only reader is a failed attempt row.
     unknown_fields = sorted(set(column_map) - supported)
     problems.extend(f"field {field!r} is not written for entity {entity!r}" for field in unknown_fields)
 
-    # Structural problems are decided without any knowledge of the query, so a
-    # hopeless binding is refused now rather than parked as pending forever.
+    # Structural problems need no knowledge of the query, so a hopeless binding is
+    # refused now rather than parked as pending forever.
     if problems:
         return BindingCheck("invalid", tuple(problems))
 

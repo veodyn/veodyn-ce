@@ -1,28 +1,22 @@
 """KNOWN_EXCEPTIONS bookkeeping and reporting for scripts/scan-secrets.py.
 
-Split out of scan-secrets.py purely to keep that script under this repo's
-file-size limit; scan-secrets.py loads this by file path, the same way it
-loads scan_secrets_coverage.py and scan_secrets_extra_allowlist.py. This
-module declares no credential-shaped or password-shaped literal of its own,
-so it is not added to scan-secrets.py's SELF_REL_PATHS.
+scan-secrets.py loads this by file path, the same way it loads
+scan_secrets_coverage.py and scan_secrets_extra_allowlist.py. This module
+declares no credential-shaped or password-shaped literal of its own, so it is
+not in scan-secrets.py's SELF_REL_PATHS.
 
-An exception's identity check is (line number, shape descriptor), not a
-hash of the suppressed literal: see
-node/tests/query_runner/credential_scan_known_exceptions.py's docstring for
-why a hash was tried first and reverted (an unsalted digest of a short,
-human-chosen password is practically brute-forceable, and this tree is
-headed for a public repository) and for exactly what position-and-shape
-does and does not catch.
+An exception's identity check is (line number, shape descriptor), not a hash of
+the suppressed literal: see
+node/tests/query_runner/credential_scan_known_exceptions.py's docstring for why,
+and for exactly what position-and-shape does and does not catch.
 """
 
 
 def new_exception_report(credential_scan):
-    """One entry per KNOWN_EXCEPTIONS path, suppressed-position list
-    starting empty.
+    """One entry per KNOWN_EXCEPTIONS path, suppressed-position list starting empty.
 
-    Built up front so that a run prints every declared exception, including
-    one whose path was not found among the scanned files at all (nothing
-    suppressed), rather than only the exceptions a finding happened to hit.
+    Built up front so a run prints every declared exception, including one whose
+    path was not found among the scanned files at all.
     """
     return {
         exception["path"]: {
@@ -36,16 +30,15 @@ def new_exception_report(credential_scan):
 
 
 def print_exception_report(exception_report):
-    """Print every KNOWN_EXCEPTIONS entry and what it suppressed, on every
-    run, regardless of the run's other findings: a suppressed finding must be
-    stated, not silent. Returns the list of paths that must fail the run: a
-    (line, shape) pair not present when the exception was recorded (a
-    credential added, removed, moved to a different line, or changed shape
-    or length on the same line), or a once-populated exception that now
-    suppresses nothing at all (stale, left in place, able to absorb whatever
-    lands in the file next). A same-line substitution that keeps the same
-    shape and length is NOT caught; see credential_scan_known_exceptions.py's
-    docstring for why that gap is an accepted tradeoff, not an oversight.
+    """Print every KNOWN_EXCEPTIONS entry and what it suppressed, on every run: a
+    suppressed finding must be stated, not silent.
+
+    Returns the paths that must fail the run: a (line, shape) pair not present when
+    the exception was recorded (a credential added, removed, moved, or changed shape
+    or length), or a once-populated exception that now suppresses nothing (stale,
+    able to absorb whatever lands in the file next). A same-line substitution of the
+    same shape and length is NOT caught; see credential_scan_known_exceptions.py's
+    docstring for that tradeoff.
     """
     import sys
 

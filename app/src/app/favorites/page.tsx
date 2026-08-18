@@ -1,10 +1,5 @@
 'use client'
 
-// The sidebar has had a Favorites item since the first navigation model, and it
-// 404'd. Meanwhile the favorite toggles on /queries and /dashboards worked and
-// Home rendered two favorites panels, so the feature existed everywhere except
-// at the destination named after it.
-
 import { Fragment } from 'react'
 import Link from 'next/link'
 import { Star } from 'lucide-react'
@@ -28,18 +23,10 @@ import { ENTITY_NAME_CLASS } from '@/lib/entity-name'
 /**
  * Where a reader can go to star something, for the empty state to name.
  *
- * Queries and dashboards are written out because no descriptor owns them: they
- * are this page's own two sections and they are in every build. Everything else
- * is DERIVED, and from the same fact the rest of the page already turns on:
- * a feature that fills `favorites.section` is exactly a feature whose objects
- * can appear here, and its own nav row is where the label and the href live. A
- * build with the KPI feature names KPIs; a build without it does not offer a
- * link that 404s.
- *
- * Filtered to the library section because that is the row that names the
- * feature's own collection. The reports feature also contributes an admin row
- * (Shared Links), which is a console over links rather than a shelf of
- * starrable objects.
+ * Queries and dashboards are in every build; the rest is derived from the
+ * features that fill `favorites.section`, so a build without a feature offers
+ * no link that 404s. Filtered to the library section, the row that names the
+ * feature's own collection rather than an admin console over it.
  */
 const STARRABLE: { label: string; href: string }[] = [
   { label: 'Queries', href: '/queries' },
@@ -125,27 +112,22 @@ const dashboardColumns: Column<MockDashboard>[] = [
 export default function FavoritesPage() {
   const queries = useFavoriteQueries()
   const dashboards = useFavoriteDashboards()
-  // The sidecar keeps stars in a table of its own rather than on the object,
-  // and answers with ids grouped by kind. This page reads the ids and nothing
-  // else now: which kinds a build can turn into rows, and what a row of each
-  // kind looks like, belongs to the features that contribute the sections.
+  // The sidecar keeps stars in a table of its own and answers with ids grouped
+  // by kind. This page reads the ids only; rendering a kind belongs to the
+  // feature that contributes the section.
   const sidecarStars = useVeodynFavorites()
 
   const favoriteQueries = queries.data?.results ?? []
   const favoriteDashboards = dashboards.data?.results ?? []
   const isLoading = queries.isLoading || dashboards.isLoading || sidecarStars.isLoading
   const truncated = queries.data?.truncated === true || dashboards.data?.truncated === true
-  // A failed read is not an empty shelf. Without this the two are the same
-  // screen, and the one that says "nothing starred yet" is a lie about the
-  // other. A contributed section's own list failing is its own to report, and
-  // each one does; what is left here is the read this page makes itself.
+  // A failed read is not an empty shelf, so "nothing starred yet" must not
+  // stand in for one. Covers only the reads this page makes itself; a
+  // contributed section reports its own failure.
   const failed = queries.isError || dashboards.isError || sidecarStars.isError
-  // Counted as ids, and only where some feature can turn an id into a row. A
+  // Counted as ids, and only where some feature can turn an id into a row: a
   // star this build will never render must not stop the page from saying the
-  // shelf is empty. The cost of counting ids rather than resolved rows is one
-  // case, an account whose ONLY star names an object that has since been
-  // deleted: that used to reach the empty state and now reaches two empty
-  // tables instead. A wrong shape, where the alternative was a wrong answer.
+  // shelf is empty.
   const starredSidecarIds = hasSlotContributor('favorites.section')
     ? Object.values(sidecarStars.data ?? {}).flat()
     : []
@@ -160,9 +142,9 @@ export default function FavoritesPage() {
     <PageContainer>
       <PageHeader title="Favorites" description="Everything you have starred." />
 
-      {/* Outside the branch below. A favorite is found by filtering the lists
+      {/* Outside the branch below: a favorite is found by filtering the lists
           this page read, so an unread page and an unstarred account look
-          identical, and only one of them is worth telling the user about. */}
+          identical. */}
       {truncated && (
         <p role="status" className="mb-3 text-sm text-muted-foreground">
           You have more queries and dashboards than this page reads, so some favorites may not be
@@ -178,9 +160,9 @@ export default function FavoritesPage() {
       )}
 
       {isLoading ? (
-        // A first paint that says "No favorite queries" is a wrong answer, not
-        // a slow one: the read has not come back yet, and the tables below
-        // render their own empty message from data that is still undefined.
+        // The tables below render their own empty message from data that is
+        // still undefined, so a first paint of "No favorite queries" would be a
+        // wrong answer rather than a slow one.
         <SkeletonCard lines={4} />
       ) : nothingStarred ? (
         <NoData
@@ -241,12 +223,10 @@ export default function FavoritesPage() {
             </div>
           </section>
 
-          {/* One section per object kind this build has: KPIs and reports
-              today, each rendering only when it has something to show. A multi
-              slot and not a single one, because these are two lists of two
-              different things rather than two components racing for one hole,
-              and a build with one feature and not the other has to show one
-              and not the other. */}
+          {/* One section per object kind this build has (KPIs and reports
+              today), each rendering only when it has something to show. A multi
+              slot, so a build with one feature and not the other shows one and
+              not the other. */}
           <SlotList id="favorites.section" props={{}} />
         </div>
       )}

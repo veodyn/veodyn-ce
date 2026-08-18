@@ -1,9 +1,7 @@
 'use client'
 
 // What the eye button in the schema browser opens: the first few rows of a
-// table, so an analyst can see the shape of the data before writing SQL against
-// it. Read-only, and deliberately separate from the results pane below the
-// editor, which belongs to the query being written.
+// table, so an analyst can see the shape of the data before writing SQL.
 import { Loader2 } from 'lucide-react'
 import {
   Dialog,
@@ -18,13 +16,9 @@ import { useTablePreview, tablePreviewSql, TABLE_PREVIEW_ROWS } from '@/hooks/us
 import type { QueryResultData, SchemaTable } from '@/lib/mock-data'
 
 /**
- * The table AND the data source it was clicked in, captured together.
- *
- * The pair is the thing being previewed. Holding the table in state while
- * reading the source from a live prop let the two disagree: a source that
- * changes under an open dialog (an existing query's own source arriving after
- * the first paint is enough) would run the old table's name against the new
- * connection.
+ * The table AND the data source it was clicked in, captured together: a source
+ * that changes under an open dialog would otherwise run the old table's name
+ * against the new connection.
  */
 export interface PreviewTarget {
   table: SchemaTable
@@ -58,34 +52,20 @@ export function TablePreviewDialog({ target, onClose }: TablePreviewDialogProps)
           </DialogDescription>
         </DialogHeader>
 
-        {/* overflow-auto only when NOT holding the table: the Table primitive
-            wraps itself in its own overflow-x-auto div, and nesting that
-            inside an overflow-auto ancestor breaks the sticky header (a div
-            with only overflow-x set computes overflow-y as auto too per the
-            CSS overflow spec, so it becomes a scroll-container candidate for
-            position:sticky even though it never actually scrolls, since it
-            has no bounded height of its own -- the ancestor that DOES scroll
-            ends up carrying the sticky header away with it). Same shape and
-            same fix as query-result-table.tsx's results grid: make this a
-            flex row with min-h-0 so its single child (Table's own wrapper
-            div) stretches to fill the available height via flex's default
-            cross-axis stretch, which makes THAT div the one real scroll
-            container for both axes and lets sticky resolve against it.
-            Verified with an isolated repro before landing this (grid row
-            height clamped by the dialog's max-h-[80vh], same as here).
-            The loading and error states don't hold a Table, so they keep
-            plain overflow-auto: a long error detail (the <pre> below) still
-            needs to scroll, and there's no sticky content in that branch to
-            break. */}
-        {/* min-w-0 on both this row and its child is what lets the child's
-            overflow-x-auto actually scroll. A flex item defaults to
-            min-width:auto, which refuses to shrink below its content, so
-            without these a wide result grows the wrapper to the table's full
-            width and the dialog simply clips it: found on stage against a real
-            17-column ClickHouse table rendering 2589px inside an 896px dialog,
-            with the last column at x=2840 and no scrollbar to reach it. Mock
-            data has 4 to 6 columns and never overflows, which is why this
-            survived local testing. */}
+        {/* overflow-auto only when NOT holding the table. Table wraps itself in
+            an overflow-x-auto div, and per the CSS overflow spec that div
+            computes overflow-y as auto too, so it becomes the sticky header's
+            scroll container while the ancestor is the one that really scrolls.
+            A flex row with min-h-0 makes Table's own wrapper the single real
+            scroll container for both axes, the same fix as
+            query-result-table.tsx's results grid. The loading and error
+            branches hold no Table, so plain overflow-auto is right for them.
+
+            min-w-0 on this row and its child is what lets that overflow-x
+            actually scroll: a flex item defaults to min-width:auto and refuses
+            to shrink below its content. Found on stage against a 17-column
+            ClickHouse table rendering 2589px inside an 896px dialog with no
+            scrollbar; mock data has 4 to 6 columns and never overflows. */}
         <div className={showTable ? 'flex min-h-0 min-w-0 [&>div]:min-w-0' : 'overflow-auto'}>
           {isFetching && (
             <div className="flex items-center justify-center gap-3 py-12">
@@ -116,9 +96,8 @@ export function TablePreviewDialog({ target, onClose }: TablePreviewDialogProps)
               : `First ${TABLE_PREVIEW_ROWS} rows`}
           </span>
           {data?.runtime != null && failure == null && <span>{data.runtime.toFixed(2)}s</span>}
-          {/* Only for a read that happened. Re-deriving it on the failure path
-              would rebuild the statement whose own name is what a refused
-              identifier failed on, and do it during render. */}
+          {/* Only for a read that happened: re-deriving it on the failure path
+              would rebuild the refused statement during render. */}
           {target != null && failure == null && data != null && (
             <code className="ml-auto truncate font-mono">
               {tablePreviewSql(target.table.name).replace(/\n/g, ' ')}
@@ -132,10 +111,8 @@ export function TablePreviewDialog({ target, onClose }: TablePreviewDialogProps)
 
 function PreviewGrid({ data }: { data: QueryResultData }) {
   if (data.rows.length === 0) {
-    // w-full: the parent is a flex row now (see the comment above it), and a
-    // flex item's width defaults to its own content, not the container's, so
-    // without it this line would shrink to the width of "No rows" and
-    // text-center would have nothing to center within.
+    // w-full: the parent is a flex row, and a flex item's width defaults to its
+    // own content, so text-center would have nothing to center within.
     return <p className="w-full py-12 text-center text-sm text-muted-foreground">No rows</p>
   }
   return (
@@ -167,8 +144,7 @@ function PreviewGrid({ data }: { data: QueryResultData }) {
   )
 }
 
-// A preview shows what is stored, not a formatted reading of it: this is the
-// surface an analyst checks a column's raw shape on.
+// A preview shows what is stored, not a formatted reading of it.
 function renderCell(value: unknown) {
   if (value == null) return <span className="text-muted-foreground italic">null</span>
   if (typeof value === 'object') return JSON.stringify(value)

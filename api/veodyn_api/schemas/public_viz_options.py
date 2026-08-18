@@ -1,17 +1,11 @@
 """The public option allowlist, one schema per visualization type.
 
-A deliberate mirror of `app/src/lib/public-report-options.ts`, key for key
-and rule for rule. Two copies of one table is a real cost, and it is paid on
-purpose: this service answers on its own public ingress, so the browser's copy
-guards nobody who calls the API directly, and it is the caller who skips the
-browser that this table exists to stop. Keep the two in step; if this one falls
-behind, a chart loses the option it needs and renders its own empty state, which
-is a visible failure rather than a silent leak.
+Mirrors `app/src/lib/public-report-options.ts` key for key; keep the two in
+step. This service answers on its own public ingress, so the browser's copy
+guards nobody calling the API directly.
 
-Options are rebuilt key by key rather than copied, from a schema naming only what
-a renderer actually reads (`app/src/components/visualizations/*`). An
-option nobody declared does not survive, and a declared option whose value is the
-wrong shape is dropped rather than coerced.
+Options are rebuilt key by key, never copied: an undeclared option does not
+survive, and a declared one of the wrong shape is dropped rather than coerced.
 """
 
 from dataclasses import dataclass
@@ -161,17 +155,14 @@ PUBLIC_VIZ_OPTIONS: dict[str, Fields] = {
     },
 }
 
-# "This value does not belong in an anonymous response." A distinct object rather
-# than None, because null is a value an option may legitimately not have and
-# conflating the two would let a dropped key look like a kept one.
+# "This value does not belong in an anonymous response." A distinct sentinel
+# rather than None, which is a legitimate option value here.
 DROP: Any = object()
 
 
 def _survivors(out: Any, source_size: int, kept_size: int) -> Any:
-    """A container that arrived with entries and kept none was carrying something
-    the allowlist refused, so the key goes with it rather than leaving an empty
-    shell behind. A container that was already empty is the author's own empty
-    value and is kept as it stands."""
+    """Drop a container that arrived with entries and kept none; an already empty
+    one is the author's own value and is kept."""
     return DROP if source_size > 0 and kept_size == 0 else out
 
 

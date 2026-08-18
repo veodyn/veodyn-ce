@@ -10,19 +10,13 @@ const ThemeScopeContext = createContext<ThemeScope>('light')
 
 /**
  * Owns the live theme: resolves it, puts it on <html>, and publishes it to the
- * components that cannot read CSS (the toaster picks its own skin from
- * useThemeScope, and the WebGL renderers re-bake their colours off the class
- * through useThemeTokenVersion).
+ * components that cannot read CSS (useThemeScope, useThemeTokenVersion).
  *
  * `force` is for surfaces whose appearance belongs to the surface rather than
- * to the reader: the print route, an embedded widget, the presentation screens.
- * Everything else follows the reader's preference, which defaults to their OS.
+ * the reader: the print route, an embedded widget, the presentation screens.
  *
- * There is deliberately no `.dark` class on the wrapper below any more. It used
- * to carry one, and that left a documented hole: portalled UI renders into
- * document.body, so a dialog opened from a dark surface came up with light
- * tokens because CSS inheritance follows the DOM and not the React tree. The
- * class now lives on the document element, which every portal is inside.
+ * The token class belongs on the document element, not this wrapper: portalled
+ * UI renders into document.body, so a dialog would inherit the wrong tokens.
  */
 export function ThemeProvider({
   force,
@@ -38,8 +32,8 @@ export function ThemeProvider({
 
   return (
     <ThemeScopeContext.Provider value={scope}>
-      {/* display:contents, so this reads as a theme boundary in the DOM without
-          becoming a box that could affect layout. */}
+      {/* display:contents, so the boundary is visible in the DOM without
+          generating a box that affects layout. */}
       <div data-theme={scope} className="contents">
         {children}
       </div>
@@ -52,13 +46,10 @@ export function useThemeScope(): ThemeScope {
 }
 
 /**
- * Republishes the scope for one subtree, for a surface that pins its own
- * appearance below the app's.
+ * Republishes the scope for one subtree that pins its own appearance.
  *
- * Only the context. The token class that goes with it is the caller's job,
- * because the two want different places in the DOM: the class has to sit on a
- * real box for a background to paint, and the context does not care. See
- * widget-theme-boundary.tsx, the one caller, which does both.
+ * Context only: the matching token class has to sit on a real box for a
+ * background to paint, so it is the caller's job. See widget-theme-boundary.tsx.
  */
 export function ThemeScopeProvider({
   scope,

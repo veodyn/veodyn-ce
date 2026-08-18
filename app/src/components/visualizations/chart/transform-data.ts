@@ -18,14 +18,9 @@ export function buildChartData(data: QueryResultData, config: ResolvedChartConfi
         group[seriesName] = row[yCol]
       }
       // A yRight column has no single value at this x once rows are split by
-      // series: North's row and South's row can each carry a different
-      // number for it. Keying by rightAxisSeriesKey(yRightCol, seriesName)
-      // instead of the bare column name means this row only ever writes its
-      // own (x, series) slot, never a shared one another row can silently
-      // overwrite. Before this, `group[yRightCol] = row[yRightCol]` was one
-      // slot every row sharing this x wrote to, so whichever row was written
-      // last won, an arbitrary result that was then drawn and labelled as a
-      // single real series (see rightAxisSeriesNamesFor in resolve-config.ts).
+      // series, so keying by rightAxisSeriesKey(yRightCol, seriesName) gives
+      // each (x, series) its own slot. The bare column name is one slot every
+      // row at this x writes to, and the last write wins.
       for (const yRightCol of config.yRightCols) {
         group[rightAxisSeriesKey(yRightCol, seriesName)] = row[yRightCol]
       }
@@ -44,26 +39,14 @@ export function buildChartData(data: QueryResultData, config: ResolvedChartConfi
     rows = [...rows].reverse()
   }
 
-  // Indexing has to run after sorting and reversing: the base for each
-  // series is its first nonzero value in plotted, left-to-right order, not
-  // the first row of the raw query result. config.indexed is already resolved
-  // against stacking in resolveChartConfig (stacking sums series, indexed
-  // series are ratios, and ratios are not summable, so stacking forces
-  // indexed off there), so it is not rechecked here: "is this chart actually
-  // indexed" is decided in exactly one place, not this one plus
-  // resolveChartConfig, which is what let indexed-plus-stack draw raw,
-  // summed magnitudes under an indexed label before this was fixed.
+  // Runs after sorting and reversing: each series' base is its first nonzero
+  // value in plotted order, not in raw query order. Whether a chart is indexed
+  // at all is decided only in resolveChartConfig, which also forces it off
+  // under stacking, so it is not rechecked here.
   //
-  // Every series the chart actually draws must be indexed together, which is
-  // seriesNamesFor(config, data) (the left-axis series) plus
-  // rightAxisSeriesNamesFor(config, data) (the actual keys the pivot above
-  // wrote, not the bare yRightCols names once a series column has expanded
-  // them). Indexing only the left-axis series and leaving the right-axis
-  // series raw drew mixed units (indexed ratios and raw magnitudes) on one
-  // axis labelled "indexed", which is strictly worse than the dual-axis
-  // rendering this phase replaced. Indexing a right-axis series that a
-  // particular layout does not draw (bar in vertical layout) is harmless, so
-  // the rule stays simple rather than per-renderer.
+  // Left-axis and right-axis series index together, or one axis carries mixed
+  // units. The right-axis names come from rightAxisSeriesNamesFor, which is the
+  // keys the pivot above actually wrote, not the bare yRightCols.
   if (config.indexed) {
     rows = indexSeries(rows, config.xCol, [...seriesNamesFor(config, data), ...rightAxisSeriesNamesFor(config, data)])
   }

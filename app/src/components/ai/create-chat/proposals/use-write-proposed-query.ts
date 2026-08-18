@@ -1,11 +1,7 @@
 'use client'
 
-// Creating one query the AI wrote, in the order that leaves it usable.
-//
-// Extracted from use-widget-queries.ts when KPIs and report sections learned to
-// carry a NewQueryProposal too. All three go through this, so none of them grows
-// its own copy of the sequence, and the sequence is the part that is easy to get
-// wrong: the ordering below is load-bearing in a way a reader would not guess.
+// Creating one query the AI wrote, in the order that leaves it usable. Shared
+// by the dashboard, KPI and report-section cards.
 import { useCreateQuery } from '@/hooks/use-queries'
 import { useArchiveQuery } from '@/hooks/use-query-mutations'
 import { useCreateVisualization } from '@/hooks/use-visualizations'
@@ -24,15 +20,14 @@ export interface WrittenQuery {
   queryName: string
   /**
    * What to point a dashboard widget at. Null when the query saved but has
-   * nothing to show: reported rather than guessed at, because an invented id
-   * would put somebody else's visualization on the dashboard.
+   * nothing to show: an invented id would put somebody else's visualization on
+   * the dashboard.
    */
   visualizationId: number | null
   /**
    * The visualization as configured, for a caller that wants to render it
-   * without reading it back. A query written a moment ago is not in the list the
-   * card already holds, and refetching it to learn facts we just sent would be a
-   * round trip for nothing.
+   * without reading it back: a query written a moment ago is not in the list
+   * the card already holds.
    */
   visualization: {
     queryName: string
@@ -50,21 +45,9 @@ export function useWriteProposedQuery() {
   /**
    * Put back the query this write created, when the write is about to fail.
    *
-   * A `requireColumn` failure is a refusal to create the KPI, but the query was
-   * already written by then and used to stay in the library: one rejected
-   * "Create KPI + query" left query 81 behind, a second attempt left 82, and
-   * both were named identically to the KPI that never existed, findable only by
-   * searching for them. The Archive tab already held one from an earlier
-   * session, so it accumulates.
-   *
    * Archive rather than delete because that is all Redash offers (its DELETE
-   * archives), and it is the better semantic anyway: the SQL is one restore away
-   * for anyone who wants to fix it, and it is out of the library for everyone
-   * who does not.
-   *
-   * Failing to clean up must not replace the real error with a worse one, so a
-   * failed archive is swallowed and the original refusal is what the analyst
-   * sees.
+   * archives). A failed archive is swallowed so it cannot replace the caller's
+   * real error with a worse one.
    */
   async function discard(queryId: number): Promise<void> {
     try {
@@ -75,33 +58,22 @@ export function useWriteProposedQuery() {
   }
 
   /**
-   * Write the query, run it, then build its visualization. That order matters.
-   *
-   * Running it BEFORE the visualization, not after: a widget or a KPI reads the
-   * query's last stored result, and a query written a second ago has none.
-   * Without this the dashboard the analyst just asked for arrives with every new
-   * panel saying "No data", and a KPI evaluates against nothing. It is the same
-   * execution the Refresh button would run, moved to where the wait already is.
-   *
-   * Running it first also means the result is in hand when the options are
-   * chosen, which is the difference between a heatmap that names its own axes
-   * and one that relies on the renderer guessing from column order.
-   *
-   * A failed run is not fatal and is deliberately not reported: the query
-   * exists, and Refresh is right there.
+   * Write the query, run it, then build its visualization. That order matters: a
+   * widget or a KPI reads the query's last stored result, and one written a
+   * second ago has none, so without the run every new panel says "No data".
+   * Running first also puts the result in hand when the options are chosen. A
+   * failed run is not reported: the query exists, and Refresh is right there.
    */
   async function write(
     proposal: NewQueryProposal,
     dataSourceId: number,
     options?: {
       // What to call the visualization when the shape is the table every query
-      // already has. A dashboard widget passes its own heading, which is the
-      // name the analyst chose and better than the query's; a KPI has no second
-      // name to offer, so the query's own is right for it.
+      // already has. A KPI has no second name to offer, so the query's own is
+      // used for it.
       tableLabel?: string
       // A column the caller will read out of the result, which makes a failed
-      // run fatal instead of cosmetic. Set by the KPI path only: see the run
-      // below for why the two callers want opposite things here.
+      // run fatal instead of cosmetic. Set by the KPI path only.
       requireColumn?: string
     }
   ): Promise<WrittenQuery> {
@@ -113,11 +85,9 @@ export function useWriteProposedQuery() {
       query: proposal.sql,
       data_source_id: dataSourceId,
     })
-    // The two callers want opposite things from a failed run, so the caller says
-    // which it is rather than this deciding for both. A dashboard panel that
-    // cannot run is a panel offering Refresh; a KPI that cannot run is a number
-    // that does not exist, and creating one anyway means the analyst finds out at
-    // the first evaluation instead of here, where they could still fix the SQL.
+    // The caller says whether a failed run is fatal, because the two want
+    // opposite things: a dashboard panel that cannot run still offers Refresh, a
+    // KPI that cannot run is a number that does not exist.
     let result: RedashQueryResult | undefined
     if (USE_REAL_API) {
       try {
@@ -136,7 +106,7 @@ export function useWriteProposedQuery() {
       if (options?.requireColumn != null) {
         // Two model calls, two names: the conversation named this column and a
         // separate generation wrote the SQL and chose its own aliases. Nothing
-        // upstream makes them agree, and the result is in hand right here.
+        // upstream makes them agree.
         const columns = result?.data.columns ?? []
         if (!columns.some((column) => column.name === options.requireColumn)) {
           await discard(query.id)
@@ -155,21 +125,14 @@ export function useWriteProposedQuery() {
     // {type, name, options}. Every new query already has a TABLE visualization,
     // which is what a table-shaped caller points at.
     const choice = resolveVizChoice(proposal.vizChoiceId)
-    // The service authored its options for this proposal's own shape, and no
-    // card on this path lets the analyst change that shape, so they always meet
-    // the type they were written for. They go UNDER the inference rather than
-    // over it because every inferOptions refuses to overwrite a mapping it is
-    // handed: the service saw the statement's real columns, the guess did not.
+    // Authored options go UNDER the inference, not over it: every inferOptions
+    // refuses to overwrite a mapping it is handed, and the service saw the
+    // statement's real columns while the guess did not.
     const authored = { ...choice.options, ...proposal.vizOptions }
     // The plugin's own inference, the same call the edit dialog makes when a type
-    // is picked. A choice carries only what makes it that shape
-    // (`{globalSeriesType: 'bar'}`), so before this every AI-authored
-    // visualization was saved with no column mapping at all, and what it drew was
-    // whatever its renderer fell back to.
-    //
-    // One value, read twice: what is saved and what is reported back have to be
-    // the same options, or the panel on the card is configured differently from
-    // the one that was stored.
+    // is picked: a choice carries only what makes it that shape
+    // (`{globalSeriesType: 'bar'}`) and no column mapping at all. One value, read
+    // twice, so what is saved and what is reported back are the same options.
     const vizOptions = result ? inferredVizOptions(choice.type, authored, result.data) : authored
     const isTable = choice.id === DEFAULT_VIZ_ID
     let visualizationId = query.visualizations?.[0]?.id ?? null

@@ -3,19 +3,13 @@
 // The conversation itself: the bubbles, the chips offered with the newest
 // reply, and what a failed turn offers instead.
 //
-// Renders as a run of MessageScrollerItems rather than its own element, so it
-// has to be mounted inside a MessageScrollerContent. The scroller owns the
-// viewport, which is why this file has no scrolling of its own: an unconditional
-// "scroll to the end on every turn" is what it used to do, and that yanks the
-// reader back down when the next reply lands while they are still on the last
-// one.
+// Renders as a run of MessageScrollerItems, so it must be mounted inside a
+// MessageScrollerContent. The scroller owns the viewport and the scrolling.
 //
-// SECURITY: `reply` and `suggestedAnswers` are model output grounded on query
-// names and column descriptions that users authored, so they are untrusted
-// text. Every one of them is rendered as a text child and nothing else: no
-// dangerouslySetInnerHTML, no markdown renderer, no link detection. A chip is a
-// string to show, and clicking it sends that same string back as the next
-// message. A steered model gets to write words, never markup (spec section 7).
+// SECURITY: `reply` and `suggestedAnswers` are model output grounded on
+// user-authored text, so they are untrusted. Render them as text children only:
+// no dangerouslySetInnerHTML, no markdown renderer, no link detection (spec
+// section 7).
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -31,9 +25,8 @@ interface CreateChatTranscriptProps {
   /** Chips send a message, so they lock exactly when the composer does. */
   locked: boolean
   /**
-   * Retry does NOT lock with the composer. It re-sends a turn the user already
-   * spent rather than adding one, so the turn cap has no say in it: the twelfth
-   * message failing is exactly when being unable to retry hurts most.
+   * Retry does NOT lock with the composer: it re-sends a turn the user already
+   * spent rather than adding one, so the turn cap has no say in it.
    */
   retryLocked: boolean
   onAnswer: (text: string) => void
@@ -62,12 +55,9 @@ export function CreateChatTranscript({
         <MessageScrollerItem
           key={turn.seq}
           messageId={`turn-${turn.seq}`}
-          // No scrollAnchor on any row. Lifting a turn to the top of the
-          // viewport is a mode the scroller supports by appending a spacer
-          // sized from the viewport's height, and this transcript lives in a
-          // panel whose height is its content's, so the two inflate each other
-          // (see the note in create-chat-dialog.tsx). The dialog follows the
-          // bottom instead.
+          // No scrollAnchor on any row: that mode appends a spacer sized from
+          // the viewport height, and this panel is sized by its content, so the
+          // two inflate each other (see create-chat-dialog.tsx).
           className="flex flex-col gap-2"
         >
           <div
@@ -91,11 +81,9 @@ export function CreateChatTranscript({
                 Try again
               </Button>
               {/* A plain link, not a Button wrapping one: the Button primitive
-                  stamps role="button" on the anchor, which tells a screen
-                  reader this navigates nowhere when navigating is its job.
-                  Absent when this build has no by-hand route for the kind,
-                  which is what a community build answers for a KPI or a
-                  report: Try again on its own beats a link into a 404. */}
+                  stamps role="button" on the anchor, so a screen reader is told
+                  it navigates nowhere. Absent when the build has no by-hand
+                  route for the kind, rather than linking into a 404. */}
               {manual != null && (
                 <Link
                   href={manual.href}
@@ -129,9 +117,8 @@ export function CreateChatTranscript({
       ))}
 
       {sending && (
-        // The reply's own place, in the reply's own bubble: the turn in flight
-        // is where the answer will be, so it reads as one arriving rather than a
-        // status line floating between the transcript and the composer.
+        // In the reply's own place and bubble, so it reads as an answer
+        // arriving rather than a status line.
         <MessageScrollerItem messageId="thinking">
           <p className="flex w-fit items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />

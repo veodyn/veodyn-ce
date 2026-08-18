@@ -8,12 +8,8 @@ export interface ResolvedChartConfig {
   xCol: string
   yRightCols: string[]
   seriesCol?: string
-  // The column Redash put in its `size` role ("Bubble Size Column" in its own
-  // editor), which is the whole difference between a bubble chart and the
-  // scatter it shares a shape with: ScatterChart binds it to a ZAxis so each
-  // mark's area carries the value. Set only when that column can really carry
-  // it, so a renderer reading this never has to second-guess the name (see
-  // sizesAsArea for the two ways a mapped column cannot).
+  // Redash's `size` role: ScatterChart binds it to a ZAxis so each mark's area
+  // carries the value. Set only when the column can carry it (see sizesAsArea).
   sizeCol?: string
   effectiveYCols: string[]
   // Every series rendered as a percentage of its own first nonzero value, on
@@ -48,18 +44,10 @@ export function inferYColumns(data: QueryResultData, xCol: string, seriesCol?: s
 }
 
 /**
- * The x column to plot when nothing is mapped to x. Exported so the
- * visualization editor can seed the same choice into an explicit mapping rather
- * than running a second, drifting copy of this rule.
- *
- * The first column, which is where a `SELECT dimension, aggregate` puts the
- * thing to plot against. Unless taking it would leave nothing to plot: when it
- * is the only numeric column, spending it on the x axis empties the y set and the
- * chart draws a pair of axes over no data. A query that leads with its aggregate
- * ('SELECT count(*), category') is exactly that shape.
- *
- * Reaching for the first non-numeric column instead can only affect a chart that
- * was drawing nothing, so no chart that renders today renders differently.
+ * The x column to plot when nothing is mapped to x: the first column, unless
+ * taking it would empty the y set (a query leading with its aggregate, as in
+ * 'SELECT count(*), category'), in which case the first non-numeric column.
+ * Exported so the visualization editor seeds an explicit mapping from this rule.
  */
 export function inferXColumn(data: QueryResultData): string {
   const first = data.columns[0]
@@ -70,12 +58,9 @@ export function inferXColumn(data: QueryResultData): string {
 
 /**
  * This module's own inference, written out as a mapping the chart editor can
- * show and save.
- *
- * Empty when there is nothing to infer (no columns, or nothing numeric to plot).
- * Half a mapping is worse than none: an x with no y, or a y with no x, replaces
- * the fallback above without standing in for it, and the chart draws nothing.
- * Returning `{}` leaves this module in charge, which is where it started.
+ * show and save. Empty when there is nothing to infer: a half mapping (an x
+ * with no y) replaces the fallback above without standing in for it, and the
+ * chart then draws nothing.
  */
 export function inferChartColumnMapping(data: QueryResultData): Record<string, 'x' | 'y'> {
   const xCol = inferXColumn(data)
@@ -84,87 +69,44 @@ export function inferChartColumnMapping(data: QueryResultData): Record<string, '
   return { [xCol]: 'x', ...Object.fromEntries(yCols.map((c) => [c, 'y' as const])) }
 }
 
-// Shared by resolveChartConfig and the chart editor, so both agree on
-// whether a chart is effectively indexed. Before this was pulled out, the
-// editor's "Index to 100" checkbox read only the stored options.indexed
-// (defaulting unticked), while the preview beside it read this same
-// migration-aware value: a migrated chart with no stored `indexed` rendered
-// an indexed preview next to an unticked box, and ticking then unticking it
-// silently changed the saved state. Every input here (chart type, column
-// mapping, series options, stacking) comes from options alone; resolving it
-// needs no query data, so the editor can call it with just the options it
-// already has.
+// Shared by resolveChartConfig and the chart editor's "Index to 100" checkbox,
+// so both agree on whether a chart is effectively indexed. Every input comes
+// from options alone, so the editor can call it without any query data.
 export function effectiveIndexed(options: RedashChartOptions): boolean {
   const chartType = resolveChartShape(options.globalSeriesType)
   const columnMapping = options.columnMapping || {}
   const yRightCols = Object.entries(columnMapping).filter(([, v]) => v === 'yRight').map(([k]) => k)
   const stacking = options.series?.stacking ?? (options.stacking === 'stack' ? 'stack' : 'disabled')
 
-  // Migration: a saved chart that relied on a second y-scale (a per-series
-  // right axis, or a column mapped to yRight) is inferred as indexed so it
-  // renders honestly without anyone editing stored options. This reads the
-  // old fields, it never rewrites them, so a rollback restores the old
-  // rendering from unchanged saved JSON.
+  // Migration: a saved chart that relied on a second y-scale (a per-series right
+  // axis, or a column mapped to yRight) is inferred as indexed. This reads the
+  // old fields and never rewrites them, so a rollback restores the old rendering.
   const hadRightAxisSignal =
     Object.values(options.seriesOptions ?? {}).some((s) => s.yAxis === 1) || yRightCols.length > 0
   const wantsIndexed = typeof options.indexed === 'boolean' ? options.indexed : hadRightAxisSignal
 
-  // buildChartData and the renderers both read config.indexed as the final
-  // answer instead of rechecking stacking themselves: two places computing
-  // that question used to disagree (buildChartData skipped indexing under
-  // stacking, but the renderers showed the indexed axis label regardless),
-  // so indexed plus stack drew raw, summed magnitudes under a label that
-  // claimed they were ratios. Stacking sums series; indexed series are
-  // ratios; ratios are not summable, so stacking wins over indexing here,
-  // which is the existing rendering behaviour, just made honest in one
-  // field instead of implied by two.
+  // Stacking wins over indexing: stacking sums series, indexed series are
+  // ratios, and ratios are not summable. buildChartData and the renderers read
+  // config.indexed as the final answer rather than rechecking stacking.
   //
-  // A scatter or pie chart is never indexed, regardless of what stacking or
-  // the stored option or the migration signal say. Scatter's y values are not
-  // a series over an ordered x, so "indexed to its first nonzero value" has
-  // no clear meaning there, and ScatterChart plots data.rows directly rather
-  // than an indexed chartData. A pie has slices of one whole at one point in
-  // time, not a series over an ordered x either, and PieChart likewise plots
-  // and tabulates data.rows directly (see ChartRenderer, which computes an
-  // indexed chartData for line/bar/area but never passes it to PieChart or
-  // ScatterChart). Without this, a stored chart carrying indexed: true or a
-  // migrated yRight mapping, switched to pie, would have buildChartTableModel
-  // label PieChart's raw data.rows as "indexed to 100": reachable through
-  // saved JSON, since changing globalSeriesType alone preserves every other
-  // stored option, and the editor hides the Index control for pie so there is
-  // no way to untick it there either. The editor does not offer the control
-  // for scatter or pie for the same reason; this keeps the config honest even
-  // for a saved chart whose options predate that.
+  // Scatter and pie are never indexed whatever the stored option says:
+  // ChartRenderer passes them data.rows directly, never the indexed chartData,
+  // so buildChartTableModel would otherwise label raw rows "indexed to 100".
   return chartType !== 'scatter' && chartType !== 'pie' && wantsIndexed && stacking === 'disabled'
 }
 
 /**
  * Whether a column mapped to Redash's `size` role can really size the marks.
- * Two ways it cannot, and neither shows up as an error at draw time.
- *
- * The result may not carry the column at all. A visualization still mapping
- * `old_weight` after the query stopped selecting it points the ZAxis at a key
- * no row has, and recharts hands every one of those points the same fallback
- * mark: a plain scatter that answers a narrower question than the stored chart
- * claims to. Returning false here draws that scatter deliberately, and
- * missingMappedColumns (lib/visualizations/validate-columns.ts, which is why
- * `size` is back in its role set) is what tells the reader the name is stale.
- *
- * Or the column may hold a negative value, which is not a quantity an area can
- * carry. recharts will not refuse it and cannot be asked to: ZAxis ignores an
- * allowDataOverflow prop and passes implicitZAxis.allowDataOverflow, which is
- * false, so extendDomain grows a [0, dataMax] domain down to dataMin rather
- * than clipping to it. Scatter separately reads an exact 0 as "no z value" and
- * gives that row the range floor. Rendered, sizes of -10, -1, 0 and 1 come out
- * as areas of 64, 849, 64 and 1024: the -1 nearly the largest mark and the 0
- * the smallest. Dropping the channel costs a third dimension; drawing it that
- * way keeps the dimension and inverts it.
+ * False when the result no longer carries the column (a stale mapping, which
+ * missingMappedColumns in lib/visualizations/validate-columns.ts reports), and
+ * false on any negative value: recharts cannot clip a negative z domain (ZAxis
+ * ignores allowDataOverflow) and Scatter reads an exact 0 as "no z value", so
+ * sizes of -10, -1, 0, 1 render as areas of 64, 849, 64, 1024.
  */
 function sizesAsArea(column: string, data: QueryResultData): boolean {
   if (!data.columns.some((c) => c.name === column)) return false
-  // Number() rather than typeof: a ClickHouse Decimal arrives as a string, and
-  // null, undefined and unparseable text all fail this comparison rather than
-  // passing it, so they stay recharts' problem (it draws them at the floor).
+  // Number() rather than typeof: a ClickHouse Decimal arrives as a string. Null
+  // and unparseable text fail this comparison, so recharts draws them at the floor.
   return !data.rows.some((row) => Number(row[column]) < 0)
 }
 
@@ -181,20 +123,11 @@ export function resolveChartConfig(visualization: MockVisualization, data: Query
   const sizeCol =
     mappedSizeCol != null && sizesAsArea(mappedSizeCol, data) ? mappedSizeCol : undefined
 
-  // inferYColumns is the shared rule (the chart editor seeds its mapping from
-  // the same one). A column explicitly mapped to yRight or to size is dropped
-  // on top of it: it is already claimed by that slot, and leaving it in would
-  // draw and count the same column twice. A bubble's size column is the one
-  // that bites, because a chart may map x and size and leave y to inference,
-  // and the size column is numeric: without this it would be plotted as an
-  // ordinary y series as well as sizing every point. The editor's inference
-  // never sees either mapping, so the exclusion belongs here rather than
-  // inside the helper.
-  //
-  // Keyed off the MAPPED name, not the drawable one. The slot claims the column
-  // either way, so a size column this chart declined to draw stays out of the y
-  // axis instead of reappearing there as a series nobody asked for, which would
-  // turn one silently missing channel into one silently invented one.
+  // A column explicitly mapped to yRight or to size is dropped from the
+  // inferred y set: that slot already claims it, and a numeric size column
+  // would otherwise both size the points and draw as an ordinary y series.
+  // Keyed off the MAPPED name, so a size column this chart declined to draw
+  // stays out of the y axis rather than reappearing there as a series.
   const effectiveYCols =
     yCols.length > 0
       ? yCols
@@ -215,9 +148,6 @@ export function resolveChartConfig(visualization: MockVisualization, data: Query
   const xHasTime =
     options.xAxis?.type === 'datetime' || xColumnType === 'datetime' || (detected?.hasTime ?? false)
 
-  // "Is this chart actually indexed" is decided in exactly one place
-  // (effectiveIndexed above), shared with the chart editor's checkbox, so the
-  // two can never drift apart again.
   const indexed = effectiveIndexed(options)
 
   return {
@@ -249,34 +179,22 @@ export function seriesNamesFor(config: ResolvedChartConfig, data: QueryResultDat
 }
 
 // How the scatter renderer names a group of rows sharing one series value.
-// Null gets a readable label rather than the string 'null', and an empty
-// string joins it: its own '' key would collide with the renderer's
-// anonymous no-series-column group, whose `name || xCol` fallback reroutes
-// the color lookup to the x column's name, so nothing stored under '' is
-// ever read. The rule lives here so the editor's per-series section derives
-// exactly the names the renderer will look up in seriesOptions.
+// Null and '' both land here: a '' key would collide with the renderer's
+// anonymous no-series group, whose `name || xCol` fallback reroutes the color
+// lookup to the x column's name. Shared with the editor's per-series section.
 export const UNGROUPED_SERIES_LABEL = 'Ungrouped'
 
 export function scatterSeriesKey(value: unknown): string {
   return value == null || value === '' ? UNGROUPED_SERIES_LABEL : String(value)
 }
 
-// A right-axis column's name a drawn series in chartData actually carries.
-// With no series column, a right-axis column already has one unambiguous
-// value per x, so it renders under its own column name and this returns
-// config.yRightCols unchanged. Once a series column pivots the same x into
-// one row per series, though, a right-axis column no longer has a single
-// value at that x: every row sharing that x (one per series value) can carry
-// a different value for it, so there is no honest single series left to draw
-// under the bare column name. This resolves one named series per (right
-// column, series value) pair instead, so a drawn line always traces back to
-// that pair's own rows rather than to whichever row happened to be written
-// last into a shared slot.
-//
-// Shared by buildChartData's pivot (which must build exactly these keys),
-// both renderers that draw right-axis series (line/area, and bar's
-// horizontal layout), the table twin, and indexSeries, so "what is this
-// chart's right-axis series really called" is decided in exactly one place.
+// The names drawn right-axis series actually carry in chartData. With no
+// series column that is config.yRightCols unchanged; once a series column
+// pivots one x into one row per series, a right-axis column has no single
+// value at that x, so this resolves one series per (right column, series
+// value) pair. Shared by buildChartData's pivot, both renderers that draw
+// right-axis series (line/area and bar's horizontal layout), the table twin,
+// and indexSeries, which must all build exactly these keys.
 export function rightAxisSeriesNamesFor(config: ResolvedChartConfig, data: QueryResultData): string[] {
   if (!config.seriesCol) return config.yRightCols
   const seriesValues = seriesNamesFor(config, data)

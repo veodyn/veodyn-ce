@@ -4,13 +4,11 @@
  *   GET /api/tags                     -> <veodyn-api>/tags        (vocabulary)
  *   PUT /api/tags/{type}/{id}         -> <veodyn-api>/tags/{type}/{id}
  *
- * An OPTIONAL catch-all, because one handler has to serve both the bare
- * `/api/tags` vocabulary and the two-segment write path. A required `[...path]`
- * would 404 the vocabulary.
+ * An OPTIONAL catch-all: a required `[...path]` would 404 the bare vocabulary.
  *
  * 503s when no veodyn-api base is configured, matching /api/kpis and
- * /api/catalog: that is the agreed "not wired yet" signal, and the UI hides the
- * editing affordance on it rather than showing a control that always fails.
+ * /api/catalog: that is the "not wired yet" signal the UI hides the editing
+ * affordance on.
  */
 
 import { NextResponse } from 'next/server'
@@ -26,16 +24,9 @@ interface RouteContext {
  * The veodyn-api base, from whichever of its three aliases is set.
  *
  * KPI_API_URL, CATALOG_API_URL and REPORTS_API_URL are three names for ONE
- * service: veodyn-api serves /kpis, /catalog, /reports and now /tags off the
- * same root. They exist separately because each contract was wired up on its
- * own schedule and could in principle be split out later, not because they
- * point anywhere different today. Deployments reflect that: frontend-dev sets
- * all three to the same host, and frontend-prod sets only CATALOG_API_URL. So
- * reading one var alone leaves /api/tags dead in production, with every Add Tag
- * affordance hidden because the probe sees a 503.
- *
- * Null only when NONE of them is set, which is the genuine "not configured"
- * signal the UI depends on.
+ * service. Reading only one leaves /api/tags dead in production, where
+ * frontend-prod sets only CATALOG_API_URL. Null only when NONE is set, which is
+ * the "not configured" signal the UI depends on.
  */
 function base(): string | null {
   const configured = env.KPI_API_URL || env.CATALOG_API_URL || env.REPORTS_API_URL
@@ -54,9 +45,8 @@ function forwardHeaders(request: Request): Record<string, string> {
 }
 
 /**
- * The path segments are caller input, so they are not forwarded blind: a `.` or
- * `..` segment would let a request addressed to /api/tags reach a sibling
- * endpoint on the backend.
+ * Path segments are caller input: a `.` or `..` segment would let a request
+ * addressed to /api/tags reach a sibling endpoint on the backend.
  */
 function buildTarget(b: string, segments: string[], request: Request): string | null {
   if (segments.some((s) => !s || s === '.' || s === '..')) return null

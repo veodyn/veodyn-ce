@@ -1,24 +1,20 @@
 // One spelling per favoritable object kind, and the registry decides it.
 //
-// The defect this pins is a spelling collapse that used to be done by hand at
-// every crossing: veodyn-api stores a star under the SINGULAR kind (`kpi`), the
-// app wrote it under the PLURAL route name (`kpis`), and a lookup table in
-// src/hooks/use-favorites.ts translated between them. A third kind could
-// therefore arrive spelled either way, and the file that would have to learn
-// about it was community.
+// The defect this pins is a spelling collapse done by hand at every crossing:
+// veodyn-api stores a star under the SINGULAR kind (`kpi`), the app wrote it
+// under the PLURAL route name (`kpis`), and a lookup table in
+// src/hooks/use-favorites.ts translated between them.
 //
-// Everything below derives from the descriptors rather than naming a kind.
-// Deliberately NOT by importing the vocabulary from the module under test: a
-// test that asks production what the kinds are and then checks production
-// against that answer agrees with itself no matter which spelling production
-// picked. `featureList()` and the two descriptor fields are the independent
-// source, and they are what a new feature package fills in.
+// Everything below derives from the descriptors, and NOT by importing the
+// vocabulary from the module under test: a test that asks production what the
+// kinds are and then checks production against that answer agrees with itself
+// whichever spelling production picked. `featureList()` and the two descriptor
+// fields are the independent source.
 //
 // In a build with no feature installed there are no contributed kinds and every
-// assertion here is vacuous. That is the honest reading, not a hole: the
-// community edition ships no kind for the sidecar to store a star on, and the
-// queries and dashboards it does ship are Redash's, with their favorites on a
-// different backend entirely.
+// assertion here is vacuous: the community edition ships no kind for the sidecar
+// to store a star on, and the queries and dashboards it does ship are Redash's,
+// with their favorites on a different backend entirely.
 import type { ReactNode } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -31,12 +27,9 @@ import { resetStores } from '@/test/utils'
 afterEach(resetStores)
 
 /**
- * The installed features whose objects can be starred.
- *
- * Filling `favorites.section` is the signal, and it is the same one the
- * Favorites page's empty state already derives its links from
- * (`STARRABLE` in src/app/favorites/page.tsx): a feature that contributes a
- * section is exactly a feature whose objects can appear on that page.
+ * The installed features whose objects can be starred. Filling
+ * `favorites.section` is the signal, the same one the Favorites page's empty
+ * state derives its links from (`STARRABLE` in src/app/favorites/page.tsx).
  */
 const contributors = featureList().filter(
   (feature) => feature.slots?.['favorites.section'] !== undefined
@@ -61,12 +54,10 @@ function harness() {
 
 describe('the favoritable kinds this build has', () => {
   it('gives every contributing feature a kind to be addressed by', () => {
-    // A feature can fill the favorites section without declaring a searchType,
-    // and the type system allows it because searchType is optional. It is a
-    // packaging mistake all the same: the star writes to /favorites/<kind>/<id>
-    // and there would be no kind to put in the path, so the section would list
-    // objects nobody could unstar. Named here rather than left to fail as a
-    // silently dropped kind somewhere downstream.
+    // The type system allows filling the favorites section without declaring a
+    // searchType, because searchType is optional. It is a packaging mistake all
+    // the same: the star writes to /favorites/<kind>/<id> with no kind to put in
+    // the path, so the section would list objects nobody could unstar.
     const nameless = contributors.filter((feature) => feature.searchType === undefined)
     expect(nameless.map((feature) => feature.id)).toEqual([])
   })
@@ -83,10 +74,9 @@ describe('a star written under the kind the descriptor names', () => {
       await waitFor(() => expect(result.current.favorites.data).toBeDefined())
 
       const id = `round-trip-${kind}`
-      // Through the mutation the star control uses, not through the store
-      // directly: the crossing being pinned is the one between what a caller
-      // asks to star and what the read answers with, and the hook is where the
-      // hand-written translation lived.
+      // Through the mutation the star control uses, not the store directly: the
+      // crossing being pinned is between what a caller asks to star and what the
+      // read answers with, and the hook is where the translation lived.
       await act(async () => {
         await result.current.toggle.mutateAsync({ type: kind, id, favorite: true })
       })

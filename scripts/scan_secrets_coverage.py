@@ -1,135 +1,38 @@
 """Monorepo-coverage sentinel for scripts/scan-secrets.py.
 
-Split out of scan-secrets.py purely to keep that script under this repo's
-file-size limit; scan-secrets.py loads this by file path, the same way it
-loads scan_secrets_extra_allowlist.py (see that module's own docstring for
-why: by-path loading, not package import, is what lets scan-secrets.py run
-standalone with no dependency on any package layout). Unlike
-scan_secrets_extra_allowlist.py, this module declares no credential-shaped
-or password-shaped literal of its own (no long hex/base64/UUID run, and it
-is not a deploy-config file the password-shaped detector even looks
-inside), so it is not added to scan-secrets.py's SELF_REL_PATHS: there is
-nothing here for the scan to self-match on.
+Loaded by file path from scan-secrets.py, so that script keeps running with
+no package layout around it. This module declares no credential-shaped
+literal of its own, so it is not in scan-secrets.py's SELF_REL_PATHS.
 
-Why this exists: discover_tracked_text_files() silently falls back to
-walking only the node/ checkout whenever `git` is missing or `.git` is
-unreachable, and that fallback returns a non-empty file list, so a bare
-"zero files" guard would not catch it. A scan reporting "clean" after
-walking a fraction of the repo is worse than no scan, so this module makes
-that narrowing fail loudly instead.
+discover_tracked_text_files() falls back to walking only the node/ checkout
+when `git` is missing or `.git` is unreachable, and that fallback returns a
+non-empty file list, so a bare "zero files" guard would not catch it. This
+module fails a run whose discovery or scanning narrowed to part of the tree.
+scan_secrets_test_support.MONITORED_PREFIXES reads SENTINEL_PREFIXES below
+rather than restating it.
 
-Every top-level area of this monorepo that can plausibly hold a credential
-is covered, not just `app/` and `docs/`: those two alone let a sparse
-checkout or a discovery regression that dropped `api/`, `node/`, `helm/`,
-and `scripts/` still pass. `ROOT_LABEL` stands in for files with no
-directory component at all (`CLAUDE.md`, `.gitlab-ci.yml`, ...), checked the
-same way.
+The bar is scanned / SCANNABLE per prefix, where scannable is the files
+discovered under a prefix minus the ones whose CONTENT is not text (see
+read_text_or_binary). Two cases stay in the denominator on purpose: a file
+`is_excluded` skipped, because an over-broad exclusion pattern that starts
+skipping real source files is the regression this floor catches; and a path
+discovery listed that will not open, which is a checkout regression rather
+than a binary. Only content proven non-text is subtracted, since no
+credential can be typed into a PNG as text.
 
-That claim was false until `ci/` and `compose/` were added to the tuple
-below. `compose/` is the worse of the two omissions and it is the newer
-directory: it holds the seeding scripts that GENERATE credentials and write
-them to disk, so a discovery regression that dropped it would have narrowed
-the scan away from the one place in this tree whose job is producing
-secrets. This module's own docstring asserted full coverage the whole time,
-which is why the list and the claim are now checked rather than described:
-scan_secrets_test_support.MONITORED_PREFIXES reads this tuple instead of
-restating it.
+Measured scanned/scannable at feat/m4-actions-port, in this repo and in the
+CE export produced from it: the lowest prefix is 0.93 in both trees
+(scripts/ here, scripts/ and docs/ in the export, which withholds
+docs/superpowers/ and is left majority screenshots under docs/). So
+MIN_SCAN_COVERAGE_RATIO of 0.5 leaves real headroom.
 
-A single scanned file under a prefix is not proof of coverage either: a
-scan that discovers 500 files under `app/` but only opens one of them is
-still a severely narrowed scan that happened to leave a lone match
-standing. Requiring a fixed count (say, "at least 20") would rot as the
-tree grows or shrinks, so the bar is instead a proportion of what this same
-run's own discovery step found under that prefix.
-
-WHAT THE RATIO MEASURES, and why the denominator is not "discovered"
---------------------------------------------------------------------
-The bar is scanned / SCANNABLE, where scannable is the files discovered
-under a prefix minus the ones whose CONTENT is not text (see
-read_text_or_binary below). It was scanned / discovered until
-scripts/export-ce-tree.py exposed that as a measurement of the wrong thing:
-the export withholds docs/superpowers/, 90 markdown files, and what is left
-of `docs/` is majority screenshots, so the export read 41/93 = 0.44 and the
-guard refused a tree in which every single scannable file had been scanned.
-
-A PNG in the denominator is not a coverage gap. No credential can be typed
-into it as text, so counting it against coverage measures the tree's
-screenshot-to-prose ratio and calls the result "coverage". That number moves
-whenever the shape of a directory changes, which is exactly what happened.
-
-The denominator subtracts ONLY files proven non-text by content, and that
-distinction is load-bearing in three directions:
-
-  Explicitly excluded files STAY in the denominator. `is_excluded` is a
-  policy decision, and an over-broad exclusion pattern that starts skipping
-  real source files is precisely the regression this floor catches;
-  subtracting its hits would make that regression invisible. Today that
-  keeps 13 genuinely-text files counting against `app/` (9 `.mjs` scripts, a
-  `.jsonc`, a `.geojson`, an `.svg`, and `pnpm-lock.yaml`), all skipped on
-  the extension allowlist rather than on their content.
-
-  Which is why the split is NOT "did is_excluded skip it". That was the
-  obvious reading and it is wrong on this tree: `.png` is not in the fork's
-  TEXT_EXTENSIONS, so screenshots never reach the content sniff at all, they
-  are dropped by `is_excluded` one branch earlier. Splitting on the branch
-  that skipped a file would have left the export at 41/93 and still failing,
-  while quietly excusing those 9 `.mjs` files. The question asked is about
-  the bytes, so the bytes are what gets asked.
-
-  Unreadable is not binary. A path that discovery listed and that is not on
-  disk, or cannot be opened at all, stays in the denominator: that is a
-  discovery/checkout regression, and it is one of the two failures this
-  sentinel was built for. read_text_or_binary probes the open separately
-  rather than reading "returned None" as "binary".
-
-Measured per-prefix scanned/scannable, this repo at feat/m4-actions-port and
-the export produced from it (only `docs/` differs, and it is the whole
-reason for this change):
-
-                 this repo              CE export
-    app/       1207/1220  0.99      1207/1220  0.99
-    docs/       147/150   0.98        41/44    0.93
-    api/        146/149   0.98       146/149   0.98
-    node/       390/401   0.97       390/401   0.97
-    helm/        49/51    0.96        49/51    0.96
-    scripts/     25/27    0.93        25/27    0.93
-    ci/           5/5     1.00         5/5     1.00
-    compose/      7/7     1.00         7/7     1.00
-    <root>        8/8     1.00         8/8     1.00
-
-The floor is 0.93 in both trees, so MIN_SCAN_COVERAGE_RATIO of 0.5 leaves
-real headroom for legitimate exclusions while still catching a discovery or
-filtering regression that silently narrows a prefix. These are ratios of
-scannable files, not of discovered files: the numbers above are NOT
-comparable to the ones this table carried before, which had screenshots in
-their denominators.
-
-CLOSING THE HOLE THE NEW DENOMINATOR OPENS
-------------------------------------------
-The denominator now depends on the content sniff, so if the sniff regresses
-and starts calling text files binary, the denominator shrinks with the
-numerator and the ratio stays near 1.0: the guard goes quiet exactly when it
-should shout. (A TOTAL collapse is still caught, by scan-secrets.py's
-existing "zero files actually scanned" refusal. It is a partial regression,
-the kind that reclassifies one shape of file, that this has to catch.)
-
-MAX_TEXT_EXTENSION_BINARY_SHARE closes it by cross-checking the content
-verdict against the fork's independent, name-based one. TEXT_EXTENSIONS is a
-deliberately narrow positive list of suffixes a credential could be typed
-into; of the discovered files carrying one of those suffixes, at most this
-share may sniff as binary. Measured today: 1/1966 = 0.0005 here and 1/1860
-in the export, the single file being app/src/features/slots.tsx, which uses
-a literal NUL byte as a map-key separator and has therefore never been
-scanned. So the bar sits at 100x the observed value.
-
-A ceiling on each group's binary share was the other candidate and is worse
-on both counts. It rots: `docs/` moved from 0.25 binary to 0.53 binary just
-by withholding docs/superpowers/, so any ceiling with headroom above today's
-tree has to sit near 0.9, and a per-prefix table of them is the magic-number
-rot this change exists to remove. And it is blunt: at 0.9 it only fires on a
-near-total collapse, which is already caught. The cross-check compares two
-signals that regress independently, and 100x headroom means a sniff that
-starts misreading even a few percent of known-text files trips it.
+MAX_TEXT_EXTENSION_BINARY_SHARE cross-checks the content sniff against the
+fork's independent, name-based TEXT_EXTENSIONS, because the denominator
+trusts the sniff: a sniff that started calling text files binary would
+shrink numerator and denominator together and hold the ratio near 1.0.
+Measured 1/1966 = 0.0005 here and 1/1860 in the export, the single file
+being app/src/features/slots.tsx, which uses a literal NUL byte as a map-key
+separator. The bar sits at 100x the observed value.
 """
 
 import math
@@ -163,13 +66,11 @@ def new_group_counter():
 def read_text_or_binary(full_path, read_text_if_plausibly_text):
     """Return (text, is_binary) for one discovered file.
 
-    `read_text_if_plausibly_text` is the fork's own single source of truth
-    for "is this text", passed in rather than imported so this module keeps
-    no second opinion about it. It answers None for two different facts
-    though, binary content and an unreadable file, and only the first is
-    safe to take out of a coverage denominator. So a None is probed once
-    more: a file that will not even open is reported as neither text nor
-    binary, and keeps counting against coverage.
+    `read_text_if_plausibly_text` is the fork's own source of truth for "is
+    this text", passed in rather than imported. It answers None for both
+    binary content and an unreadable file, and only the first may leave the
+    coverage denominator, so a None is probed once more: a file that will not
+    open is neither text nor binary and keeps counting against coverage.
     """
     text = read_text_if_plausibly_text(full_path)
     if text is not None:
@@ -218,8 +119,7 @@ def _refuse(message):
 def _enforce_binary_sniff_sanity(counts):
     """Refuse if the content sniff disagrees with the fork's extension
     allowlist on more than MAX_TEXT_EXTENSION_BINARY_SHARE of the files that
-    allowlist calls text. See this module's docstring: the coverage
-    denominator trusts the sniff, so the sniff is what has to be checked.
+    allowlist calls text. The coverage denominator trusts the sniff.
     """
     total = counts.text_extension_discovered
     if total == 0:

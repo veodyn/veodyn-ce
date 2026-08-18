@@ -41,10 +41,8 @@ export interface paths {
          * Post Generate Sql
          * @description Natural language to one read-only SELECT over the given dataset.
          *
-         *     Given the same warehouse profile the interview gets: this is the query
-         *     editor's own prompt bar, calling the same generator, and a statement written
-         *     against real cardinality and real ranges is the point of the profile
-         *     wherever it is written from.
+         *     Given the same warehouse profile the interview gets, so the statement is
+         *     written against real cardinality and real ranges.
          */
         post: operations["post_generate_sql_ai_generate_sql_post"];
         delete?: never;
@@ -127,13 +125,9 @@ export interface paths {
          * List Favorites
          * @description Every id this caller has starred, grouped by kind.
          *
-         *     Whole sets rather than a page: a person's favorites are the short list by
-         *     definition, and the client marks rows by membership, which needs all of them
-         *     or it marks some rows wrongly.
-         *
-         *     One key per registered favoritable kind, present even when empty, and a
-         *     stored row whose kind is no longer registered is left out rather than
-         *     inventing a key the client has no page for.
+         *     Whole sets rather than a page: the client marks rows by membership, which
+         *     needs all of them. One key per registered favoritable kind, present even when
+         *     empty, and a stored row whose kind is no longer registered is left out.
          */
         get: operations["list_favorites_favorites_get"];
         put?: never;
@@ -157,10 +151,11 @@ export interface paths {
         post: operations["add_favorite_favorites__object_type___object_id__post"];
         /**
          * Remove Favorite
-         * @description Deliberately does NOT check that the object exists: removing the star of
-         *     something already deleted is exactly the tidy-up a caller should be allowed
-         *     to finish. The kind is still resolved, so a delete cannot address rows of a
-         *     kind this build does not serve.
+         * @description Remove one star, whether or not the object still exists.
+         *
+         *     Removing the star of something already deleted is the tidy-up a caller should
+         *     be able to finish. The kind is still resolved, so a delete cannot address rows
+         *     of a kind this build does not serve.
          */
         delete: operations["remove_favorite_favorites__object_type___object_id__delete"];
         options?: never;
@@ -206,12 +201,8 @@ export interface paths {
          * @description Arm or disarm the late alert on a feed.
          *
          *     Requires a declared expectation, because the alert's threshold is two of
-         *     those periods. Arming without one would mean inventing a deadline on the
-         *     user's behalf and then paging them about it.
-         *
-         *     Unlike the expectation, this IS checked against the catalog: arming writes a
-         *     query against a real table on a real data source, and there is nothing to
-         *     write for a feed the registry cannot resolve.
+         *     those periods. Unlike the expectation, this IS checked against the catalog:
+         *     arming writes a query against a real table on a real data source.
          */
         put: operations["put_alert_feeds__feed_id__alert_put"];
         post?: never;
@@ -233,15 +224,11 @@ export interface paths {
          * Put Expectation
          * @description Declare how often a capture is expected to deliver.
          *
-         *     Deliberately NOT checked against the catalog first. A feed id is a warehouse
-         *     table name, and an expectation for a table that has not appeared yet, or has
-         *     briefly dropped out of the registry, is a harmless row that starts working
-         *     the moment it is back. Refusing it would mean an operator cannot set an
-         *     expectation on the feed they are waiting for, which is the one they most
-         *     want to hear about.
-         *
-         *     Any authenticated member of the org may set one. It changes no data and no
-         *     permission: what it changes is when this org's own board calls a feed late.
+         *     NOT checked against the catalog first: a feed id is a warehouse table name,
+         *     and an expectation for a table that has not appeared yet, or has briefly
+         *     dropped out of the registry, is a harmless row that starts working the moment
+         *     it is back. Any authenticated member of the org may set one, since it changes
+         *     no data and no permission, only when this org's board calls a feed late.
          */
         put: operations["put_expectation_feeds__feed_id__expectation_put"];
         post?: never;
@@ -315,9 +302,8 @@ export interface paths {
         };
         /**
          * Get Capabilities
-         * @description A read, open to any org member: it names what this build can bind a feed
-         *     to, not who may read one, so it carries the same authorization as listing
-         *     feeds rather than the admin gate that creating or editing one takes.
+         * @description Name the feed entities this build can bind a feed to. A read open to any
+         *     org member, the same authorization as listing feeds.
          */
         get: operations["get_capabilities_published_feeds_capabilities_get"];
         put?: never;
@@ -358,20 +344,11 @@ export interface paths {
          * List Attempts
          * @description The recent record for one feed, newest first.
          *
-         *     `load_feed` first, so an unknown slug is a 404 rather than an empty list. A
-         *     feed that was deleted and a feed that has never published are different
-         *     facts and the page says different things about them.
-         *
-         *     `defer` on the bytes column is load-bearing, not a micro-optimisation: these
-         *     rows carry the served artifact, and selecting twenty of them to render
-         *     twenty status words would move the whole feed history over the wire.
-         *
-         *     The served artifact is added back when the cap pushed it off the page, and
-         *     it is the one row that is not optional context. Twenty blocked or failed
-         *     attempts in a row is exactly the situation where the still-serving artifact
-         *     is older than the page, and a client that reads "what is serving" off this
-         *     list would then conclude a live feed is dark: it would offer to publish over
-         *     it, and skip the going-dark warning on an edit.
+         *     `load_feed` runs first, so an unknown slug is a 404 rather than an empty list:
+         *     a deleted feed and a feed that has never published are different facts. The
+         *     currently served artifact is added back when the page cap pushed it off, since
+         *     a client reading "what is serving" off this list would otherwise conclude a
+         *     live feed is dark.
          */
         get: operations["list_attempts_published_feeds__slug__attempts_get"];
         put?: never;
@@ -380,11 +357,9 @@ export interface paths {
          * @description Run one attempt for this feed, now.
          *
          *     201 for every decision the engine reaches, including `blocked` and `failed`:
-         *     the attempt was created, which is what this endpoint promises, and its
-         *     decision is the answer rather than the status code. A 4xx here is reserved
-         *     for the cases where no attempt happens at all.
-         *
-         *     `run_attempt` records and commits the row itself, so nothing here commits.
+         *     the attempt was created, and its decision is the answer rather than the status
+         *     code, so a 4xx here means no attempt happened at all. `run_attempt` records
+         *     and commits the row itself.
          */
         post: operations["publish_now_published_feeds__slug__attempts_post"];
         delete?: never;
@@ -430,18 +405,10 @@ export interface paths {
          * @description Replace the whole tag set for one object.
          *
          *     Replace rather than add/remove because the frontend's TagsControl hands back
-         *     the full array on every change, so replace matches the component contract
-         *     and is idempotent under retry.
-         *
-         *     Normalized here as well as in the browser. This endpoint is reachable
-         *     without the UI, and matching is exact, so a single unnormalized write is
-         *     enough to split a tag in two for everyone.
-         *
-         *     The kind is resolved first, where the route's Literal used to refuse it, so
-         *     the order a caller sees is unchanged: an unknown kind is answered before the
-         *     body is judged. After that the body is checked before anything is loaded: it
-         *     costs no I/O, and a caller who sent a reserved tag gets that told to them
-         *     whether or not the object they aimed at exists.
+         *     the full array on every change, which is idempotent under retry. Tags are
+         *     normalized here as well as in the browser, since this endpoint is reachable
+         *     without the UI and matching is exact, so one unnormalized write would split a
+         *     tag in two for everyone.
          */
         put: operations["set_tags_tags__object_type___object_id__put"];
         post?: never;
@@ -532,10 +499,9 @@ export interface components {
          * DashboardWidgetProposalOut
          * @description One widget: either a query that exists, or one to be written first.
          *
-         *     Exactly one of the two, enforced below rather than left to a reader: a
-         *     widget carrying both would let the card create a query and then hang a
-         *     different one on the dashboard, and a widget carrying neither is a row with
-         *     nothing behind it.
+         *     Exactly one of the two, enforced below: a widget carrying both would let the
+         *     card create a query and then hang a different one on the dashboard, and one
+         *     carrying neither is a row with nothing behind it.
          */
         DashboardWidgetProposalOut: {
             newQuery: components["schemas"]["NewQueryProposalOut"] | null;
@@ -628,10 +594,8 @@ export interface components {
          * ExpectationIn
          * @description How often this feed should deliver, or null to stop expecting.
          *
-         *     Null rather than a second endpoint: setting and clearing are the same
-         *     decision made twice, and a DELETE beside a PUT invites a client to think
-         *     clearing is destructive when it only returns the feed to its Redash
-         *     schedule.
+         *     Null rather than a second endpoint: clearing only returns the feed to its
+         *     Redash schedule, and a DELETE beside a PUT would read as destructive.
          */
         ExpectationIn: {
             /** Expectedintervalseconds */
@@ -774,10 +738,9 @@ export interface components {
          * KpiProposalOut
          * @description A KPI over a query that exists, or over one written for it.
          *
-         *     A KPI reads one number from one query, so unlike a dashboard there is no cap
-         *     to state: it needs exactly one source and this is which of the two kinds it
-         *     is. Both halves are always on the wire with the unused one null, the same
-         *     rule DashboardWidgetProposalOut follows and for the same reason.
+         *     A KPI reads one number from one query, so it needs exactly one source. Both
+         *     halves are always on the wire with the unused one null, the same rule
+         *     DashboardWidgetProposalOut follows and for the same reason.
          */
         KpiProposalOut: {
             /** Atrisk */
@@ -817,16 +780,12 @@ export interface components {
          * NewQueryProposalOut
          * @description A query the AI wrote because the instance did not have one that fits.
          *
-         *     Beside generate-sql rather than with the proposals, because that is what it
-         *     is: the output of one `generate_sql` call, so it has been through the
-         *     one-statement, read-only, right-table check and its retry-with-reason. Three
-         *     containers carry one (a dashboard widget, a KPI, a report section) and two of
-         *     them live in ai_create.py, so putting it there would make an outline section
-         *     import the conversation contract to describe a query.
+         *     The output of one `generate_sql` call, so it has been through the
+         *     one-statement, read-only, right-table check and its retry-with-reason. It
+         *     sits beside generate-sql rather than with the proposals in ai_create.py, or an
+         *     outline section would import the conversation contract to describe a query.
          *
-         *     Carries everything QueryProposalOut does except its `kind` discriminator,
-         *     because whoever holds one creates it with exactly the same call: write the
-         *     query, then point the container at what it produced.
+         *     Carries everything QueryProposalOut does except its `kind` discriminator.
          */
         NewQueryProposalOut: {
             /** Datasettable */
@@ -1029,11 +988,7 @@ export interface components {
         };
         /**
          * TagsIn
-         * @description The whole set for one object.
-         *
-         *     A replace rather than an add/remove pair, because the frontend's
-         *     TagsControl hands back the full array on every change, and replace is
-         *     idempotent under retry where an add is not.
+         * @description The whole set for one object: a replace, not an add/remove pair.
          */
         TagsIn: {
             /** Tags */
@@ -1041,11 +996,7 @@ export interface components {
         };
         /**
          * TagsOut
-         * @description What is actually stored, after normalization.
-         *
-         *     Echoed back rather than left to the client to assume, so the chips render
-         *     what was kept rather than what was sent: `  Rail  ` went in and `rail` is
-         *     what the next reader will match on.
+         * @description What is actually stored, after normalization: `  Rail  ` comes back `rail`.
          */
         TagsOut: {
             /** Tags */

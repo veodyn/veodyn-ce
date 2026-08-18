@@ -1,8 +1,8 @@
 // The single seam every shared surface reads instead of importing a feature's
 // implementation directly: nav, search and route metadata for every feature
 // this build contains, derived from the generated registry rather than
-// re-listed here, so the sidebar, search and route guards can never drift
-// against what src/features/ actually holds.
+// re-listed here, so the sidebar, search and route guards cannot drift against
+// what src/features/ holds.
 //
 // Descriptors are pure data: importing this file, or any value it returns,
 // never pulls in a feature's components, hooks or services. See
@@ -20,11 +20,8 @@ import type { FeatureDescriptor, FeatureNavRow, FeatureRoute, FeatureSearchType,
  * ordered lists (nav rows, search tabs) do not reshuffle between builds.
  *
  * Every helper below takes the registry as an optional final parameter,
- * defaulting to the real `FEATURES`, the same pattern
- * `buildSidebarSections` uses for `featureNavRows` in `lib/sidebar-nav.ts`.
- * That lets a test exercise the real empty-registry path (`{}`) without
- * mocking this module, rather than only ever running against whatever
- * packages happen to be installed in this build.
+ * defaulting to the real `FEATURES`, so a test can exercise the empty-registry
+ * path (`{}`) without mocking this module.
  */
 export function featureList(registry: Record<string, FeatureDescriptor> = FEATURES): FeatureDescriptor[] {
   return Object.keys(registry)
@@ -35,21 +32,18 @@ export function featureList(registry: Record<string, FeatureDescriptor> = FEATUR
 /**
  * Whether a feature package is installed in this build.
  *
- * The coarsest question the registry answers, and the right one for a
- * community surface holding a single link into a feature's territory: the
- * Recipients button on a feed points at the alert that feed drives, and the
- * Present button on a dashboard points at the wall package's /present. A slot
- * would be the wrong shape for either, because the feature contributes no
- * component and no data; the community surface already knows the whole link
- * and only needs to know whether the destination exists.
+ * The right question for a community surface holding a single link into a
+ * feature's territory (the Recipients button on a feed, the Present button on a
+ * dashboard): the feature contributes no component and no data, and the surface
+ * already knows the whole link, so a slot would be the wrong shape.
  *
  * Keyed on the registry key, which is the package directory name and is equal
  * to `descriptor.id` (asserted by feature-boundary.test.ts).
  *
  * `Object.hasOwn` and not `registry[id] !== undefined`: the registry is an
  * ordinary object literal, so an indexed read of 'toString' or 'constructor'
- * walks the prototype and comes back with a function, which a truthiness or
- * undefined test would report as an installed feature.
+ * walks the prototype and comes back with a function, which a truthiness test
+ * would report as an installed feature.
  */
 export function hasFeature(id: string, registry: Record<string, FeatureDescriptor> = FEATURES): boolean {
   return Object.hasOwn(registry, id)
@@ -58,24 +52,16 @@ export function hasFeature(id: string, registry: Record<string, FeatureDescripto
 /**
  * Whether this build installs no feature packages at all.
  *
- * Derived from the registry, which is the real distinction: it is empty in a
- * community build and holds one entry per package in a composed one. Named for
- * what it means rather than for where it runs, because nothing about it is a
- * property of a directory layout, a marker file or a CI job.
+ * Asked by TESTS, never by product code. A few community suites assert a
+ * property of the COMMUNITY REPOSITORY rather than of the code they import
+ * (scripts/check-ce-tree.test.ts, enterprise-route-links.test.ts,
+ * src/plugins/index.test.ts). Each is correctly FALSE in a tree with the pack
+ * composed into it, and the same files run there, so each guards itself with
+ * this. A skip carrying a reason is visible in the runner output; a path
+ * exclusion in CI is not.
  *
- * Why a TEST would ever ask, since no product code does. A few community
- * suites assert a property of the COMMUNITY REPOSITORY rather than of the code
- * they import: scripts/check-ce-tree.test.ts says no enterprise path is
- * present, enterprise-route-links.test.ts says no community module links to an
- * enterprise route, and src/plugins/index.test.ts says only the public plugin
- * packages are tracked in git. Each is correctly FALSE in a tree that has the
- * pack composed into it, and the same files run there, so each guards itself
- * with this and states at the site what it is an invariant of. A skip carrying
- * a reason is visible in the runner output; a path exclusion in CI is not.
- *
- * Not a gate for product behaviour. A surface that needs to know whether one
- * feature is present asks `hasFeature`, and a surface that renders differently
- * merely because the build is a community one does not exist.
+ * Not a gate for product behaviour: a surface that needs to know whether one
+ * feature is present asks `hasFeature`.
  */
 export function installsNoFeaturePackages(registry: Record<string, FeatureDescriptor> = FEATURES): boolean {
   return featureList(registry).length === 0

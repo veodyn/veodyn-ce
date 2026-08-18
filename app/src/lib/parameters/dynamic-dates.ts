@@ -1,15 +1,11 @@
 /**
- * Date parameter values, mirroring the Redash fork's client-side model.
+ * Date parameter values, mirroring the Redash fork's client-side model. Two wire
+ * contracts come from there:
  *
- * Two contracts come from there and are not ours to choose:
- *
- * 1. A range is sent as `{ start, end }`. The backend reads exactly those keys
- *    (`_is_date_range` in redash/models/parameterized_query.py), and the SQL
- *    refers to them as `{{ name.start }}` / `{{ name.end }}`.
- * 2. A dynamic value is stored as the sentinel `d_<key>` and sent resolved.
- *    Redash does this in `getExecutionValue()`, which runs per execution, so
- *    "Last 7 days" means the seven days before *this run*. Resolving when the
- *    preset is picked instead would freeze the window and quietly go stale.
+ * 1. A range is sent as `{ start, end }` (`_is_date_range` in
+ *    redash/models/parameterized_query.py); SQL reads `{{ name.start }}`.
+ * 2. A dynamic value is stored as the sentinel `d_<key>` and resolved per
+ *    execution, so "Last 7 days" means the seven days before *this run*.
  *
  * Formats match DATETIME_FORMATS in DateParameter.js / DateRangeParameter.js.
  */
@@ -67,9 +63,8 @@ interface DatePreset {
 }
 
 /**
- * Rolling windows end at the run instant rather than at the end of the day,
- * matching Redash's `untilNow`. "Last 24 hours" that ran to midnight tonight
- * would include hours that have not happened.
+ * Rolling windows end at the run instant, not the end of the day, matching
+ * Redash's `untilNow`: ending at midnight would include hours yet to happen.
  */
 const untilNow =
   (from: (now: Date) => Date) =>
@@ -193,15 +188,14 @@ export function isDateRangeValue(value: unknown): value is DateRangeValue {
 
 /**
  * Whether two parameter values are the same, for "has this been edited". A range
- * is an object, so identity would report every render as a change and leave the
- * run blocked with nothing to apply.
+ * is an object, so identity would report every render as a change.
  */
 export function sameParameterValue(a: unknown, b: unknown): boolean {
   if (isDateRangeValue(a) && isDateRangeValue(b)) {
     return a.start === b.start && a.end === b.end
   }
-  // A multi-value parameter holds a list, and order is meaningful: it is what
-  // the backend joins into the SQL.
+  // A multi-value parameter holds a list, and order is what the backend joins
+  // into the SQL, so it is meaningful.
   if (Array.isArray(a) && Array.isArray(b)) {
     return a.length === b.length && a.every((item, i) => Object.is(item, b[i]))
   }
@@ -210,8 +204,7 @@ export function sameParameterValue(a: unknown, b: unknown): boolean {
 
 /**
  * The value to put on the wire for one parameter. Anything this module does not
- * own (text, number, enum, query dropdowns, and any value already in wire shape)
- * passes through untouched, so callers can hand it every parameter blindly.
+ * own passes through untouched, so callers can hand it every parameter blindly.
  */
 export function resolveParameterValue(type: string, value: unknown, now: Date): unknown {
   const pattern = DATE_FORMATS[type]
@@ -222,9 +215,8 @@ export function resolveParameterValue(type: string, value: unknown, now: Date): 
 
   if (isRangeType(type)) {
     const preset = DYNAMIC_DATE_RANGES.find((p) => p.key === key)
-    // An unknown sentinel is returned as-is rather than nulled: the backend
-    // rejecting a value it cannot parse is a legible error, while a silent null
-    // would run the query over an empty range and look like real data.
+    // An unknown sentinel passes through rather than becoming null: the backend
+    // refusing it is legible, an empty range looks like real data.
     if (!preset) return value
     const [start, end] = preset.range(now)
     return { start: format(start, pattern), end: format(end, pattern) }

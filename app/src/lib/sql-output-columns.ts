@@ -1,22 +1,14 @@
 /**
- * The column names a SELECT will return, read off the statement itself.
+ * The column names a SELECT will return, read off the statement itself. A KPI
+ * proposal is two model calls, and the one that names the value column does not
+ * see the aliases the one writing the SQL picks.
  *
- * Why this exists: a KPI proposal is two model calls. One conversation names
- * the value column, a separate generation writes the SQL and picks its own
- * aliases, and nothing upstream makes them agree. Observed on the instance: the
- * SQL said `count(DISTINCT vehicle_id) AS distinct_vehicle_count` while the
- * Value column field said `vehicle_count`, so the first Create failed and the
- * analyst was left to reconcile the AI with itself.
- *
- * The result is used to CHECK and to EXPLAIN, never as the only fact anything
- * is built on. `useWriteProposedQuery` still runs the query and compares the
- * real columns before creating a KPI, so a parse that is wrong here costs a
- * hint, not a broken record.
+ * Used to CHECK and to EXPLAIN only: `useWriteProposedQuery` still runs the
+ * query and compares the real columns before creating a KPI.
  *
  * **Fails closed.** Anything it cannot read confidently returns null, which
- * every caller treats as "no opinion" and falls back to the free-text field. A
- * partial answer would be worse than none: a column list missing one entry
- * would tell an analyst their correct column is wrong.
+ * every caller treats as "no opinion". A partial answer would tell an analyst
+ * their correct column is wrong.
  */
 
 /** Alias forms worth trusting: `expr AS name`, or a bare `name` / `t.name`. */
@@ -33,11 +25,8 @@ function unquote(name: string): string {
 
 /**
  * Strip comments and string literals, keeping length-preserving placeholders.
- *
- * Blanked rather than removed so every offset still lines up with the original,
- * which is what lets the select list be sliced out of the untouched SQL after
- * the scan located it. A comma inside `'a, b'` must not split an item, and a
- * parenthesis inside a comment must not move the nesting depth.
+ * Blanked rather than removed so offsets still line up with the original SQL
+ * the select list is later sliced out of.
  */
 function blankLiterals(sql: string): string {
   let out = ''
@@ -105,9 +94,8 @@ export function sqlOutputColumns(sql: string): string[] | null {
   const scanned = blankLiterals(sql)
   const upper = scanned.toUpperCase()
 
-  // A CTE or a set operation means the columns come from somewhere other than
-  // the first SELECT, and guessing which is exactly the mistake this is here to
-  // prevent. Handed back as unknown.
+  // A CTE or a set operation takes the columns from somewhere other than the
+  // first SELECT. Unknown, rather than guessed.
   if (/(^|[^\w$])WITH([^\w$]|$)/.test(upper)) return null
   if (/(^|[^\w$])UNION|INTERSECT|EXCEPT([^\w$]|$)/.test(upper)) return null
 
@@ -157,23 +145,17 @@ export function sqlOutputColumns(sql: string): string[] | null {
       names.push(unquote(item))
       continue
     }
-    // An expression with no AS. Implicit aliases (`a + b total`) are legal and
-    // unreadable without a real parser: `x IS NOT NULL` would come back as a
-    // column called NULL. Unknown, rather than wrong.
+    // An expression with no AS. Implicit aliases (`a + b total`) need a real
+    // parser: `x IS NOT NULL` would come back as a column called NULL.
     return null
   }
   return names.length > 0 ? names : null
 }
 
 /**
- * Which of the SQL's columns to read, given what the model said.
- *
- * The model's own name wins whenever the SQL actually produces it. When it does
- * not and the statement returns exactly one column, that column is what the KPI
- * must mean, so it is corrected before the analyst ever sees a failed Create.
- * With several columns and no match there is a real choice to make, and this
- * declines to make it: the field keeps the model's answer and the card says
- * what the SQL returns.
+ * Which of the SQL's columns to read, given what the model said. The model's
+ * name wins when the SQL produces it; a single-column statement with no match
+ * is corrected to that column; several columns and no match is left alone.
  */
 export function reconcileValueColumn(
   named: string,

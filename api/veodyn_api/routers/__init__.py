@@ -1,19 +1,10 @@
 """Where the built-in surfaces register themselves.
 
-Importing this package is what turns them on, so `main.create_app` and the
-worker tick both reach it through `extras.load_registrations` rather than each
-holding its own list. A new endpoint group is one line here, in a file with no
-other logic in it.
-
-Routers are not the only thing registered by an import: `routers/catalog.py`
-registers the `dataset` object type beside its endpoint, because the kind and
-the endpoint are owned by the same code. Anything a module contributes belongs
-next to the module that owns it, and that is the property that let the whole
-enterprise half move out of this tree: it took two lines with it, the import of
-`builtin_ee` and the `register_enterprise()` call at the bottom, and nothing
-else here changed. What used to be those two lines is now
-`VEODYN_EXTRA_MODULES=veodyn_enterprise.registration` on a deployment that has
-the pack.
+Importing this package turns them on; `main.create_app` and the worker tick both
+reach it through `extras.load_registrations`. Routers are not the only thing an
+import registers: `routers/catalog.py` also registers the `dataset` object type
+beside its endpoint. Enterprise surfaces are not listed here, a deployment names
+them in `VEODYN_EXTRA_MODULES` instead.
 """
 
 from veodyn_api.registry import register_router
@@ -33,12 +24,9 @@ for _router in (
     catalog_router,
     domains_router,
     favorites_router,
-    # Registered ahead of published_feeds_router, not alphabetically: both
-    # mount under "/published-feeds", FastAPI matches in registration order
-    # with no preference for a static segment over a path parameter, and
-    # published_feeds_router's `GET /{slug}` would otherwise swallow
-    # `GET /capabilities` before this router ever saw it. See
-    # feed_capabilities.py's own docstring for the fuller version.
+    # Must precede published_feeds_router: both mount under "/published-feeds",
+    # FastAPI matches in registration order, and `GET /{slug}` would otherwise
+    # swallow `GET /capabilities`.
     feed_capabilities_router,
     feeds_router,
     public_feeds_router,

@@ -5,11 +5,6 @@ import { cellKey } from './heatmap-cell-key'
 import { buildHeatmapModel } from './heatmap-model'
 import { sortYCategories } from './heatmap-model-sort'
 
-// Task 6's row sort, in its own file rather than appended to
-// heatmap-model.test.ts, the same seam heatmap-model-clipping.test.ts already
-// split along: it needs a fixture of its own and nothing else in the model
-// tests shares it.
-
 const columns: QueryResultData['columns'] = [
   { name: 'quarter', friendly_name: 'Quarter', type: 'string' },
   { name: 'team', friendly_name: 'Team', type: 'string' },
@@ -22,10 +17,7 @@ const mapping: RedashHeatmapOptions['columnMapping'] = {
   deals: 'value',
 }
 
-// THE fixture decision this whole file turns on: a sort tested against data
-// that is already in the target order proves nothing, and a sort with two
-// ranked modes tested against data where those modes agree proves only one of
-// them. All three orders here are different from each other:
+// All three orders differ, so each mode is discriminated:
 //
 //   Steady  10 10 10 10   total 40   peak 10
 //   Spike   30  1  1  1   total 33   peak 30
@@ -35,16 +27,11 @@ const mapping: RedashHeatmapOptions['columnMapping'] = {
 //   'total' Steady, Middle, Spike   (40, 37, 33)
 //   'peak'  Spike, Middle, Steady   (30, 12, 10)
 //
-// Spike is the row that separates the two ranked modes: it has the LOWEST
-// total of the three and the HIGHEST single cell, so it lands last under
-// 'total' and first under 'peak'. An implementation that ranked by total when
-// asked for peak, or the reverse, cannot pass both. `orders differ` below
-// asserts that property of the fixture directly, so a future edit that
-// flattens it fails loudly instead of quietly hollowing these tests out.
+// Spike separates the two ranked modes: lowest total, highest single cell, so it
+// lands last under 'total' and first under 'peak'.
 //
-// The rows are emitted column-major so first-appearance order of the TEAM
-// values (which is what 'none' preserves) is Steady, Spike, Middle, and is not
-// accidentally the same walk as the row literals being grouped by team.
+// The rows are emitted column-major so first-appearance order of the TEAM values
+// (what 'none' preserves) is not the same walk as the row literals.
 const rows: QueryResultData['rows'] = []
 for (const [quarter, values] of [
   ['Q1', { Steady: 10, Spike: 30, Middle: 12 }],
@@ -68,8 +55,7 @@ describe('buildHeatmapModel sortRows', () => {
   })
 
   it('defaults to that same order when sortRows is absent, so no saved heatmap changes shape', () => {
-    // The migration constraint, asserted rather than assumed: every heatmap
-    // stored before this option existed has no sortRows key at all.
+    // Every heatmap stored before this option existed has no sortRows key.
     expect(order(undefined)).toEqual(['Steady', 'Spike', 'Middle'])
   })
 
@@ -82,10 +68,8 @@ describe('buildHeatmapModel sortRows', () => {
   })
 
   it('produces three genuinely different orders, so each mode above is discriminated', () => {
-    // Guards the fixture, not the implementation. Without this, an edit that
-    // made 'total' and 'peak' agree would leave the two tests above passing
-    // while one of the two implementations went unverified, which is exactly
-    // the failure mode this phase has already shipped once.
+    // Guards the fixture, not the implementation: an edit making 'total' and
+    // 'peak' agree would leave the two tests above passing vacuously.
     const none = order('none')
     const total = order('total')
     const peak = order('peak')
@@ -106,17 +90,9 @@ describe('buildHeatmapModel sortRows', () => {
   })
 
   it('keeps tied rows in the order they first appeared, rather than sorting them by name', () => {
-    // What this does NOT catch, said plainly: Array.prototype.sort's own
-    // stability is a language guarantee (ES2019 onward), so no implementation
-    // built on it can lose a tie's order by accident, and a comparator
-    // returning a constant nonzero value for every pair happens to leave a
-    // short array untouched anyway (measured: it does not fail this test).
-    //
-    // What it DOES catch is the plausible one: a secondary sort key. The team
-    // names here are deliberately in reverse alphabetical order, so an
-    // implementation that broke ties on the label (an easy thing to add, and
-    // wrong, since it silently reorders rows a query put in a meaningful
-    // order) produces First, Second instead.
+    // Catches a secondary sort key, not sort stability (a language guarantee
+    // since ES2019): the team names are in reverse alphabetical order, so an
+    // implementation breaking ties on the label fails this.
     const tied: QueryResultData = {
       columns,
       rows: [
@@ -135,13 +111,9 @@ describe('buildHeatmapModel sortRows', () => {
   })
 
   it('sinks a row with no cells at all to the bottom, even against a grid of negative values', () => {
-    // Reached through sortYCategories directly here, and reachable out of
-    // buildHeatmapModel too since the value-validity fix: a y category exists
-    // because some row named it, but that row writes no cell if its value was
-    // unusable, so a row can now be on the axis with nothing in it. Asserted
-    // rather than left undefined because "an empty row ranks 0" would put it
-    // ABOVE every real row on a grid of negatives, which is the opposite of
-    // what an empty row means.
+    // A y category exists because a row named it, but that row writes no cell if
+    // its value was unusable, so a row can be on the axis with nothing in it.
+    // Ranking such a row 0 would put it ABOVE every real row on a negative grid.
     const cells = new Map([
       [cellKey('Q1', 'Real'), -5],
       [cellKey('Q2', 'Real'), -9],
@@ -151,11 +123,9 @@ describe('buildHeatmapModel sortRows', () => {
   })
 
   it('treats an (x, y) combination with no rows as absent, not as a zero', () => {
-    // Only negative values can show the difference, which is why this fixture
-    // is the one place in the heatmap tests that has any. "Sparse" is present
-    // in two of the four quarters at -5; "Dense" is present in all four at -1.
-    // Reading a gap as a zero would make Sparse's peak 0 and rank it FIRST;
-    // reading it as absent makes its peak -5 and ranks it last.
+    // Only negative values show the difference: Sparse is present in two of four
+    // quarters at -5, Dense in all four at -1. Reading a gap as zero makes
+    // Sparse's peak 0 and ranks it FIRST; as absent its peak is -5 and it is last.
     const negative: QueryResultData = {
       columns,
       rows: [

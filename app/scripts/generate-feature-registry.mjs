@@ -3,31 +3,19 @@
  * Emit src/features/generated-registry.ts, and src/stores/generated-mock-slices.ts,
  * from the package directories present under src/features/.
  *
- * Two files, one generator, because both answer the same question ("which
- * packages does this build contain") and a build that regenerated one without
- * the other would be inconsistent in exactly the way the registry exists to
- * prevent. The mock-slice half lives in scripts/generate-mock-slices.mjs, split
- * out for file size only; read its header for why a GENERATED static import of
- * feature code is legitimate where a descriptor-held one is not.
+ * Two files from one generator, because both answer "which packages does this
+ * build contain" and regenerating one without the other is inconsistent in the
+ * way the registry exists to prevent. The mock-slice half is in
+ * scripts/generate-mock-slices.mjs; its header says why a GENERATED static
+ * import of feature code is legitimate where a descriptor-held one is not.
  *
- * A sibling of scripts/generate-plugin-registry.mjs, same reasoning: the set
- * of features a build contains becomes the act of putting a directory in
- * place under src/features/, not an edit to a hand-maintained list that a
- * pack overlay would have to fork and keep in sync.
+ * A static import map, like scripts/generate-plugin-registry.mjs: the bundler
+ * has to see the import to include the code. Every package's index.ts exports
+ * `descriptor`, inert data carrying no function, asserted by the boundary guard.
  *
- * Still a static import map, for the reason the plugin one gives: the bundler
- * has to see the import to include the code, and a name resolved at runtime
- * defers a typo to whoever first reads the registry.
- *
- * Convention: every package's index.ts exports `descriptor`, a
- * `FeatureDescriptor` object. Unlike the plugin registry, descriptors carry no
- * function: they are inert data, asserted by the boundary guard.
- *
- * Runs automatically before `pnpm build` via the `prebuild` script in
- * package.json, alongside `pnpm gen:plugins`. That is a fail-closed guard for
- * a CE build: without it, a build that removed the feature directories but
- * forgot to regenerate would ship the stale, feature-populated registry
- * against code that no longer exists.
+ * `prebuild` runs this alongside `pnpm gen:plugins`. Without that, a build that
+ * removed the feature directories without regenerating ships a
+ * feature-populated registry against code that no longer exists.
  */
 import { readdirSync, statSync, writeFileSync, existsSync } from 'node:fs'
 import { join, dirname, resolve, sep } from 'node:path'
@@ -66,20 +54,14 @@ if (dirFlag !== -1 && !anyStdout) {
   process.exit(1)
 }
 
-// --dir may only point INSIDE src/features when the REGISTRY is what is being
-// emitted. Every import that file holds is written relative to
-// src/features/generated-registry.ts, so a directory anywhere else produces a
-// registry whose imports cannot resolve: aimed at src/plugins it happily emits
-// `from './example'` for a package that does not exist under src/features. The
-// plugin generator this one mirrors accepts it.
+// --dir may only point inside src/features when the REGISTRY is being emitted:
+// its imports are relative to src/features/generated-registry.ts, so a directory
+// elsewhere emits imports that cannot resolve.
 //
-// --stdout-slices is exempt, and not as a convenience. The mock-slice module
-// imports `@/stores/...` specifiers written out in full by the descriptor, so
-// nothing it emits is relative to where the packages were read from and the
-// argument above simply does not apply to it. The exemption is what lets its
-// suite build fixture package trees in os.tmpdir() instead of inside
-// src/features, where they would be seen by a concurrently running suite
-// scanning the real tree and fail it.
+// --stdout-slices is exempt because the mock-slice module emits the descriptor's
+// full `@/stores/...` specifiers, relative to nothing. That exemption is what
+// lets its suite build fixture trees in os.tmpdir() rather than inside
+// src/features, where a concurrent suite scanning the real tree would fail.
 if (
   dirFlag !== -1 &&
   !slicesToStdout &&
@@ -119,12 +101,10 @@ function containsTsFile(dir) {
  * Object keys that are legal directory names and legal in an object literal,
  * but do not behave as data there.
  *
- * `{'__proto__': descriptor}` sets the object's PROTOTYPE instead of creating
- * an own property, so the feature vanishes from Object.keys() while the
- * generated module still compiles and the build still succeeds. That is the
- * worst available failure: a feature silently absent from the registry with
- * nothing red anywhere. A cross-model review of this generator found it, and
- * the plugin generator this one mirrors still has it.
+ * `{'__proto__': descriptor}` sets the object's PROTOTYPE rather than creating an
+ * own property, so the feature vanishes from Object.keys() while the module still
+ * compiles and the build still succeeds. scripts/generate-plugin-registry.mjs
+ * still has this hole.
  */
 const UNSAFE_KEYS = new Set(['__proto__'])
 
@@ -142,17 +122,12 @@ function isSafeName(name) {
 /**
  * A package is a directory under src/features that has an index.ts.
  *
- * The index.ts check is not decoration: src/features also holds this file's
- * own output, the shared types module and the registry's tests, and a
- * non-package directory would otherwise be emitted as an import of nothing.
- * But a directory that contains TypeScript and still has no index.ts is not
- * that case: it is a package with the wrong entry filename, and silently
- * dropping it would ship a build that reports success with the feature
- * simply missing. That fails loud instead.
- *
- * Two directories whose names mangle to the same identifier (`my-feature` and
- * `my.feature`) would otherwise emit a duplicate `const` binding that only
- * TypeScript catches, long after the generator ran. Caught here instead.
+ * A directory with no TypeScript in it is skipped quietly (src/features also
+ * holds this file's output, the shared types module and the registry's tests),
+ * but one that contains TypeScript and has no index.ts fails loudly: that is a
+ * package with the wrong entry filename, and dropping it ships a green build
+ * with the feature missing. Two names that mangle to the same identifier are
+ * refused here too, since the duplicate `const` would surface far from here.
  */
 function packages(dir) {
   if (!existsSync(dir)) return []

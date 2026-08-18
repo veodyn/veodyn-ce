@@ -1,19 +1,8 @@
 /**
- * Catch-all proxy for Redash API.
- *
- * Forwards requests from the Next.js client to the Redash backend,
- * preserving cookies (session) and CSRF tokens.
- *
- * This replaces the original Redash client's direct same-origin requests.
- * The browser talks to Next.js (/api/node/*), and Next.js proxies to the
- * actual Redash backend (REDASH_URL). `/api/redash/*` re-exports the
- * handlers below as a deprecation alias; see `../redash/[...path]/route.ts`.
- *
- * Cookie flow:
- *   Browser → Next.js proxy → Redash backend
- *   Browser ← Next.js proxy ← Redash backend (Set-Cookie forwarded)
- *
- * Supports: GET, POST, PUT, DELETE, PATCH
+ * Catch-all proxy for the Redash API. The browser talks to `/api/node/*` and
+ * this forwards to REDASH_URL, preserving session cookies and CSRF tokens.
+ * `/api/redash/*` re-exports these handlers as a deprecation alias; see
+ * `../redash/[...path]/route.ts`.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -26,15 +15,15 @@ import {
 } from './proxy-guards'
 import { COOKIE_SECURE_ATTR } from '@/lib/cookie-attrs'
 
-// Never cache proxied responses — dashboards/queries carry volatile fields
-// like latest_query_data_id; a cached GET serves stale result pointers.
+// Never cache: dashboards/queries carry volatile fields like
+// latest_query_data_id, so a cached GET serves stale result pointers.
 export const dynamic = 'force-dynamic'
 
 const REDASH_URL = process.env.REDASH_URL || ''
 
 function getRedashUrl(path: string[]): string | null {
-  // Redash's ping (used to refresh the csrf_token cookie) lives at the root,
-  // outside the /api/* namespace.
+  // Redash's ping (refreshes the csrf_token cookie) lives at the root, outside
+  // the /api/* namespace.
   if (path.length === 1 && path[0] === 'ping') {
     return `${REDASH_URL}/ping`
   }
@@ -59,18 +48,14 @@ async function proxyRequest(
 
   const target = getRedashUrl(path)
   if (target === null) {
-    // 404, not 400: a caller probing for traversal learns nothing it could not
-    // have learned from asking for a path that simply does not exist.
+    // 404, not 400: a caller probing for traversal learns nothing from it.
     return NextResponse.json({ message: 'Not found.' }, { status: 404 })
   }
 
   const url = new URL(target)
 
-  // Forward query params. `append`, not `set`: Redash list filtering takes
-  // repeated keys (?tags=a&tags=b) and services/api-client.ts appends them on
-  // purpose, so `set` collapsed two tags into one and answered a valid, wrong,
-  // narrower page with nothing surfacing anywhere. getRedashUrl builds a
-  // path-only URL, so there is no pre-existing param here to duplicate.
+  // `append`, not `set`: Redash list filtering takes repeated keys
+  // (?tags=a&tags=b), and `set` collapses two tags into one narrower page.
   request.nextUrl.searchParams.forEach((value, key) => {
     url.searchParams.append(key, value)
   })
@@ -88,7 +73,6 @@ async function proxyRequest(
     return NextResponse.json({ message: 'Please login to continue.' }, { status: 401 })
   }
 
-  // Build headers to forward
   const headers: Record<string, string> = {
     'Content-Type': request.headers.get('content-type') || 'application/json',
   }
@@ -102,10 +86,9 @@ async function proxyRequest(
     headers['Authorization'] = authHeader
     usedApiKeyAuth = true
   } else if (userApiKey && !isPublicPath(path)) {
-    // Authenticate with the user's own API key (set at login). Deliberately
-    // do NOT forward the session cookie alongside it: Flask-Login prefers
-    // session auth, which would re-enable Redash's CSRF check. API-key
-    // requests are CSRF-exempt.
+    // The user's own API key (set at login). No session cookie alongside it:
+    // Flask-Login prefers session auth, which re-enables Redash's CSRF check,
+    // and API-key requests are CSRF-exempt.
     headers['Authorization'] = `Key ${userApiKey}`
     usedApiKeyAuth = true
   } else {
@@ -120,25 +103,21 @@ async function proxyRequest(
     }
   }
 
-  // An anonymous keyed-results request authenticates by its URL alone, so
-  // nothing was attached above. It still counts as API-key auth on the way
-  // back out: Redash answers it with a brand-new empty session, and forwarding
-  // that Set-Cookie would overwrite a real login (same hazard as the header
-  // branches). With a session present, Redash authenticates the session and
-  // its cookie refresh must keep flowing.
+  // An anonymous keyed-results request authenticates by its URL alone, so it
+  // counts as API-key auth on the way back out: Redash answers it with a new
+  // empty session whose Set-Cookie would overwrite a real login. With a session
+  // present, Redash authenticates that session and its refresh must keep flowing.
   if (keyedResults && !hasSession) {
     usedApiKeyAuth = true
   }
 
-  // Build fetch options
   const fetchOptions: RequestInit = {
     method,
     headers,
-    // Don't follow redirects — let the client handle 302s (e.g., login redirect)
+    // Let the client handle 302s (e.g. login redirect).
     redirect: 'manual',
   }
 
-  // Forward body for non-GET requests
   if (method !== 'GET' && method !== 'HEAD') {
     try {
       const body = await request.text()
@@ -151,42 +130,31 @@ async function proxyRequest(
   try {
     const response = await fetch(url.toString(), fetchOptions)
 
-    // Read response body.
-    //
     // Text is read as text so the branches below can inspect it (the 401 retry
-    // reads the body). Everything else is read as bytes and passed through
-    // untouched: this used to call response.text() for both, which decodes as
-    // UTF-8 and silently corrupts anything binary. A query's results.xlsx is
-    // the case that matters, and a corrupt spreadsheet does not announce
-    // itself, it just fails to open.
+    // reads the body). Everything else stays bytes: response.text() decodes as
+    // UTF-8 and silently corrupts a query's results.xlsx.
     const contentType = response.headers.get('content-type') || ''
     const body: string | ArrayBuffer = isTextualContentType(contentType)
       ? await response.text()
       : await response.arrayBuffer()
 
-    // Build response, forwarding status and key headers.
-    //
-    // 204/205/304 must be constructed with a NULL body. The `''` that
-    // response.text() returns for an empty body still counts as a body, so the
-    // Response constructor throws "Invalid response status code 204", and that
-    // throw lands in the catch below, which relabels a call that SUCCEEDED as a
-    // 502 backend outage. Redash returns make_response("", 204) from both
-    // data_sources.py and destinations.py, so deleting a data source reported
-    // an outage while the row was already gone on the backend.
+    // 204/205/304 must be constructed with a NULL body: the `''` that
+    // response.text() returns still counts as a body, so the Response
+    // constructor throws and the catch below relabels a call that SUCCEEDED as
+    // a 502. Redash returns make_response("", 204) from data_sources.py and
+    // destinations.py.
     const isNullBodyStatus = [204, 205, 304].includes(response.status)
     const res = new NextResponse(isNullBodyStatus ? null : body, {
       status: response.status,
       statusText: response.statusText,
     })
 
-    // Forward content type
     if (contentType) {
       res.headers.set('Content-Type', contentType)
     }
 
     // The filename Redash chose for a download. Without it every export lands
-    // under whatever the URL's last segment was, regardless of which query
-    // produced it.
+    // under whatever the URL's last segment was.
     const disposition = response.headers.get('content-disposition')
     if (disposition) {
       res.headers.set('Content-Disposition', disposition)
@@ -194,14 +162,10 @@ async function proxyRequest(
 
     res.headers.set('Cache-Control', 'no-store')
 
-    // Forward Set-Cookie headers (session cookies from Redash). Critical for
-    // cookie-based auth to work.
-    //
-    // But ONLY when we authenticated with the caller's session cookie. An
-    // API-key request is anonymous as far as Flask-Login is concerned, so
-    // Redash answers it with a brand-new empty session plus its CSRF token.
-    // Forwarding those would overwrite the browser's real login cookie and
-    // silently sign the user out on the next navigation.
+    // Forward Set-Cookie ONLY when we authenticated with the caller's session
+    // cookie. An API-key request is anonymous to Flask-Login, so Redash answers
+    // with a brand-new empty session that would overwrite the browser's real
+    // login cookie and sign the user out on the next navigation.
     if (!usedApiKeyAuth) {
       const setCookies = response.headers.getSetCookie()
       for (const cookie of setCookies) {
@@ -209,10 +173,9 @@ async function proxyRequest(
       }
     }
 
-    // Regenerating your OWN API key invalidates the `redash_api_key` cookie
-    // set at login — refresh it from the response so the very next request
-    // doesn't fail with a dead key. (Only for the session user's own key:
-    // an admin regenerating someone else's must not adopt their identity.)
+    // Regenerating your OWN API key invalidates the `redash_api_key` cookie set
+    // at login, so refresh it here. Only for the session user's own key: an
+    // admin regenerating someone else's must not adopt their identity.
     if (
       method === 'POST' &&
       response.ok &&
@@ -232,14 +195,11 @@ async function proxyRequest(
             if (String(sessionData?.user?.id) === path[1]) {
               const newKey = JSON.parse(body as string)?.api_key
               if (newKey) {
-                // Raw header, deliberately NOT res.cookies.set. NextResponse
-                // builds its ResponseCookies map in the constructor, before the
-                // Set-Cookie appends above, and every .set() rewrites the whole
-                // header from that stale map. So the cookies API DELETED
-                // Redash's forwarded session refresh, on exactly the request
-                // that heals the key. encodeURIComponent matches what
-                // ResponseCookies did, since RequestCookies decodes on the way
-                // back in; Max-Age alone outranks Expires everywhere.
+                // Raw header, not res.cookies.set: NextResponse builds its
+                // ResponseCookies map in the constructor, before the Set-Cookie
+                // appends above, so every .set() rewrites the whole header from
+                // that stale map and drops Redash's forwarded session refresh.
+                // encodeURIComponent matches what ResponseCookies did.
                 const maxAge = 60 * 60 * 24 * 30
                 res.headers.append(
                   'Set-Cookie',
@@ -249,7 +209,7 @@ async function proxyRequest(
             }
           }
         } catch {
-          // Non-fatal — user can re-login to refresh the cookie
+          // Non-fatal: the user can re-login to refresh the cookie.
         }
       }
     }

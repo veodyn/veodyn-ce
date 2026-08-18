@@ -1,25 +1,17 @@
 """The wire contract for the community AI endpoints.
 
-This mirrors app/src/types/ai.ts and ai-report.ts, and it is checked
-TWICE: once here on the way out, and again by the relay in
-app/src/lib/ai-proxy.ts on the way in. The relay's copy is deliberately
-unforgiving (an extra field, a missing queryId on a chart block, a `result`
-that was not there before are all refused and become a 502), so a drift between
-these models and those Zod schemas surfaces as "AI is broken", not as a
-tolerated difference. Change one, change the other.
+This mirrors app/src/types/ai.ts and ai-report.ts, and it is checked TWICE: once
+here on the way out, and again by the relay in app/src/lib/ai-proxy.ts on the way
+in. The relay's copy is unforgiving (an extra field, a missing queryId on a chart
+block, an unexpected `result` are all refused and become a 502), so a drift
+between these models and those Zod schemas surfaces as "AI is broken" rather than
+as a tolerated difference. Change one, change the other.
 
-The Create-with-AI conversation is schemas/ai_create.py, which mirrors
-app/src/types/ai-create.ts the same way. It imports from here and not the
-other way round: a proposal is built out of these pieces (a generated query, a
-report outline), while nothing here needs to know a conversation exists.
-
-The enterprise endpoints' half is schemas/ai_ee.py, which also imports from here
-and not the reverse. **The line between the two is that import direction rather
-than the subject.** `OutlineSectionOut` and `ReportOutlineOut` describe an
-outline, and outline GENERATION is enterprise, but they stay here because
-ai_create.py assembles a converse proposal out of them and converse is
-community. A build with no pack can propose a report in an interview turn and
-has no endpoint that drafts one.
+schemas/ai_create.py and schemas/ai_ee.py both import from here and never the
+reverse, and that import direction is the line between them rather than the
+subject: `OutlineSectionOut` and `ReportOutlineOut` stay here even though outline
+GENERATION is enterprise, because ai_create.py assembles a community converse
+proposal out of them.
 """
 
 from typing import Any
@@ -62,16 +54,12 @@ class GenerateSqlOut(CamelModel):
 class NewQueryProposalOut(CamelModel):
     """A query the AI wrote because the instance did not have one that fits.
 
-    Beside generate-sql rather than with the proposals, because that is what it
-    is: the output of one `generate_sql` call, so it has been through the
-    one-statement, read-only, right-table check and its retry-with-reason. Three
-    containers carry one (a dashboard widget, a KPI, a report section) and two of
-    them live in ai_create.py, so putting it there would make an outline section
-    import the conversation contract to describe a query.
+    The output of one `generate_sql` call, so it has been through the
+    one-statement, read-only, right-table check and its retry-with-reason. It
+    sits beside generate-sql rather than with the proposals in ai_create.py, or an
+    outline section would import the conversation contract to describe a query.
 
-    Carries everything QueryProposalOut does except its `kind` discriminator,
-    because whoever holds one creates it with exactly the same call: write the
-    query, then point the container at what it produced.
+    Carries everything QueryProposalOut does except its `kind` discriminator.
     """
 
     name: str
@@ -81,28 +69,21 @@ class NewQueryProposalOut(CamelModel):
     # A VIZ_CHOICES id, not a Redash type. See CHOICE_IDS in
     # services/ai_viz_choice.py for the closed list and where it comes from.
     viz_choice_id: str
-    # The renderer options for that shape: a column mapping, stacking, an axis
-    # scale. Always present and often empty, never optional: ConverseOut's own
-    # comment explains why (the relay's schema is strict, and an optional field
-    # here becomes a "may be absent" in the generated frontend contract).
+    # The renderer options for that shape (a column mapping, stacking, an axis
+    # scale), sanitized against schemas/public_viz_options.py and checked against
+    # the statement's real columns before it gets here.
     #
-    # Sanitized against schemas/public_viz_options.py and checked against the
-    # statement's real columns before it gets here, so what the card receives
-    # names only keys a renderer reads and columns the query returns.
-    #
-    # No default, for the reason the comment above claims and a default would
-    # have quietly broken: pydantic marks a defaulted field OPTIONAL in the
-    # OpenAPI schema, openapi-typescript then generates `vizOptions?`, and the
-    # generated contract test refuses it against the hand-written type. The wire
-    # always carries this key, so the schema has to say so.
+    # No default: pydantic marks a defaulted field OPTIONAL in the OpenAPI
+    # schema, openapi-typescript then generates `vizOptions?`, and the generated
+    # contract test refuses it against the hand-written type. The wire always
+    # carries this key.
     viz_options: dict[str, Any]
 
 
 # --- the outline a conversation can propose ---------------------------------
 #
-# The RESPONSE side of an outline only. The request types (OutlineIn and the
-# rest) are in schemas/ai_ee.py with the endpoint that accepts them; these two
-# are here because ai_create.py's ReportProposalOut is built out of them.
+# The RESPONSE side only. The request types (OutlineIn and the rest) are in
+# schemas/ai_ee.py with the endpoint that accepts them.
 
 
 class OutlineSectionOut(CamelModel):
@@ -125,10 +106,9 @@ class OutlineSectionOut(CamelModel):
     def _not_both_sources(self) -> "OutlineSectionOut":
         """A section names a query, writes one, or is prose. Never two.
 
-        A section carrying both would have the card create a query and then draw
-        a different one beside the same words. Unlike a dashboard widget, NEITHER
-        is valid here: a section with no source is prose, which is a section an
-        outline is allowed to contain.
+        A section carrying both would have the card create a query and then draw a
+        different one beside the same words. Unlike a dashboard widget, NEITHER is
+        valid here: a section with no source is prose.
         """
         if self.source_query_id is not None and self.new_query is not None:
             raise ValueError("a section names an existing query or writes one, not both")

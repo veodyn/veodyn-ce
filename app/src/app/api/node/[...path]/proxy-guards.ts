@@ -1,15 +1,14 @@
 /**
  * The pure decisions the catch-all proxy makes about a request, kept beside it.
- * Everything here is a predicate or a string transform with no I/O, so the
- * route handler stays the only place that talks to the network.
+ * No I/O here, so the route handler stays the only place that talks to the
+ * network.
  */
 
 import type { NextRequest } from 'next/server'
 
 /**
- * Whether a response body can be read as text without damaging it.
- *
- * Deliberately matched on the type rather than on a substring: xlsx is
+ * Whether a response body can be read as text without damaging it. Matched on
+ * the type rather than on a substring: xlsx is
  * `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, which
  * contains "xml" twice and is not text at all.
  */
@@ -31,9 +30,8 @@ export function isPublicPath(path: string[]): boolean {
     joined === 'ping' ||
     joined === 'session' ||
     joined.startsWith('dashboards/public/') ||
-    // A per-visualization share token, the embed equivalent of the dashboard
-    // one above. The token in the path is the entire credential, so this
-    // request arrives with no session and no key by design.
+    // A per-visualization share token: the token in the path is the entire
+    // credential, so this request arrives with no session and no key.
     joined.startsWith('visualizations/public/') ||
     // Invite/reset token endpoints: the token itself is the credential
     (path.length === 2 && (path[0] === 'invite' || path[0] === 'reset'))
@@ -58,22 +56,11 @@ export function isKeyedResultsPath(request: NextRequest, path: string[]): boolea
  * The `/api/` suffix to address on the backend, or null when the caller's
  * segments are not addressing something under `/api/` at all.
  *
- * These segments are caller input and used to be joined and interpolated raw.
- * `new URL()` resolves dot segments, so a `..` walked out of the `/api/`
- * namespace and reached the backend root; it decodes before resolving, so
- * `%2e%2e` did the same.
- *
- * Next's router normalises a literal `../` away before a handler ever sees it,
- * which is what made this look unreachable. It does not normalise one hidden
- * INSIDE a segment: `/api/node/..%2flogin` arrives here as the single segment
- * `../login`, and that reached the backend's HTML login page instead of
- * `/api/login`. Confirmed against a running dev server, before and after.
- *
- * So both halves: refuse a segment that IS a traversal, and percent-encode the
- * rest, which neutralises one that merely CONTAINS a separator (`../login`
- * becomes `..%2Flogin`, a segment name the backend simply does not have).
- * Encoding alone would close it today; the refusal is the half a reader can see
- * is doing something.
+ * Both halves are load-bearing: refuse a segment that IS a traversal, and
+ * percent-encode the rest to neutralise one that merely CONTAINS a separator.
+ * Next normalises a literal `../` away before a handler sees it, but not one
+ * hidden inside a segment: `/api/node/..%2flogin` arrives as the single segment
+ * `../login` and reached the backend's HTML login page.
  *
  * Same shape as the sibling relays in `api/tags` and `api/verify`. Nothing
  * legitimate changes: `queries/1/results.json` and a base64url share token both

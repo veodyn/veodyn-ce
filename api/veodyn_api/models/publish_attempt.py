@@ -1,42 +1,29 @@
 """One publish attempt and, when it succeeded, the bytes it produced.
 
-Identity is (binding revision, query_result_id), which is what makes an
-artifact traceable to both the mapping that produced it and the data it came
-from. A binding edit bumps the revision, so an artifact produced under the old
-mapping can never be mistaken for a current one.
+Identity is (binding revision, query_result_id), which makes an artifact
+traceable to both the mapping that produced it and the data it came from. A
+binding edit bumps the revision.
 
-`is_current` is the published pointer. Exactly one row per feed may carry it,
-enforced by a partial unique index rather than by application care: two writers
-racing a publish is not a rare case, and "clear the old one first" is a habit
-every future caller would have to keep rather than a rule the database keeps
-for them.
-
-The partial index predicate is a **SQL expression**, `text("is_current")`, not
-`Boolean("is_current")`. `Boolean` is a SQLAlchemy type; calling it builds a
-type instance whose constructor argument is `create_constraint`, so that
-spelling silently produces an index with no predicate at all, which is a full
-unique index on (org_slug, slug) and refuses the second attempt for a feed
-whatever its decision. `0012_publish_attempt.py` writes `sa.text("is_current")`
-and these two have to agree, because tests build the schema from this metadata
-while production gets it from the migration.
+`is_current` is the published pointer, and exactly one row per feed may carry
+it, enforced by a partial unique index rather than by application care. That
+predicate has to be a **SQL expression**, `text("is_current")`, never
+`Boolean("is_current")`: `Boolean` is a SQLAlchemy type whose constructor
+argument is `create_constraint`, so that spelling silently produces an index with
+no predicate, which is a full unique index on (org_slug, slug) and refuses the
+second attempt for a feed whatever its decision. `0012_publish_attempt.py`
+writes `sa.text("is_current")` and the two have to agree, because tests build the
+schema from this metadata while production gets it from the migration.
 
 Every default here is a `server_default` matching that migration, for the same
-reason `PublishedFeed` gives: `Base.metadata.create_all()` is what the test
-database is built from, so a Python-side `default=` would describe a table the
-tests never see and let a raw INSERT diverge between the two.
+reason `PublishedFeed` gives.
 
-**There is no foreign key to `published_feed`, and that is a live hazard rather
-than a design choice.** `(org_slug, slug)` names a binding that this table does
-not depend on, so deleting a binding leaves its attempts behind with
-`is_current` still set. Recreate the same slug and the new binding inherits the
-old one's published bytes from its first moment, before it has validated
-anything. `routers/published_feeds.py` closes that today by clearing the pointer
-on delete, and it is currently the only code path that deletes a binding, so the
-hole is shut. But it is shut by one call site remembering to, which is exactly
-the kind of guarantee the partial index above was given to the database instead
-of to callers. A cascading foreign key would make it structural; that is a
-migration this task did not take, and the serving endpoint is the work that
-would be embarrassed by getting it wrong.
+**There is no foreign key to `published_feed`.** Deleting a binding leaves its
+attempts behind with `is_current` still set, so recreating the same slug would
+have the new binding inherit the old one's published bytes before it has
+validated anything. `routers/published_feeds.py` clears the pointer on delete and
+is the only path that deletes a binding, so the hole is shut by a call site
+rather than structurally; a cascading foreign key is the migration that would
+make it structural.
 """
 
 from datetime import datetime
@@ -64,21 +51,17 @@ class PublishAttempt(Base):
     __tablename__ = "publish_attempt"
     __table_args__ = (
         # Spelled out because `attempt_id` is the autoincrement column, and an
-        # implicit composite key puts that column first: the metadata builds
+        # implicit composite key puts it first: the metadata would build
         # (attempt_id, org_slug, slug) while `0012_publish_attempt.py` builds
-        # (org_slug, slug, attempt_id). Only the second is prefixed by the
-        # tenant, which is how every read of this table addresses it. Two
-        # different indexes under one name is exactly the divergence the tests
-        # cannot see, because they build their schema from here and production
-        # gets it from the migration.
+        # (org_slug, slug, attempt_id), the tenant-prefixed order every read of
+        # this table uses.
         PrimaryKeyConstraint("org_slug", "slug", "attempt_id"),
         CheckConstraint(
             "decision IN ('published', 'blocked', 'failed')",
             name="ck_publish_attempt_decision",
         ),
-        # Bytes exist if and only if the attempt published. A blocked attempt
-        # holding servable bytes is one mistake away from being served, and the
-        # whole point of blocking was that those bytes are not fit to serve.
+        # Bytes exist if and only if the attempt published: a blocked attempt
+        # holding servable bytes is one mistake away from being served.
         CheckConstraint(
             "(decision = 'published') = (feed_bytes IS NOT NULL)",
             name="ck_publish_attempt_bytes_match_decision",

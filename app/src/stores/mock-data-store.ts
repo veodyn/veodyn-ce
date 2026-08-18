@@ -20,23 +20,18 @@ import { createPublishedFeedSlice, type PublishedFeedSlice } from './published-f
 import { createContributedSlices, type ContributedSlices } from './generated-mock-slices'
 
 /**
- * What this store holds in every build, with no feature installed.
+ * What this store holds in every build, with no feature installed. The feed
+ * cadence writes in ./feed-slice.ts are part of it: feeds are community, and that
+ * file is a size split rather than a CE/EE one.
  *
- * The feed cadence writes are in ./feed-slice.ts and are part of it: feeds are
- * community, and that file is a file-size split rather than a CE/EE one.
- *
- * Everything an installed feature adds is `ContributedSlices`, which is
- * generated. A feature's descriptor names its slice module as a string
- * (`mockSlices` in src/features/types.ts) and the generator emits the static
- * import, because a slice carries ACTIONS and an action cannot arrive through
- * a deferred loader in time for a store built with `create()` at module scope.
- * Rows still arrive through `mockData` and `hydrateMockData` below.
- *
- * The consequence to know: `MockDataState` is an intersection rather than an
- * interface with an extends clause, because a build with no feature has
- * nothing to name in one. That is also what makes it honest, since
- * `state.kpis` then does not compile in a build with no KPI feature instead of
- * reading as undefined.
+ * Everything an installed feature adds is `ContributedSlices`, which is generated:
+ * a descriptor names its slice module as a string (`mockSlices` in
+ * src/features/types.ts) and the generator emits the static import, because a
+ * slice carries ACTIONS and an action cannot arrive through a deferred loader in
+ * time for a store built with `create()` at module scope. Rows still arrive
+ * through `mockData` and `hydrateMockData` below. An intersection rather than an
+ * interface with an extends clause, because a build with no feature has nothing to
+ * name in one, so `state.kpis` does not compile without the KPI feature.
  */
 interface MockDataCore {
   queries: MockQuery[]
@@ -48,21 +43,14 @@ interface MockDataCore {
   destinations: MockDestination[]
   querySnippets: MockQuerySnippet[]
   queryResults: Record<number, MockQueryResult>
-  // Redash-owned kinds are keyed by id, the sidecar-owned ones by slug. Kept
-  // in one object because they are one feature to a reader, even though two
-  // backends own them.
-  //
-  // `sidecar` is an open map and not a property per kind, for the same reason
-  // the contributed collections above are not named here: which kinds a build
-  // can star is a property of which features are installed, and `kpis` and
-  // `reports` as declared fields put two feature names in a community file.
-  // The keys are the singular kinds the wire uses; see
-  // src/features/favorite-kinds.ts.
+  // Redash-owned kinds are keyed by id, the sidecar-owned ones by slug. `sidecar`
+  // is an open map rather than a property per kind, because which kinds a build
+  // can star is a property of which features are installed. Its keys are the
+  // singular kinds the wire uses; see src/features/favorite-kinds.ts.
   favorites: { queries: number[]; dashboards: number[]; sidecar: Record<string, string[]> }
   /**
    * Who has been granted access to each object, by id. Mock mirror of Redash's
-   * /api/<type>/<id>/acl, so the permissions dialog has somewhere to write in
-   * mock mode instead of appearing to work and doing nothing.
+   * /api/<type>/<id>/acl, so the permissions dialog has somewhere to write.
    */
   accessGrants: { queries: Record<number, number[]>; dashboards: Record<number, number[]> }
   // Data Catalog: read-only in the MVP, no CRUD actions below.
@@ -115,8 +103,7 @@ interface MockDataCore {
   // Favorites
   toggleFavorite: (type: 'queries' | 'dashboards', id: number) => void
   // Separate from toggleFavorite rather than a widened signature: these ids are
-  // slugs, and the objects carry no is_favorite field to keep in step, so the
-  // two actions have nothing in common but their name.
+  // slugs, and the objects carry no is_favorite field to keep in step.
   toggleVeodynFavorite: (kind: string, id: string) => void
   grantAccess: (type: 'queries' | 'dashboards', id: number, userId: number) => void
   revokeAccess: (type: 'queries' | 'dashboards', id: number, userId: number) => void
@@ -128,9 +115,8 @@ interface MockDataCore {
 export type MockDataState = MockDataCore & FeedSlice & PublishedFeedSlice & ContributedSlices
 
 export const useMockDataStore = create<MockDataState>((set, get, store) => ({
-  // Contributed first, then community, matching the order these were spread in
-  // when all four slices were named here: a key two slices both declare
-  // resolves to whichever is spread last, so this order is behaviour.
+  // ORDER IS BEHAVIOUR: a key two slices both declare resolves to whichever is
+  // spread last. Contributed first, then community.
   ...createContributedSlices(set, get, store),
   ...createFeedSlice(set, get, store),
   ...createPublishedFeedSlice(set, get, store),
@@ -149,11 +135,8 @@ export const useMockDataStore = create<MockDataState>((set, get, store) => ({
   favorites: {
     queries: mockQueries.filter((q) => q.is_favorite).map((q) => q.id),
     dashboards: mockDashboards.filter((d) => d.is_favorite).map((d) => d.id),
-    // Nothing starred to begin with: the fixtures describe objects, and whose
-    // favorite one is is a fact about a person, not about the object. Empty
-    // rather than a key per installed kind, because every reader defaults a
-    // missing kind to no stars and seeding it here would be a second answer to
-    // the same question.
+    // Nothing starred to begin with, and empty rather than a key per installed
+    // kind: every reader defaults a missing kind to no stars.
     sidecar: {},
   },
   // Nothing is granted to begin with: an object starts owned by its author and

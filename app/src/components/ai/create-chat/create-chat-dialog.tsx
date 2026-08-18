@@ -1,8 +1,8 @@
 'use client'
 
 // The Create-with-AI shell: the conversation, the composer, and the proposal
-// card once the model has one. Mounted only while open, because unmounting is
-// how the conversation is discarded (there is no persistence, spec section 7).
+// card. Mounted only while open, because unmounting is how the conversation is
+// discarded (there is no persistence, spec section 7).
 import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -55,22 +55,19 @@ export function CreateChatDialog({ kind, onClose, targetDashboardId }: CreateCha
 
   const inputId = useId()
   const noticeId = useId()
-  // Where the dialog puts the cursor when it opens. Without it focus lands on
-  // the first tabbable thing in the panel, which is the transcript's scroll
-  // region, and the first thing anyone does here is type.
+  // Where the dialog puts the cursor when it opens, since the default lands on
+  // the transcript's scroll region.
   const composerRef = useRef<HTMLTextAreaElement>(null)
 
   const composer = composerState({ turns: chat.turns, sending: chat.sending, creating })
   const manual = manualPath(kind)
 
   function requestClose() {
-    // A create in flight is not cancellable: the objects it has already written
-    // exist, and unmounting here would route the user somewhere after they
-    // asked to leave, or leave a half-built dashboard with nobody told. Closing
-    // waits for it, which is a second at most.
+    // A create in flight is not cancellable: the objects it has written already
+    // exist. Closing waits for it.
     if (creating) return
-    // A proposal on screen is work the user has not committed and cannot get
-    // back: nothing is stored and nothing resumes.
+    // A proposal on screen is uncommitted work: nothing is stored and nothing
+    // resumes.
     if (chat.proposal != null) {
       setConfirming(true)
       return
@@ -90,10 +87,8 @@ export function CreateChatDialog({ kind, onClose, targetDashboardId }: CreateCha
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    // The composer is a textarea so a long description can wrap instead of
-    // scrolling sideways through one line, but this is a chat: Enter sends and
-    // Shift+Enter starts a line. A textarea would otherwise swallow the key
-    // that every other chat submits with.
+    // A textarea so a long description wraps, but chat rules: Enter sends,
+    // Shift+Enter starts a line.
     if (event.key !== 'Enter' || event.shiftKey) return
     // Mid-composition Enter accepts an IME candidate. Sending here would post
     // the half-typed word and lose the rest.
@@ -124,46 +119,27 @@ export function CreateChatDialog({ kind, onClose, targetDashboardId }: CreateCha
       <DialogContent
         size="lg"
         // Capped rather than fixed: the transcript scrolls inside the panel
-        // instead of growing it turn after turn until the composer is off the
-        // bottom of the screen, but a conversation two turns in is still a
-        // short dialog rather than four hundred pixels of reply sitting at the
-        // top of an empty one.
+        // instead of growing it until the composer is off the bottom, while a
+        // two-turn conversation stays a short dialog.
         fill="max"
-        // The page behind is the subject of the conversation, not something to
-        // get out of the way: an edit turn describes the dashboard it is opened
-        // over, and a dashboard nobody can read is a poor thing to be asked
-        // questions about. Dimmed, not blurred.
+        // The page behind is the subject of the conversation: an edit turn
+        // describes the dashboard it is opened over. Dimmed, not blurred.
         blurBackdrop={false}
-        // Straight into the composer. The default lands on the first tabbable
-        // element, which here is the transcript's scroll region, so the reader
-        // had to click the box before typing the message they opened this to
-        // send.
         initialFocus={composerRef}
       >
         <DialogHeader>
           <DialogTitle>{dialogTitle(kind)}</DialogTitle>
         </DialogHeader>
-        {/* The scroller is the dialog's body: DialogContent has no scrolling
-            region of its own, only a header/body/footer stack sharing one flex
-            column. grow, not flex-1: flex-1 carries a flex-basis of 0, and the
-            panel's height is its content's under `fill="max"`, so a basis of 0
-            is what the panel would size itself to. min-h-0 goes with it, since
-            a flex item's automatic minimum size is its content and without it
-            this region refuses to shrink below its children.
+        {/* The scroller is the dialog's body. grow, not flex-1: flex-1 carries a
+            flex-basis of 0, and the panel's height is its content's under
+            `fill="max"`, so a basis of 0 is what it would size itself to. min-h-0
+            because a flex item's automatic minimum size is its content.
 
-            Follow the bottom; do NOT anchor a turn to the top of the viewport.
-            Anchoring is the scroller's other mode, and it is the one mode a
-            content-sized panel cannot host: to lift a turn to the top the
-            primitive appends a spacer sized from the viewport's own height, the
-            spacer grows the content, the content grows the panel, and the taller
-            panel asks for a taller spacer. It settles at the 85vh cap with a
-            screenful of nothing under the last turn and the user's own message
-            clipped off the top -- measured at 309px before a proposal card and
-            1329px after, 610px of it spacer. `end` never sizes the spacer at
-            all, so the panel is the conversation's height until the cap and
-            scrolls after it. autoScroll still follows a reply only while the
-            reader is at the live edge and backs off the moment they scroll up;
-            the scroll button it renders is how they get back. */}
+            `end`, never the anchor mode: anchoring appends a spacer sized from
+            the viewport's own height, which grows the content, which grows the
+            content-sized panel, which asks for a taller spacer. Measured at 309px
+            before a proposal card and 1329px after, 610px of it spacer, settling
+            at the 85vh cap with the user's message clipped off the top. */}
         <MessageScrollerProvider autoScroll defaultScrollPosition="end">
           <MessageScroller className="min-h-0 grow">
             <MessageScrollerViewport aria-label="Conversation with the AI">
@@ -183,11 +159,7 @@ export function CreateChatDialog({ kind, onClose, targetDashboardId }: CreateCha
                   // Keyed on the sequence, so a revision is a new card rather
                   // than the old card's state wearing the new card's props:
                   // without it the name the user typed survives onto a proposal
-                  // they have not seen, and that pair is what gets written. A
-                  // row rather than loose content so the scroller can address
-                  // it, and the card's own Create button is what the scroller
-                  // brings into view: it sits at the bottom of the card, which
-                  // is where following the bottom lands.
+                  // they have not seen, and that pair is what gets written.
                   <MessageScrollerItem
                     key={chat.proposalSeq}
                     messageId={`proposal-${chat.proposalSeq}`}
@@ -197,10 +169,8 @@ export function CreateChatDialog({ kind, onClose, targetDashboardId }: CreateCha
                       targetDashboardId={targetDashboardId}
                       onCreated={handleCreated}
                       onBusyChange={setCreating}
-                      // A revision is in flight, so this card is already out of date.
-                      // Creating from it writes the thing the user just asked to
-                      // change, and the answer that would have corrected it is aborted
-                      // by the navigation that follows.
+                      // A revision is in flight, so creating from this card would
+                      // write the thing the user just asked to change.
                       superseded={chat.sending}
                     />
                   </MessageScrollerItem>
@@ -218,12 +188,9 @@ export function CreateChatDialog({ kind, onClose, targetDashboardId }: CreateCha
               <Label htmlFor={inputId} className="sr-only">
                 Message the AI
               </Label>
-              {/* The chat composer shape, not a one-line field with a labelled
-                  button beside it: the text sits above its own controls, and
-                  sending is the round arrow every chat puts in that corner. The
-                  spinner replaces the arrow rather than pushing a word in next
-                  to it, so the control keeps its size and its place while a
-                  turn is in flight. */}
+              {/* The chat composer shape: text above its own controls, sending
+                  as the round arrow in the corner. The spinner replaces the
+                  arrow so the control keeps its size and place in flight. */}
               <InputGroup>
                 <InputGroupTextarea
                   ref={composerRef}
@@ -275,9 +242,8 @@ export function CreateChatDialog({ kind, onClose, targetDashboardId }: CreateCha
   )
 }
 
-// Inline rather than a nested ConfirmDialog: the confirmation takes the
-// composer's place instead, where the user is already looking, rather than
-// stacking a second dialog on top of this one.
+// Inline rather than a nested ConfirmDialog: it takes the composer's place
+// instead of stacking a second dialog on top of this one.
 function DiscardConfirm({ onKeep, onDiscard }: { onKeep: () => void; onDiscard: () => void }) {
   return (
     <div className="flex w-full flex-col gap-2">

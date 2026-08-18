@@ -8,12 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
-// The disabled styling keys off the CONTROL, not `has-disabled`. `has-disabled`
-// is `:has(:disabled)`, which any disabled descendant satisfies, so a submit
-// button that is disabled until there is something to submit dimmed the whole
-// field to 50% on top of the button's own `disabled:opacity-50`. The composer
-// read as switched off while the user could still type in it, and the label on
-// the button was white at a quarter opacity.
+// The disabled styling keys off the CONTROL slot, not `has-disabled`:
+// `:has(:disabled)` matches any disabled descendant, so a disabled submit
+// button inside the group would dim the whole field.
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -60,21 +57,13 @@ function InputGroupAddon({
       data-slot="input-group-addon"
       data-align={align}
       className={cn(inputGroupAddonVariants({ align }), className)}
-      // An addon is inside the group's border and reads as part of the field,
-      // so a click on it has to land the caret in the field. It looked for an
-      // `input`, and the AI composer's control is a textarea: the lookup found
-      // nothing, and because a bare div is not focusable the click had already
-      // blurred the textarea onto the nearest focusable ancestor. Measured in
-      // Chrome, focus went from the composer to the dialog panel, so the user
-      // clicked inside the box they were typing in and lost the caret. That was
-      // over half the visible control: 46px of an 84px box.
+      // An addon reads as part of the field, so a click on it has to land the
+      // caret in the control. A miss is not neutral: the addon is not focusable,
+      // so the click blurs the control onto the nearest focusable ancestor.
       //
-      // The slot first, since InputGroupInput and InputGroupTextarea both carry
-      // it and it names the control unambiguously. Then any input or textarea,
-      // because two consumers put an unslotted control in the group (cmdk's own
-      // input in command.tsx, a bare Input in data-sources/new). Keying only on
-      // the slot would have stopped the command palette focusing its search
-      // field, trading this bug for a quieter one.
+      // The slot first, then any input or textarea, because two consumers put
+      // an unslotted control in the group (cmdk's input in command.tsx, a bare
+      // Input in data-sources/new).
       onClick={(e) => {
         if ((e.target as HTMLElement).closest("button")) {
           return

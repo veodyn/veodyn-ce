@@ -1,18 +1,12 @@
 /**
- * The MCP endpoint. Connect > MCP has always documented this URL; until now it
- * returned 404, so the page presented a copyable client config for a server
- * that did not exist.
- *
- * Transport is Streamable HTTP in its simplest conformant form: the client
- * POSTs JSON-RPC and gets one JSON response back. No SSE stream and no session
- * id, because every method here answers immediately and nothing is pushed.
+ * The MCP endpoint. Transport is Streamable HTTP in its simplest conformant
+ * form: the client POSTs JSON-RPC and gets one JSON response back, with no SSE
+ * stream and no session id.
  *
  * Authentication is the caller's own Redash credential, never the instance's
- * service key. An MCP client sends `Authorization: Key <redash-api-key>`; a
- * browser on this origin has cookies this app's login route set. Exactly ONE
- * credential is chosen and forwarded, and the Cookie header is parsed rather
- * than passed through, so Redash decides what this caller may read using the
- * single identity the caller actually presented. See redash-caller.
+ * service key. Exactly ONE credential is chosen and forwarded, and the Cookie
+ * header is parsed rather than passed through, so Redash decides what this
+ * caller may read from the single identity presented. See redash-caller.
  */
 
 import { NextResponse } from 'next/server'
@@ -31,8 +25,7 @@ export const dynamic = 'force-dynamic'
 
 const SERVER = { name: 'veodyn', version: '1.0.0' }
 
-// One POST is one turn of a conversation. A batch is for a handful of related
-// messages, not for driving the endpoint as a work queue.
+// A batch is a handful of related messages, not a work queue.
 const MAX_BATCH_SIZE = 25
 
 function notConfigured() {
@@ -56,8 +49,7 @@ function unauthorized() {
   )
 }
 
-// Plain Request, not NextRequest: this handler reads headers and a JSON body
-// and touches nothing Next adds on top, so the narrower type is the honest one.
+// Plain Request, not NextRequest: nothing here uses what Next adds on top.
 export async function POST(request: Request) {
   if (!REDASH_URL) return notConfigured()
 
@@ -87,9 +79,8 @@ export async function POST(request: Request) {
       { status: 400 }
     )
   }
-  // Each message can cost several Redash requests, and they run one after the
-  // other on this request's clock. Without a cap, one POST carrying a thousand
-  // tool calls turns into a thousand calls against the analytics instance.
+  // Each message can cost several Redash requests, run serially on this
+  // request's clock, so without a cap one POST fans out into the instance.
   if (messages.length > MAX_BATCH_SIZE) {
     return NextResponse.json(
       failure(
@@ -140,7 +131,7 @@ export async function POST(request: Request) {
 /**
  * Streamable HTTP allows a GET for a server-initiated SSE stream. This server
  * never initiates anything, and the spec says to answer 405 when the stream is
- * not offered, rather than leaving a connection open that will stay silent.
+ * not offered.
  */
 export function GET() {
   if (!REDASH_URL) return notConfigured()

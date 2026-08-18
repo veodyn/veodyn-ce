@@ -1,18 +1,10 @@
 // The vocabulary a visualization uses to declare which of its options may
-// leave the product.
+// leave the product. No React and no app imports, so a plugin can declare a
+// schema without pulling the host app in behind it.
 //
-// This lives in the visualization layer rather than beside the public report
-// code because the declaration belongs to the type: a plugin knows which of its
-// own options a renderer reads, and nothing outside it does. It carries no
-// React and no app imports, so a plugin can declare a schema without pulling
-// the host app in behind it.
-//
-// The rules describe SHAPE, not sensitivity. Declaring a key here is a
-// statement that its value is safe to hand an unauthenticated reader, so the
-// vocabulary is deliberately narrow: primitives and containers of primitives,
-// every key named. There is no passthrough rule and no `unknown`, because an
-// options bag in the wild carries whatever an author, a promote-a-dashboard
-// copy, or a backend regression left in it.
+// The rules describe shape, not sensitivity: declaring a key states that its
+// value is safe to hand an unauthenticated reader. Primitives and containers of
+// primitives, every key named; there is no passthrough rule and no `unknown`.
 export type OptionRule =
   | 'string'
   | 'number'
@@ -31,17 +23,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-// A container that arrived with entries and kept none of them was carrying
-// something the schema refused, so the key goes with it rather than leaving an
-// empty shell behind. A container that was already empty is the author's own
-// empty value and is kept as it stands.
+// A container that arrived with entries and kept none is dropped whole. One
+// that was already empty is the author's own empty value and is kept.
 function survivors<T>(out: T, sourceSize: number, keptSize: number): T | undefined {
   return sourceSize > 0 && keptSize === 0 ? undefined : out
 }
 
 // Returns the value to keep, or `undefined` for "this does not belong in an
-// anonymous response". Recursive, so a schema-shaped wrapper around a
-// non-schema payload is opened rather than trusted.
+// anonymous response". Recursive, so a nested payload is opened, not trusted.
 function sanitizeValue(rule: OptionRule, value: unknown): unknown {
   if (rule === 'string') return typeof value === 'string' ? value : undefined
   if (rule === 'number') return typeof value === 'number' && Number.isFinite(value) ? value : undefined

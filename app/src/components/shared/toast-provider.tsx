@@ -4,27 +4,15 @@ import { toast } from 'sonner'
 import { capture, currentRoute } from '@/lib/observability/capture'
 import { EVENTS } from '@/lib/observability/events'
 
-// The hook stays and only its implementation changed, so all 31 call sites are
-// untouched. sonner (mounted as <Toaster /> from '@/components/ui/sonner')
-// owns the stack, the live region and dismissal now.
+// sonner (mounted as <Toaster /> from '@/components/ui/sonner') owns the stack,
+// the live region and dismissal.
 //
-// A stable id derived from (type, message) is passed on every call. sonner
-// replaces a toast in place when it is fired again with an id already on
-// screen, rather than adding a second one (verified against its reducer:
-// `create` looks up `alreadyExists` by id and merges instead of appending).
-// That reproduces the old Zustand store's dedupe: a repeated identical
-// failure updates the one toast already showing it instead of stacking N
-// copies of the same message.
+// The id derived from (type, message) is the dedupe: sonner's reducer merges
+// into a toast already on screen with that id instead of appending a second.
 //
-// `error` is also the telemetry seam. veodyn surfaces failure as toasts rather
-// than as thrown exceptions, so every failure a user is actually shown passes
-// through this one function. That is what makes it worth instrumenting here
-// rather than scattering capture calls across the call sites, and it is the
-// same property that let the implementation swap from Zustand to sonner without
-// touching any of them.
-//
-// The optional errorId lets a call site thread its ErrorIds code. It stays
-// optional so the existing callers keep compiling; add it on-touch.
+// `error` is the telemetry seam. Failure surfaces as toasts rather than thrown
+// exceptions, so every failure a user is shown passes through this function.
+// `errorId` is optional so existing callers keep compiling; add it on-touch.
 export function useToast() {
   return {
     success: (message: string) => toast.success(message, { id: `success:${message}` }),

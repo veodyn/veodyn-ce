@@ -1,17 +1,13 @@
 // The registry seam for mock-mode fixtures.
 //
-// Mock mode is not a test convenience here: it is what `pnpm test:e2e` runs
-// against and what the docs screenshots are produced from, so what the mock
-// store holds is load-bearing for two gates outside the unit suite. It is also
-// where the CE/EE split is most easily got wrong, because the failure is not a
-// crash. A collection that used to be an array of fixtures and is now
-// `undefined` reads as "this build has no KPIs" on one screen and throws
-// `Cannot read properties of undefined` on the next.
+// Mock mode is what `pnpm test:e2e` runs against and what the docs screenshots
+// are produced from, so what the mock store holds is load-bearing for two gates
+// outside the unit suite.
 //
-// So the rule this module exists to hold is narrow and absolute: a collection
-// nobody contributes is `[]`. Not missing, not null, not a thrown error, and
-// not a store that refuses to construct. Everything else here is in service of
-// that.
+// The rule this module exists to hold: a collection nobody contributes is `[]`.
+// Not missing, not null, not a thrown error, and not a store that refuses to
+// construct. An `undefined` collection reads as "this build has no KPIs" on one
+// screen and throws `Cannot read properties of undefined` on the next.
 //
 // Like features/search-sources.ts, features/slots.tsx and features/proposals.ts,
 // this module is NOT re-exported from features/index.ts: that entry point is
@@ -32,13 +28,11 @@ function contributorsIn(registry: Record<string, FeatureDescriptor>): MockContri
 /**
  * Every collection the installed features seed, merged, in featureList order.
  *
- * Two features naming one collection CONCATENATE rather than one winning. That
- * is the opposite of the rule for slots and proposal kinds, and deliberately
- * so: a slot is one hole and only one component can be in it, while a
- * collection is a list and two features both having rows to put in it is an
- * ordinary thing rather than a packaging mistake. Order follows featureList so
- * a build's fixtures do not reshuffle between runs, which matters because the
- * screenshots are diffed.
+ * Two features naming one collection CONCATENATE rather than one winning, the
+ * opposite of the rule for slots and proposal kinds: a collection is a list, and
+ * two features both having rows for it is ordinary rather than a packaging
+ * mistake. Order follows featureList so fixtures do not reshuffle between runs,
+ * which matters because the screenshots are diffed.
  *
  * A contributor whose loader rejects costs that feature's fixtures and nothing
  * else. It does not reject this promise: a half-applied overlay has to leave

@@ -1,12 +1,6 @@
 /**
- * Dashboard annotations against the real Redash backend.
- *
- * The backend contract here is defined, not implemented: upstream Redash has
- * no annotations resource. These calls are modeled against a plausible
- * /annotations path (dashboard-scoped list, create, delete) so the real-mode
- * branch has somewhere to go once a backend lands. Until then they will fail
- * against the proxy (404/503), matching the plan-06 catalog integration
- * stance of shipping the contract ahead of the implementation.
+ * Dashboard annotations. The backend resource does not exist: these calls are
+ * modeled against a plausible /annotations path and fail (404/503) in real mode.
  */
 
 import { redashApi } from '@/services/api-client'
@@ -14,20 +8,8 @@ import { USE_REAL_API } from '@/services/redash/config'
 import type { Annotation } from '@/types/annotation'
 
 /**
- * Whether this instance can actually store an annotation.
- *
- * Derived from the mode rather than declared as config, because it is not a
- * preference: in mock mode the store answers every call, and against a real
- * Redash there is no resource to answer any of them. A separate flag could
- * disagree with that, and the UI would be back to advertising a write that
- * cannot land.
- *
- * The reason it has to be readable from the UI at all: the dashboard shipped a
- * complete annotation surface against this absent backend, including an AI
- * suggester that spends ten seconds returning real drafts with an Accept on
- * each. Every write answered 405 and nothing said so, so "saved" and "silently
- * discarded" looked identical. Callers gate their entry point on this; when a
- * backend lands, implementing it is what flips this to true.
+ * Whether this instance can actually store an annotation. Mock mode only: in
+ * real mode every write answers 405, so callers gate their entry point on this.
  */
 export const ANNOTATIONS_SUPPORTED = !USE_REAL_API
 

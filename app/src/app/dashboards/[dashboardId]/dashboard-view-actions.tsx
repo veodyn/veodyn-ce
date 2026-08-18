@@ -17,21 +17,13 @@ interface DashboardViewActionsProps {
 }
 
 /**
- * The header action cluster a dashboard shows when it is not being edited.
+ * The header action cluster a dashboard shows when it is not being edited. The
+ * edit-session cluster stays in the page, driven by that page's own state.
  *
- * Split out of the page, which was already over the file size limit before it
- * gained an Archive action. The edit-session cluster stays in the page: it is
- * driven entirely by that page's own state and threading four setters out here
- * would buy nothing.
- *
- * Every action here is community except two, and they are absent for two
- * different reasons. "Promote to report" writes a report, so it is the reports
- * feature's, and it arrives through the dashboard.viewActions slot in the
- * place it has always sat: after Present, before Edit. Present is community
- * markup pointing at an enterprise ROUTE, /present, which the wall package
- * owns, so there is nothing for a feature to contribute and the only question
- * is whether the destination exists. A build without either shows the row two
- * buttons shorter and nothing else changes.
+ * Two actions are not community. "Promote to report" belongs to the reports
+ * feature and arrives through the dashboard.viewActions slot, after Present and
+ * before Edit. Present is community markup pointing at /present, a route the
+ * wall package owns, so it is gated on that package rather than contributed.
  */
 export function DashboardViewActions({ dashboard, onEdit, onShare }: DashboardViewActionsProps) {
   const router = useRouter()
@@ -52,10 +44,9 @@ export function DashboardViewActions({ dashboard, onEdit, onShare }: DashboardVi
       <IconButton tooltip="Share dashboard" variant="outline" size="icon" onClick={onShare}>
         <Share2 className="h-4 w-4" />
       </IconButton>
-      {/* Where the dead "Dashboard options" kebab used to sit. Archiving from a
-          detail page has to leave it: the dashboard drops out of every listing,
-          so staying put would leave the reader on a page that no longer
-          resolves. */}
+      {/* Archiving from a detail page has to leave it: the dashboard drops out
+          of every listing, so staying put strands the reader on a page that no
+          longer resolves. */}
       <DashboardRowActions
         dashboard={dashboard}
         onArchived={() => router.push('/dashboards')}

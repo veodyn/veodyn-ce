@@ -1,18 +1,14 @@
 // The public feed proxy: the anonymous read `feed-address.tsx` promises at
-// `/api/public/feeds/<slug>`, made real. `feedPath()` in that component is
-// the one place the path string is written; this route is what makes it
-// answer instead of 404 at the framework.
+// `/api/public/feeds/<slug>` (its `feedPath()` writes the path string).
 //
-// Same shape as api/public/visualizations/[token]/route.ts, the app's other
-// unauthenticated public route: no credential forwarded, upstream body never
-// passed through on a refusal, one identical 404 for every cause. No cookie,
-// no authorization: this endpoint is anonymous by design, and forwarding a
-// signed-in author's session would let their identity decide what an
-// anonymous reader sees. Do NOT reach for ../../../published-feeds/forward.ts
-// beyond its sidecarBase() helper: forwardedHeaders() there attaches the
-// caller's cookie and authorization, which is exactly wrong here, and its
-// body handling reads the upstream with .text(), which corrupts the
-// protobuf bytes this endpoint serves.
+// Same shape as api/public/visualizations/[token]/route.ts: no credential
+// forwarded, upstream body never passed through on a refusal, one identical 404
+// for every cause. Forwarding a signed-in author's cookie would let their
+// identity decide what an anonymous reader sees.
+//
+// Do NOT reach for ../../../published-feeds/forward.ts beyond sidecarBase():
+// its forwardedHeaders() attaches the caller's cookie and authorization, and
+// its body handling reads the upstream with .text(), which corrupts protobuf.
 
 import { NextResponse } from 'next/server'
 import { ErrorIds } from '@/lib/errorIds'
@@ -32,14 +28,10 @@ const NOT_FOUND = {
 const TOO_STALE_ID = 'VEODYN_PUBLIC_FEED_TOO_STALE'
 
 /**
- * Whether a 503 is the sidecar withholding a stale feed, as opposed to any of
- * the other things that answer 503: an ingress with no healthy backend, a pod
- * restarting, a proxy in front of either.
- *
- * Reads and discards the body, which is safe here because this route never
- * passes an upstream body through. Anything unparseable is not the refusal we
- * are looking for: an ingress answers HTML, and treating that as a stale feed
- * would advertise an outage as a healthy feed waiting for fresh data.
+ * Whether a 503 is the sidecar withholding a stale feed rather than an ingress
+ * with no healthy backend or a restarting pod. Reading the body is safe because
+ * this route never passes an upstream body through, and anything unparseable
+ * (an ingress answers HTML) is not the refusal being looked for.
  */
 async function isStaleFeedRefusal(upstream: Response): Promise<boolean> {
   try {
@@ -62,25 +54,15 @@ export async function GET(request: Request, ctx: { params: Promise<{ slug: strin
       signal: request.signal,
       headers: readerForwardingHeaders(request),
     })
-    // Upstream's own body is not passed through, even on a refusal: routers/
-    // public_feeds.py answers the identical 404 for an unknown slug, a private
-    // feed, and a never-published one on purpose, and this proxy holds that
-    // line rather than adding a second place a cause could leak through.
+    // routers/public_feeds.py answers the identical 404 for an unknown slug, a
+    // private feed and a never-published one, so no upstream body is passed
+    // through here either.
     if (upstream.status === 404) return NextResponse.json(NOT_FOUND, { status: 404 })
-    // A feed in `last_good` mode whose artifact is past its age cap. Passed
-    // through as a 503 with its Retry-After rather than folded into the 502
-    // below, because it is the one refusal here that is neither an absence nor
-    // a fault: the operator asked for it, and a consumer's correct response is
-    // to poll again rather than to alert or to give up on the address.
-    //
-    // Matched on the error ID, NOT on the status alone. A 503 is also what an
-    // ingress or a restarting sidecar answers, and calling that "stale" would
-    // tell every consumer to keep polling through a real outage, which is the
-    // same mistake as the 404 collapse below in the other direction.
-    //
-    // Upstream's message is still not repeated, for the same reason as the
-    // 404: this proxy says what a reader can act on and nothing about which
-    // feed it was.
+    // A feed in `last_good` mode past its age cap: kept as a 503 with its
+    // Retry-After rather than folded into the 502, because the correct consumer
+    // response is to poll again. Matched on the error ID, NOT the status alone,
+    // since an ingress or a restarting sidecar also answers 503 and calling
+    // that "stale" tells consumers to poll through a real outage.
     if (upstream.status === 503 && (await isStaleFeedRefusal(upstream))) {
       const retryAfter = upstream.headers.get('retry-after')
       return NextResponse.json(
@@ -88,15 +70,10 @@ export async function GET(request: Request, ctx: { params: Promise<{ slug: strin
         { status: 503, ...(retryAfter ? { headers: { 'retry-after': retryAfter } } : {}) }
       )
     }
-    // Anything else is the backend failing, not a feed being absent, and the
-    // two must not answer alike. Collapsing a 500 into 404 tells every
-    // consumer and every monitor that the feed went away, which is the one
-    // reading that makes an outage look like a deliberate unpublish.
-    //
-    // It costs no secrecy. The identical-404 rule exists so nobody can learn
-    // which slugs exist by comparing responses, and a backend that is down
-    // answers this way for every slug, known or invented, so it separates
-    // nothing.
+    // Anything else is the backend failing, not a feed being absent: collapsing
+    // it into a 404 would tell every consumer and monitor the feed went away.
+    // It leaks nothing, because a backend that is down answers this way for
+    // every slug, known or invented.
     if (!upstream.ok) {
       return NextResponse.json(
         { error: 'published feed backend failed', errorId: ErrorIds.UP_UNREACHABLE },

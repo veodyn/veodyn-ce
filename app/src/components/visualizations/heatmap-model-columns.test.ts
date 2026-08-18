@@ -3,22 +3,15 @@ import type { QueryResultData } from '@/lib/mock-data'
 import type { RedashHeatmapOptions } from '@/services/redash/types'
 import { buildHeatmapModel, resolveColumns } from './heatmap-model'
 
-// Column resolution against a STALE mapping: an options.columnMapping entry
-// naming a column the query no longer returns. resolveColumns used to trust
-// the mapping without checking, so row[xCol] was undefined, String(undefined)
-// was the literal 'undefined', and every row in the result collapsed into one
-// category named 'undefined'. The chart drew plausible, invented data instead
-// of saying anything was wrong.
+// Column resolution against a stale mapping: an options.columnMapping entry
+// naming a column the query no longer returns.
 //
-// The ruling this file pins: a mapping that is present AND stale resolves to
-// undefined and does NOT fall through to the positional fallback, because
-// silently drawing the chart on different columns than the author chose is the
-// same class of quiet lie. undefined flows into buildHeatmapModel's existing
-// required-columns guard, so the renderer shows its existing empty state.
-//
-// The UNMAPPED case is a different case and keeps its positional fallback
-// exactly as it was; heatmap-model.test.ts covers that, and one test below
-// pins the two apart.
+// The ruling this file pins: a mapping that is present and stale resolves to
+// undefined and does not fall through to the positional fallback, because
+// drawing the chart on columns the author did not choose is a quiet lie. That
+// undefined flows into buildHeatmapModel's required-columns guard, so the
+// renderer shows its empty state. The unmapped case keeps its positional
+// fallback (heatmap-model.test.ts), and one test below pins the two apart.
 
 const columns: QueryResultData['columns'] = [
   { name: 'weekday', friendly_name: 'weekday', type: 'string' },
@@ -36,10 +29,9 @@ const data: QueryResultData = {
 
 describe('resolveColumns against a stale mapping', () => {
   it('resolves a mapped column that the result set does not carry to undefined', () => {
-    // Asserted directly, not only through buildHeatmapModel's null: the
-    // ruling is specifically that this resolves to undefined rather than to
-    // data.columns[0], and the model returning null cannot tell those apart
-    // from a guard that happened to reject for another reason.
+    // Asserted directly, not only through buildHeatmapModel's null: the ruling
+    // is that this resolves to undefined rather than data.columns[0], and a null
+    // model cannot tell that apart from a guard rejecting for another reason.
     const stale: RedashHeatmapOptions = { columnMapping: { renamed_weekday: 'x', period: 'y', count: 'value' } }
     expect(resolveColumns(stale, data).xCol).toBeUndefined()
   })
@@ -98,9 +90,8 @@ describe('buildHeatmapModel against a stale mapping', () => {
   })
 
   it('never collapses the rows into a single category named undefined', () => {
-    // The observable symptom of the bug, asserted as its own statement: with
-    // the old code this model was non-null and its x axis was exactly
-    // ['undefined'].
+    // The observable symptom of the bug: a non-null model whose x axis was
+    // exactly ['undefined'].
     const model = buildHeatmapModel(
       { columnMapping: { renamed_weekday: 'x', period: 'y', count: 'value' } },
       data
@@ -109,9 +100,8 @@ describe('buildHeatmapModel against a stale mapping', () => {
   })
 
   it('keeps a category genuinely named undefined as its own category', () => {
-    // The other half: 'undefined' is a legal category value, and the fix must
-    // not be "filter out anything that stringifies to undefined", which would
-    // merge a real category into nothing and hide real rows.
+    // The other half: 'undefined' is a legal category value, so filtering out
+    // anything that stringifies to undefined would hide real rows.
     const withLiteralUndefined: QueryResultData = {
       columns,
       rows: [

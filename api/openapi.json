@@ -253,7 +253,7 @@
         "type": "object"
       },
       "DashboardWidgetProposalOut": {
-        "description": "One widget: either a query that exists, or one to be written first.\n\nExactly one of the two, enforced below rather than left to a reader: a\nwidget carrying both would let the card create a query and then hang a\ndifferent one on the dashboard, and a widget carrying neither is a row with\nnothing behind it.",
+        "description": "One widget: either a query that exists, or one to be written first.\n\nExactly one of the two, enforced below: a widget carrying both would let the\ncard create a query and then hang a different one on the dashboard, and one\ncarrying neither is a row with nothing behind it.",
         "properties": {
           "newQuery": {
             "anyOf": [
@@ -541,7 +541,7 @@
         "type": "object"
       },
       "ExpectationIn": {
-        "description": "How often this feed should deliver, or null to stop expecting.\n\nNull rather than a second endpoint: setting and clearing are the same\ndecision made twice, and a DELETE beside a PUT invites a client to think\nclearing is destructive when it only returns the feed to its Redash\nschedule.",
+        "description": "How often this feed should deliver, or null to stop expecting.\n\nNull rather than a second endpoint: clearing only returns the feed to its\nRedash schedule, and a DELETE beside a PUT would read as destructive.",
         "properties": {
           "expectedIntervalSeconds": {
             "anyOf": [
@@ -854,7 +854,7 @@
         "type": "object"
       },
       "KpiProposalOut": {
-        "description": "A KPI over a query that exists, or over one written for it.\n\nA KPI reads one number from one query, so unlike a dashboard there is no cap\nto state: it needs exactly one source and this is which of the two kinds it\nis. Both halves are always on the wire with the unused one null, the same\nrule DashboardWidgetProposalOut follows and for the same reason.",
+        "description": "A KPI over a query that exists, or over one written for it.\n\nA KPI reads one number from one query, so it needs exactly one source. Both\nhalves are always on the wire with the unused one null, the same rule\nDashboardWidgetProposalOut follows and for the same reason.",
         "properties": {
           "atRisk": {
             "anyOf": [
@@ -974,7 +974,7 @@
         "type": "object"
       },
       "NewQueryProposalOut": {
-        "description": "A query the AI wrote because the instance did not have one that fits.\n\nBeside generate-sql rather than with the proposals, because that is what it\nis: the output of one `generate_sql` call, so it has been through the\none-statement, read-only, right-table check and its retry-with-reason. Three\ncontainers carry one (a dashboard widget, a KPI, a report section) and two of\nthem live in ai_create.py, so putting it there would make an outline section\nimport the conversation contract to describe a query.\n\nCarries everything QueryProposalOut does except its `kind` discriminator,\nbecause whoever holds one creates it with exactly the same call: write the\nquery, then point the container at what it produced.",
+        "description": "A query the AI wrote because the instance did not have one that fits.\n\nThe output of one `generate_sql` call, so it has been through the\none-statement, read-only, right-table check and its retry-with-reason. It\nsits beside generate-sql rather than with the proposals in ai_create.py, or an\noutline section would import the conversation contract to describe a query.\n\nCarries everything QueryProposalOut does except its `kind` discriminator.",
         "properties": {
           "datasetTable": {
             "title": "Datasettable",
@@ -1449,7 +1449,7 @@
         "type": "object"
       },
       "TagsIn": {
-        "description": "The whole set for one object.\n\nA replace rather than an add/remove pair, because the frontend's\nTagsControl hands back the full array on every change, and replace is\nidempotent under retry where an add is not.",
+        "description": "The whole set for one object: a replace, not an add/remove pair.",
         "properties": {
           "tags": {
             "items": {
@@ -1466,7 +1466,7 @@
         "type": "object"
       },
       "TagsOut": {
-        "description": "What is actually stored, after normalization.\n\nEchoed back rather than left to the client to assume, so the chips render\nwhat was kept rather than what was sent: `  Rail  ` went in and `rail` is\nwhat the next reader will match on.",
+        "description": "What is actually stored, after normalization: `  Rail  ` comes back `rail`.",
         "properties": {
           "tags": {
             "items": {
@@ -1592,7 +1592,7 @@
     },
     "/ai/generate-sql": {
       "post": {
-        "description": "Natural language to one read-only SELECT over the given dataset.\n\nGiven the same warehouse profile the interview gets: this is the query\neditor's own prompt bar, calling the same generator, and a statement written\nagainst real cardinality and real ranges is the point of the profile\nwherever it is written from.",
+        "description": "Natural language to one read-only SELECT over the given dataset.\n\nGiven the same warehouse profile the interview gets, so the statement is\nwritten against real cardinality and real ranges.",
         "operationId": "post_generate_sql_ai_generate_sql_post",
         "parameters": [
           {
@@ -1882,7 +1882,7 @@
     },
     "/favorites": {
       "get": {
-        "description": "Every id this caller has starred, grouped by kind.\n\nWhole sets rather than a page: a person's favorites are the short list by\ndefinition, and the client marks rows by membership, which needs all of them\nor it marks some rows wrongly.\n\nOne key per registered favoritable kind, present even when empty, and a\nstored row whose kind is no longer registered is left out rather than\ninventing a key the client has no page for.",
+        "description": "Every id this caller has starred, grouped by kind.\n\nWhole sets rather than a page: the client marks rows by membership, which\nneeds all of them. One key per registered favoritable kind, present even when\nempty, and a stored row whose kind is no longer registered is left out.",
         "operationId": "list_favorites_favorites_get",
         "parameters": [
           {
@@ -1948,7 +1948,7 @@
     },
     "/favorites/{object_type}/{object_id}": {
       "delete": {
-        "description": "Deliberately does NOT check that the object exists: removing the star of\nsomething already deleted is exactly the tidy-up a caller should be allowed\nto finish. The kind is still resolved, so a delete cannot address rows of a\nkind this build does not serve.",
+        "description": "Remove one star, whether or not the object still exists.\n\nRemoving the star of something already deleted is the tidy-up a caller should\nbe able to finish. The kind is still resolved, so a delete cannot address rows\nof a kind this build does not serve.",
         "operationId": "remove_favorite_favorites__object_type___object_id__delete",
         "parameters": [
           {
@@ -2169,7 +2169,7 @@
     },
     "/feeds/{feed_id}/alert": {
       "put": {
-        "description": "Arm or disarm the late alert on a feed.\n\nRequires a declared expectation, because the alert's threshold is two of\nthose periods. Arming without one would mean inventing a deadline on the\nuser's behalf and then paging them about it.\n\nUnlike the expectation, this IS checked against the catalog: arming writes a\nquery against a real table on a real data source, and there is nothing to\nwrite for a feed the registry cannot resolve.",
+        "description": "Arm or disarm the late alert on a feed.\n\nRequires a declared expectation, because the alert's threshold is two of\nthose periods. Unlike the expectation, this IS checked against the catalog:\narming writes a query against a real table on a real data source.",
         "operationId": "put_alert_feeds__feed_id__alert_put",
         "parameters": [
           {
@@ -2247,7 +2247,7 @@
     },
     "/feeds/{feed_id}/expectation": {
       "put": {
-        "description": "Declare how often a capture is expected to deliver.\n\nDeliberately NOT checked against the catalog first. A feed id is a warehouse\ntable name, and an expectation for a table that has not appeared yet, or has\nbriefly dropped out of the registry, is a harmless row that starts working\nthe moment it is back. Refusing it would mean an operator cannot set an\nexpectation on the feed they are waiting for, which is the one they most\nwant to hear about.\n\nAny authenticated member of the org may set one. It changes no data and no\npermission: what it changes is when this org's own board calls a feed late.",
+        "description": "Declare how often a capture is expected to deliver.\n\nNOT checked against the catalog first: a feed id is a warehouse table name,\nand an expectation for a table that has not appeared yet, or has briefly\ndropped out of the registry, is a harmless row that starts working the moment\nit is back. Any authenticated member of the org may set one, since it changes\nno data and no permission, only when this org's board calls a feed late.",
         "operationId": "put_expectation_feeds__feed_id__expectation_put",
         "parameters": [
           {
@@ -2532,7 +2532,7 @@
     },
     "/published-feeds/capabilities": {
       "get": {
-        "description": "A read, open to any org member: it names what this build can bind a feed\nto, not who may read one, so it carries the same authorization as listing\nfeeds rather than the admin gate that creating or editing one takes.",
+        "description": "Name the feed entities this build can bind a feed to. A read open to any\norg member, the same authorization as listing feeds.",
         "operationId": "get_capabilities_published_feeds_capabilities_get",
         "parameters": [
           {
@@ -2819,7 +2819,7 @@
     },
     "/published-feeds/{slug}/attempts": {
       "get": {
-        "description": "The recent record for one feed, newest first.\n\n`load_feed` first, so an unknown slug is a 404 rather than an empty list. A\nfeed that was deleted and a feed that has never published are different\nfacts and the page says different things about them.\n\n`defer` on the bytes column is load-bearing, not a micro-optimisation: these\nrows carry the served artifact, and selecting twenty of them to render\ntwenty status words would move the whole feed history over the wire.\n\nThe served artifact is added back when the cap pushed it off the page, and\nit is the one row that is not optional context. Twenty blocked or failed\nattempts in a row is exactly the situation where the still-serving artifact\nis older than the page, and a client that reads \"what is serving\" off this\nlist would then conclude a live feed is dark: it would offer to publish over\nit, and skip the going-dark warning on an edit.",
+        "description": "The recent record for one feed, newest first.\n\n`load_feed` runs first, so an unknown slug is a 404 rather than an empty list:\na deleted feed and a feed that has never published are different facts. The\ncurrently served artifact is added back when the page cap pushed it off, since\na client reading \"what is serving\" off this list would otherwise conclude a\nlive feed is dark.",
         "operationId": "list_attempts_published_feeds__slug__attempts_get",
         "parameters": [
           {
@@ -2896,7 +2896,7 @@
         ]
       },
       "post": {
-        "description": "Run one attempt for this feed, now.\n\n201 for every decision the engine reaches, including `blocked` and `failed`:\nthe attempt was created, which is what this endpoint promises, and its\ndecision is the answer rather than the status code. A 4xx here is reserved\nfor the cases where no attempt happens at all.\n\n`run_attempt` records and commits the row itself, so nothing here commits.",
+        "description": "Run one attempt for this feed, now.\n\n201 for every decision the engine reaches, including `blocked` and `failed`:\nthe attempt was created, and its decision is the answer rather than the status\ncode, so a 4xx here means no attempt happened at all. `run_attempt` records\nand commits the row itself.",
         "operationId": "publish_now_published_feeds__slug__attempts_post",
         "parameters": [
           {
@@ -3041,7 +3041,7 @@
     },
     "/tags/{object_type}/{object_id}": {
       "put": {
-        "description": "Replace the whole tag set for one object.\n\nReplace rather than add/remove because the frontend's TagsControl hands back\nthe full array on every change, so replace matches the component contract\nand is idempotent under retry.\n\nNormalized here as well as in the browser. This endpoint is reachable\nwithout the UI, and matching is exact, so a single unnormalized write is\nenough to split a tag in two for everyone.\n\nThe kind is resolved first, where the route's Literal used to refuse it, so\nthe order a caller sees is unchanged: an unknown kind is answered before the\nbody is judged. After that the body is checked before anything is loaded: it\ncosts no I/O, and a caller who sent a reserved tag gets that told to them\nwhether or not the object they aimed at exists.",
+        "description": "Replace the whole tag set for one object.\n\nReplace rather than add/remove because the frontend's TagsControl hands back\nthe full array on every change, which is idempotent under retry. Tags are\nnormalized here as well as in the browser, since this endpoint is reachable\nwithout the UI and matching is exact, so one unnormalized write would split a\ntag in two for everyone.",
         "operationId": "set_tags_tags__object_type___object_id__put",
         "parameters": [
           {

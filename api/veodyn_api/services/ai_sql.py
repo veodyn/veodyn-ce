@@ -1,14 +1,12 @@
 """Natural language to SQL, over exactly one catalog dataset.
 
-The model writes the SQL; this module decides whether the SQL is allowed to
-leave. That split matters: the frontend puts generated SQL straight into the
-editor, where an analyst runs it against the warehouse under their own Redash
-credential. A generated `ALTER TABLE` would run as them.
+The model writes the SQL; this module decides whether it is allowed to leave. The
+frontend puts generated SQL straight into the editor, where an analyst runs it
+under their own Redash credential, so a generated `ALTER TABLE` would run as them.
 
-So the check here is not linting. It is the boundary between "a model suggested
-this" and "a person is one click from executing it", and it fails closed: a
-statement this module cannot confidently read as a single read-only SELECT over
-the requested table is refused, even at the cost of refusing a good query.
+The check fails closed: a statement this module cannot confidently read as a
+single read-only SELECT over the requested table is refused, even at the cost of
+refusing a good query.
 """
 
 import re
@@ -54,14 +52,10 @@ FORBIDDEN = (
     "|optimize|rename|system|kill|exchange|use|set|outfile|infile"
     # dictGet and its family read a configured external source from a SCALAR
     # position, so there is no table reference for the allowlist below to catch.
-    # A denylist is the wrong shape for most of this problem and the right one
-    # here, because the alternative is not checking at all.
     "|dict[a-z_]*"
 )
-# `replace` is deliberately absent: replace(haystack, needle, value) is an
-# ordinary ClickHouse string function, and refusing it would refuse a large
-# share of legitimate queries. The DDL forms (REPLACE TABLE, CREATE OR REPLACE)
-# are caught by CREATE or by the must-start-with-SELECT rule instead.
+# `replace` is absent because replace(haystack, needle, value) is an ordinary
+# string function. The DDL forms are caught by CREATE or by must-start-with-SELECT.
 
 FORBIDDEN_RE = re.compile(rf"\b({FORBIDDEN})\b", re.IGNORECASE)
 # Where one FROM or JOIN clause's item list ends. Everything between the
@@ -74,9 +68,9 @@ FROM_CLAUSE_RE = re.compile(
     rf"\b(?:from|join)\b(?P<items>.*?)(?=\b(?:{CLAUSE_END})\b|$)",
     re.IGNORECASE | re.DOTALL,
 )
-# The first item of such a clause. Three shapes matter and the old pattern saw
-# only the third: a function call (`url(`, `file(`, a ClickHouse table function
-# that reads a network or a filesystem), a quoted identifier, and a bare name.
+# The first item of such a clause, in the three shapes that matter: a function
+# call (a ClickHouse table function reading a network or a filesystem), a quoted
+# identifier, and a bare name.
 TABLE_ITEM_RE = re.compile(
     r"""
       (?P<call>[A-Za-z_][A-Za-z0-9_]*)\s*\(
@@ -88,10 +82,9 @@ TABLE_ITEM_RE = re.compile(
 )
 # A CTE introduces a name that is legitimately read later on.
 CTE_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s+as\s*\(", re.IGNORECASE)
-# A name a FROM clause can carry unquoted, optionally qualified once. It is the
-# same shape TABLE_REF_RE matches, which is what makes it the right test: a
-# dataset whose table falls outside it cannot be named by any statement this
-# validator would accept, so asking the model for one is asking for a refusal.
+# A name a FROM clause can carry unquoted, optionally qualified once. A dataset
+# whose table falls outside this cannot be named by any statement validate_sql
+# would accept, so asking the model for one is asking for a refusal.
 QUERYABLE_TABLE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$")
 
 
@@ -102,18 +95,11 @@ class UngroundedSql(Exception):
 def _strip_noise(sql: str) -> str:
     """SQL with comments and string literals removed, for keyword checks only.
 
-    One left-to-right pass, not a sequence of regex substitutions. Comments and
-    strings can each contain the other's delimiter, so no ordering of two
-    independent passes is correct in both directions, and the ordering this used
-    to have was exploitable: removing comments first let a `--` inside a string
-    literal erase the rest of the statement, so
-
-        SELECT a FROM allowed WHERE note = '--' UNION ALL SELECT b FROM secrets
-
-    was checked as `SELECT a FROM allowed WHERE note = '` and the union was
-    never seen, while ClickHouse reads '--' as an ordinary string and runs it.
-    The `/*` spelling did the same. Reversing the order would only move the
-    problem: an apostrophe in a comment would then swallow the code after it.
+    One left-to-right pass, not two regex passes: comments and strings each
+    contain the other's delimiter, so either ordering is exploitable. Stripping
+    comments first lets `WHERE note = '--' UNION ALL SELECT b FROM secrets` be
+    checked with the union invisible; the reverse lets an apostrophe in a comment
+    swallow the code after it.
     """
     out: list[str] = []
     index, length = 0, len(sql)
@@ -159,10 +145,9 @@ def _strip_noise(sql: str) -> str:
 def _has_top_level_comma(items: str) -> bool:
     """Whether this FROM clause lists more than one thing.
 
-    Depth-aware, so the commas inside `toStartOfInterval(t, INTERVAL 1 HOUR)`
-    do not count. A comma at depth 0 is a comma join, which is the shape that
-    hid a second table from the old scan entirely: it matched only the name
-    directly after FROM or JOIN, so everything after the comma was invisible.
+    Depth-aware, so the commas inside `toStartOfInterval(t, INTERVAL 1 HOUR)` do
+    not count. A comma at depth 0 is a comma join, and the reference scan below
+    reads only the first item of a clause.
     """
     depth = 0
     for char in items:
@@ -178,19 +163,16 @@ def _has_top_level_comma(items: str) -> bool:
 def _referenced_tables(noise_free: str) -> tuple[set[str], list[str]]:
     """Every table this statement reads, and any table-function calls in it.
 
-    Returns names lowercased. A subquery (`FROM (SELECT ...`) yields no name
-    here and does not need to: the SELECT inside it has its own FROM, which this
-    finds on its own pass.
+    Returns names lowercased. A subquery yields no name here: the SELECT inside it
+    has its own FROM, which this finds on its own pass.
     """
     names: set[str] = set()
     calls: list[str] = []
 
     for clause in FROM_CLAUSE_RE.finditer(noise_free):
         items = clause.group("items").lstrip()
-        # `FROM (SELECT ...)` names no table at this level, and does not need to:
-        # the SELECT inside has its own FROM, which this loop reaches on its own.
-        # Anchored rather than searched, or the `select` inside that subquery
-        # gets read as this clause's table name.
+        # Anchored rather than searched, or the `select` inside a subquery gets
+        # read as this clause's table name.
         if items.startswith("("):
             continue
         item = TABLE_ITEM_RE.match(items)
@@ -219,10 +201,9 @@ def _referenced_tables(noise_free: str) -> tuple[set[str], list[str]]:
 def _table_names(table: str) -> set[str]:
     """The identifiers that count as naming the requested table.
 
-    A dataset id can arrive qualified (`historical.regional_speeds`), and the model
-    may write it either way, so the qualified name and the table name are both
-    accepted. The DATABASE part is not: accepting `historical` would have let
-    every other table in the same database through.
+    A dataset id can arrive qualified (`historical.regional_speeds`) and the model
+    may write it either way, so both the qualified and the bare name are accepted.
+    The DATABASE part is not: `historical` would admit every table in it.
     """
     parts = [part for part in table.split(".") if part]
     return {table.lower(), parts[-1].lower()} if parts else {table.lower()}
@@ -238,10 +219,9 @@ def validate_sql(sql: str, dataset: AiDatasetIn) -> str:
     if ";" in noise_free:
         raise UngroundedSql("the answer contained more than one statement")
 
-    # The keyword check runs before the "starts with SELECT" one so the reason
-    # names the actual problem. `DROP TABLE x` fails both, and "you used DROP"
-    # is a reason the retry can act on where "it did not start with SELECT" only
-    # invites the model to prefix a SELECT.
+    # Before the "starts with SELECT" check, so the reason names the real problem:
+    # `DROP TABLE x` fails both, and "it did not start with SELECT" only invites
+    # the model to prefix one.
     forbidden = FORBIDDEN_RE.search(noise_free)
     if forbidden:
         raise UngroundedSql(f"the statement used the forbidden keyword {forbidden.group(1).upper()}")
@@ -250,26 +230,22 @@ def validate_sql(sql: str, dataset: AiDatasetIn) -> str:
     if not (head.startswith("select") or head.startswith("with")):
         raise UngroundedSql("the statement did not start with SELECT or WITH")
 
-    # A comma join lists a second thing in a position the reference scan below
-    # reads as one item, so `FROM allowed, anything_else` used to pass with
-    # `anything_else` never looked at. Refusing the shape rather than trying to
-    # split it: an explicit JOIN says the same thing and is what the prompt asks
-    # for anyway, so the reason is one the retry can act on.
+    # A comma join hides its second table in a position the reference scan below
+    # reads as one item. Refused rather than split, because an explicit JOIN says
+    # the same thing and is what the prompt asks for.
     for clause in FROM_CLAUSE_RE.finditer(noise_free):
         if _has_top_level_comma(clause.group("items")):
             raise UngroundedSql("the statement used a comma join; write an explicit JOIN instead")
 
-    # Every table the statement reads must BE the dataset, rather than the
-    # statement merely mentioning it somewhere. Checking for the name anywhere
-    # in the text passed `SELECT ... FROM historical.other_table`, because the
-    # database part of the qualified name matched.
+    # Every table the statement reads must BE the dataset, not merely be mentioned
+    # somewhere: a text search passes `FROM historical.other_table` on the
+    # database half of the qualified name.
     allowed = _table_names(dataset.table) | {match.group(1).lower() for match in CTE_RE.finditer(noise_free)}
     referenced, table_calls = _referenced_tables(noise_free)
 
-    # A table function reads whatever its arguments name: url() and s3() a
-    # network, file() a filesystem, remote() and cluster() another server. None
-    # of them is a table this dataset could ever authorise, so the answer does
-    # not depend on which one it is.
+    # A table function reads whatever its arguments name: url() and s3() a network,
+    # file() a filesystem, remote() another server. None is a table this dataset
+    # could authorise, so the answer does not depend on which one it is.
     if table_calls:
         raise UngroundedSql(
             f"the statement read from {sorted(table_calls)[0]}(), but the only table it may read is {dataset.table}"
@@ -297,14 +273,12 @@ def _prompt(payload: GenerateSqlIn, retry_reason: str | None, profile_block: str
     ]
     if profile_block:
         # An already-rendered string rather than a profile object, so the caller
-        # owns both the warehouse round trip and its failure. A profile is a
-        # nicety; a SQL request that 500s because the profile query timed out is
-        # not, and this module must stay generatable with no warehouse at all.
+        # owns the warehouse round trip and its failure: this module stays
+        # generatable with no warehouse at all.
         parts.append(f"What this table currently holds: {profile_block}")
     parts.append(f"Request: {payload.prompt}")
     if payload.current_sql:
-        # The iteration path ("edit with prompt"): the request is a change to
-        # this query, not a new one.
+        # The iteration path ("edit with prompt").
         parts.append(f"Edit this existing query rather than starting over:\n{payload.current_sql}")
     if retry_reason:
         parts.append(f"Your previous answer was rejected because {retry_reason}. Answer again, correctly.")
@@ -314,17 +288,13 @@ def _prompt(payload: GenerateSqlIn, retry_reason: str | None, profile_block: str
 def generate_sql(llm: LlmClient, payload: GenerateSqlIn, *, profile_block: str | None = None) -> GenerateSqlOut:
     """Generate, check, and retry once with the reason it was refused.
 
-    One retry, not a loop: the second failure is a model that cannot satisfy the
-    constraint for this prompt, and the frontend's manual path (write the SQL
-    yourself) is a better answer than a third wait.
+    One retry, not a loop: a second failure is a model that cannot satisfy the
+    constraint for this prompt, and the manual path beats a third wait.
     """
-    # Checked before the first call, not after the second refusal. A Redash
-    # data source can expose a tree that browses like a schema and is really API
-    # documentation ("1. feeds > params", "__ Query Examples __"). No statement
-    # can put that in a FROM clause, so the validator below refuses whatever
-    # comes back, both attempts, and the caller waits through two generations to
-    # be told the model is at fault. It is not: the request named something that
-    # is not a table.
+    # Checked before the first call, not after the second refusal. A Redash data
+    # source can expose a tree that browses like a schema and is really API
+    # documentation ("1. feeds > params"), which no FROM clause can name, so both
+    # attempts would be refused and the model blamed for the request's fault.
     if not QUERYABLE_TABLE_RE.match(payload.dataset.table.strip()):
         raise ApiError(
             ErrorId.AI_DATASET_NOT_QUERYABLE,

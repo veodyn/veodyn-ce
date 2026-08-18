@@ -1,12 +1,8 @@
 """The Feed Health endpoint.
 
 The path is `/feeds` because veodyn-de's proxy calls `CATALOG_API_URL/feeds`
-(app/src/app/api/feeds/route.ts). That proxy has existed since before this
-route did, and for that whole time it forwarded to a 404 that the Feed Health
-page rendered as "No feeds configured." The route is here, beside the catalog it
-derives from, rather than in catalog.py: same backend, same credential, but the
-two answer different questions and the catalog router is already the one with
-the tag lookup and the search parameter in it.
+(app/src/app/api/feeds/route.ts). It sits beside the catalog it derives from
+rather than in catalog.py: same backend and credential, different question.
 
 Authorization is the catalog's, for the catalog's reason: this returns table
 names, capture times and schedules, never a row of captured data. Reading a
@@ -96,10 +92,8 @@ class AlertIn(CamelModel):
 class ExpectationIn(CamelModel):
     """How often this feed should deliver, or null to stop expecting.
 
-    Null rather than a second endpoint: setting and clearing are the same
-    decision made twice, and a DELETE beside a PUT invites a client to think
-    clearing is destructive when it only returns the feed to its Redash
-    schedule.
+    Null rather than a second endpoint: clearing only returns the feed to its
+    Redash schedule, and a DELETE beside a PUT would read as destructive.
     """
 
     expected_interval_seconds: int | None
@@ -116,15 +110,11 @@ def put_expectation(
 ) -> Response:
     """Declare how often a capture is expected to deliver.
 
-    Deliberately NOT checked against the catalog first. A feed id is a warehouse
-    table name, and an expectation for a table that has not appeared yet, or has
-    briefly dropped out of the registry, is a harmless row that starts working
-    the moment it is back. Refusing it would mean an operator cannot set an
-    expectation on the feed they are waiting for, which is the one they most
-    want to hear about.
-
-    Any authenticated member of the org may set one. It changes no data and no
-    permission: what it changes is when this org's own board calls a feed late.
+    NOT checked against the catalog first: a feed id is a warehouse table name,
+    and an expectation for a table that has not appeared yet, or has briefly
+    dropped out of the registry, is a harmless row that starts working the moment
+    it is back. Any authenticated member of the org may set one, since it changes
+    no data and no permission, only when this org's board calls a feed late.
     """
     if body.expected_interval_seconds is None:
         # Take the alert down first. An expectation is what supplies the alert's
@@ -142,11 +132,9 @@ def put_expectation(
             seconds=body.expected_interval_seconds,
             user_id=identity.user_id,
         )
-        # An armed feed whose interval moved needs its threshold moved with it,
-        # or the alert goes on firing at the old boundary while the board draws
-        # the new one. False means Redash no longer has the alert, which is a
-        # legitimate way to disarm, so the link is forgotten rather than the
-        # alert recreated.
+        # An armed feed whose interval moved needs its threshold moved with it.
+        # False means Redash no longer has the alert, which is a legitimate way
+        # to disarm, so the link is forgotten rather than the alert recreated.
         row = read_row(db, org_slug=identity.org_slug, feed_id=feed_id)
         if row is not None and row.alert_id is not None:
             if not feed_alert.resync(redash, row, feed_id=feed_id, api_key=settings.redash_service_api_key):
@@ -169,12 +157,8 @@ def put_alert(
     """Arm or disarm the late alert on a feed.
 
     Requires a declared expectation, because the alert's threshold is two of
-    those periods. Arming without one would mean inventing a deadline on the
-    user's behalf and then paging them about it.
-
-    Unlike the expectation, this IS checked against the catalog: arming writes a
-    query against a real table on a real data source, and there is nothing to
-    write for a feed the registry cannot resolve.
+    those periods. Unlike the expectation, this IS checked against the catalog:
+    arming writes a query against a real table on a real data source.
     """
     row = read_row(db, org_slug=identity.org_slug, feed_id=feed_id)
     if row is None:

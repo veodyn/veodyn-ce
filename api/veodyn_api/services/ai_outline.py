@@ -1,22 +1,12 @@
 """The outline tool shape, shared by the two things that ask for an outline.
 
-Split from ai_report.py, which now holds only the second report stage (outline
-to draft blocks). The two are separate calls to the model with separate
-grounding, and splitting them is what let this half learn to write a query
-without the drafting half having to know about it.
+The Create-with-AI report conversation can also write a query for a section
+nothing answers yet, so its schema carries `datasetTable`; `/ai/outline` has no
+catalog and no generator, so its schema does not.
 
-Two callers ask the model for an outline, and they differ in one way that
-matters. The Create-with-AI report conversation can also write a query for a
-section nothing answers yet, so its tool schema carries `datasetTable`.
-`/ai/outline` has no catalog and no generator, so its schema does not; see
-`outline_schema`.
-
-**Those two callers are on opposite sides of the CE/EE line, which is why the
-schema is here on its own.** The conversation is community
-(services/ai_converse_schema.py) and `/ai/outline` is enterprise
-(services/ai_outline_ee.py, which holds `build_outline` and the system prompt
-that goes with it). The shape of the tool is the part they share, so it stays
-in the half that is always installed and the enterprise half imports it.
+**The two callers sit on opposite sides of the CE/EE line**, the conversation in
+services/ai_converse_schema.py and `/ai/outline` in services/ai_outline_ee.py, so
+the shared tool shape stays in the half that is always installed.
 """
 
 from typing import Any
@@ -31,16 +21,10 @@ NO_QUERY = 0
 def outline_schema(*, can_write: bool) -> dict[str, Any]:
     """The outline tool's shape, with or without the write-a-query fields.
 
-    Two callers, and only one of them can act on a table the model names. The
-    Create-with-AI report conversation generates SQL for a section nothing
-    answers yet, so it needs `datasetTable` and a shape to draw the result in.
-    `/ai/outline` has neither a catalog nor a generator, so offering it those
-    fields would have the model spend an answer on keys that path then drops.
-
-    `queryId` stops being required in the writing variant. Requiring it is what
-    made the dashboard kind tell the analyst to go and create the query
-    themselves, which PROPOSAL_FIELDS["dashboard"] in ai_converse_prompt.py
-    records at the line where that was fixed.
+    Only the writing caller can act on a table the model names, so only it gets
+    `datasetTable` and a shape. `queryId` stops being required there: requiring it
+    made the model tell the analyst to create the query themselves. See
+    PROPOSAL_FIELDS["dashboard"] in ai_converse_prompt.py.
     """
     section: dict[str, Any] = {
         "title": {"type": "string", "description": "A short section heading."},

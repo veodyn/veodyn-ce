@@ -12,21 +12,13 @@ import type { MockQuery } from '@/lib/mock-data'
 
 interface QueryRowActionsProps {
   query: MockQuery
-  /**
-   * The Archive tab offers Restore; every other tab offers Archive. One row can
-   * never offer both: an archived query has nothing left to archive, and a live
-   * one has nothing to restore.
-   */
+  /** The Archive tab offers Restore; every other tab offers Archive, never both. */
   archived?: boolean
 }
 
 /**
- * The per-row overflow menu on `/queries`, and everything behind it: who may
- * act, which mutation runs, what the confirmation says and what the toast
- * reports.
- *
- * Kept out of `queries/page.tsx` because that file is already close to the
- * 300-line limit and this is the part that will keep growing.
+ * The per-row overflow menu on `/queries`: who may act, which mutation runs,
+ * what the confirmation says and what the toast reports.
  */
 export function QueryRowActions({ query, archived = false }: QueryRowActionsProps) {
   const currentUser = useAuthStore((s) => s.currentUser)
@@ -35,23 +27,12 @@ export function QueryRowActions({ query, archived = false }: QueryRowActionsProp
   const toast = useToast()
   const [confirming, setConfirming] = useState(false)
 
-  // Owner or admin, deliberately NOT can_edit, for two independent reasons.
-  //
-  // can_edit is absent from this payload. Redash attaches it in
-  // QueryResource.get only (handlers/queries.py:402); the list endpoints
-  // serialize through QuerySerializer, which does not emit it. So on a real
-  // backend `query.can_edit` is undefined here and a non-admin author would see
-  // no action on their own rows. Every mock query fixture hardcodes
-  // `can_edit: true`, which is why that read green.
-  //
-  // And can_edit is the wrong rule anyway. It is can_modify, which is
-  // `is_admin_or_owner(...) or user.has_access(obj, MODIFY)`, while the archive
-  // it guards is `require_admin_or_owner(query.user_id)` (handlers/queries.py:431)
-  // with no has_access arm. Someone granted MODIFY through the ACL has can_edit
-  // and still gets a 403 on the archive.
-  //
-  // currentUser.canEdit is that guard already: admin, or the object's owner by
-  // id (stores/auth-identity.ts:84).
+  // Owner or admin, NOT can_edit, for two reasons. can_edit is absent from list
+  // payloads: Redash attaches it in QueryResource.get only
+  // (handlers/queries.py:402). And it is the wrong rule, since it includes an
+  // ACL MODIFY arm the archive endpoint does not
+  // (`require_admin_or_owner(query.user_id)`, handlers/queries.py:431).
+  // currentUser.canEdit is that guard (stores/auth-identity.ts:84).
   const canModify = currentUser?.canEdit(query) === true
   const copy = removalCopy('query', query.name)
 
@@ -76,8 +57,7 @@ export function QueryRowActions({ query, archived = false }: QueryRowActionsProp
     })
   }
 
-  // Restore is not destructive and asks nothing: it puts a query back where it
-  // was, and there is no cost to undo it again from the tab it came from.
+  // Restore asks for no confirmation: it is undoable from the tab it came from.
   const actions: RowAction[] = !canModify
     ? []
     : archived

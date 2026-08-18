@@ -2,15 +2,13 @@
 //
 // The chat's conversation contract is community and names five kinds; two of
 // them, `kpi` and `report`, are created by code that ships with a feature. So a
-// community build can hold a conversation that converges on a proposed KPI and
-// then have nothing to draw. That is not a hypothetical: `schemas/ai_create.py`
-// is in the community service, and a rolling deploy puts a browser on the old
-// bundle in front of a service that already has the pack.
+// community build can converge on a proposed KPI and have nothing to draw:
+// `schemas/ai_create.py` is in the community service, and a rolling deploy puts
+// a browser on the old bundle in front of a service that already has the pack.
 //
-// What must happen then is that the turn is IGNORED, with a reason in the log.
-// Not thrown (the chat is still usable, and the user can ask for something
-// else), and not drawn half-way (a card whose fields are all blank looks like a
-// bug in the model rather than a build that is missing a feature).
+// The turn is then IGNORED, with a reason in the log. Not thrown (the chat
+// stays usable) and not drawn half-way (a card with blank fields reads as a bug
+// in the model rather than a missing feature).
 //
 // Like features/search-sources.ts and features/slots.tsx, this module is NOT
 // re-exported from features/index.ts: that entry point is reached from the
@@ -31,18 +29,16 @@ type Card = LazyExoticComponent<ComponentType<ProposalCardProps>>
  *
  * React.lazy must not be called during render without a stable identity, or
  * every render mounts a new component and the load restarts. Keying on registry
- * identity, the same way slots.tsx and assembleSearchSources do, gives the
- * shipped FEATURES one entry and each test's stub registry its own, with no
- * reset hook for a test to remember to call.
+ * identity, the same way slots.tsx does, gives the shipped FEATURES one entry
+ * and each test's stub registry its own, with no reset hook to call.
  */
 const cards = new WeakMap<Record<string, FeatureDescriptor>, Map<string, Card>>()
 
 /**
  * The first installed feature that claims this kind, in featureList order.
- *
- * First wins rather than last, and rather than an error, for the reason
- * slots.tsx gives: two features claiming one kind is a packaging mistake, and a
- * chat that refuses to render over it is worse than one that picks the first.
+ * First wins rather than an error, for the reason slots.tsx gives: two features
+ * claiming one kind is a packaging mistake, and a chat that refuses to render
+ * over it is worse than one that picks the first.
  */
 export function proposalContributionFor(
   kind: string,
@@ -86,10 +82,9 @@ function cardFor(
       return await contribution.render()
     } catch (reason) {
       // Caught INSIDE the lazy's own async function, not by an error boundary
-      // above it, for the reason slots.tsx gives: React.lazy rethrows a
-      // rejected loader during render, which would take the whole chat dialog
-      // down. A card this build cannot fetch degrades to no card, which is
-      // exactly what an unregistered kind already does.
+      // above it: React.lazy rethrows a rejected loader during render, which
+      // would take the whole chat dialog down. A card this build cannot fetch
+      // degrades to no card, as an unregistered kind already does.
       const error = new AppError(
         ErrorIds.PROPOSAL_CARD_UNAVAILABLE,
         "A feature's proposal card could not be loaded; the proposal was not rendered",
@@ -107,9 +102,9 @@ function cardFor(
  * The card for a proposal an installed feature owns, and the payload to give
  * it, or null if this build cannot draw it.
  *
- * Null covers both refusals, and both are logged with the same id because they
- * are the same event to whoever is reading the log: this build received a
- * proposal it will not show the user. The context says which.
+ * Null covers both refusals, and both are logged under the same id because they
+ * are one event to whoever reads the log: this build received a proposal it
+ * will not show the user. The context says which.
  */
 export function resolveContributedProposal(
   proposal: AnyProposal,

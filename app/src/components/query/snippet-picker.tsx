@@ -6,22 +6,12 @@ import { useConfig } from '@/components/config/config-provider'
 import { useQuerySnippets } from '@/hooks/use-query-snippets'
 
 /**
- * Saved snippets, clickable into the editor buffer.
+ * Saved snippets, clickable into the editor buffer. The browsable half of two
+ * routes in; the other is trigger expansion via a Monaco completion provider
+ * (see query-editor.tsx).
  *
- * The browsable half of two routes in. Typing a snippet's trigger word in the
- * editor now expands it, the way Redash does it through Ace and this product
- * does it through a Monaco completion provider (see query-editor.tsx). This
- * panel stays because trigger expansion only helps someone who already knows
- * the trigger: a snippets page you cannot insert from is a notepad, and a
- * trigger you cannot discover is one you will never type.
- *
- * Gated on the same flag as the route. `/query-snippets` is a server-rendered
- * gate that calls notFound() when features.query_snippets is off, so on an
- * instance with snippets switched off this panel was advertising a surface that
- * did not exist: it sat on every query screen reading "No snippets yet. Create
- * one." and the link answered with the bare Next 404. Nothing could ever
- * populate the list either, since the only page that writes a snippet is the
- * one behind that 404.
+ * Gated on the same flag as the route: `/query-snippets` calls notFound() when
+ * features.query_snippets is off, so an ungated panel would link into a 404.
  */
 export function SnippetPicker({ onInsert }: { onInsert: (text: string) => void }) {
   const { features } = useConfig()

@@ -7,19 +7,16 @@ that governs scripts/clean_tree_identity_manifest.py. An index resolves against 
 harvest sources that manifest declares, and TERM_FINGERPRINT below fails the run if
 those sources changed, so an index cannot come to mean a different term.
 
-The per-term column is not decoration. Without it the ratchet compared totals, and a
-swap nets zero: drop one occurrence of a term a file already carried, add a reference
-to a different term elsewhere in the same file, and the new one was absorbed silently.
+The per-term column is what catches a swap: on totals alone, dropping one occurrence
+of a term a file already carried while adding a different term elsewhere in it nets
+zero.
 
-A row is not permission. It is the recorded size of an open decision, grouped and
-restated on every run by OPEN_DECISION_BUCKETS in clean_tree_identity_buckets.py.
-Growth fails, and reaching zero fails too, so a row cannot outlive the thing it
-describes. That holds for the buckets declared CLOSED as much as for the open ones:
-a settled question still has a size, and the size is still checked.
+A row is the recorded size of an open decision, grouped by OPEN_DECISION_BUCKETS in
+clean_tree_identity_buckets.py. Growth fails and reaching zero fails, for the buckets
+declared CLOSED as much as for the open ones.
 
 TERM_COUNT is how many terms the harvest yielded when this file was written. The next
---write-baseline compares against it and refuses a shrinking term list, so a source
-whose extraction quietly broke cannot be locked in by the regeneration path itself.
+--write-baseline compares against it and refuses a shrinking term list.
 """
 
 TERM_FINGERPRINT = "0828bdc5221a63d7"

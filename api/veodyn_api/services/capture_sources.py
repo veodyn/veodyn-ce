@@ -1,13 +1,8 @@
 """Where a captured dataset comes from: the warehouse's own registry.
 
 Redash registers each scheduled query's capture table in `historical._catalog`
-(node/redash/historical/catalog.py). This module is the reader for that, and
-since services/catalog.py became provider-driven it is one dataset source among
-however many are registered, rather than the only way a dataset can exist.
-
-Split out of services/catalog.py rather than living there, because assembling a
-catalog entry and knowing where datasets come from are two jobs, and only the
-first one is the catalog's.
+(node/redash/historical/catalog.py), and this is the reader for it. One dataset
+source among however many services/catalog.py has registered.
 """
 
 from datetime import UTC, datetime
@@ -22,10 +17,9 @@ def split_qualified(qualified: str, default_database: str) -> tuple[str, str]:
     return (database, table) if table else (default_database, qualified)
 
 
-# ClickHouse cannot bind an identifier as a query parameter, so the one
-# statement that names a table interpolates it. Registered names are generated
-# by slugify_query_name, which cannot produce anything else; a row that does not
-# match is not a table this service will name in a statement.
+# ClickHouse cannot bind an identifier as a query parameter, so the statement that
+# names a table interpolates it. Registered names come from slugify_query_name; a
+# row that does not match is not a table this service will name in a statement.
 def is_identifier(value: str) -> bool:
     return (
         bool(value)
@@ -54,22 +48,13 @@ def iso_utc(value: Any) -> str | None:
 def capture_sources(client: ClickHouseClient, default_database: str) -> list[DatasetSource]:
     """The warehouse registry, or nothing when the registry table does not exist.
 
-    Redash creates `historical._catalog` the first time it captures a result, so
-    on a fresh install the table is genuinely absent and ClickHouse answers
-    UNKNOWN_TABLE. On a stack fresh enough that `historical` itself has never
-    been created, ClickHouse answers UNKNOWN_DATABASE instead: the same fresh
-    install, one step earlier. Until the first of those was handled, /catalog,
-    /domains and /feeds all answered 502 on a stack that had just come up,
-    which reads to a new user as "the catalog service is broken" when the true
-    answer is "nothing has been captured yet". An empty warehouse is an empty
-    catalog, not a failure, whichever of the two is missing.
+    Redash creates `historical._catalog` on its first capture, so a fresh install
+    answers UNKNOWN_TABLE, or UNKNOWN_DATABASE one step earlier. An empty
+    warehouse is an empty catalog, not a 502.
 
-    Narrow on purpose: only the warehouse saying the table or the database is
-    not there is swallowed. Any other refusal, and any connection failure,
-    still raises. In particular a missing COLUMN on a table that does exist
-    (WarehouseColumnMissing) is not caught here: that is a registered table
-    shaped differently, not an absent warehouse, and catalog.py's own guard is
-    where it belongs.
+    Narrow: only those two are swallowed. Any other refusal and any connection
+    failure still raises, including WarehouseColumnMissing, which is a registered
+    table shaped differently and belongs to catalog.py's own guard.
     """
     try:
         rows = client.query(

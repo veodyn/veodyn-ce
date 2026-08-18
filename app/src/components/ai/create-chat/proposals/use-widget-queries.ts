@@ -1,20 +1,12 @@
 'use client'
 
-// Turning a proposed widget into something a dashboard can hold.
+// Turning a proposed widget into something a dashboard can hold: a widget points
+// at a VISUALIZATION, which only exists once its query does, so the new queries
+// are written first. The write itself is use-write-proposed-query.ts; what stays
+// here is the per-widget bookkeeping.
 //
-// A widget names a query that exists, or carries one the service just wrote. A
-// dashboard cannot hold the second kind: a widget points at a VISUALIZATION,
-// which only exists once the query does. So the new ones are created first, and
-// both cards (create and edit) go through this so neither grows its own copy of
-// the write.
-//
-// The write itself is use-write-proposed-query.ts, shared with the KPI and report
-// cards. What stays here is the per-widget bookkeeping: which widget failed, and
-// the second real id a dashboard widget needs that a KPI does not.
-//
-// Ordering matters and is the reason this returns before either card touches
-// the dashboard: a query that fails to save must not leave a dashboard with a
-// hole where its widget was meant to be.
+// This returns before either card touches the dashboard: a query that fails to
+// save must not leave a hole where its widget was meant to be.
 import type { DashboardWidgetProposal } from '@/types/ai-create'
 import { useWriteProposedQuery } from './use-write-proposed-query'
 
@@ -26,11 +18,8 @@ export interface ResolvedWidget {
   /** True when this run created the query, for the card's own reporting. */
   written: boolean
   /**
-   * What the widget should show, for a query created here.
-   *
-   * An existing query is looked up in the list the card already holds; one
-   * written a moment ago is not in that list yet, and refetching it to read
-   * back what we just sent would be a round trip for facts we have.
+   * What the widget should show, for a query created here: one written a moment
+   * ago is not yet in the list the card holds.
    */
   visualization?: {
     queryName: string
@@ -52,9 +41,8 @@ export function useWidgetQueries() {
   /**
    * Every widget as a pair of real ids, creating the queries that do not exist.
    *
-   * Sequential rather than parallel, like the widget writes the cards already
-   * do: several statements arriving at the warehouse at once is a burst nobody
-   * asked for, and one failing must not take the rest with it.
+   * Sequential rather than parallel: several statements arriving at the
+   * warehouse at once is a burst, and one failing must not take the rest.
    */
   async function materialize(
     widgets: DashboardWidgetProposal[],
@@ -78,16 +66,14 @@ export function useWidgetQueries() {
         continue
       }
       try {
-        // The widget's own heading names a table-shaped panel: it is what the
-        // analyst wrote in the proposal, and the only one of the two names they
-        // chose themselves.
+        // The widget's own heading names a table-shaped panel: it is the one
+        // name the analyst chose themselves.
         const written = await writeQuery.write(widget.newQuery, dataSourceId, {
           tableLabel: widget.title,
         })
         if (written.visualizationId == null) {
-          // The query saved but has nothing to show on a dashboard. Reported
-          // rather than guessed at: an invented id would put someone else's
-          // visualization on the dashboard.
+          // The query saved but has nothing to show: an invented id would put
+          // someone else's visualization on the dashboard.
           failed.push(widget.title)
           continue
         }

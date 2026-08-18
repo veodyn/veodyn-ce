@@ -1,27 +1,13 @@
-// Shared `validate` helpers: almost every visualization fails the same way,
-// by naming a column the query no longer returns.
-//
-// This is not hypothetical. A stage query charted a `capacity` column its data
-// source had stopped returning; the chart drew axes, no bars, and no error.
-// Nothing in the app or the test suite noticed, because a renderer handed a
-// missing column produces an empty series rather than throwing.
+// Shared `validate` helpers: almost every visualization fails the same way, by
+// naming a column the query no longer returns. A renderer handed a missing
+// column draws an empty series rather than throwing, so nothing else notices.
 import type { QueryResultData } from '@/lib/mock-data'
 
 /**
  * Roles a columnMapping value can take. Anything else is not a column slot.
- *
- * Kept honest against the renderers that read the mapping, in both directions.
- * A role missing here means a genuinely broken visualization stays silent
- * (`source` and `target` were missing, so a Sankey whose source column
- * disappeared said nothing). A role here that no renderer reads means a false
- * warning about a column the visualization already ignores.
- *
- * `size` has been on both sides of that. It was taken out while no renderer
- * read it, and it is back because ScatterChart does now: it binds a bubble's
- * size column to a recharts ZAxis, so a stale one is no longer ignored, it
- * silently costs the chart its third dimension. Every point falls back to one
- * uniform mark and the result is a plain scatter under a bubble's name, which
- * is the same shape of bug as the `capacity` chart above.
+ * Keep this in step with the renderers in both directions: a missing role lets
+ * a broken visualization stay silent, an unread one warns about a column
+ * nothing uses.
  *
  * Readers: chart, heatmap and box plot use x / y / yRight / series; chart's
  * scatter shape also uses size (see chart/resolve-config.ts);
@@ -44,12 +30,9 @@ function columnNames(data: QueryResultData): Set<string> {
 }
 
 /**
- * Problems for option keys that each hold a single column name.
- *
- * An unset key is not a problem here. "You have not finished configuring this"
- * is a different message from "this names something that does not exist", and
- * reporting the first as an error would light up every freshly created
- * visualization.
+ * Problems for option keys that each hold a single column name. An unset key is
+ * not a problem: unfinished configuration is a different message from a name
+ * that does not exist.
  */
 export function missingNamedColumns(
   options: Record<string, unknown>,

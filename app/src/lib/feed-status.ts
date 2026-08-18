@@ -2,26 +2,13 @@ import { AlertTriangle, CircleCheck, XCircle } from 'lucide-react'
 import type { Feed } from '@/types/feed'
 
 /**
- * Freshness has to follow from the two columns shown next to it. A feed on an
- * "every 2 min" cadence whose last delivery was three days ago cannot be
- * "Fresh" under any definition, no matter what the upstream metadata claims.
- */
-
-/**
- * How each status is named and iconified, in one place.
+ * How each status is named and iconified, for `freshness-badge.tsx` and the
+ * Feed Health page alike.
  *
- * The label and the icon were spelled out twice, in `freshness-badge.tsx` and
- * on the Feed Health page, and the pair had already drifted: `down` existed on
- * the board and not in the badge, so the catalog's worst verdict was "Stale"
- * while Feed Health called the same feed "Down". That was fixed by adding the
- * missing entry to one of the two copies, which left two copies.
- *
- * Two class strings rather than one, because the surfaces resolve contrast
- * differently and both choices are deliberate. The badge tints its background,
- * so its label takes the near-black ink token and the status colour lives on
- * the border and icon; the bare form sits on the page background, where the
- * status colour is safe on the text itself. Tailwind cannot assemble a class
- * name at runtime, so each variant is written out rather than derived.
+ * Two class strings because the surfaces resolve contrast differently: the
+ * badge tints its background and carries the status colour on border and icon,
+ * the bare form carries it on the text. Written out per variant, since Tailwind
+ * cannot assemble a class name at runtime.
  *
  * Callers keep their own icon sizing: only the icon's identity is shared.
  */
@@ -95,13 +82,9 @@ const CADENCE_NAMES: Record<number, string> = {
 }
 
 /**
- * Seconds as a label `cadenceToMs` can parse back.
- *
- * The mirror of veodyn_api/services/feeds.py `cadence_label`, and the round
- * trip is the contract in both directions: a label this emits that cadenceToMs
- * cannot read silently disables the derivation and leaves every feed on its
- * declared status. Here so mock mode renders the same string the backend would,
- * rather than the board behaving differently with and without a backend.
+ * Seconds as a label `cadenceToMs` can parse back. Mirrors `cadence_label` in
+ * veodyn_api/services/feeds.py, and the round trip is the contract: a label
+ * cadenceToMs cannot read silently disables the derivation below.
  */
 export function cadenceLabel(seconds: number): string {
   if (seconds <= 0) return 'not scheduled'
@@ -116,15 +99,9 @@ export function cadenceLabel(seconds: number): string {
 }
 
 /**
- * Whether a feed's verdict was actually checked, or only repeated back.
- *
+ * Whether a feed's verdict was actually checked, or only repeated back:
  * deriveFeedStatus falls back to the declared status when the cadence will not
- * parse, and that fallback is invisible: on the board a feed reading "Fresh"
- * because it was aged against a two-minute cadence looked identical to one
- * reading "Fresh" because the upstream said so and there was nothing to age it
- * against. Every feed on the stage instance reported a cadence of "not
- * scheduled", so the whole column was the second case wearing the first case's
- * clothes, and "Stale" had no declared interval to be stale against.
+ * parse, and that fallback is otherwise invisible on the board.
  */
 export function feedStatusBasis(feed: Feed): 'derived' | 'reported' {
   return cadenceToMs(feed.cadence) == null ? 'reported' : 'derived'

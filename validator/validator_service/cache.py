@@ -1,32 +1,23 @@
 """A bounded, TTL'd, single-flight cache over one blocking `prepare` call.
 
 `gtfs_rt_validator.api.prepare_feed` reads a whole static archive: about 48
-seconds and roughly 1.9 GB resident for an MBTA-sized feed (the 2026-08-13
-spike behind
-docs/superpowers/specs/2026-08-13-validated-feed-publishing-design.md section
-6.6). A validation request is not the place to pay that on every call, so this
-cache holds prepared feeds keyed by the URL they were built from, refreshed on
-a TTL, so repeat validations against the same static reference cost only the
-sub-second rule pass.
+seconds and ~584 MB RSS for an MBTA-sized feed on the pinned
+gtfs-rt-validator 0.3.0 (validator/README.md). This cache holds prepared feeds
+keyed by the URL they were built from, refreshed on a TTL, so repeat validations
+against the same static reference cost only the sub-second rule pass.
 
-**No headroom for two copies.** A stale entry is dropped the moment it is
-found stale, before its replacement starts building. The alternative, keeping
-the old entry alive until the new one finishes, would let the default
-size-1 cache (a node serves one agency and carries one `static_gtfs_ref`, so 1
-is the normal case) spike to two archives resident at once: roughly 3.8 GB
-against the 1.9 GB the default promises, which is exactly the surprise
-`.env.example` says the default must not be. Dropping first keeps the memory
-budget honest at the cost of a gap: the request that finds the entry gone pays
-the full rebuild.
+**No headroom for two copies.** A stale entry is dropped the moment it is found
+stale, before its replacement starts building, so the default size-1 cache (a
+node serves one agency and carries one `static_gtfs_ref`) never holds two
+archives at once, which is the surprise `.env.example` says the default must not
+be. The cost is a gap: the request that finds the entry gone pays the rebuild.
 
 **Concurrent requests for the same key do not queue.** They fail with
-`PrepareInProgress`, which the router turns into a 503. The alternative, a
-second caller awaiting the first's in-flight prepare, was rejected because
-holding an HTTP request open for a ~48 second rebuild risks the wrong timeout
-firing somewhere upstream of this service; 503 is a state a caller can already
-retry on cheaply. This is also exactly the choice
-`docs/superpowers/specs/2026-08-13-validated-feed-publishing-design.md`
-lists as a valid non-200 outcome ("503 while a prepare is in flight").
+`PrepareInProgress`, which the router turns into a 503, rather than holding an
+HTTP request open for a ~48 second rebuild and risking the wrong timeout
+upstream.
+`docs/superpowers/specs/2026-08-13-validated-feed-publishing-design.md` lists
+that as a valid non-200 outcome ("503 while a prepare is in flight").
 """
 
 from __future__ import annotations
@@ -59,9 +50,8 @@ class PreparedFeedCache(Generic[FeedT]):
     """Cache one blocking, expensive `prepare(key) -> FeedT` call's results.
 
     `prepare` is injected rather than imported here, so a test can fake the
-    package boundary with a counting stub instead of downloading and parsing a
-    real archive. See the module docstring for the eviction and concurrency
-    choices this makes.
+    package boundary with a counting stub. See the module docstring for the
+    eviction and concurrency choices.
     """
 
     def __init__(

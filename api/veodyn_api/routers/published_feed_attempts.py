@@ -1,11 +1,8 @@
 """Reading and running publish attempts for one feed.
 
-Split out of published_feeds.py by the file-size hook: Task 1 already left
-that router at 274 lines against a 300-line hard block, and neither the read
-side moved here nor the new run-one-attempt endpoint fit alongside it.
-`load_feed` and `require_admin` are imported from there because a slug still
-has to resolve to a binding and publishing still needs an admin, the same rule
-every other write on this resource already holds.
+`load_feed` and `require_admin` come from published_feeds.py: a slug still has to
+resolve to a binding, and publishing still needs an admin, the same rule every
+other write on this resource holds.
 """
 
 from datetime import UTC, datetime
@@ -33,10 +30,9 @@ DbDep = Annotated[Session, Depends(get_db)]
 RedashDep = Annotated[RedashClient, Depends(get_redash_client)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
-# The list is a glance at recent history, not an archive. A feed publishing on
-# a short cadence writes a row per tick, and what the page needs is the current
-# artifact plus enough context to see a pattern. Paging arrives with a reader
-# who needs it, and this constant is where that decision is recorded.
+# The list is a glance at recent history, not an archive. A feed publishing on a
+# short cadence writes a row per tick, and the page needs the current artifact
+# plus enough context to see a pattern.
 ATTEMPT_PAGE_SIZE = 20
 
 
@@ -62,23 +58,16 @@ def _attempt_out(attempt: PublishAttempt) -> PublishAttemptOut:
 def list_attempts(identity: IdentityDep, db: DbDep, slug: str) -> list[PublishAttemptOut]:
     """The recent record for one feed, newest first.
 
-    `load_feed` first, so an unknown slug is a 404 rather than an empty list. A
-    feed that was deleted and a feed that has never published are different
-    facts and the page says different things about them.
-
-    `defer` on the bytes column is load-bearing, not a micro-optimisation: these
-    rows carry the served artifact, and selecting twenty of them to render
-    twenty status words would move the whole feed history over the wire.
-
-    The served artifact is added back when the cap pushed it off the page, and
-    it is the one row that is not optional context. Twenty blocked or failed
-    attempts in a row is exactly the situation where the still-serving artifact
-    is older than the page, and a client that reads "what is serving" off this
-    list would then conclude a live feed is dark: it would offer to publish over
-    it, and skip the going-dark warning on an edit.
+    `load_feed` runs first, so an unknown slug is a 404 rather than an empty list:
+    a deleted feed and a feed that has never published are different facts. The
+    currently served artifact is added back when the page cap pushed it off, since
+    a client reading "what is serving" off this list would otherwise conclude a
+    live feed is dark.
     """
     feed = load_feed(db, identity.org_slug, slug)
     identity_of_feed = (PublishAttempt.org_slug == feed.org_slug, PublishAttempt.slug == feed.slug)
+    # `defer` on the bytes column is load-bearing: these rows carry the served
+    # artifact, so twenty of them would move the whole feed history over the wire.
     rows = list(
         db.execute(
             select(PublishAttempt)
@@ -95,9 +84,7 @@ def list_attempts(identity: IdentityDep, db: DbDep, slug: str) -> list[PublishAt
     ).scalar_one_or_none()
     if served is not None and all(row.attempt_id != served.attempt_id for row in rows):
         # Re-sorted rather than appended, so the caller can keep reading this as
-        # one newest-first sequence. It happens to land last today, because a row
-        # outside the newest page is older than every row on it, but that is a
-        # property of the cap and not something the response should depend on.
+        # one newest-first sequence whatever the cap happens to make true.
         rows.append(served)
         rows.sort(key=lambda row: row.attempt_id, reverse=True)
     return [_attempt_out(row) for row in rows]
@@ -110,11 +97,9 @@ def publish_now(
     """Run one attempt for this feed, now.
 
     201 for every decision the engine reaches, including `blocked` and `failed`:
-    the attempt was created, which is what this endpoint promises, and its
-    decision is the answer rather than the status code. A 4xx here is reserved
-    for the cases where no attempt happens at all.
-
-    `run_attempt` records and commits the row itself, so nothing here commits.
+    the attempt was created, and its decision is the answer rather than the status
+    code, so a 4xx here means no attempt happened at all. `run_attempt` records
+    and commits the row itself.
     """
     require_admin(identity)
     feed = load_feed(db, identity.org_slug, slug)
@@ -133,14 +118,11 @@ def publish_now(
         validate=build_validate(settings),
     )
 
-    # Narrowed to the row this call wrote, not merely to the newest row for the
-    # feed. `run_attempt` records with the revision it was handed and the result
-    # id it was given, so those two pin the attempt down; a second publish
-    # committing between the run above and this read would otherwise hand this
-    # caller the other request's verdict, findings and all.
-    #
-    # `run_attempt`'s own signature is left alone on purpose: the enterprise
-    # worker calls it and this tree does not own that contract.
+    # Narrowed to the row this call wrote, not merely the newest row for the feed:
+    # the revision and result id pin it down, and a second publish committing
+    # between the run above and this read would otherwise hand this caller the
+    # other request's verdict. `run_attempt`'s signature is left alone because the
+    # enterprise worker calls it and this tree does not own that contract.
     recorded = db.execute(
         select(PublishAttempt)
         .options(defer(PublishAttempt.feed_bytes))

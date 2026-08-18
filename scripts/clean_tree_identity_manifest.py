@@ -1,40 +1,28 @@
 """What the identity gate looks for, where it is allowed to find it, and why.
 
-This is the manifest half of `scripts/check-clean-tree.py`, kept in its own
-module for the same reason `scripts/public_tree_forbidden_paths.py` is:
-reviewing a change to the declarations should not require reading any
-matching logic, and the declarations are what people will actually edit.
+The manifest half of `scripts/check-clean-tree.py`, in its own module so a
+change to the declarations can be reviewed without reading any matching
+logic. Three guards share this repository and do not overlap:
+`scripts/scan-secrets.py` owns credentials, `scripts/check-public-tree.py`
+owns forbidden paths, and check-clean-tree.py owns identity: the reference
+tenant's name and vocabulary, our own internal hostnames and domains,
+internal registry and namespace identifiers, and email addresses at a tenant
+domain.
 
-Three guards now share this repository and they do not overlap:
+**This file names no identity term**, because a manifest spelling out the
+customer's name would publish the customer's name. A digest is no better:
+the search space of "transit agencies" is a few thousand entries, so an
+unsalted hash of one is recoverable (`credential_scan_known_exceptions.py`
+reached the same conclusion for short human-chosen strings).
 
-- `scripts/scan-secrets.py` owns **credentials**.
-- `scripts/check-public-tree.py` owns **forbidden paths**.
-- `scripts/check-clean-tree.py` owns **identity**: the reference tenant's
-  name and vocabulary, our own internal hostnames and domains, internal
-  registry and namespace identifiers, and email addresses at a tenant domain.
-
-## The one design decision worth reading before anything else
-
-**This file names no identity term.** Not the customer, not an internal
-hostname, not a domain. A gate that spelled the customer's name into its own
-manifest would have published the customer's name, which is the exact
-outcome the gate exists to prevent, and no amount of surrounding comment
-undoes that. A digest of each term would be no better: the search space of
-"transit agencies" is a few thousand entries, so an unsalted hash of one is
-recoverable by anyone who cares. `credential_scan_known_exceptions.py`
-already reached that conclusion for short human-chosen strings and reverted
-a hashing scheme over it.
-
-So the term list is **harvested at runtime** from the places in this tree
-that already carry it, load-bearingly, for their own reasons:
-`IDENTITY_TERM_SOURCES` below names those places and says what each one is
-for. The gate adds no new copy of any term to the tree, and the day those
-sources are scrubbed at the cutover, the gate reports that it has nothing
-left to check rather than quietly passing (see MIN_HARVESTED_TERMS in
+The term list is harvested at runtime from the places in this tree that
+already carry it for their own reasons; `IDENTITY_TERM_SOURCES` below names
+them. Once those sources are scrubbed at the cutover the gate reports that
+it has nothing left to check rather than passing (MIN_HARVESTED_TERMS in
 check-clean-tree.py).
 
-The same rule governs the gate's output: it prints a path, a line number and
-a term's index in its source list. Never the value. Its CI log is public.
+The gate's output obeys the same rule: a path, a line number and a term's
+index in its source list, never the value. Its CI log is public.
 """
 
 # Where the terms come from. (path, symbol, extraction, reason).
@@ -43,9 +31,8 @@ a term's index in its source list. Never the value. Its CI log is public.
 #   "regex-array"  a TS array of /.../flags literals
 #   "string-array" a TS array of '...' literals
 #
-# Both of these files are guards in their own right, and both are on the
-# load-bearing list below: they hold the terms on purpose, and scrubbing
-# either one disarms itself and this gate together.
+# Both files are guards in their own right and both are on LOAD_BEARING
+# below: scrubbing either disarms itself and this gate together.
 IDENTITY_TERM_SOURCES = (
     (
         "app/e2e-docs/docs-screens.ts",
@@ -68,10 +55,9 @@ IDENTITY_TERM_SOURCES = (
     ),
 )
 
-# Value-free detectors: a shape, not a term, so they can be written out in
-# full here without naming anything. Each was confirmed to fire on this tree
-# before being added; a rule nobody has watched match is a rule nobody has
-# tested. (rule_id, regex, what it means, remedy).
+# Value-free detectors: a shape, not a term, so they name nothing.
+# (rule_id, regex, what it means, remedy). Each was confirmed to fire on this
+# tree before being added.
 #
 # TERMS_TOKEN is substituted with an alternation over the harvested terms that
 # could occur in a hostname. Plain string replacement rather than str.format,
@@ -109,38 +95,22 @@ PATTERN_RULES = (
     ),
 )
 
-# Findings a PATTERN_RULE produces are fatal by default, with no baseline to
-# absorb them: a shape rule needing a large exception list would be the wrong
-# shape rule. These are the declared exceptions, (path, rule_id, count,
-# reason), and the count is enforced exactly: one more occurrence than is
-# recorded fails the run. It is EMPTY, and that is the answer rather than an
-# omission. Both rules reached zero sites, by two different routes:
+# Declared exceptions to PATTERN_RULES, (path, rule_id, count, reason). The
+# count is enforced exactly: one more occurrence than is recorded fails the
+# run, and a declaration matching nothing fails as stale. Everything else a
+# rule finds is fatal, with no baseline to absorb it.
 #
-# - ci-token-clone: Phase 4 decided the test jobs ship and the image builds do
-#   not, so the two files that cloned a private repository over the pipeline's
-#   job token left the tree. scripts/public_tree_forbidden_paths.py forbids
-#   both paths, so a merge from the private branch cannot restore them.
-# - registry-namespace: the last two sites were IMAGE_DOCKER and IMAGE_DIND,
-#   and the entry here argued they should stay because a fork would override
-#   the registry host. Wrong on its own terms: a fork overrides nothing, it
-#   inherits an unset variable, and the path then resolved with an empty host
-#   and failed before the job ran a line. Both are plain public images at a
-#   pinned tag now.
-#
-# A hit from either rule is now fatal with nothing to weigh it against, the
-# state both were written for. What closed the second was the machinery
-# itself: it fails a declaration matching nothing, so an argued exception
-# cannot outlive the sites it described.
+# EMPTY is the answer here, not an omission: both rules reached zero sites.
+# The two files that cloned a private repository over the pipeline's job token
+# are forbidden by scripts/public_tree_forbidden_paths.py, so a merge from the
+# private branch cannot restore them.
 OPEN_PATTERN_SITES = ()
 
-# Paths where a harvested term is supposed to appear. Each one is reported on
-# every run with its reason and its hit count, and a declaration that stops
-# matching FAILS the run: a load-bearing site that is no longer load-bearing
-# is a stale claim, and a stale claim here is an unguarded path.
-#
-# This is not a skip list. "Skip node/" would be a bug: the fork is exactly
-# where an internal hostname could hide, and this gate found a tenant mailbox
-# in one of its test fixtures.
+# Paths where a harvested term is supposed to appear. Each is reported every
+# run with its reason and hit count, and a declaration that stops matching
+# FAILS: a stale claim here is an unguarded path. Not a skip list, and not a
+# place to put a directory: this gate found a tenant mailbox in a node/ test
+# fixture.
 LOAD_BEARING = (
     (
         "app/e2e-docs/docs-screens.ts",
@@ -193,9 +163,8 @@ LOAD_BEARING = (
 )
 
 # Not scanned at all, with an expiry. Carried as data rather than as a
-# comment so nobody can delete the note without deleting the decision, and
-# printed on every run including a clean one, because an exclusion only
-# visible to whoever opens this file is an exclusion that gets forgotten.
+# comment so the note cannot be deleted without deleting the decision, and
+# printed on every run including a clean one.
 DEFERRED_PREFIXES = (
     (
         "docs/superpowers/",
@@ -208,12 +177,11 @@ DEFERRED_PREFIXES = (
 )
 
 # This gate's own sources, excluded because scanning them makes the gate
-# report itself: the baseline module's rows are file paths and some of those
-# paths contain a connector name that is a harvested term, and the patterns
-# test has to spell out the shapes PATTERN_RULES detects or it tests nothing.
-# Same reasoning as SELF_REL_PATHS in scripts/scan-secrets.py, and none of
-# these files goes unchecked: test_check_clean_tree_declarations.py asserts
-# every hand-written one of them names no term.
+# report itself: the baseline's rows are file paths, some containing a
+# connector name that is a harvested term. Same reasoning as SELF_REL_PATHS in
+# scripts/scan-secrets.py, and none of these goes unchecked:
+# test_check_clean_tree_declarations.py asserts every hand-written one names
+# no term.
 SELF_REL_PATHS = (
     "scripts/check-clean-tree.py",
     "scripts/clean_tree_identity_manifest.py",
@@ -222,18 +190,12 @@ SELF_REL_PATHS = (
     "scripts/test_check_clean_tree_patterns.py",
 )
 
-# How the baseline is grouped in the report lives in its own module now:
-# scripts/clean_tree_identity_buckets.py holds OPEN_DECISION_BUCKETS, the
-# selector kinds and the reason attached to each group. Split off for file
-# size, and worth reading next: until 2026-08-07 everything outside the
-# published documentation site was ONE bucket reported as one open decision,
-# which made a find-and-replace and a data migration read as the same problem
-# at the same price. It is four now, and one of the four is closed.
+# How the baseline is grouped in the report: scripts/clean_tree_identity_buckets.py
+# holds OPEN_DECISION_BUCKETS, the selector kinds and each group's reason.
 
-# Stated, deliberately, so that a reader does not assume it is covered.
-#
-# Read this the way public_tree_forbidden_paths.py's DEFERRED_PATHS reads: it
-# is a decision recorded as data, not an oversight and not an escape hatch.
+# What this gate does not cover, recorded as data rather than as a comment so
+# the note cannot be deleted without deleting the decision. Not an escape
+# hatch, and read the way public_tree_forbidden_paths.py's DEFERRED_PATHS is.
 NOT_CHECKED = (
     (
         "words painted into a file that does not decode as UTF-8 (screenshots, PDFs, any binary)",

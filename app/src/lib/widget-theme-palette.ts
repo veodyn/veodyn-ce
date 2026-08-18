@@ -1,18 +1,11 @@
 // The two palettes, as data, for a widget that pins its own appearance.
 //
-// These are applied as inline custom properties by widget-theme-boundary.tsx
-// rather than through a CSS class, and that is not the obvious choice, so:
-// a nested `.dark` (or any new scope class) did not survive this project's CSS
-// pipeline. The rules were in tokens.css and simply were not in any stylesheet
-// the browser loaded, on any route, while `:root` and `.dark` from the same
-// file came through. Several shapes were tried (a `:root, .light` selector
-// list, a standalone class, a `@source inline(...)` safelist); a renamed probe
-// class survived once and then stopped. Inline styles have none of that
-// exposure: nothing scans, purges, reorders or merges them.
+// widget-theme-boundary.tsx applies these as inline custom properties rather
+// than a CSS class: a nested scope class does not survive this project's CSS
+// pipeline, its rules reaching no stylesheet the browser loads.
 //
-// The token set is exactly what `.dark` overrides in tokens.css. Anything it
-// leaves alone is theme-independent and needs no entry here.
-// widget-theme-palette.test.ts re-reads tokens.css and fails if these drift.
+// The token set is exactly what `.dark` overrides in tokens.css;
+// widget-theme-palette.test.ts re-reads that file and fails if these drift.
 
 export type ThemeTokens = Readonly<Record<string, string>>
 
