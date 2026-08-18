@@ -56,3 +56,10 @@ composed/
 # scan-secrets fails on it: the id is a 32-char hex literal, exactly the shape
 # of a credential.
 .wrangler/
+
+# Internal design record: specs, plans and implementation notes. They live in
+# the deploy repository and must never be committed here, which is enforced by
+# scripts/check-public-tree.py. This entry is the earlier guard rail: five of
+# them reached this repository on 2026-08-14 through a hand-made commit, after
+# it was already public, and `git add .` is how they travelled.
+docs/superpowers/

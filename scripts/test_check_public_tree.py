@@ -186,9 +186,16 @@ class TestExportMode(unittest.TestCase):
     committed to the export and deleted before the flip is still published.
     """
 
+    # A SYNTHETIC entry rather than manifest.DEFERRED_PATHS[0]. That tuple is empty
+    # as of 2026-08-18, and the version of this test that read it asserted itself
+    # vacuous and failed, which is the right way for a test to notice it has
+    # stopped testing anything. The behaviour has not gone anywhere: the next
+    # deferral will depend on `--export` checking it, and this proves it with no
+    # live deferral to borrow.
+    SYNTHETIC_DEFERRED = (("docs/synthetic-deferral/", "a deferral invented by this test"),)
+
     def test_a_deferred_path_passes_by_default_and_fails_on_export(self):
-        self.assertTrue(manifest.DEFERRED_PATHS, "no deferred paths left; this test is now vacuous")
-        deferred_entry = manifest.DEFERRED_PATHS[0][0]
+        deferred_entry = self.SYNTHETIC_DEFERRED[0][0]
         planted = f"{deferred_entry.rstrip('/')}/planted.md"
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -196,11 +203,20 @@ class TestExportMode(unittest.TestCase):
 
             self.assertEqual(checker.check_tree(root, manifest.FORBIDDEN_PATHS), ([], []))
 
-            tracked, _ = checker.check_tree(
-                root, tuple(manifest.FORBIDDEN_PATHS) + tuple(manifest.DEFERRED_PATHS)
-            )
+            tracked, _ = checker.check_tree(root, tuple(manifest.FORBIDDEN_PATHS) + self.SYNTHETIC_DEFERRED)
             self.assertEqual([entry for entry, _, _ in tracked], [deferred_entry])
             self.assertEqual([matched for _, _, matched in tracked], [[planted]])
+
+    def test_docs_superpowers_is_forbidden_rather_than_deferred(self):
+        # The regression the whole change exists for. It sat in DEFERRED_PATHS past
+        # its own stated expiry, so check-public-tree reported clean for a week
+        # while five internal files sat in a public repository. Asserted by name,
+        # because "some deferral expired" is not something a later reader can act
+        # on.
+        forbidden = {entry for entry, _ in manifest.FORBIDDEN_PATHS}
+        deferred = {entry for entry, _ in manifest.DEFERRED_PATHS}
+        self.assertIn("docs/superpowers/", forbidden)
+        self.assertNotIn("docs/superpowers/", deferred)
 
     def test_export_does_not_narrow_what_the_default_run_checks(self):
         # The flag may only ADD. A version that swapped one list for the other

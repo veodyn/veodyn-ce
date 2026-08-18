@@ -150,6 +150,22 @@ FORBIDDEN_PATHS = (
         "documents was not.",
     ),
     (
+        "scripts/dev-stack.sh",
+        "Brings the local stack up as one edition or the other. Forbidden for the same reason "
+        "as dev-assemble.sh above: it names the enterprise pack's checkout, its overlay "
+        "Dockerfiles and its compose overlay, and the ee path does not exist for a reader who "
+        "has only this tree. The ce path it also carries is exactly `docker compose up` "
+        "against the public compose.yaml, so nothing is lost there.",
+    ),
+    (
+        "scripts/dev-stack/",
+        "The enterprise fixture dev-stack.sh applies, holding rows for `kpi`, "
+        "`kpi_history_point` and `report`. Those tables are defined in the enterprise pack, so "
+        "the file is a description of a private schema. Its community counterpart is "
+        "compose/fixtures/, which stays public deliberately: everything in there is a table "
+        "this tree defines.",
+    ),
+    (
         "docs/secret-rotation.md",
         "Operational runbook for one deployment's credentials: its 1Password vault and item "
         "path, its namespace and Secret names, which of its releases share a database, and "
@@ -255,6 +271,15 @@ FORBIDDEN_PATHS = (
         "side that has something to compare. Run in the community tree it would clone and "
         "diff a repository against itself.",
     ),
+    (
+        "docs/superpowers/",
+        "Internal specs, plans and implementation notes: work in progress, naming internal "
+        "incidents, unfixed weaknesses and private pack internals. It sat in DEFERRED_PATHS "
+        "until 2026-08-18 because the reorg was executed against these documents. That "
+        "deferral expired when veodyn-ce went public on 2026-08-11 and nobody closed it, so "
+        "commit db9e3e4 carried five of them into an already-public repository on 2026-08-14 "
+        "while check-public-tree passed, having been told to skip them.",
+    ),
 )
 
 # Deliberately NOT forbidden, with an expiry. Printed on every run so it
@@ -266,13 +291,9 @@ FORBIDDEN_PATHS = (
 # for a stated span. It is not a general escape hatch for a false positive.
 # A path that simply should not have been forbidden belongs out of
 # FORBIDDEN_PATHS entirely, with the reasoning recorded in the same commit.
-DEFERRED_PATHS = (
-    (
-        "docs/superpowers/",
-        "Kept on purpose through Phase 3 and Phase 4: the specs, plans and implementation "
-        "notes in here are what the remaining reorg work is executed against, so deleting "
-        "them now would delete the instructions for the deletion. EXPIRES at the Phase 5 "
-        "cutover, when the public repository is created; it is on that phase's checklist. "
-        "Its absence from FORBIDDEN_PATHS is a decision, not an oversight.",
-    ),
-)
+# Empty, and the mechanism stays because the next deferral will want it. The one
+# entry this ever held, docs/superpowers/, is in FORBIDDEN_PATHS above: its
+# expiry passed unnoticed and five files reached a public repository in the gap.
+# A deferral that outlives its own expiry is worse than no deferral, because the
+# guard reports clean the whole time.
+DEFERRED_PATHS = ()
