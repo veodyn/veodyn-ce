@@ -28,6 +28,8 @@
   --destructive: #B4552D;
   --border: #E5E1D8;
   --input: #E5E1D8;
+  --scrollbar-thumb: #D3CEC2;
+  --scrollbar-thumb-hover: #B6B0A2;
   --ring: #475569;
   --chart-1: #485EA7;
   --chart-2: #2B7E4E;
@@ -80,6 +82,8 @@
   --destructive: #E06A45;
   --border: rgba(255, 255, 255, 0.08);
   --input: rgba(255, 255, 255, 0.12);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.16);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
   --ring: #7FA9E0;
   --chart-1: #4A61AA;
   --chart-2: #2B7E4E;
