@@ -189,15 +189,23 @@ def put_alert(
             "the warehouse does not list this capture, so there is no table to watch",
             status_code=422,
         )
+    # Read as the CALLER, and kept after the probe stopped being bound to this
+    # data source: the catalog is not permission-filtered, so this is the only
+    # thing standing between a user and a watch on a capture Redash does not
+    # show them. The probe itself runs as the service account.
     facts = query_facts(redash, api_key=api_key, cookie=session_cookie)
-    fact = facts.get(dataset.sample_query_id or 0)
+    if facts.get(dataset.sample_query_id or 0) is None:
+        raise ApiError(
+            ErrorId.FEED_NOT_WATCHABLE,
+            f"the query behind {dataset.name} is not one this account can read, so it cannot be watched",
+            status_code=422,
+        )
     query_id, alert_id = feed_alert.arm(
         redash,
         feed_id=feed_id,
         feed_name=dataset.name,
         database=settings.clickhouse_database,
         table=dataset.id,
-        data_source_id=fact.data_source_id if fact else 0,
         expected_interval_seconds=row.expected_interval_seconds,
         api_key=settings.redash_service_api_key,
     )
