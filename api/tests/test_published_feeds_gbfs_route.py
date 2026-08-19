@@ -24,10 +24,10 @@ from tests.published_feed_route_stubs import (
 from tests.published_feed_route_stubs import BODY as GTFS_RT_BODY
 
 SYSTEM_INFO: dict[str, str] = {
-    "system_id": "metro",
+    "system_id": "city",
     "language": "en",
-    "name": "Metro Bikes",
-    "timezone": "America/Los_Angeles",
+    "name": "City Bikes",
+    "timezone": "America/New_York",
 }
 
 BODY: dict[str, Any] = {
@@ -87,7 +87,7 @@ def test_a_gbfs_binding_reads_back_with_its_system_info(api: TestClient, monkeyp
     body = api.get("/published-feeds/bikes-live", headers=auth()).json()
 
     assert body["standard"] == "gbfs"
-    assert body["systemInfo"]["timezone"] == "America/Los_Angeles"
+    assert body["systemInfo"]["timezone"] == "America/New_York"
 
 
 @respx.mock
@@ -100,12 +100,12 @@ def test_editing_a_gbfs_binding_rewrites_its_system_info(
     set_columns(monkeypatch, COLUMNS)
     assert _create(api).status_code == 201
 
-    renamed = {**SYSTEM_INFO, "name": "Metro Bikeshare"}
+    renamed = {**SYSTEM_INFO, "name": "City Bikeshare"}
     response = api.put("/published-feeds/bikes-live", json={**BODY, "systemInfo": renamed}, headers=auth())
 
     assert response.status_code == 200
     assert response.json()["revision"] == 2
-    assert response.json()["systemInfo"]["name"] == "Metro Bikeshare"
+    assert response.json()["systemInfo"]["name"] == "City Bikeshare"
     assert binding(db, "bikes-live").system_info == renamed
 
 

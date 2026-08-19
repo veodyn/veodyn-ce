@@ -16,9 +16,9 @@ const GBFS_FEED: PublishedFeed = {
   entity: 'stations',
   staticGtfsRef: null,
   systemInfo: {
-    system_id: 'metro',
+    system_id: 'city',
     language: 'en',
-    name: 'Metro Bikes',
+    name: 'City Bikes',
     timezone: 'America/Los_Angeles',
   },
   sourceColumn: null,
@@ -63,7 +63,7 @@ describe('editing a gbfs binding', () => {
 
     expect(screen.getByText('System')).toBeInTheDocument()
     expect(screen.getByText('system_id')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Metro Bikes')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('City Bikes')).toBeInTheDocument()
     // The gtfs-rt half must be absent, not blank.
     expect(screen.queryByLabelText(/static gtfs reference/i)).not.toBeInTheDocument()
     expect(screen.queryByText('vehicle_id')).not.toBeInTheDocument()
@@ -91,7 +91,7 @@ describe('editing a gbfs binding', () => {
         version: '2.3',
         entity: 'stations',
         staticGtfsRef: null,
-        systemInfo: expect.objectContaining({ system_id: 'metro', name: 'Metro Bikes' }),
+        systemInfo: expect.objectContaining({ system_id: 'city', name: 'City Bikes' }),
       })
     )
   })
@@ -100,7 +100,7 @@ describe('editing a gbfs binding', () => {
     const user = userEvent.setup()
     const onSubmit = renderEdit()
 
-    await user.clear(screen.getByDisplayValue('metro'))
+    await user.clear(screen.getByDisplayValue('city'))
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(onSubmit).not.toHaveBeenCalled()

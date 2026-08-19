@@ -33,7 +33,7 @@ COLUMN_MAP = {
     "last_reported": "seen",
     "capacity": "cap",
 }
-SYSTEM_23 = {"system_id": "metro", "language": "en", "name": "Metro Bikes", "timezone": "America/Los_Angeles"}
+SYSTEM_23 = {"system_id": "city", "language": "en", "name": "City Bikes", "timezone": "America/New_York"}
 ROW = {
     "sid": "s1",
     "label": "Main St",
@@ -92,7 +92,7 @@ def test_23_shapes() -> None:
 
 
 def test_30_shapes() -> None:
-    system = dict(SYSTEM_23, opening_hours="24/7", feed_contact_email="ops@metro.example")
+    system = dict(SYSTEM_23, opening_hours="24/7", feed_contact_email="ops@city.example")
     files = _serialize(version="3.0", system=system)
     disco = files["gbfs.json"]
     assert disco["last_updated"] == "2025-08-17T03:08:20Z"
@@ -108,7 +108,7 @@ def test_30_shapes() -> None:
     assert info["name"] == [{"text": "Main St", "language": "en"}]
     sysinfo = files["system_information.json"]["data"]
     assert sysinfo["languages"] == ["en"]
-    assert sysinfo["name"] == [{"text": "Metro Bikes", "language": "en"}]
+    assert sysinfo["name"] == [{"text": "City Bikes", "language": "en"}]
 
 
 def test_refusals_name_row_and_field() -> None:

@@ -29,10 +29,10 @@ export const mockPublishedFeeds: PublishedFeed[] = [
     entity: 'stations',
     staticGtfsRef: null,
     systemInfo: {
-      system_id: 'metro-bikeshare',
+      system_id: 'city-bikeshare',
       language: 'en',
-      name: 'Metro Bike Share',
-      timezone: 'America/Los_Angeles',
+      name: 'City Bike Share',
+      timezone: 'America/New_York',
     },
     sourceColumn: null,
     // Close to what the GBFS connector's stations_joined resource returns, which

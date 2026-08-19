@@ -19,7 +19,7 @@ SYSTEM_INFO = {
     "system_id": "acme_bikes",
     "language": "en",
     "name": "Acme Bikes",
-    "timezone": "America/Los_Angeles",
+    "timezone": "America/New_York",
 }
 
 FILES: dict[str, Any] = {"gbfs.json": {"version": "2.3"}}

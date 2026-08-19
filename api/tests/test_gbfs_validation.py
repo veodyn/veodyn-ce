@@ -20,8 +20,8 @@ COLUMN_MAP = {
     "is_returning": "ret",
     "last_reported": "seen",
 }
-SYSTEM_23 = {"system_id": "metro", "language": "en", "name": "Metro Bikes", "timezone": "America/Los_Angeles"}
-SYSTEM_30 = dict(SYSTEM_23, opening_hours="24/7", feed_contact_email="ops@metro.example")
+SYSTEM_23 = {"system_id": "city", "language": "en", "name": "City Bikes", "timezone": "America/New_York"}
+SYSTEM_30 = dict(SYSTEM_23, opening_hours="24/7", feed_contact_email="ops@city.example")
 ROW = {
     "sid": "s1",
     "label": "Main St",

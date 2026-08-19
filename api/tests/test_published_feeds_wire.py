@@ -13,10 +13,10 @@ from pydantic import ValidationError
 from veodyn_api.schemas.published_feed import PublishedFeedIn
 
 SYSTEM_23 = {
-    "system_id": "metro",
+    "system_id": "city",
     "language": "en",
-    "name": "Metro Bikes",
-    "timezone": "America/Los_Angeles",
+    "name": "City Bikes",
+    "timezone": "America/New_York",
 }
 
 
@@ -113,7 +113,7 @@ def test_the_gtfs_rt_version_set_is_still_one_value() -> None:
 
 
 def test_three_zero_is_accepted_with_its_extra_system_fields() -> None:
-    info = dict(SYSTEM_23, opening_hours="24/7", feed_contact_email="ops@metro.example")
+    info = dict(SYSTEM_23, opening_hours="24/7", feed_contact_email="ops@city.example")
 
     body = PublishedFeedIn.model_validate(_body(version="3.0", systemInfo=info))
 
@@ -143,7 +143,7 @@ def test_system_info_refuses_unknown_keys() -> None:
 def test_a_two_three_binding_may_not_carry_the_three_zero_extras() -> None:
     """2.3's `system_information.json` has no place to put them, so accepting
     them would store a declaration nothing ever serves."""
-    info = dict(SYSTEM_23, opening_hours="24/7", feed_contact_email="ops@metro.example")
+    info = dict(SYSTEM_23, opening_hours="24/7", feed_contact_email="ops@city.example")
 
     with pytest.raises(ValidationError, match="opening_hours"):
         PublishedFeedIn.model_validate(_body(systemInfo=info))
