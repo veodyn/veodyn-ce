@@ -83,6 +83,13 @@ export interface StandardCapability {
   standard: string
   versions: string[]
   entities: string[]
+  /**
+   * The timezone names this standard's system declaration accepts, from the
+   * enum in the schema the validator judges a publish against. Empty for a
+   * standard that declares no timezone, and empty when that schema could not be
+   * read, which the form renders as a text field.
+   */
+  timezones: string[]
 }
 
 /**

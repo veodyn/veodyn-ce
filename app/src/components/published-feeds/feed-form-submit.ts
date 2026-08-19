@@ -22,10 +22,28 @@ export interface FormValues {
   visibility: PublishedFeedInput['visibility']
 }
 
+// What the GBFS schema constrains `system_information.language` with. A
+// pattern, not an enum, which is why the field stays free entry and the picker
+// beside it only suggests.
+const LANGUAGE_PATTERN = /^[a-z]{2,3}(-[A-Z]{2})?$/
+
 /** The system fields a gbfs binding is missing, empty for gtfs-rt. */
 export function missingSystemFields(values: FormValues): string[] {
   if (values.standard !== 'gbfs') return []
   return systemFieldsFor(values.version).filter((field) => !values.systemInfo[field]?.trim())
+}
+
+function malformedLanguage(values: FormValues): boolean {
+  const language = values.systemInfo.language?.trim()
+  return values.standard === 'gbfs' && Boolean(language) && !LANGUAGE_PATTERN.test(language as string)
+}
+
+/** Every system field problem this form can name, per field. */
+export function systemFieldErrors(values: FormValues): Record<string, string> {
+  const errors: Record<string, string> = {}
+  for (const field of missingSystemFields(values)) errors[field] = 'This field is required.'
+  if (malformedLanguage(values)) errors.language = 'Use a code like en or en-GB.'
+  return errors
 }
 
 /**
@@ -44,6 +62,9 @@ export function submitError(values: FormValues): string | null {
   const missingSystem = missingSystemFields(values)
   if (missingSystem.length > 0) {
     return `Fill in every system field before publishing: ${missingSystem.join(', ')}.`
+  }
+  if (malformedLanguage(values)) {
+    return 'The system language must be a code like en or en-GB.'
   }
   return null
 }

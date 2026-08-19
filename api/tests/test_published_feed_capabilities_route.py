@@ -18,7 +18,7 @@ import respx
 from fastapi.testclient import TestClient
 
 from tests.published_feed_route_stubs import ADMIN, MEMBER, as_user, auth
-from veodyn_api.services import published_feed_registry
+from veodyn_api.services import gbfs_vocabulary, published_feed_registry
 
 
 @respx.mock
@@ -34,12 +34,56 @@ def test_capabilities_reports_what_is_registered(api: TestClient) -> None:
     # answer empty lists and still pass. Pinned here, so this test says what
     # community ships rather than only that the handler reads the registry it
     # reads.
-    assert response.json() == {
+    body = response.json()
+    # Dropped before the comparison and asserted on its own below: the gbfs
+    # entry carries a 597-name enum, and inlining it here would bury what this
+    # test pins.
+    for entry in body["standards"]:
+        entry.pop("timezones")
+    assert body == {
         "standards": [
             {"standard": "gbfs", "versions": ["2.3", "3.0"], "entities": ["stations"]},
             {"standard": "gtfs-rt", "versions": ["2.0"], "entities": ["vehicle_positions"]},
         ]
     }
+
+
+@respx.mock
+def test_gbfs_timezones_come_from_the_schema_that_judges_a_publish(api: TestClient) -> None:
+    """The names are the validator's own enum, so the picker cannot offer a
+    value that publishing would then refuse."""
+    as_user(ADMIN)
+
+    response = api.get("/published-feeds/capabilities", headers=auth())
+
+    by_standard = {entry["standard"]: entry for entry in response.json()["standards"]}
+    timezones = by_standard["gbfs"]["timezones"]
+    assert timezones == sorted(timezones)
+    for name in ("UTC", "America/Los_Angeles", "Europe/Berlin", "Asia/Tokyo"):
+        assert name in timezones
+    assert "America/Nowhere" not in timezones
+    # gtfs-rt binds no system declaration, so it names no timezone at all.
+    assert by_standard["gtfs-rt"]["timezones"] == []
+
+
+@respx.mock
+def test_an_unreadable_schema_reports_no_timezones_rather_than_failing(api: TestClient) -> None:
+    """The picker degrades to a text field. A capabilities read that 500s over
+    one absent enum would take the entity and version answers down with it."""
+    as_user(ADMIN)
+    versions = published_feed_registry.VERSIONS_BY_STANDARD["gbfs"]
+    published_feed_registry.VERSIONS_BY_STANDARD["gbfs"] = (*versions, "9.9")
+    gbfs_vocabulary._gbfs_timezones.cache_clear()
+    try:
+        response = api.get("/published-feeds/capabilities", headers=auth())
+    finally:
+        published_feed_registry.VERSIONS_BY_STANDARD["gbfs"] = versions
+        gbfs_vocabulary._gbfs_timezones.cache_clear()
+
+    assert response.status_code == 200
+    by_standard = {entry["standard"]: entry for entry in response.json()["standards"]}
+    assert by_standard["gbfs"]["timezones"] == []
+    assert by_standard["gbfs"]["entities"] == ["stations"]
 
 
 @respx.mock
@@ -67,7 +111,12 @@ def test_a_standard_only_a_pack_registers_appears_with_no_declared_versions(api:
         response = api.get("/published-feeds/capabilities", headers=auth())
 
     by_standard = {entry["standard"]: entry for entry in response.json()["standards"]}
-    assert by_standard["gtfs-static"] == {"standard": "gtfs-static", "versions": [], "entities": ["shapes"]}
+    assert by_standard["gtfs-static"] == {
+        "standard": "gtfs-static",
+        "versions": [],
+        "entities": ["shapes"],
+        "timezones": [],
+    }
 
 
 @respx.mock

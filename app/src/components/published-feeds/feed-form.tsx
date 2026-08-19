@@ -15,7 +15,7 @@ import { ColumnMapEditor } from './column-map-editor'
 import { OnFailureSection, lastGoodAgeError } from './feed-form-on-failure'
 import { ShapeSection } from './feed-form-shape'
 import { SystemInfoSection } from './system-info-section'
-import { buildInput, missingSystemFields, submitError, type FormValues } from './feed-form-submit'
+import { buildInput, submitError, systemFieldErrors, type FormValues } from './feed-form-submit'
 import { resolveEntitySelection } from './entity-selection'
 import type { FeedStandard, PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
 
@@ -143,12 +143,7 @@ export function FeedForm({
     visibility,
   }
 
-  const systemErrors: Record<string, string> = {}
-  if (attempted) {
-    for (const field of missingSystemFields(values)) {
-      systemErrors[field] = 'This field is required.'
-    }
-  }
+  const systemErrors = attempted ? systemFieldErrors(values) : {}
 
   // A field mapped against one query's columns is meaningless (and possibly
   // unreachable-by-construction-breaking) against a different query's
@@ -199,6 +194,25 @@ export function FeedForm({
   return (
     <Card>
       <CardContent className="space-y-6">
+        {/* First, because it decides the rest of the form: the field
+            vocabulary, whether a static reference or a system declaration is
+            asked for, and what a change here clears. */}
+        <ShapeSection
+          standard={standard}
+          onStandardChange={handleStandardChange}
+          // An edit cannot change standards. The stored artifacts, the column
+          // map and the system declaration all belong to the one it was created
+          // under, so switching is a different feed, like the slug.
+          standardLocked={Boolean(initial)}
+          version={version}
+          onVersionChange={setVersion}
+          versionOptions={versionOptions}
+          entity={entitySelection.entity}
+          onEntityChange={setPickedEntity}
+          isEntityPicker={entitySelection.isPicker}
+          entityOptions={entitySelection.options}
+        />
+
         <div className="space-y-3">
           <h2 className={SUBSECTION_HEADING}>Source</h2>
           <QueryPicker
@@ -218,28 +232,13 @@ export function FeedForm({
           onVisibilityChange={setVisibility}
         />
 
-        <ShapeSection
-          standard={standard}
-          onStandardChange={handleStandardChange}
-          // An edit cannot change standards. The stored artifacts, the column
-          // map and the system declaration all belong to the one it was created
-          // under, so switching is a different feed, like the slug.
-          standardLocked={Boolean(initial)}
-          version={version}
-          onVersionChange={setVersion}
-          versionOptions={versionOptions}
-          entity={entitySelection.entity}
-          onEntityChange={setPickedEntity}
-          isEntityPicker={entitySelection.isPicker}
-          entityOptions={entitySelection.options}
-        />
-
         {standard === 'gbfs' && (
           <SystemInfoSection
             version={version}
             value={systemInfo}
             onChange={(field, next) => setSystemInfo((s) => ({ ...s, [field]: next }))}
             errors={systemErrors}
+            timezones={capability?.timezones ?? []}
           />
         )}
 

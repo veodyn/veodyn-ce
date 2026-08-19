@@ -89,6 +89,15 @@ describe('switching the source query', () => {
   })
 })
 
+describe('the order the form asks in', () => {
+  it('asks for the shape before the source, because the shape decides the rest', () => {
+    renderCreateForm()
+
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+    expect(headings.slice(0, 3)).toEqual(['Shape', 'Source', 'Address'])
+  })
+})
+
 describe('editing an existing binding', () => {
   const initial: PublishedFeed = {
     slug: 'vehicles-live',

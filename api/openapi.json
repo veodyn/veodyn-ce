@@ -1475,7 +1475,7 @@
         "type": "object"
       },
       "StandardCapabilityOut": {
-        "description": "One standard this deployment can bind a feed to, with the versions it can\npublish and the entities registered under it.\n\n`versions` comes from `published_feed_registry.VERSIONS_BY_STANDARD` and is empty for a\nstandard only a pack registers entities under.",
+        "description": "One standard this deployment can bind a feed to, with the versions it can\npublish and the entities registered under it.\n\n`versions` comes from `published_feed_registry.VERSIONS_BY_STANDARD` and is empty for a\nstandard only a pack registers entities under.\n\n`timezones` is the closed vocabulary this standard's system declaration\naccepts, read from the validator's own schema by `gbfs_vocabulary.py`. Empty\nfor a standard that declares no timezone, and empty when that schema cannot\nbe read, which the form degrades to a text field.",
         "properties": {
           "entities": {
             "items": {
@@ -1488,6 +1488,13 @@
             "title": "Standard",
             "type": "string"
           },
+          "timezones": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Timezones",
+            "type": "array"
+          },
           "versions": {
             "items": {
               "type": "string"
@@ -1499,7 +1506,8 @@
         "required": [
           "standard",
           "versions",
-          "entities"
+          "entities",
+          "timezones"
         ],
         "title": "StandardCapabilityOut",
         "type": "object"

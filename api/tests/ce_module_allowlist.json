@@ -112,6 +112,7 @@
     "services/finding_json.py",
     "services/gbfs_serializer.py",
     "services/gbfs_validation.py",
+    "services/gbfs_vocabulary.py",
     "services/gtfs_rt_serializer.py",
     "services/llm.py",
     "services/publish_engine.py",

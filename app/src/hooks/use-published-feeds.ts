@@ -28,10 +28,19 @@ const attemptsKey = (slug: string) => ['published-feeds', slug, 'attempts']
 // fixture-mode session returns when there is no backend to ask. Mock mode is
 // what pnpm test:e2e runs on, so the entity must show as a fact, not an empty
 // picker, while the gbfs version list is genuinely two.
+//
+// `timezones` is the one field a fixture cannot mirror: the real answer is the
+// 597-name enum the API reads out of the validator's schema, so this carries a
+// sample and the picker offers fewer names here than a wired session does.
 const MOCK_CAPABILITIES: FeedCapabilities = {
   standards: [
-    { standard: 'gbfs', versions: ['2.3', '3.0'], entities: ['stations'] },
-    { standard: 'gtfs-rt', versions: ['2.0'], entities: ['vehicle_positions'] },
+    {
+      standard: 'gbfs',
+      versions: ['2.3', '3.0'],
+      entities: ['stations'],
+      timezones: ['America/Los_Angeles', 'America/New_York', 'Europe/Berlin', 'Europe/London', 'UTC'],
+    },
+    { standard: 'gtfs-rt', versions: ['2.0'], entities: ['vehicle_positions'], timezones: [] },
   ],
 }
 

@@ -1022,12 +1022,19 @@ export interface components {
          *
          *     `versions` comes from `published_feed_registry.VERSIONS_BY_STANDARD` and is empty for a
          *     standard only a pack registers entities under.
+         *
+         *     `timezones` is the closed vocabulary this standard's system declaration
+         *     accepts, read from the validator's own schema by `gbfs_vocabulary.py`. Empty
+         *     for a standard that declares no timezone, and empty when that schema cannot
+         *     be read, which the form degrades to a text field.
          */
         StandardCapabilityOut: {
             /** Entities */
             entities: string[];
             /** Standard */
             standard: string;
+            /** Timezones */
+            timezones: string[];
             /** Versions */
             versions: string[];
         };

@@ -119,4 +119,41 @@ describe('editing a gbfs binding', () => {
     expect(screen.getByText('feed_contact_email')).toBeInTheDocument()
     expect(screen.getByText('opening_hours')).toBeInTheDocument()
   })
+
+  it('offers the timezone names this deployment reported rather than asking for one', async () => {
+    // GBFS spells timezone as an enum, so the names come from the capabilities
+    // read, which serves the enum out of the schema a publish is judged against.
+    const user = userEvent.setup()
+    renderEdit()
+
+    // Awaited, not read straight off: the field is a plain text input until the
+    // capabilities read lands and gives it a vocabulary to offer.
+    const timezone = await screen.findByRole('combobox', { name: 'timezone' })
+    await user.clear(timezone)
+    await user.type(timezone, 'berl')
+    await user.click(await screen.findByText('Europe/Berlin'))
+
+    expect(timezone).toHaveValue('Europe/Berlin')
+  })
+
+  it('names a language subtag, and refuses one that is not the shape GBFS defines', async () => {
+    const user = userEvent.setup()
+    const onSubmit = renderEdit()
+    const language = screen.getByLabelText('language')
+
+    await user.clear(language)
+    await user.type(language, 'English')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(screen.getAllByText(/en or en-GB/i).length).toBeGreaterThan(0)
+
+    await user.clear(language)
+    await user.type(language, 'en-GB')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ systemInfo: expect.objectContaining({ language: 'en-GB' }) })
+    )
+  })
 })

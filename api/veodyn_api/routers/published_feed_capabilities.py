@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends
 
 from veodyn_api.auth import Identity, require_identity
 from veodyn_api.schemas.published_feed import FeedCapabilitiesOut, StandardCapabilityOut
-from veodyn_api.services import published_feed_registry
+from veodyn_api.services import gbfs_vocabulary, published_feed_registry
 
 router = APIRouter(prefix="/published-feeds", tags=["published-feeds"])
 
@@ -29,6 +29,7 @@ def get_capabilities(identity: IdentityDep) -> FeedCapabilitiesOut:
                 standard=standard,
                 versions=list(published_feed_registry.VERSIONS_BY_STANDARD.get(standard, ())),
                 entities=sorted(published_feed_registry.entities(standard)),
+                timezones=list(gbfs_vocabulary.timezones_for(standard)),
             )
             for standard in sorted(published_feed_registry.standards())
         ]

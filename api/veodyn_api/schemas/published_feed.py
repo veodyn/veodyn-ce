@@ -179,11 +179,17 @@ class StandardCapabilityOut(CamelModel):
 
     `versions` comes from `published_feed_registry.VERSIONS_BY_STANDARD` and is empty for a
     standard only a pack registers entities under.
+
+    `timezones` is the closed vocabulary this standard's system declaration
+    accepts, read from the validator's own schema by `gbfs_vocabulary.py`. Empty
+    for a standard that declares no timezone, and empty when that schema cannot
+    be read, which the form degrades to a text field.
     """
 
     standard: str
     versions: list[str]
     entities: list[str]
+    timezones: list[str]
 
 
 class FeedCapabilitiesOut(CamelModel):
