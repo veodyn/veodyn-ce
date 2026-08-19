@@ -1,7 +1,7 @@
 """
 GO511 (Motorist Aid / api.go511.com) query runner.
 
-Traffic incidents, roadwork, closures, park-and-ride lots, cameras and
+Traffic incidents, roadwork, park-and-ride lots, cameras and
 mainline route speeds for the LA region.
 
 The API key must be entered when creating the data source; it is not
@@ -12,6 +12,7 @@ import requests
 
 from redash.query_runner import register
 from redash.query_runner.connector_base import (
+    REQUEST_HEADERS,
     BaseResourceRunner,
     build_configuration_schema,
     extract_records,
@@ -45,10 +46,6 @@ class Go511(BaseResourceRunner):
             "doc_returns": ALERT_RETURNS,
         },
         "roadwork": {
-            "doc_params": ["(no params: full region feed)"],
-            "doc_returns": ALERT_RETURNS,
-        },
-        "closures": {
             "doc_params": ["(no params: full region feed)"],
             "doc_returns": ALERT_RETURNS,
         },
@@ -122,7 +119,12 @@ class Go511(BaseResourceRunner):
     def _fetch(self, resource, params):
         query_params = dict(params)
         query_params.update({"version": "0.0", "format": "json", "key": self.api_key})
-        resp = requests.get(f"{self.base_url}/{resource}", params=query_params, timeout=self.timeout)
+        resp = requests.get(
+            f"{self.base_url}/{resource}",
+            params=query_params,
+            headers=REQUEST_HEADERS,
+            timeout=self.timeout,
+        )
         resp.raise_for_status()
         raw = resp.json()
         return extract_records(raw), raw
