@@ -155,6 +155,12 @@ class ErrorId(StrEnum):
     # rides a 503 rather than a 404 for the same reason, so a consumer can tell
     # "come back" from "there is nothing here".
     PUBLIC_FEED_TOO_STALE = "VEODYN_PUBLIC_FEED_TOO_STALE"
+    # Redash has no single ClickHouse data source, so a query generated against
+    # the historical warehouse has nothing to run on. Its own cause rather than
+    # the binding gates' (FEED_NOT_WATCHABLE, KPI_SOURCE_UNRESOLVABLE): those
+    # tell the author to pick a different feed, and here no feed on the instance
+    # would work, so the fix is the deployment's rather than theirs.
+    WAREHOUSE_SOURCE_UNRESOLVABLE = "VEODYN_WAREHOUSE_SOURCE_UNRESOLVABLE"
 
 
 class ApiError(Exception):

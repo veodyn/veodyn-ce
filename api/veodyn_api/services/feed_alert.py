@@ -30,9 +30,9 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.models.feed_expectation import FeedExpectation
 from veodyn_api.services.redash import RedashClient
+from veodyn_api.services.redash_lookups import warehouse_data_source_id
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +118,6 @@ def arm(
     feed_name: str,
     database: str,
     table: str,
-    data_source_id: int,
     expected_interval_seconds: int,
     api_key: str | None,
 ) -> tuple[int, int]:
@@ -128,17 +127,15 @@ def arm(
     exist, and a probe left behind by a failed alert create is recoverable by
     the caller, while an alert pointing at a query that was never written is
     not.
+
+    The data source is discovered here rather than passed in. It used to be the
+    caller's, and every caller had the same wrong answer to hand: the connector
+    the capture is ingested THROUGH, which cannot run the warehouse SQL below.
     """
-    if data_source_id <= 0:
-        raise ApiError(
-            ErrorId.FEED_NOT_WATCHABLE,
-            f"{feed_name} has no capture query, so there is no data source to watch it on",
-            status_code=422,
-        )
     created_query = redash.create_query(
         name=probe_name(feed_name),
         query=probe_sql(database, table),
-        data_source_id=data_source_id,
+        data_source_id=warehouse_data_source_id(redash, api_key=api_key),
         schedule_interval=probe_interval(expected_interval_seconds),
         description=(
             "Written by Veodyn to watch how long this capture has been quiet. "
