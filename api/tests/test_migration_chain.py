@@ -31,6 +31,7 @@ from alembic.script import ScriptDirectory
 from migrations.ownership import CE_TABLES
 from tests.migration_chains import (
     CE_HEAD,
+    CE_HISTORICAL_TABLE_NAMES,
     CE_REVISIONS,
     CE_SHIPPED_IDS,
     EE_REVISIONS,
@@ -147,7 +148,9 @@ def test_no_community_revision_touches_an_enterprise_table(path: Path) -> None:
     touched = tables_touched(path.read_text())
 
     assert not touched & EE_TABLES, f"{path.name} touches {sorted(touched & EE_TABLES)}"
-    assert touched <= CE_TABLES, f"{path.name} touches {sorted(touched - CE_TABLES)}, which no allowlist claims"
+    assert touched <= CE_HISTORICAL_TABLE_NAMES, (
+        f"{path.name} touches {sorted(touched - CE_HISTORICAL_TABLE_NAMES)}, which no allowlist claims"
+    )
 
 
 def test_no_enterprise_revision_touches_a_community_table() -> None:

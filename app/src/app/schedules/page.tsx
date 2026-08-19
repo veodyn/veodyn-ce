@@ -118,7 +118,7 @@ export default function SchedulesPage() {
     <PageContainer>
       <PageHeader
         title="Schedules"
-        description="Queries that run on their own, and whether they are keeping up."
+        description="Every query with a refresh schedule, and whether it is keeping up."
       />
 
       {/* Outside the branch below: the emptier the page looks, the more this

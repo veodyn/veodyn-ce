@@ -15,14 +15,14 @@ import {
 import type { Dataset, DomainHub } from '@/types/catalog'
 import type { Annotation } from '@/types/annotation'
 import { hydrateMockData } from './mock-data-hydration'
-import { createFeedSlice, type FeedSlice } from './feed-slice'
+import { createCaptureSlice, type CaptureSlice } from './capture-slice'
 import { createPublishedFeedSlice, type PublishedFeedSlice } from './published-feed-slice'
 import { createContributedSlices, type ContributedSlices } from './generated-mock-slices'
 
 /**
- * What this store holds in every build, with no feature installed. The feed
- * cadence writes in ./feed-slice.ts are part of it: feeds are community, and that
- * file is a size split rather than a CE/EE one.
+ * What this store holds in every build, with no feature installed. The capture
+ * cadence writes in ./capture-slice.ts are part of it: captures are community,
+ * and that file is a size split rather than a CE/EE one.
  *
  * Everything an installed feature adds is `ContributedSlices`, which is generated:
  * a descriptor names its slice module as a string (`mockSlices` in
@@ -112,13 +112,13 @@ interface MockDataCore {
   nextId: (collection: 'queries' | 'dashboards' | 'dataSources' | 'alerts' | 'users' | 'groups' | 'destinations' | 'querySnippets' | 'annotations') => number
 }
 
-export type MockDataState = MockDataCore & FeedSlice & PublishedFeedSlice & ContributedSlices
+export type MockDataState = MockDataCore & CaptureSlice & PublishedFeedSlice & ContributedSlices
 
 export const useMockDataStore = create<MockDataState>((set, get, store) => ({
   // ORDER IS BEHAVIOUR: a key two slices both declare resolves to whichever is
   // spread last. Contributed first, then community.
   ...createContributedSlices(set, get, store),
-  ...createFeedSlice(set, get, store),
+  ...createCaptureSlice(set, get, store),
   ...createPublishedFeedSlice(set, get, store),
   queries: [...mockQueries],
   dashboards: [...mockDashboards],

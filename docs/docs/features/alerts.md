@@ -13,7 +13,7 @@ the chat and paging destinations. A community build has no Alerts page, no
 Alert Destinations page, and no KPI to arm an alert from.
 
 Two things on the community side are related but are not this page.
-[Feed Health](/features/monitoring) can put an expectation on a feed and raise
+[Captures](/features/captures) can put an expectation on a capture and raise
 it when data stops arriving, and email and generic webhook remain the two
 destination types the backend carries.
 

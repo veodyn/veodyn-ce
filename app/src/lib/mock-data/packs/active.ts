@@ -32,7 +32,7 @@ export const {
   mockDatasets,
   mockDomainHubs,
   mockAnnotations,
-  mockFeeds,
+  mockCaptures,
   mockPublishedFeeds,
   mockPublishAttempts,
 } = neutral

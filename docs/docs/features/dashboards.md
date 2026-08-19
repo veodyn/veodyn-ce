@@ -40,7 +40,7 @@ Each widget's chrome shows how old its data is, then offers **Refresh**, **Expan
 
 :::caution The green tick beside a widget's age is not a freshness check
 
-It is drawn on every widget that has data, in the same green the rest of the product uses to mean **Fresh**. A widget refreshed an hour ago and one six days stale look identical. Read the age next to it, and ignore the colour: real fresh-versus-stale thresholding exists in the [catalog](/features/data-catalog#reading-the-freshness-badge) and on [Feed Health](/features/monitoring), but has not reached dashboard widgets.
+It is drawn on every widget that has data, in the same green the rest of the product uses to mean **Fresh**. A widget refreshed an hour ago and one six days stale look identical. Read the age next to it, and ignore the colour: real fresh-versus-stale thresholding exists in the [catalog](/features/data-catalog#reading-the-freshness-badge) and on [Captures](/features/captures), but has not reached dashboard widgets.
 
 :::
 

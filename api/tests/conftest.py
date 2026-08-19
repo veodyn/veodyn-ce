@@ -158,3 +158,53 @@ def session_payload(
         },
         "org_slug": org_slug,
     }
+
+
+ALEMBIC_TEST_DATABASE = "veodyn_migration_test"
+"""A database of its own for a migration test that needs real rows, separate
+from `CHAIN_DATABASE` in tests/test_migration_upgrade.py so the two cannot
+collide when run in parallel."""
+
+
+@pytest.fixture
+def alembic_engine_at_0014(monkeypatch: pytest.MonkeyPatch) -> Iterator[Engine]:
+    """A fresh database, upgraded through the community chain to 0014 and no
+    further, so a test can seed rows under the old schema before running a
+    later revision on them."""
+    from alembic import command
+    from sqlalchemy.engine import make_url
+
+    from tests.migration_chains import ce_config
+    from veodyn_api.settings import get_settings
+
+    admin = make_url(TEST_DATABASE_URL).set(database="postgres")
+    url = make_url(TEST_DATABASE_URL).set(database=ALEMBIC_TEST_DATABASE)
+    admin_engine = create_engine(admin, isolation_level="AUTOCOMMIT")
+
+    def recreate() -> None:
+        with admin_engine.connect() as connection:
+            connection.execute(text(f'DROP DATABASE IF EXISTS "{ALEMBIC_TEST_DATABASE}" WITH (FORCE)'))
+
+    recreate()
+    with admin_engine.connect() as connection:
+        connection.execute(text(f'CREATE DATABASE "{ALEMBIC_TEST_DATABASE}"'))
+
+    monkeypatch.setenv("VEODYN_DATABASE_URL", url.render_as_string(hide_password=False))
+    get_settings.cache_clear()
+    command.upgrade(ce_config(), "0014")
+
+    engine = create_engine(url)
+    yield engine
+    engine.dispose()
+    recreate()
+    admin_engine.dispose()
+
+
+def upgrade_to(engine: Engine, target: str) -> None:
+    """Advance the database `engine` points at to `target` in the community
+    chain. `alembic_engine_at_0014` already pointed settings at it."""
+    from alembic import command
+
+    from tests.migration_chains import ce_config
+
+    command.upgrade(ce_config(), target)

@@ -89,7 +89,7 @@ A Next.js App Router application. It renders every screen, and its server side h
 |---|---|---|
 | `/api/node/*` (`/api/redash/*` is a deprecated alias, kept for one release) | The query service | The user's own session cookie, so the query service enforces per-user permissions |
 | `/api/admin/*` | The query service | An internal admin API key, used only after verifying the caller's own session holds the required admin permission |
-| `/api/catalog`, `/api/domains/*`, `/api/tags`, `/api/feeds*`, `/api/favorites*` | api | The caller's identity is forwarded and resolved against the query service |
+| `/api/catalog`, `/api/domains/*`, `/api/tags`, `/api/captures*`, `/api/favorites*` | api | The caller's identity is forwarded and resolved against the query service |
 | `/api/ai/*` | The AI provider | A shared bearer key; the user's cookie is stripped before the call leaves |
 
 The `/api/node/*` prefix is a path, not a description of what is behind it: it

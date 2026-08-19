@@ -72,15 +72,15 @@ class ErrorId(StrEnum):
     # INVALID_REQUEST so a caller can tell "you sent a nonsense interval" from
     # "you sent a nonsense body": the first is a number to correct in a field
     # the user is looking at, the second is a bug in the client.
-    FEED_INTERVAL_INVALID = "VEODYN_FEED_INTERVAL_INVALID"
+    CAPTURE_INTERVAL_INVALID = "VEODYN_CAPTURE_INTERVAL_INVALID"
     # The feed's staleness probe or its derived alert would not write. Its own
     # cause rather than a reuse of KPI_ALERT_SYNC_FAILED: the two derive from
     # different objects and a person reading a log needs to know which board to
     # look at.
     FEED_ALERT_SYNC_FAILED = "VEODYN_FEED_ALERT_SYNC_FAILED"
-    # Nothing to watch: the feed has no capture query, so there is no data
+    # Nothing to watch: the capture has no query, so there is no data
     # source to author the probe against.
-    FEED_NOT_WATCHABLE = "VEODYN_FEED_NOT_WATCHABLE"
+    CAPTURE_NOT_WATCHABLE = "VEODYN_CAPTURE_NOT_WATCHABLE"
     # A tag was refused for starting with `domain:`. Named rather than dropped:
     # domain membership is a real feature driven by those tags, and a person who
     # types one, sees it vanish and concludes tagging is broken is worse served
@@ -157,7 +157,7 @@ class ErrorId(StrEnum):
     PUBLIC_FEED_TOO_STALE = "VEODYN_PUBLIC_FEED_TOO_STALE"
     # Redash has no single ClickHouse data source, so a query generated against
     # the historical warehouse has nothing to run on. Its own cause rather than
-    # the binding gates' (FEED_NOT_WATCHABLE, KPI_SOURCE_UNRESOLVABLE): those
+    # the binding gates' (CAPTURE_NOT_WATCHABLE, KPI_SOURCE_UNRESOLVABLE): those
     # tell the author to pick a different feed, and here no feed on the instance
     # would work, so the fix is the deployment's rather than theirs.
     WAREHOUSE_SOURCE_UNRESOLVABLE = "VEODYN_WAREHOUSE_SOURCE_UNRESOLVABLE"

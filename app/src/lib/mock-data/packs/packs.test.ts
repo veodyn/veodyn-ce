@@ -38,7 +38,7 @@ const VALUE_EXPORTS = [
   'mockDatasets',
   'mockDomainHubs',
   'mockAnnotations',
-  'mockFeeds',
+  'mockCaptures',
   'mockPublishedFeeds',
   'mockPublishAttempts',
 ] as const

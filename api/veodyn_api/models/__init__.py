@@ -9,16 +9,16 @@ the pack imports them itself.
 """
 
 from veodyn_api.models.base import Base
+from veodyn_api.models.capture_expectation import CaptureExpectation
 from veodyn_api.models.favorite import Favorite
-from veodyn_api.models.feed_expectation import FeedExpectation
 from veodyn_api.models.publish_attempt import PublishAttempt
 from veodyn_api.models.published_feed import PublishedFeed
 from veodyn_api.models.tag_assignment import TagAssignment
 
 __all__ = [
     "Base",
+    "CaptureExpectation",
     "Favorite",
-    "FeedExpectation",
     "PublishAttempt",
     "PublishedFeed",
     "TagAssignment",

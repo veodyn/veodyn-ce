@@ -29,7 +29,7 @@ export {
   mockDatasets,
   mockDomainHubs,
   mockAnnotations,
-  mockFeeds,
+  mockCaptures,
   mockPublishedFeeds,
   mockPublishAttempts,
   // Imported through the '@/' path rather than './packs/active' on purpose:

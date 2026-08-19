@@ -12,10 +12,10 @@ import { expect, test } from '@playwright/test'
 // <button>; rebuilt on the Button primitive it took Button's own `text-sm`, so
 // sortable headers rendered at 14px next to 12px non-sortable ones.
 //
-// /feed-health is the route that makes it visible in a single row: Feed,
+// /captures is the route that makes it visible in a single row: Capture,
 // Status, Last received and Cadence are sortable, Datasets is not.
 test('every column header label is the size its header cell declares', async ({ page }) => {
-  await page.goto('/feed-health')
+  await page.goto('/captures')
   await page.waitForLoadState('networkidle')
 
   const headers = page.locator('thead th')

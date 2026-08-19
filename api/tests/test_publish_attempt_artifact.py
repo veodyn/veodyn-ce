@@ -30,8 +30,8 @@ from tests.publish_stubs import (
     returning,
     run,
 )
-from veodyn_api.services.feed_validator import ValidationOutcome
 from veodyn_api.services.publish_engine import current_artifact, run_attempt
+from veodyn_api.services.published_feed_validator import ValidationOutcome
 
 
 def test_a_blocked_attempt_is_recorded_with_its_findings(db: Session) -> None:

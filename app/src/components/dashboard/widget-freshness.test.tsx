@@ -2,15 +2,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import type { Dataset } from '@/types/catalog'
-import type { Feed } from '@/types/feed'
+import type { Capture } from '@/types/capture'
 import { WidgetFreshness } from './widget-freshness'
 
 // The defect: the widget header drew a green check whenever a result existed.
 // Not a freshness verdict at all, so two widgets on one dashboard, one refreshed
 // an hour ago and one six days old, rendered identically. It borrowed the
 // product's freshness vocabulary (`text-status-fresh` plus a check, which is
-// exactly FEED_STATUS_META.fresh), so a reader who had learned that signal from
-// the catalog, Feed Health or a KPI badge read it here and was wrong.
+// exactly CAPTURE_STATUS_META.fresh), so a reader who had learned that signal
+// from the catalog, Feed Health or a KPI badge read it here and was wrong.
 
 const QUERY_ID = 44
 const TABLE = 'q_regional_demo_bikeshare_stations_32'
@@ -26,7 +26,7 @@ function dataset(over: Partial<Dataset['freshness']> = {}): Dataset {
     freshness: {
       lastUpdatedAt: new Date(NOW - 60_000).toISOString(),
       status: 'fresh',
-      feedId: 'bikeshare',
+      captureId: 'bikeshare',
       ...over,
     },
     coverage: { start: '', end: '' },
@@ -39,16 +39,16 @@ function dataset(over: Partial<Dataset['freshness']> = {}): Dataset {
   }
 }
 
-const feed: Feed = {
+const capture: Capture = {
   id: 'bikeshare',
   name: 'Bikeshare',
   source: 'gbfs',
   cadence: 'every 5 min',
   status: 'fresh',
   lastReceivedAt: new Date(NOW - 60_000).toISOString(),
-} as Feed
+} as Capture
 
-vi.mock('@/hooks/use-feeds', () => ({ useFeeds: () => ({ data: [feed] }) }))
+vi.mock('@/hooks/use-captures', () => ({ useCaptures: () => ({ data: [capture] }) }))
 
 let datasets: Dataset[] = []
 vi.mock('@/hooks/use-catalog', () => ({ useCatalog: () => ({ data: datasets }) }))
@@ -74,8 +74,8 @@ function render(now: number | null = NOW) {
 
 describe('a dashboard widget freshness indicator', () => {
   it('warns when the data underneath is stale, however recently the query ran', () => {
-    // 30 minutes behind an every-5-min feed: six cadence periods, which
-    // deriveFeedStatus calls Stale (fresh within two, stale to ten, down
+    // 30 minutes behind an every-5-min capture: six cadence periods, which
+    // deriveCaptureStatus calls Stale (fresh within two, stale to ten, down
     // beyond). The query result is an hour old either way, which is the case
     // the old always-green check got wrong.
     datasets = [dataset({ lastUpdatedAt: new Date(NOW - 30 * 60_000).toISOString() })]
@@ -86,7 +86,7 @@ describe('a dashboard widget freshness indicator', () => {
     expect(status.className).not.toContain('text-status-fresh')
   })
 
-  it('escalates to the Down colour when the feed is far past its cadence', () => {
+  it('escalates to the Down colour when the capture is far past its cadence', () => {
     // Six days on a five-minute cadence is not merely late. The indicator has
     // three states because the product's freshness vocabulary has three, and
     // flattening Down into Stale here would be the same borrowing mistake in a

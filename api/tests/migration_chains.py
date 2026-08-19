@@ -49,7 +49,16 @@ pipeline checks out both trees.
 PRODUCT_TABLES = CE_TABLES | EE_TABLES
 """Both allowlists together: every table either chain owns."""
 
-CE_REVISIONS = ("0014", "0013", "0012", "0011", "0010", "0009", "0006", "0005")
+CE_HISTORICAL_TABLE_NAMES = CE_TABLES | {"feed_expectation"}
+"""Every name a community table has gone by, current or superseded by a rename.
+
+`CE_TABLES` names each table by what it is called now. `0009` and `0010` still
+name the table by what it was called then, so the per-revision touch check
+needs both names, kept separate from the current-name ratchet in
+`test_migration_allowlists.py`.
+"""
+
+CE_REVISIONS = ("0015", "0014", "0013", "0012", "0011", "0010", "0009", "0006", "0005")
 """The community chain, newest first. Ids, not positions: these are stamped in
 every existing database, so a renumbering orphans the stamp rather than tidying
 anything.

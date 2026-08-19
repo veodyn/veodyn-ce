@@ -12,7 +12,7 @@ them.
 
 from typing import Any
 
-from veodyn_api.services.feed_validator import Finding
+from veodyn_api.services.published_feed_validator import Finding
 
 
 def findings_as_json(findings: tuple[Finding, ...]) -> list[dict[str, Any]]:

@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { http, HttpResponse, delay } from 'msw'
 import { server } from '@/test/msw/server'
 import { isAppError, ErrorIds } from '@/lib/errorIds'
-import { fetchCatalog, fetchDataset, fetchDomainHub, fetchDomainHubs, fetchFeeds } from './client'
+import {
+  fetchCatalog,
+  fetchDataset,
+  fetchDomainHub,
+  fetchDomainHubs,
+  fetchCaptures,
+  setCaptureExpectation,
+  setCaptureAlert,
+} from './client'
 
 describe('catalog client service', () => {
   it('fetchCatalog returns the datasets from /api/catalog', async () => {
@@ -17,14 +25,14 @@ describe('catalog client service', () => {
     expect((await fetchCatalog()).map((d) => d.id)).toEqual(['a', 'b'])
   })
 
-  it('fetchFeeds returns the feeds from /api/feeds', async () => {
-    server.use(http.get('/api/feeds', () => HttpResponse.json([{ id: 'apc-daily' }, { id: 'rail-scada' }])))
-    expect((await fetchFeeds()).map((f) => f.id)).toEqual(['apc-daily', 'rail-scada'])
+  it('fetchCaptures returns the captures from /api/captures', async () => {
+    server.use(http.get('/api/captures', () => HttpResponse.json([{ id: 'apc-daily' }, { id: 'rail-scada' }])))
+    expect((await fetchCaptures()).map((c) => c.id)).toEqual(['apc-daily', 'rail-scada'])
   })
 
-  it('fetchFeeds rejects with a classified AppError on a non-ok response', async () => {
-    server.use(http.get('/api/feeds', () => new HttpResponse(null, { status: 500 })))
-    const err = await fetchFeeds().catch((e) => e)
+  it('fetchCaptures rejects with a classified AppError on a non-ok response', async () => {
+    server.use(http.get('/api/captures', () => new HttpResponse(null, { status: 500 })))
+    const err = await fetchCaptures().catch((e) => e)
     expect(isAppError(err)).toBe(true)
     expect(isAppError(err) && err.id).toBe(ErrorIds.CATALOG_FETCH_FAILED)
   })
@@ -162,5 +170,55 @@ describe('catalog client service', () => {
     }
     expect(isAppError(caught)).toBe(false)
     expect((caught as { name?: string })?.name).toBe('AbortError')
+  })
+
+  it('setCaptureExpectation PUTs the interval to /api/captures for that captureId', async () => {
+    let seenUrl = ''
+    let seenMethod = ''
+    let seenBody: unknown
+    server.use(
+      http.put('/api/captures', async ({ request }) => {
+        seenUrl = request.url
+        seenMethod = request.method
+        seenBody = await request.json()
+        return new HttpResponse(null, { status: 204 })
+      })
+    )
+    await setCaptureExpectation('q_rail_21', 300)
+    expect(seenMethod).toBe('PUT')
+    expect(new URL(seenUrl).pathname).toBe('/api/captures')
+    expect(new URL(seenUrl).searchParams.get('captureId')).toBe('q_rail_21')
+    expect(seenBody).toEqual({ expectedIntervalSeconds: 300 })
+  })
+
+  it('setCaptureExpectation rejects with a classified AppError on a non-ok response', async () => {
+    server.use(http.put('/api/captures', () => new HttpResponse(null, { status: 500 })))
+    const err = await setCaptureExpectation('q_rail_21', 300).catch((e) => e)
+    expect(isAppError(err)).toBe(true)
+    expect(isAppError(err) && err.id).toBe(ErrorIds.CATALOG_FETCH_FAILED)
+  })
+
+  it('setCaptureAlert PUTs armed to /api/captures with resource=alert for that captureId', async () => {
+    let seenUrl = ''
+    let seenBody: unknown
+    server.use(
+      http.put('/api/captures', async ({ request }) => {
+        seenUrl = request.url
+        seenBody = await request.json()
+        return new HttpResponse(null, { status: 204 })
+      })
+    )
+    await setCaptureAlert('q_rail_21', true)
+    expect(new URL(seenUrl).pathname).toBe('/api/captures')
+    expect(new URL(seenUrl).searchParams.get('captureId')).toBe('q_rail_21')
+    expect(new URL(seenUrl).searchParams.get('resource')).toBe('alert')
+    expect(seenBody).toEqual({ armed: true })
+  })
+
+  it('setCaptureAlert rejects with a classified AppError on a non-ok response', async () => {
+    server.use(http.put('/api/captures', () => new HttpResponse(null, { status: 500 })))
+    const err = await setCaptureAlert('q_rail_21', true).catch((e) => e)
+    expect(isAppError(err)).toBe(true)
+    expect(isAppError(err) && err.id).toBe(ErrorIds.CATALOG_FETCH_FAILED)
   })
 })

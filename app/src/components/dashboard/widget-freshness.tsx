@@ -2,10 +2,10 @@
 
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useCatalog } from '@/hooks/use-catalog'
-import { useFeeds } from '@/hooks/use-feeds'
+import { useCaptures } from '@/hooks/use-captures'
 import { useQuerySqlById } from '@/hooks/use-query-sql'
 import { datasetForQueryId, resolveDatasetStatus } from '@/lib/dataset-freshness'
-import { FEED_STATUS_META } from '@/lib/feed-status'
+import { CAPTURE_STATUS_META } from '@/lib/capture-status'
 import { formatRelativeTime } from '@/lib/chart-format'
 
 /**
@@ -13,8 +13,8 @@ import { formatRelativeTime } from '@/lib/chart-format'
  *
  * TWO DIFFERENT AGES. The text is when this widget's query last RAN, which is
  * what the Refresh control beside it changes; the icon is how old the DATA
- * underneath is, because a query against a dead feed reruns happily and returns
- * a frozen answer. The tooltip names which is which.
+ * underneath is, because a query against a dead capture reruns happily and
+ * returns a frozen answer. The tooltip names which is which.
  *
  * The verdict comes from `resolveDatasetStatus`, the same path the catalog, Feed
  * Health and the KPI badges use, so this cannot become a second definition of
@@ -36,7 +36,7 @@ export function WidgetFreshness({
   // All three are shared react-query caches, so the widgets on a dashboard cost
   // one request between them rather than one each.
   const { data: datasets } = useCatalog()
-  const { data: feeds } = useFeeds()
+  const { data: captures } = useCaptures()
   // The edge is the table this widget's query reads, so resolving it needs SQL.
   const sqlByQueryId = useQuerySqlById()
 
@@ -44,7 +44,7 @@ export function WidgetFreshness({
 
   const ran = formatRelativeTime(retrievedAt, now)
   const dataset = datasetForQueryId(queryId, datasets, sqlByQueryId)
-  const status = dataset ? resolveDatasetStatus(dataset.freshness, feeds, now) : null
+  const status = dataset ? resolveDatasetStatus(dataset.freshness, captures, now) : null
 
   if (!status) {
     // Untraceable to a dataset: the age of the run is all that is known.
@@ -53,7 +53,7 @@ export function WidgetFreshness({
     )
   }
 
-  const { label, Icon, text } = FEED_STATUS_META[status]
+  const { label, Icon, text } = CAPTURE_STATUS_META[status]
 
   return (
     <Tooltip>

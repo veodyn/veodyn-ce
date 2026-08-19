@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const captureMock = vi.hoisted(() => ({
   capture: vi.fn(),
-  currentRoute: () => '/feed-health',
+  currentRoute: () => '/captures',
 }))
 vi.mock('./capture', () => captureMock)
 
@@ -18,7 +18,7 @@ describe('reportQueryError', () => {
       queryKey: 'feeds',
       errorId: 'E_UP_003',
       status: 502,
-      route: '/feed-health',
+      route: '/captures',
     })
   })
 
@@ -28,7 +28,7 @@ describe('reportQueryError', () => {
       queryKey: 'dashboards',
       errorId: '',
       status: 0,
-      route: '/feed-health',
+      route: '/captures',
     })
   })
 

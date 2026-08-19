@@ -13,7 +13,7 @@ import DatasetDetailPage from './page'
 // nothing is installed", and with the real registry it was quietly asserting
 // "when this checkout happens to install nothing", which stopped being the
 // same statement the first time a pack filled dataset.records. Same stub and
-// same reason as feed-health/page.test.tsx, whose own comment points at the
+// same reason as captures/page.test.tsx, whose own comment points at the
 // enterprise-side test that drives the real registry instead.
 vi.mock('@/features/generated-registry', () => ({ FEATURES: {} }))
 

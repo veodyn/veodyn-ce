@@ -99,6 +99,6 @@ The background workers and their queue backlog, in two tables. This is where a "
 
 
 ![Outdated Queries, empty: no scheduled query is past its refresh interval](/img/screenshots/admin-outdated.png)
-Scheduled queries whose results are past their refresh interval: the query, its interval, and when a result was last retrieved. The complement of the user-facing [Schedules](/features/monitoring#schedules) page, showing only what is falling behind.
+Scheduled queries whose results are past their refresh interval: the query, its interval, and when a result was last retrieved. The complement of the user-facing [Schedules](/features/schedules) page, showing only what is falling behind.
 
 A healthy instance shows **No outdated queries found**, which is the expected state rather than a sign the page is not working. Unlike several lists elsewhere in the product, this one distinguishes its states: it reports a failed read as an error rather than as an empty list.

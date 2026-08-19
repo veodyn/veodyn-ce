@@ -1,7 +1,7 @@
 import type { PublishAttempt, PublishedFeed } from '@/types/published-feed'
 
 // Published feeds are a community surface (/connect/feeds), the same as
-// mockFeeds beside them: fixtures live directly in the pack rather than
+// mockCaptures beside them: fixtures live directly in the pack rather than
 // through the contributed-feature seam that mockKpis and mockReports use.
 export const mockPublishedFeeds: PublishedFeed[] = [
   {

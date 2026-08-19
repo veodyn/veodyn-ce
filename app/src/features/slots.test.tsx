@@ -151,7 +151,7 @@ const SINGLE_EMPTY: { [Id in SingleSlotId]: SlotProps[Id] } = {
   'catalog.hubCounters': { counter: COUNTER },
   'dashboard.annotationSuggest': { dashboardId: 17, widgetId: 4 },
   'dashboard.viewActions': { dashboard: DASHBOARD },
-  'feedHealth.metrics': { datasets: [] },
+  'captures.metrics': { datasets: [] },
   'publishedFeed.tokenPanel': { slug: 'vehicles-live' },
   'publishedFeed.blockedAttribution': { slug: 'vehicles-live', attemptId: 1 },
   'publishedFeed.schedule': { slug: 'vehicles-live' },

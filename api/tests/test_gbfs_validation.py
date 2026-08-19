@@ -5,9 +5,9 @@ from typing import Any
 import pytest
 
 from veodyn_api.services import gbfs_validation
-from veodyn_api.services.feed_validator import ValidatorUnavailable
 from veodyn_api.services.gbfs_serializer import serialize_gbfs_stations
 from veodyn_api.services.gbfs_validation import discovery_for_validation, validate_gbfs_files
+from veodyn_api.services.published_feed_validator import ValidatorUnavailable
 
 COLUMN_MAP = {
     "station_id": "sid",

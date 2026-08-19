@@ -12,7 +12,7 @@ export interface DatasetColumn {
 export interface DatasetFreshness {
   lastUpdatedAt: string // ISO 8601
   status: 'fresh' | 'stale'
-  feedId?: string // upstream feed id; the Feed Health board (plan 09) keys off this
+  captureId?: string // the capture that writes this dataset; the Captures board keys off this
 }
 
 export interface DatasetCoverage {

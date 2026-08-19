@@ -9,8 +9,8 @@ binding edit lands mid-attempt is in `test_publish_in_flight.py`.
 from sqlalchemy.orm import Session
 
 from tests.publish_stubs import CLEAN, ERRORED, ROWS, UNCHECKED, UNSERIALIZABLE, WARNED, attempts, make_feed, run
-from veodyn_api.services.feed_validator import ValidationOutcome, ValidatorUnavailable
 from veodyn_api.services.publish_engine import current_artifact, run_attempt
+from veodyn_api.services.published_feed_validator import ValidationOutcome, ValidatorUnavailable
 
 # --- the verdict decides ---------------------------------------------------
 

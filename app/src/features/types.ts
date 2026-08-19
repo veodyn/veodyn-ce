@@ -66,7 +66,7 @@ export type SingleSlotId =
   | 'catalog.hubCounters'
   | 'dashboard.annotationSuggest'
   | 'dashboard.viewActions'
-  | 'feedHealth.metrics'
+  | 'captures.metrics'
   | 'publishedFeed.tokenPanel'
   | 'publishedFeed.blockedAttribution'
   | 'publishedFeed.schedule'
@@ -112,11 +112,11 @@ export interface SlotProps {
   'dashboard.annotationSuggest': { dashboardId: number; widgetId: number | null }
   'dashboard.viewActions': { dashboard: MockDashboard }
   /**
-   * The datasets one feed delivers into. Datasets, not the feed: the join a KPI
-   * needs is query-to-dataset, and Feed Health is the only surface holding the
-   * feed-to-dataset half of it.
+   * The datasets one capture delivers into. Datasets, not the capture: the join
+   * a KPI needs is query-to-dataset, and Captures is the only surface holding
+   * the capture-to-dataset half of it.
    */
-  'feedHealth.metrics': { datasets: Dataset[] }
+  'captures.metrics': { datasets: Dataset[] }
   /**
    * The private-feed token panel on a published feed's detail page. The slug,
    * not a token type: token issuance, rotation and revocation are enterprise's

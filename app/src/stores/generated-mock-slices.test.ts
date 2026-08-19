@@ -67,9 +67,9 @@ function descriptorWith(specifiers: string[]): string {
  * override, so a `--dir` fixture can point the features tree anywhere but the
  * slice specifier still has to resolve under `app/src/stores/`. A community
  * module standing in as a contributed slice: the generator only asks whether the
- * file is there, so nothing about feed-slice's own shape is asserted.
+ * file is there, so nothing about capture-slice's own shape is asserted.
  */
-const RESOLVABLE_SLICE = '@/stores/feed-slice'
+const RESOLVABLE_SLICE = '@/stores/capture-slice'
 
 /**
  * A throwaway APP root holding the given slice modules, so a case can name

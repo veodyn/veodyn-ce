@@ -17,15 +17,15 @@
 -- ON CONFLICT DO NOTHING throughout, so a re-run against a stack somebody has
 -- already used adds what is missing and overwrites none of their edits.
 
--- ── Feed expectations ───────────────────────────────────────────────────────
+-- ── Capture expectations ────────────────────────────────────────────────────
 -- How often each captured dataset is expected to refresh. This is what lets the
--- feed-health board judge a feed at all: with no expectation a feed has no
+-- captures board judge a capture at all: with no expectation a capture has no
 -- verdict, so an empty table renders the board as a list of shrugs.
 --
 -- alert_id and alert_query_id stay null. They are the forward link to a derived
 -- late-alert, and arming one means creating a real Redash alert; a row pointing
 -- at an alert that does not exist would be worse than an unarmed expectation.
-INSERT INTO feed_expectation
+INSERT INTO capture_expectation
   (org_slug, feed_id, expected_interval_seconds, set_by_user_id, alert_id, alert_query_id)
 VALUES
   ('default', '__TABLENAME_bikeshare_availability__', 900, __ADMIN_USER_ID__, NULL, NULL),

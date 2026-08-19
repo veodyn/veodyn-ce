@@ -172,7 +172,7 @@ export default function DatasetDetailPage({ params }: { params: Promise<{ datase
       {/* Where the enterprise record editor mounts. Empty in a community build,
           which is the intended state and not a missing feature: writing to a
           dataset is enterprise, and a build without that pack shows a catalog
-          entry with nothing to type into. Same rule as feedHealth.metrics. */}
+          entry with nothing to type into. Same rule as captures.metrics. */}
       <Slot id="dataset.records" props={{ dataset }} fallback={null} />
     </PageContainer>
   )

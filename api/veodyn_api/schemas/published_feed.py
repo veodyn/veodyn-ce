@@ -10,7 +10,7 @@ from typing import Literal
 from pydantic import Field, field_validator, model_validator
 
 from veodyn_api.schemas.catalog import CamelModel
-from veodyn_api.services import feed_registry
+from veodyn_api.services import published_feed_registry
 from veodyn_api.services.gbfs_serializer import check_system_info
 
 # PostgreSQL `INTEGER`, which is the column type behind both of the integer
@@ -47,7 +47,7 @@ class PublishedFeedIn(CamelModel):
     # serializer would contradict, and the refusal names the set it may claim
     # instead, which is the same argument `entity` makes below.
     version: str = Field(min_length=1)
-    # A plain string, validated against `feed_registry` below, not a `Literal`.
+    # A plain string, validated against `published_feed_registry` below, not a `Literal`.
     # A `Literal` here would make the generated openapi schema depend on which
     # pack is installed, and `api/openapi.json` is committed and diffed in CI:
     # a deployment naming an enterprise pack would fail its own pipeline the
@@ -55,7 +55,7 @@ class PublishedFeedIn(CamelModel):
     # every deployment and moves the variation into the refusal message
     # instead. See design section 4 for the full reasoning, and note revision 1
     # of that design put `visibility` in this same registry -- it does not
-    # belong here, see `feed_registry.py`.
+    # belong here, see `published_feed_registry.py`.
     entity: str = Field(min_length=1)
     # Each of these belongs to exactly one standard, so both are optional here
     # and paired with their standard by `_shape_matches_standard`, which mirrors
@@ -106,13 +106,13 @@ class PublishedFeedIn(CamelModel):
         constraints, so the caller gets a 422 naming the field rather than a 500
         out of a constraint violation.
         """
-        versions = feed_registry.VERSIONS_BY_STANDARD[self.standard]
+        versions = published_feed_registry.VERSIONS_BY_STANDARD[self.standard]
         if self.version not in versions:
             raise ValueError(
                 f"version {self.version!r} is not supported for {self.standard}; supported: {', '.join(versions)}"
             )
-        if not feed_registry.is_registered(self.entity, self.standard):
-            supported = ", ".join(sorted(feed_registry.entities(self.standard))) or "(none registered)"
+        if not published_feed_registry.is_registered(self.entity, self.standard):
+            supported = ", ".join(sorted(published_feed_registry.entities(self.standard))) or "(none registered)"
             raise ValueError(
                 f"{self.entity!r} is not a supported entity in this deployment for {self.standard}; "
                 f"this deployment supports: {supported}"
@@ -177,7 +177,7 @@ class StandardCapabilityOut(CamelModel):
     """One standard this deployment can bind a feed to, with the versions it can
     publish and the entities registered under it.
 
-    `versions` comes from `feed_registry.VERSIONS_BY_STANDARD` and is empty for a
+    `versions` comes from `published_feed_registry.VERSIONS_BY_STANDARD` and is empty for a
     standard only a pack registers entities under.
     """
 

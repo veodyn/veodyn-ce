@@ -44,26 +44,23 @@ from tests.migration_chains import (
     ce_config,
 )
 
-HEAD_OBJECT = ("published_feed", "system_info")
+HEAD_OBJECT = ("capture_expectation", "feed_id")
 HEAD_OBJECT_DROP = (
-    "ALTER TABLE published_feed DROP CONSTRAINT ck_published_feed_static_ref_matches_standard",
-    "ALTER TABLE published_feed DROP CONSTRAINT ck_published_feed_system_info_matches_standard",
-    "ALTER TABLE published_feed DROP COLUMN system_info",
-    "ALTER TABLE published_feed ALTER COLUMN static_gtfs_ref SET NOT NULL",
-    "ALTER TABLE publish_attempt DROP CONSTRAINT ck_publish_attempt_artifact_matches_decision",
-    "ALTER TABLE publish_attempt DROP CONSTRAINT ck_publish_attempt_one_artifact_kind",
-    "ALTER TABLE publish_attempt DROP COLUMN feed_files",
-    "ALTER TABLE publish_attempt ADD CONSTRAINT ck_publish_attempt_bytes_match_decision "
-    "CHECK ((decision = 'published') = (feed_bytes IS NOT NULL))",
+    # The model declares no check constraint, so create_all never makes one;
+    # it has to be added back before 0015 can rename it.
+    "ALTER TABLE capture_expectation ADD CONSTRAINT ck_feed_expectation_positive "
+    "CHECK (expected_interval_seconds > 0)",
+    "ALTER TABLE capture_expectation RENAME CONSTRAINT capture_expectation_pkey TO feed_expectation_pkey",
+    "ALTER TABLE capture_expectation RENAME TO feed_expectation",
 )
 """One thing the head revision creates, and the statements that take ALL of it
 back.
 
 Both move with head, and the pairing with `CE_HEAD` is one thing to update when
 a revision lands, so a mismatch reads as these constants being stale rather than
-as a puzzling `DuplicateColumn` inside the upgrade. Head is not always a table
-or an index: 0014 adds columns and constraints and drops one, and the reversal
-has to restore what it dropped or the upgrade cannot run its own drop."""
+as a puzzling `DuplicateTable` inside the upgrade. Head is not always a table or
+an index: 0015 renames a table, so the reversal is the rename run backwards, and
+`HEAD_OBJECT` is read after the upgrade under the NEW name."""
 
 CHAIN_DATABASE = "veodyn_migration_chain"
 """Its own database, named rather than randomised so a crashed run leaves one

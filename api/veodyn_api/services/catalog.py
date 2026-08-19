@@ -192,11 +192,11 @@ def build_catalog(
                     last_updated_at=last_seen,
                     status="fresh" if fresh else "stale",
                     # One query captures into exactly one table, so the dataset
-                    # and the feed share an id (services/feeds.py). None for
-                    # anything that is not a capture: build_feeds excludes a
-                    # contributed dataset, so a feed link would resolve to
+                    # and the capture share an id (services/captures.py). None for
+                    # anything that is not a capture: build_captures excludes a
+                    # contributed dataset, so a capture link would resolve to
                     # nothing.
-                    feed_id=source.table if source.origin == "capture" else None,
+                    capture_id=source.table if source.origin == "capture" else None,
                 ),
                 coverage=DatasetCoverageOut(start=start or "", end=end or ""),
                 row_count=row_count,

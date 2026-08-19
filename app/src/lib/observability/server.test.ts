@@ -37,9 +37,9 @@ describe('captureServerError', () => {
   })
 
   it('carries the errorId from an AppError', () => {
-    captureServerError('7', new AppError(ErrorIds.UP_TIMEOUT, 'slow'), { route: '/api/feeds' })
+    captureServerError('7', new AppError(ErrorIds.UP_TIMEOUT, 'slow'), { route: '/api/captures' })
     expect(phMock.captureException).toHaveBeenCalledWith(expect.any(AppError), '7', {
-      route: '/api/feeds',
+      route: '/api/captures',
       errorId: 'E_UP_002',
     })
   })

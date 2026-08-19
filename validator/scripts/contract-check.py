@@ -1,10 +1,10 @@
 """veodyn-api's real client against this service, over real HTTP.
 
 **Why this exists and is not in the suite.** The service's tests fake the
-client and the client's tests (`api/tests/test_feed_validator*.py`) fake the
-service, so a mismatch between the two shapes passes both suites. Nothing else
-crosses the boundary. This does, using the real `gtfs_rt_validator` underneath
-and a real archive fetched over HTTP.
+client and the client's tests (`api/tests/test_published_feed_validator*.py`)
+fake the service, so a mismatch between the two shapes passes both suites.
+Nothing else crosses the boundary. This does, using the real
+`gtfs_rt_validator` underneath and a real archive fetched over HTTP.
 
 It is a script rather than a test because it needs two listening ports and a
 served archive, which the pack's CI image is not set up for and which would
@@ -39,7 +39,7 @@ import httpx  # noqa: E402
 # not a dependency of this project, so there is nothing for mypy to resolve
 # here and nothing it could resolve without making that repo a dependency,
 # which is the coupling this service exists to avoid.
-from veodyn_api.services.feed_validator import (  # type: ignore[import-not-found]  # noqa: E402
+from veodyn_api.services.published_feed_validator import (  # type: ignore[import-not-found]  # noqa: E402
     ValidatorUnavailable,
     validate_feed,
 )

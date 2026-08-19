@@ -145,7 +145,7 @@ export function buildSidebarSections(
       id: 'monitor',
       label: 'MONITOR',
       items: [
-        { label: 'Feed Health', href: '/feed-health', icon: Activity },
+        { label: 'Captures', href: '/captures', icon: Activity },
         { label: 'Schedules', href: '/schedules', icon: CalendarClock },
         // Alerts, if its feature directory is installed.
         ...featureNav('monitor'),
@@ -160,7 +160,7 @@ export function buildSidebarSections(
         // Not admin-gated: the published-feeds API serves this list to any
         // org member, so hiding the row would be a lie told only to the
         // sidebar. Only the create action on the page itself is admin-gated.
-        { label: 'Feeds', href: '/connect/feeds', icon: Radio },
+        { label: 'Published Feeds', href: '/connect/feeds', icon: Radio },
       ],
     },
   ]

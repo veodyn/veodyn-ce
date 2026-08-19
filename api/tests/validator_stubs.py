@@ -1,9 +1,9 @@
 """The validator's report shape, shared by the two modules that read it.
 
-`test_feed_validator.py` drives `normalize_report` directly and
-`test_feed_validator_transport.py` drives the whole HTTP call. Both need the
-same report, and two copies of it would be two things that can drift into
-testing two different validators.
+`test_published_feed_validator.py` drives `normalize_report` directly and
+`test_published_feed_validator_transport.py` drives the whole HTTP call. Both
+need the same report, and two copies of it would be two things that can drift
+into testing two different validators.
 
 The shape was verified on 2026-08-17 by reading `report/modern.py` in the
 installed `gtfs-rt-validator` 0.3.0: one entry per rule, carrying the TRUE

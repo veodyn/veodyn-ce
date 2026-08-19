@@ -31,7 +31,6 @@ from sqlalchemy.orm import Session
 
 from veodyn_api.models.publish_attempt import PublishAttempt
 from veodyn_api.models.published_feed import PublishedFeed
-from veodyn_api.services.feed_validator import Finding, ValidationOutcome
 from veodyn_api.services.finding_json import findings_as_json
 from veodyn_api.services.publish_produce import (
     GbfsPublisher,
@@ -40,6 +39,7 @@ from veodyn_api.services.publish_produce import (
     produce_gbfs,
     produce_gtfs_rt,
 )
+from veodyn_api.services.published_feed_validator import Finding, ValidationOutcome
 
 __all__ = [
     "AttemptResult",

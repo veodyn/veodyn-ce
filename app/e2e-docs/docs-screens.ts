@@ -10,10 +10,11 @@
  * `.png`, and it has to keep matching, because the docs pages reference these
  * by name and `cd docs && pnpm build` fails on a broken reference.
  *
- * Six more images are not in here because they are not plain navigations:
- * login, invite and reset are captured signed out, and chart-editor,
- * visual-builder and ai-create-chat each need a surface driven open. The spec
- * carries those and asserts the total comes to 49.
+ * Nine more images are not in here because they are not plain navigations:
+ * login, invite and reset are captured signed out, chart-editor,
+ * visual-builder and ai-create-chat each need a surface driven open, and three
+ * are pack-only states this harness cannot reach. The spec carries those and
+ * asserts the total.
  */
 export const AUTHED_SCREENS: ReadonlyArray<{ name: string; path: string }> = [
   // Home and finding things
@@ -54,7 +55,7 @@ export const AUTHED_SCREENS: ReadonlyArray<{ name: string; path: string }> = [
   { name: 'domain-hub', path: '/data/transit' },
 
   // Monitoring
-  { name: 'feed-health', path: '/feed-health' },
+  { name: 'captures', path: '/captures' },
   { name: 'schedules', path: '/schedules' },
 
   // Alerts and destinations
@@ -67,6 +68,10 @@ export const AUTHED_SCREENS: ReadonlyArray<{ name: string; path: string }> = [
   // Connect
   { name: 'connect-apis', path: '/connect/apis' },
   { name: 'connect-mcp', path: '/connect/mcp' },
+  { name: 'connect-feeds', path: '/connect/feeds' },
+  { name: 'connect-feed-new', path: '/connect/feeds/new' },
+  // vehicles-live is the neutral pack's GTFS-Realtime binding.
+  { name: 'connect-feed-detail', path: '/connect/feeds/vehicles-live' },
 
   // Admin
   { name: 'admin-data-sources', path: '/data-sources' },

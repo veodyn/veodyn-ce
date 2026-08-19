@@ -1,35 +1,35 @@
-import { deriveFeedStatus } from '@/lib/feed-status'
+import { deriveCaptureStatus } from '@/lib/capture-status'
 import type { Dataset, DatasetFreshness } from '@/types/catalog'
-import type { Feed } from '@/types/feed'
+import type { Capture } from '@/types/capture'
 
 /**
  * A dataset's freshness, judged the same way the Feed Health board judges the
- * feed behind it, so the two screens cannot disagree.
+ * capture behind it, so the two screens cannot disagree.
  *
- * The dataset's own `lastUpdatedAt` is what gets aged, not the feed's
- * `lastReceivedAt`: a feed can be delivering while this dataset has stopped
+ * The dataset's own `lastUpdatedAt` is what gets aged, not the capture's
+ * `lastReceivedAt`: a capture can be delivering while this dataset has stopped
  * being rebuilt from it.
  */
-const SEVERITY: Record<Feed['status'], number> = { fresh: 0, stale: 1, down: 2 }
+const SEVERITY: Record<Capture['status'], number> = { fresh: 0, stale: 1, down: 2 }
 
-function worst(a: Feed['status'], b: Feed['status']): Feed['status'] {
+function worst(a: Capture['status'], b: Capture['status']): Capture['status'] {
   return SEVERITY[a] >= SEVERITY[b] ? a : b
 }
 
 export function resolveDatasetStatus(
   freshness: DatasetFreshness,
-  feeds: Feed[] | undefined,
+  captures: Capture[] | undefined,
   now: number = Date.now()
-): Feed['status'] {
-  const feed = freshness.feedId ? feeds?.find((f) => f.id === freshness.feedId) : undefined
-  // No feed to ask means no cadence to judge against, so the declared status is
-  // the only thing there is.
-  if (!feed) return freshness.status
+): Capture['status'] {
+  const capture = freshness.captureId ? captures?.find((c) => c.id === freshness.captureId) : undefined
+  // No capture to ask means no cadence to judge against, so the declared status
+  // is the only thing there is.
+  if (!capture) return freshness.status
 
-  // Three claims (derived, feed-declared, dataset-declared) and the worst wins,
-  // so an upstream that knows it is down is still believed.
-  const derived = deriveFeedStatus({ ...feed, lastReceivedAt: freshness.lastUpdatedAt }, now)
-  return worst(worst(derived, feed.status), freshness.status)
+  // Three claims (derived, capture-declared, dataset-declared) and the worst
+  // wins, so an upstream that knows it is down is still believed.
+  const derived = deriveCaptureStatus({ ...capture, lastReceivedAt: freshness.lastUpdatedAt }, now)
+  return worst(worst(derived, capture.status), freshness.status)
 }
 
 /**

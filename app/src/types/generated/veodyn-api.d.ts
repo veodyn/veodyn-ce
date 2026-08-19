@@ -51,6 +51,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/captures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Captures
+         * @description Every scheduled capture the warehouse holds, with its cadence and source.
+         *
+         *     The two Redash lookups run as the CALLER, not as the service account, so a
+         *     data source or a query the reader cannot see goes unnamed rather than named
+         *     for them. Both are best-effort by construction: they label a list the
+         *     warehouse already produced, and neither can empty it.
+         */
+        get: operations["list_captures_captures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/captures/{capture_id}/alert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Alert
+         * @description Arm or disarm the late alert on a capture.
+         *
+         *     Requires a declared expectation, because the alert's threshold is two of
+         *     those periods. Unlike the expectation, this IS checked against the catalog:
+         *     arming writes a query against a real table on a real data source.
+         */
+        put: operations["put_alert_captures__capture_id__alert_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/captures/{capture_id}/expectation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Expectation
+         * @description Declare how often a capture is expected to deliver.
+         *
+         *     NOT checked against the catalog first: a capture id is a warehouse table
+         *     name, and an expectation for a table that has not appeared yet, or has
+         *     briefly dropped out of the registry, is a harmless row that starts working
+         *     the moment it is back. Any authenticated member of the org may set one,
+         *     since it changes no data and no permission, only when this org's board
+         *     calls a capture late.
+         */
+        put: operations["put_expectation_captures__capture_id__expectation_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/catalog": {
         parameters: {
             query?: never;
@@ -158,81 +234,6 @@ export interface paths {
          *     of a kind this build does not serve.
          */
         delete: operations["remove_favorite_favorites__object_type___object_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/feeds": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Feeds
-         * @description Every scheduled capture the warehouse holds, with its cadence and source.
-         *
-         *     The two Redash lookups run as the CALLER, not as the service account, so a
-         *     data source or a query the reader cannot see goes unnamed rather than named
-         *     for them. Both are best-effort by construction: they label a list the
-         *     warehouse already produced, and neither can empty it.
-         */
-        get: operations["list_feeds_feeds_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/feeds/{feed_id}/alert": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Put Alert
-         * @description Arm or disarm the late alert on a feed.
-         *
-         *     Requires a declared expectation, because the alert's threshold is two of
-         *     those periods. Unlike the expectation, this IS checked against the catalog:
-         *     arming writes a query against a real table on a real data source.
-         */
-        put: operations["put_alert_feeds__feed_id__alert_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/feeds/{feed_id}/expectation": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Put Expectation
-         * @description Declare how often a capture is expected to deliver.
-         *
-         *     NOT checked against the catalog first: a feed id is a warehouse table name,
-         *     and an expectation for a table that has not appeared yet, or has briefly
-         *     dropped out of the registry, is a harmless row that starts working the moment
-         *     it is back. Any authenticated member of the org may set one, since it changes
-         *     no data and no permission, only when this org's board calls a feed late.
-         */
-        put: operations["put_expectation_feeds__feed_id__expectation_put"];
-        post?: never;
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -469,11 +470,50 @@ export interface components {
         };
         /**
          * AlertIn
-         * @description Whether this feed should page someone when it goes quiet.
+         * @description Whether this capture should page someone when it goes quiet.
          */
         AlertIn: {
             /** Armed */
             armed: boolean;
+        };
+        /**
+         * CaptureOut
+         * @description One upstream capture, as the Captures board reads it.
+         *
+         *     A capture here IS a scheduled Redash query that captures into the historical
+         *     warehouse, so the id is the table it captures into and it matches the
+         *     dataset of the same id one to one. That is structural rather than a
+         *     convention worth breaking: `get_or_create_table_name` keys the registry on
+         *     query_id and hands back exactly one table, so `dataset_count` cannot be
+         *     anything but 1 while that holds.
+         */
+        CaptureOut: {
+            /** Alertid */
+            alertId: number | null;
+            /** Cadence */
+            cadence: string;
+            /**
+             * Cadencesource
+             * @enum {string}
+             */
+            cadenceSource: "declared" | "schedule" | "none";
+            /** Datasetcount */
+            datasetCount: number;
+            /** Expectedintervalseconds */
+            expectedIntervalSeconds: number | null;
+            /** Id */
+            id: string;
+            /** Lastreceivedat */
+            lastReceivedAt: string;
+            /** Name */
+            name: string;
+            /** Source */
+            source: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "fresh" | "stale";
         };
         /** ConverseIn */
         ConverseIn: {
@@ -561,8 +601,8 @@ export interface components {
         };
         /** DatasetFreshnessOut */
         DatasetFreshnessOut: {
-            /** Feedid */
-            feedId?: string | null;
+            /** Captureid */
+            captureId?: string | null;
             /** Lastupdatedat */
             lastUpdatedAt: string;
             /**
@@ -621,10 +661,10 @@ export interface components {
         };
         /**
          * ExpectationIn
-         * @description How often this feed should deliver, or null to stop expecting.
+         * @description How often this capture should deliver, or null to stop expecting.
          *
-         *     Null rather than a second endpoint: clearing only returns the feed to its
-         *     Redash schedule, and a DELETE beside a PUT would read as destructive.
+         *     Null rather than a second endpoint: clearing only returns the capture to
+         *     its Redash schedule, and a DELETE beside a PUT would read as destructive.
          */
         ExpectationIn: {
             /** Expectedintervalseconds */
@@ -659,45 +699,6 @@ export interface components {
         FeedCapabilitiesOut: {
             /** Standards */
             standards: components["schemas"]["StandardCapabilityOut"][];
-        };
-        /**
-         * FeedOut
-         * @description One upstream capture, as the Feed Health board reads it.
-         *
-         *     A feed here IS a scheduled Redash query that captures into the historical
-         *     warehouse, so the id is the table it captures into and it matches the
-         *     dataset of the same id one to one. That is structural rather than a
-         *     convention worth breaking: `get_or_create_table_name` keys the registry on
-         *     query_id and hands back exactly one table, so `dataset_count` cannot be
-         *     anything but 1 while that holds.
-         */
-        FeedOut: {
-            /** Alertid */
-            alertId: number | null;
-            /** Cadence */
-            cadence: string;
-            /**
-             * Cadencesource
-             * @enum {string}
-             */
-            cadenceSource: "declared" | "schedule" | "none";
-            /** Datasetcount */
-            datasetCount: number;
-            /** Expectedintervalseconds */
-            expectedIntervalSeconds: number | null;
-            /** Id */
-            id: string;
-            /** Lastreceivedat */
-            lastReceivedAt: string;
-            /** Name */
-            name: string;
-            /** Source */
-            source: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "fresh" | "stale";
         };
         /**
          * FindingOut
@@ -1019,7 +1020,7 @@ export interface components {
          * @description One standard this deployment can bind a feed to, with the versions it can
          *     publish and the entities registered under it.
          *
-         *     `versions` comes from `feed_registry.VERSIONS_BY_STANDARD` and is empty for a
+         *     `versions` comes from `published_feed_registry.VERSIONS_BY_STANDARD` and is empty for a
          *     standard only a pack registers entities under.
          */
         StandardCapabilityOut: {
@@ -1133,6 +1134,110 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GenerateSqlOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_captures_captures_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_alert_captures__capture_id__alert_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlertIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_expectation_captures__capture_id__expectation_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpectationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1324,110 +1429,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_feeds_feeds_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                cookie?: string | null;
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FeedOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    put_alert_feeds__feed_id__alert_put: {
-        parameters: {
-            query?: never;
-            header?: {
-                cookie?: string | null;
-                authorization?: string | null;
-            };
-            path: {
-                feed_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AlertIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    put_expectation_feeds__feed_id__expectation_put: {
-        parameters: {
-            query?: never;
-            header?: {
-                cookie?: string | null;
-                authorization?: string | null;
-            };
-            path: {
-                feed_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ExpectationIn"];
-            };
-        };
         responses: {
             /** @description Successful Response */
             204: {

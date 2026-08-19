@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { mkdirSync, readdirSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   ANONYMOUS_SCREENS,
@@ -30,8 +30,14 @@ const SURFACE_TIMEOUT = 60_000
 const PAINT_SETTLE_MS = 1200
 
 // The three images that are not a plain navigation in either table, named here
-// so the completeness check at the bottom accounts for all 49.
+// so the completeness check at the bottom accounts for every file on disk.
 const DRIVEN_SCREENS = ['chart-editor', 'visual-builder', 'ai-create-chat']
+
+// Pack-only states this community harness cannot reproduce: two have no route
+// here at all, and managed-dataset-records is a pack state on a route that does
+// exist. Listed so the completeness check does not call the existing files
+// orphans; regenerating them takes a composed tree.
+const PACK_SCREENS = ['admin-managed-datasets', 'managed-dataset-records', 'kpi-new-source']
 
 async function capture(page: Page, name: string) {
   await page.waitForLoadState('networkidle')
@@ -56,6 +62,13 @@ async function capture(page: Page, name: string) {
     lines.some((line) => pattern.test(line))
   ).map(String)
   expect(hits, `${name} renders customer-identifying text under the neutral pack`).toEqual([])
+
+  // A route this build does not serve paints Next's 404 inside the app shell,
+  // so the sidebar renders and every guard above still passes. Fourteen pack
+  // routes reached the docs tree that way, as one identical 404 image.
+  expect(lines, `${name} captured a 404, so this route needs the composed tree`).not.toContain(
+    'This page could not be found.'
+  )
 
   await page.screenshot({ path: join(OUT_DIR, `${name}.png`), animations: 'disabled' })
 }
@@ -161,8 +174,8 @@ test.describe('signed out', () => {
   }
 })
 
-test('every documented image was regenerated', () => {
-  // The docs pages reference 49 images by name and `cd docs && pnpm build`
+test('every documented image is accounted for', () => {
+  // The docs pages reference every image by name and `cd docs && pnpm build`
   // fails on a broken reference, so a capture silently dropped from the table
   // leaves a stale customer screenshot in place rather than an obvious hole.
   // This is the check that notices.
@@ -180,8 +193,19 @@ test('every documented image was regenerated', () => {
   const expected = [...AUTHED_SCREENS, ...ANONYMOUS_SCREENS]
     .map((screen) => screen.name)
     .concat(DRIVEN_SCREENS)
+    .concat(PACK_SCREENS)
 
-  expect(expected.length).toBe(49)
+  expect(expected.length).toBe(55)
   expect(expected.filter((name) => !onDisk.has(name))).toEqual([])
   expect([...onDisk].filter((name) => !expected.includes(name))).toEqual([])
+
+  // PACK_SCREENS excuses three files from the orphan check above, so on its own
+  // it would also excuse one the docs had stopped using. Each must still be
+  // referenced by a docs page to earn the exemption.
+  const DOCS_DIR = join(__dirname, '..', '..', 'docs', 'docs')
+  const prose = readdirSync(DOCS_DIR, { recursive: true, encoding: 'utf8' })
+    .filter((file) => file.endsWith('.md'))
+    .map((file) => readFileSync(join(DOCS_DIR, file), 'utf8'))
+    .join('\n')
+  expect(PACK_SCREENS.filter((name) => !prose.includes(`${name}.png`))).toEqual([])
 })

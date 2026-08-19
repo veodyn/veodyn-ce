@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 // The harness that regenerates every image in docs/static/img/screenshots/.
 //
-// This is NOT part of `pnpm test:e2e`. It asserts almost nothing and writes 49
+// This is NOT part of `pnpm test:e2e`. It asserts almost nothing and writes
 // binary files into the docs tree, so it is a generator that happens to be
 // written as a Playwright run, and it lives in its own testDir so the default
 // config (testDir: './e2e') cannot collect it by accident.

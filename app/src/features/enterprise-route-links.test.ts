@@ -58,16 +58,16 @@ const ALLOWED: Exemption[] = [
       'Route matching again: the branch that strips the app shell off an anonymously shared report. It must keep working in a build with no reports package installed, because it serves people with no account at all, so it deliberately cannot come from that feature\'s registry entry. The file says so at the site, and says not to "finish the job" by folding it in.',
   },
   {
-    file: 'src/components/feeds/expected-interval-control.tsx',
-    literals: ['/alerts/${feed.alertId}'],
+    file: 'src/components/captures/expected-interval-control.tsx',
+    literals: ['/alerts/${capture.alertId}'],
     reason:
-      'Feeds are community and alerts are enterprise, and this is the one link between them: the Recipients button on a feed that is armed to alert. Rendered only when the alerts feature is installed (hasFeature, features/index.ts), so a community build shows the row one button shorter instead of offering a 404. The literal stays because the link is real wherever the destination is, and a slot would be the wrong shape for it: the feature contributes no component and no data here, and the community surface already knows the whole href.',
+      'Captures are community and alerts are enterprise, and this is the one link between them: the Recipients button on a capture that is armed to alert. Rendered only when the alerts feature is installed (hasFeature, features/index.ts), so a community build shows the row one button shorter instead of offering a 404. The literal stays because the link is real wherever the destination is, and a slot would be the wrong shape for it: the feature contributes no component and no data here, and the community surface already knows the whole href.',
   },
   {
     file: 'src/app/dashboards/[dashboardId]/dashboard-view-actions.tsx',
     literals: ['/present/${dashboard.id}'],
     reason:
-      'The dashboard toolbar is community and /present belongs to the wall package, which owns both /wall and /present and contributes no nav row or component of its own. Gated on hasFeature(\'wall\'), so the Present button is absent from a community build rather than dead in it. Same shape and same reasoning as the feeds link above.',
+      'The dashboard toolbar is community and /present belongs to the wall package, which owns both /wall and /present and contributes no nav row or component of its own. Gated on hasFeature(\'wall\'), so the Present button is absent from a community build rather than dead in it. Same shape and same reasoning as the captures link above.',
   },
 ]
 
@@ -118,8 +118,8 @@ describe('enterprise route guard, self-checks', () => {
     expect(isSkipped(join('src', 'app', 'kpis', 'page.tsx'))).toBe(true)
     expect(isSkipped(join('src', 'lib', 'ai-digest.ts'))).toBe(true)
     // A community module inside no owned directory is scanned.
-    expect(isSkipped(join('src', 'app', 'feed-health', 'page.tsx'))).toBe(false)
-    expect(FILES).toContain('src/app/feed-health/page.tsx')
+    expect(isSkipped(join('src', 'app', 'captures', 'page.tsx'))).toBe(false)
+    expect(FILES).toContain('src/app/captures/page.tsx')
   })
 
   it('derives one URL prefix per enterprise route directory, and nothing from a module', () => {

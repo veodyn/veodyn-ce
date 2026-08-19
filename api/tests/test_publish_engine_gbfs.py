@@ -13,9 +13,9 @@ from sqlalchemy.orm import Session
 
 from tests.publish_stubs import CLEAN, ERRORED, ROWS, UNCHECKED, make_feed
 from veodyn_api.models.published_feed import PublishedFeed
-from veodyn_api.services.feed_validator import ValidationOutcome, ValidatorUnavailable
 from veodyn_api.services.gtfs_rt_serializer import SerializationError
 from veodyn_api.services.publish_engine import GbfsPublisher, current_artifact, run_attempt
+from veodyn_api.services.published_feed_validator import ValidationOutcome, ValidatorUnavailable
 
 FILES: dict[str, Any] = {
     "gbfs.json": {"last_updated": 1, "ttl": 0, "version": "2.3", "data": {"en": {"feeds": []}}},

@@ -22,7 +22,7 @@ from __future__ import annotations
 #
 #   view_query         GET /api/queries, GET /api/queries/<id>, and it satisfies the
 #                      any-of on both result endpoints
-#   create_query       POST /api/queries, the feed probe in services/feed_alert.py
+#   create_query       POST /api/queries, the feed probe in services/capture_alert.py
 #   execute_query      POST /api/queries/<id>/results, the KPI runner
 #   list_data_sources  GET /api/data_sources, the AI grounding labels
 #   list_dashboards    GET /api/dashboards/<id>, also AI grounding

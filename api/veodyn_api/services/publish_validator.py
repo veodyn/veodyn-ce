@@ -17,16 +17,16 @@ from typing import Any
 import httpx
 
 from veodyn_api.models.published_feed import PublishedFeed
-from veodyn_api.services.feed_validator import (
+from veodyn_api.services.gbfs_serializer import serialize_gbfs_stations
+from veodyn_api.services.gbfs_validation import validate_gbfs_files
+from veodyn_api.services.gtfs_rt_serializer import SerializationError
+from veodyn_api.services.publish_engine import GbfsPublisher, Validate
+from veodyn_api.services.published_feed_validator import (
     VALIDATE_TIMEOUT_SECONDS,
     ValidationOutcome,
     ValidatorUnavailable,
     validate_feed,
 )
-from veodyn_api.services.gbfs_serializer import serialize_gbfs_stations
-from veodyn_api.services.gbfs_validation import validate_gbfs_files
-from veodyn_api.services.gtfs_rt_serializer import SerializationError
-from veodyn_api.services.publish_engine import GbfsPublisher, Validate
 from veodyn_api.settings import Settings
 
 

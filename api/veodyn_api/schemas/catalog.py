@@ -27,7 +27,7 @@ class DatasetColumnOut(CamelModel):
 class DatasetFreshnessOut(CamelModel):
     last_updated_at: str
     status: Literal["fresh", "stale"]
-    feed_id: str | None = None
+    capture_id: str | None = None
 
 
 class DatasetCoverageOut(CamelModel):
@@ -53,8 +53,8 @@ class DatasetOut(CamelModel):
     # Both default to what a captured dataset is, so a community response is a
     # true statement rather than a placeholder: nothing here is writable and
     # everything here was captured. Feed Health reads `origin` off this model
-    # rather than off the internal source type, because build_feeds is handed
-    # DatasetOut and nothing else (services/feeds.py).
+    # rather than off the internal source type, because build_captures is handed
+    # DatasetOut and nothing else (services/captures.py).
     origin: str = "capture"
     writable: bool = False
 

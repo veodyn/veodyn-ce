@@ -1,6 +1,6 @@
 """A query declared to publish a standard feed.
 
-Keyed (org_slug, slug), like FeedExpectation, so a cross-tenant row is not
+Keyed (org_slug, slug), like CaptureExpectation, so a cross-tenant row is not
 addressable by id alone. The slug is also the public URL path, so the pair is
 both the identity and the address.
 
@@ -82,7 +82,7 @@ class PublishedFeed(Base):
     # tests and succeed in production. Nothing reports the divergence:
     # `migrations/env.py` configures `compare_type` and not
     # `compare_server_default`. Keep these equal to the migration by hand;
-    # `FeedExpectation.updated_at` is the same arrangement.
+    # `CaptureExpectation.updated_at` is the same arrangement.
     revision: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     query_id: Mapped[int] = mapped_column(Integer, nullable=False)
 

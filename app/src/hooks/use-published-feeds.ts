@@ -23,7 +23,7 @@ const CAPABILITIES_KEY = ['published-feeds', 'capabilities']
 const feedKey = (slug: string) => ['published-feeds', slug]
 const attemptsKey = (slug: string) => ['published-feeds', slug, 'attempts']
 
-// Community's own registry, exactly as services/feed_registry.py seeds it: one
+// Community's own registry, exactly as services/published_feed_registry.py seeds it: one
 // entity per standard, and each standard's own supported versions. What a real
 // fixture-mode session returns when there is no backend to ask. Mock mode is
 // what pnpm test:e2e runs on, so the entity must show as a fact, not an empty

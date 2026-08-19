@@ -102,7 +102,7 @@ The header states them separately, and the distinction matters:
 | **Query edited** | When the query itself was last changed |
 | **Runtime** | How long the last run took, when it has run |
 
-A single "Updated" time on a page whose body is a results table reads as the age of those rows, and it is not. Setting a refresh schedule changes no data at all, yet it would flip that one timestamp to "just now" while every value on screen stayed identical. **Last result** is also the wording [Schedules](/features/monitoring) uses for the same field, so the two screens report the same number for the same query.
+A single "Updated" time on a page whose body is a results table reads as the age of those rows, and it is not. Setting a refresh schedule changes no data at all, yet it would flip that one timestamp to "just now" while every value on screen stayed identical. **Last result** is also the wording [Schedules](/features/schedules) uses for the same field, so the two screens report the same number for the same query.
 
 ### Running it again
 
@@ -209,7 +209,7 @@ The kebab menu on a query gathers everything else, shown only when you hold the 
 | **Archive** | Retires the query, after a confirmation that names what else goes with it. See [Archiving asks first](#archiving-asks-first-and-it-should) |
 | **Make it a draft / Share with the team** | Only with the drafts feature enabled: controls whether the query is listed for the team yet |
 
-Scheduled runs and their punctuality are visible org-wide under [Monitoring](/features/monitoring).
+Scheduled runs and their punctuality are visible org-wide under [Schedules](/features/schedules).
 
 ### The API Key dialog
 

@@ -112,13 +112,13 @@ Each card carries the dataset's **name**, which is the link to its page, the **d
 
 ### Reading the freshness badge
 
-Three states, and they are the same three the [Feed Health](/features/monitoring) board reports, resolved by the same rule so the two pages cannot disagree:
+Three states, and they are the same three the [Captures](/features/captures) board reports, resolved by the same rule so the two pages cannot disagree:
 
 | Badge | Means |
 |---|---|
-| **Fresh** | The dataset has been updated within the cadence its feed is expected to keep |
+| **Fresh** | The dataset has been updated within the cadence its capture is expected to keep |
 | **Stale** | It has not, and is overdue |
-| **Down** | The feed behind it is not running |
+| **Down** | The capture behind it is not running |
 
 The badge appears on **captured** datasets only, for the reason given [above](#where-a-dataset-comes-from).
 
@@ -158,7 +158,7 @@ Two mechanics matter once a deployment runs more than one source:
 
 ### When it is empty rather than broken
 
-A fresh install has no `historical` database and no capture registry, because the query service creates them the first time it captures a result. That is an empty catalog, not a failure, and the catalog, the domain pages and Feed Health all report having nothing instead of answering 502, whichever of the two is missing.
+A fresh install has no `historical` database and no capture registry, because the query service creates them the first time it captures a result. That is an empty catalog, not a failure, and the catalog, the domain pages and Captures all report having nothing instead of answering 502, whichever of the two is missing.
 
 One registered table shaped differently from the rest no longer fails the catalog for all of them either. It is left out, and the others are served.
 

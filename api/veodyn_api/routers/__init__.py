@@ -9,13 +9,15 @@ them in `VEODYN_EXTRA_MODULES` instead.
 
 from veodyn_api.registry import register_router
 from veodyn_api.routers.ai import router as ai_router
+from veodyn_api.routers.captures import router as captures_router
 from veodyn_api.routers.catalog import router as catalog_router
 from veodyn_api.routers.domains import router as domains_router
 from veodyn_api.routers.favorites import router as favorites_router
-from veodyn_api.routers.feed_capabilities import router as feed_capabilities_router
-from veodyn_api.routers.feeds import router as feeds_router
 from veodyn_api.routers.public_feeds import router as public_feeds_router
 from veodyn_api.routers.published_feed_attempts import router as published_feed_attempts_router
+from veodyn_api.routers.published_feed_capabilities import (
+    router as published_feed_capabilities_router,
+)
 from veodyn_api.routers.published_feeds import router as published_feeds_router
 from veodyn_api.routers.tags import router as tags_router
 
@@ -27,8 +29,8 @@ for _router in (
     # Must precede published_feeds_router: both mount under "/published-feeds",
     # FastAPI matches in registration order, and `GET /{slug}` would otherwise
     # swallow `GET /capabilities`.
-    feed_capabilities_router,
-    feeds_router,
+    published_feed_capabilities_router,
+    captures_router,
     public_feeds_router,
     published_feeds_router,
     published_feed_attempts_router,

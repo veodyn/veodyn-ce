@@ -10,7 +10,7 @@ The other pages in this section are about getting data out of the instance in wh
 
 Today the formats are GTFS-Realtime 2.0 and GBFS (2.3 and 3.0). A published feed says that one query, mapped one particular way, is the source of one feed at one address.
 
-It lives at **Connect → Feeds** in the sidebar (`/connect/feeds`); the page itself is titled Published Feeds.
+It lives at **Connect → Published Feeds** in the sidebar (`/connect/feeds`).
 
 ## Publishing is administered
 
@@ -22,7 +22,7 @@ A non-admin does not get those controls greyed out. They are gone, and one sente
 
 A disabled button implies a permission you might get by asking, and a control that has simply vanished looks like a page that failed to load. The sentence is there to make the absence legible.
 
-The permission line falls here because a published feed is an anonymous read surface over query results, so creating one changes both what data is exposed and who can reach it. Setting a [cadence expectation](/features/monitoring) on the Feed Health board is open to any member, since it changes neither.
+The permission line falls here because a published feed is an anonymous read surface over query results, so creating one changes both what data is exposed and who can reach it. Setting a [cadence expectation](/features/captures) on the Captures board is open to any member, since it changes neither.
 
 ## The list
 
@@ -37,7 +37,7 @@ Four columns, and clicking a row opens that feed's page.
 | Access | Public or Private |
 | Revision | Which revision of the binding is current |
 
-The Address column carries the source query's name as well as the slug, the same way Feed Health prints a feed over its source. A slug tells you what the feed is called; the second line tells you where its data comes from, without a click.
+The Address column carries the source query's name as well as the slug, the same way Captures prints a capture over the connection it reads. A slug tells you what the feed is called; the second line tells you where its data comes from, without a click.
 
 Search matches the slug, the query name and the visibility.
 

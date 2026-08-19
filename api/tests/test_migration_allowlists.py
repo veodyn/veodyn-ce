@@ -20,14 +20,37 @@ from migrations.ownership import CE_TABLES
 from tests.migration_chains import CE_MIGRATIONS, EE_TABLES, calls_named
 
 
+def upgrade_body(tree: ast.AST) -> ast.AST:
+    """The `upgrade()` function alone, so a scan of its calls never also picks
+    up `downgrade()`'s calls, which run the same ops in reverse."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "upgrade":
+            return node
+    raise AssertionError("a revision file has no upgrade() to read")
+
+
 def tables_created_by(directory: Path) -> frozenset[str]:
-    """Every table name passed to `op.create_table` by a revision file."""
+    """Every table a revision's `upgrade()` creates, tracked through any later
+    rename.
+
+    `rename_table` swaps a name out of this set and the new one in, so a table
+    created under one name and renamed later is counted under the name the
+    chain ends at, which is the name `CE_TABLES` has to match.
+    """
     created: set[str] = set()
     for path in sorted(directory.glob("[0-9]*.py")):
-        for call in calls_named(ast.parse(path.read_text()), "create_table"):
+        body = upgrade_body(ast.parse(path.read_text()))
+        for call in calls_named(body, "create_table"):
             first = call.args[0]
             assert isinstance(first, ast.Constant), f"{path.name} names a table it does not spell out"
             created.add(str(first.value))
+        for call in calls_named(body, "rename_table"):
+            old, new = call.args[0], call.args[1]
+            assert isinstance(old, ast.Constant) and isinstance(new, ast.Constant), (
+                f"{path.name} renames a table it does not spell out"
+            )
+            created.discard(str(old.value))
+            created.add(str(new.value))
     return frozenset(created)
 
 

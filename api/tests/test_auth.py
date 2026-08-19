@@ -214,7 +214,7 @@ def test_caller_credential_never_forwards_a_credential_that_did_not_authenticate
 
 
 ENTERPRISE_GUARDS = "veodyn_api.routers.kpi_guards"
-COMMUNITY_ROUTERS = ("veodyn_api.routers.feeds", "veodyn_api.routers.domains")
+COMMUNITY_ROUTERS = ("veodyn_api.routers.captures", "veodyn_api.routers.domains")
 
 
 @pytest.mark.parametrize("module_name", COMMUNITY_ROUTERS)

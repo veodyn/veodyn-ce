@@ -179,17 +179,17 @@ def test_states_no_coverage_for_a_table_that_has_captured_nothing(catalog_api: T
     # Empty rather than a plausible-looking range: the registry row exists from
     # the first capture attempt, so "no rows yet" is a real state to report.
     assert bikes["coverage"] == {"start": "", "end": ""}
-    # feedId is known even here, and is deliberately not None. The feed is the
-    # scheduled query that owns this table; it is registered from the first
-    # capture ATTEMPT, so "which feed fills this" has an answer before "what has
-    # it delivered" does. /feeds still leaves this one off the board, because a
-    # freshness row with nothing received is not something a reader can act on
-    # (services/feeds.py). The two are consistent: a dataset may name a feed the
-    # board has nothing to say about yet.
+    # captureId is known even here, and is deliberately not None. The capture is
+    # the scheduled query that owns this table; it is registered from the first
+    # capture ATTEMPT, so "which capture fills this" has an answer before "what
+    # has it delivered" does. /captures still leaves this one off the board,
+    # because a freshness row with nothing received is not something a reader can
+    # act on (services/captures.py). The two are consistent: a dataset may name a
+    # capture the board has nothing to say about yet.
     assert bikes["freshness"] == {
         "lastUpdatedAt": "",
         "status": "stale",
-        "feedId": "q_regional_demo_bikeshare_stations_32",
+        "captureId": "q_regional_demo_bikeshare_stations_32",
     }
     assert bikes["rowCount"] == 0
 

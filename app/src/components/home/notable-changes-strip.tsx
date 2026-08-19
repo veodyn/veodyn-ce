@@ -8,9 +8,9 @@
 // movers group with an enterprise one would show the same metric twice with two
 // different numbers.
 //
-// Datasets, not feeds: these cards come from useCatalog and link to
-// /data/dataset/:id. A feed is a separate resource behind useFeeds, which is
-// what /feed-health reports on.
+// Datasets, not captures: these cards come from useCatalog and link to
+// /data/dataset/:id. A capture is a separate resource behind useCaptures,
+// which is what /captures reports on.
 import Link from 'next/link'
 import { useCatalog } from '@/hooks/use-catalog'
 import { Slot } from '@/features/slots'

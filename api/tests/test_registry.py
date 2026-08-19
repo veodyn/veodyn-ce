@@ -53,7 +53,7 @@ def _always_refuse(db: Session, identity: Identity, object_id: str) -> None:
 
 
 def _refuse_as_missing(db: Session, identity: Identity, object_id: str) -> None:
-    raise ApiError(ErrorId.FEED_NOT_WATCHABLE, "no such gadget", status_code=404)
+    raise ApiError(ErrorId.CAPTURE_NOT_WATCHABLE, "no such gadget", status_code=404)
 
 
 # A kind no build actually ships, which is the point: it stands in for whatever
@@ -179,7 +179,7 @@ def test_two_registered_kinds_keep_their_own_authorization(api: TestClient) -> N
 
     assert refused.status_code == 200
     assert missing.status_code == 404
-    assert missing.json()["error"]["id"] == "VEODYN_FEED_NOT_WATCHABLE"
+    assert missing.json()["error"]["id"] == "VEODYN_CAPTURE_NOT_WATCHABLE"
 
 
 @respx.mock

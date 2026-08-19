@@ -60,7 +60,7 @@ is licensed commercially.
 | | Data catalog and domain pages | ● | ● |
 | | [Managed datasets](/features/managed-datasets): declaring one, the record editor, writer groups, retraction and revision history | | ● |
 | | Movers, and the counter row on a domain page | | ● |
-| **Watching** | Feed Health and Schedules | ● | ● |
+| **Watching** | Captures and Schedules | ● | ● |
 | | KPIs: targets, thresholds, owners, cadence, history | | ● |
 | | [KPIs measured from a feed](/features/kpis#what-a-kpi-can-measure) rather than from a query | | ● |
 | | The alerts surface | | ● |

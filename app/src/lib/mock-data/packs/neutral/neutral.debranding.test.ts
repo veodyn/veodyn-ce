@@ -19,7 +19,7 @@ import {
   mockDestinations,
   mockDestinationTypes,
   mockDomainHubs,
-  mockFeeds,
+  mockCaptures,
   mockGroups,
   mockQueries,
   mockQueryResults,
@@ -47,7 +47,7 @@ const ALL_FIXTURES = {
   mockDatasets,
   mockDomainHubs,
   mockAnnotations,
-  mockFeeds,
+  mockCaptures,
 }
 
 describe('neutral demo pack, publication guard', () => {

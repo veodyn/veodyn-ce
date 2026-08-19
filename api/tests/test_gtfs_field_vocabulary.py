@@ -11,7 +11,7 @@ then update this file. Updating only this file makes the picker offer a field
 nothing writes, or hide one that now works.
 
 `test_the_registered_entities_...` is a different claim and reads a different
-source: `services/feed_registry.py`, not the serializer. An enterprise pack
+source: `services/published_feed_registry.py`, not the serializer. An enterprise pack
 widens that registry at import without ever touching `gtfs_rt_serializer.py`,
 so this is the one assertion that would have failed against the OLD version of
 this file, which compared `REQUIRED_FIELDS`/`SUPPORTED_FIELDS` by exhaustive
@@ -28,7 +28,7 @@ does name still have the fields it says they do.
 import json
 from pathlib import Path
 
-from veodyn_api.services import feed_registry
+from veodyn_api.services import published_feed_registry
 from veodyn_api.services.gtfs_rt_serializer import REQUIRED_FIELDS, SUPPORTED_FIELDS
 
 VOCABULARY = json.loads((Path(__file__).parent / "gtfs_field_vocabulary.json").read_text())
@@ -37,7 +37,7 @@ VOCABULARY = json.loads((Path(__file__).parent / "gtfs_field_vocabulary.json").r
 def test_the_registered_entities_are_the_ones_the_vocabulary_documents() -> None:
     # Scoped to gtfs-rt: this fixture documents the GTFS-Realtime picker, and the
     # registry now holds a set per standard.
-    assert set(feed_registry.entities("gtfs-rt")) == set(VOCABULARY["entities"])
+    assert set(published_feed_registry.entities("gtfs-rt")) == set(VOCABULARY["entities"])
 
 
 def test_the_required_fields_are_the_ones_the_frontend_marks_required() -> None:

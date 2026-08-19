@@ -23,9 +23,9 @@ from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.models.published_feed import PublishedFeed
 from veodyn_api.schemas.published_feed import PublishedFeedIn, PublishedFeedOut
 from veodyn_api.services.ai_grounding import query_result_columns
-from veodyn_api.services.feed_binding_checks import check_column_map
-from veodyn_api.services.feed_lifecycle import take_the_feed_off_the_air
-from veodyn_api.services.feed_query_check import require_a_readable_query
+from veodyn_api.services.published_feed_binding_checks import check_column_map
+from veodyn_api.services.published_feed_lifecycle import take_the_feed_off_the_air
+from veodyn_api.services.published_feed_query_check import require_a_readable_query
 from veodyn_api.services.redash import RedashClient
 from veodyn_api.settings import Settings, get_settings
 

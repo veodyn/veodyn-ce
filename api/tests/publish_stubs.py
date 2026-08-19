@@ -19,8 +19,8 @@ from sqlalchemy.orm import Session
 
 from veodyn_api.models.publish_attempt import PublishAttempt
 from veodyn_api.models.published_feed import PublishedFeed
-from veodyn_api.services.feed_validator import Finding, ValidationOutcome
 from veodyn_api.services.publish_engine import AttemptResult, Validate, current_artifact, run_attempt
+from veodyn_api.services.published_feed_validator import Finding, ValidationOutcome
 
 ROWS: list[dict[str, Any]] = [{"bus": "b1", "lat": 34.05, "lon": -118.25}]
 

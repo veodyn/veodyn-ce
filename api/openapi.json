@@ -57,7 +57,7 @@
         "type": "object"
       },
       "AlertIn": {
-        "description": "Whether this feed should page someone when it goes quiet.",
+        "description": "Whether this capture should page someone when it goes quiet.",
         "properties": {
           "armed": {
             "title": "Armed",
@@ -68,6 +68,88 @@
           "armed"
         ],
         "title": "AlertIn",
+        "type": "object"
+      },
+      "CaptureOut": {
+        "description": "One upstream capture, as the Captures board reads it.\n\nA capture here IS a scheduled Redash query that captures into the historical\nwarehouse, so the id is the table it captures into and it matches the\ndataset of the same id one to one. That is structural rather than a\nconvention worth breaking: `get_or_create_table_name` keys the registry on\nquery_id and hands back exactly one table, so `dataset_count` cannot be\nanything but 1 while that holds.",
+        "properties": {
+          "alertId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alertid"
+          },
+          "cadence": {
+            "title": "Cadence",
+            "type": "string"
+          },
+          "cadenceSource": {
+            "enum": [
+              "declared",
+              "schedule",
+              "none"
+            ],
+            "title": "Cadencesource",
+            "type": "string"
+          },
+          "datasetCount": {
+            "title": "Datasetcount",
+            "type": "integer"
+          },
+          "expectedIntervalSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedintervalseconds"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "lastReceivedAt": {
+            "title": "Lastreceivedat",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "fresh",
+              "stale"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "source",
+          "cadence",
+          "cadenceSource",
+          "expectedIntervalSeconds",
+          "alertId",
+          "lastReceivedAt",
+          "status",
+          "datasetCount"
+        ],
+        "title": "CaptureOut",
         "type": "object"
       },
       "ConverseIn": {
@@ -362,7 +444,7 @@
       },
       "DatasetFreshnessOut": {
         "properties": {
-          "feedId": {
+          "captureId": {
             "anyOf": [
               {
                 "type": "string"
@@ -371,7 +453,7 @@
                 "type": "null"
               }
             ],
-            "title": "Feedid"
+            "title": "Captureid"
           },
           "lastUpdatedAt": {
             "title": "Lastupdatedat",
@@ -541,7 +623,7 @@
         "type": "object"
       },
       "ExpectationIn": {
-        "description": "How often this feed should deliver, or null to stop expecting.\n\nNull rather than a second endpoint: clearing only returns the feed to its\nRedash schedule, and a DELETE beside a PUT would read as destructive.",
+        "description": "How often this capture should deliver, or null to stop expecting.\n\nNull rather than a second endpoint: clearing only returns the capture to\nits Redash schedule, and a DELETE beside a PUT would read as destructive.",
         "properties": {
           "expectedIntervalSeconds": {
             "anyOf": [
@@ -587,88 +669,6 @@
           "standards"
         ],
         "title": "FeedCapabilitiesOut",
-        "type": "object"
-      },
-      "FeedOut": {
-        "description": "One upstream capture, as the Feed Health board reads it.\n\nA feed here IS a scheduled Redash query that captures into the historical\nwarehouse, so the id is the table it captures into and it matches the\ndataset of the same id one to one. That is structural rather than a\nconvention worth breaking: `get_or_create_table_name` keys the registry on\nquery_id and hands back exactly one table, so `dataset_count` cannot be\nanything but 1 while that holds.",
-        "properties": {
-          "alertId": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Alertid"
-          },
-          "cadence": {
-            "title": "Cadence",
-            "type": "string"
-          },
-          "cadenceSource": {
-            "enum": [
-              "declared",
-              "schedule",
-              "none"
-            ],
-            "title": "Cadencesource",
-            "type": "string"
-          },
-          "datasetCount": {
-            "title": "Datasetcount",
-            "type": "integer"
-          },
-          "expectedIntervalSeconds": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expectedintervalseconds"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "lastReceivedAt": {
-            "title": "Lastreceivedat",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "source": {
-            "title": "Source",
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "fresh",
-              "stale"
-            ],
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "source",
-          "cadence",
-          "cadenceSource",
-          "expectedIntervalSeconds",
-          "alertId",
-          "lastReceivedAt",
-          "status",
-          "datasetCount"
-        ],
-        "title": "FeedOut",
         "type": "object"
       },
       "FindingOut": {
@@ -1475,7 +1475,7 @@
         "type": "object"
       },
       "StandardCapabilityOut": {
-        "description": "One standard this deployment can bind a feed to, with the versions it can\npublish and the entities registered under it.\n\n`versions` comes from `feed_registry.VERSIONS_BY_STANDARD` and is empty for a\nstandard only a pack registers entities under.",
+        "description": "One standard this deployment can bind a feed to, with the versions it can\npublish and the entities registered under it.\n\n`versions` comes from `published_feed_registry.VERSIONS_BY_STANDARD` and is empty for a\nstandard only a pack registers entities under.",
         "properties": {
           "entities": {
             "items": {
@@ -1721,6 +1721,232 @@
         "summary": "Post Generate Sql",
         "tags": [
           "ai"
+        ]
+      }
+    },
+    "/captures": {
+      "get": {
+        "description": "Every scheduled capture the warehouse holds, with its cadence and source.\n\nThe two Redash lookups run as the CALLER, not as the service account, so a\ndata source or a query the reader cannot see goes unnamed rather than named\nfor them. Both are best-effort by construction: they label a list the\nwarehouse already produced, and neither can empty it.",
+        "operationId": "list_captures_captures_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CaptureOut"
+                  },
+                  "title": "Response List Captures Captures Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Captures",
+        "tags": [
+          "captures"
+        ]
+      }
+    },
+    "/captures/{capture_id}/alert": {
+      "put": {
+        "description": "Arm or disarm the late alert on a capture.\n\nRequires a declared expectation, because the alert's threshold is two of\nthose periods. Unlike the expectation, this IS checked against the catalog:\narming writes a query against a real table on a real data source.",
+        "operationId": "put_alert_captures__capture_id__alert_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "capture_id",
+            "required": true,
+            "schema": {
+              "title": "Capture Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Alert",
+        "tags": [
+          "captures"
+        ]
+      }
+    },
+    "/captures/{capture_id}/expectation": {
+      "put": {
+        "description": "Declare how often a capture is expected to deliver.\n\nNOT checked against the catalog first: a capture id is a warehouse table\nname, and an expectation for a table that has not appeared yet, or has\nbriefly dropped out of the registry, is a harmless row that starts working\nthe moment it is back. Any authenticated member of the org may set one,\nsince it changes no data and no permission, only when this org's board\ncalls a capture late.",
+        "operationId": "put_expectation_captures__capture_id__expectation_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "capture_id",
+            "required": true,
+            "schema": {
+              "title": "Capture Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Expectation",
+        "tags": [
+          "captures"
         ]
       }
     },
@@ -2168,232 +2394,6 @@
         "summary": "Add Favorite",
         "tags": [
           "favorites"
-        ]
-      }
-    },
-    "/feeds": {
-      "get": {
-        "description": "Every scheduled capture the warehouse holds, with its cadence and source.\n\nThe two Redash lookups run as the CALLER, not as the service account, so a\ndata source or a query the reader cannot see goes unnamed rather than named\nfor them. Both are best-effort by construction: they label a list the\nwarehouse already produced, and neither can empty it.",
-        "operationId": "list_feeds_feeds_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Cookie"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/FeedOut"
-                  },
-                  "title": "Response List Feeds Feeds Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Feeds",
-        "tags": [
-          "feeds"
-        ]
-      }
-    },
-    "/feeds/{feed_id}/alert": {
-      "put": {
-        "description": "Arm or disarm the late alert on a feed.\n\nRequires a declared expectation, because the alert's threshold is two of\nthose periods. Unlike the expectation, this IS checked against the catalog:\narming writes a query against a real table on a real data source.",
-        "operationId": "put_alert_feeds__feed_id__alert_put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "feed_id",
-            "required": true,
-            "schema": {
-              "title": "Feed Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Cookie"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AlertIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Put Alert",
-        "tags": [
-          "feeds"
-        ]
-      }
-    },
-    "/feeds/{feed_id}/expectation": {
-      "put": {
-        "description": "Declare how often a capture is expected to deliver.\n\nNOT checked against the catalog first: a feed id is a warehouse table name,\nand an expectation for a table that has not appeared yet, or has briefly\ndropped out of the registry, is a harmless row that starts working the moment\nit is back. Any authenticated member of the org may set one, since it changes\nno data and no permission, only when this org's board calls a feed late.",
-        "operationId": "put_expectation_feeds__feed_id__expectation_put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "feed_id",
-            "required": true,
-            "schema": {
-              "title": "Feed Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Cookie"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ExpectationIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Put Expectation",
-        "tags": [
-          "feeds"
         ]
       }
     },

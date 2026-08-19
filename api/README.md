@@ -23,7 +23,7 @@ for all of them:
 | `/domains` | Domain pages, joined from query service tags and whatever counter providers are registered |
 | `/tags` | The shared tag vocabulary, and tag writes per object kind |
 | `/favorites` | Per-person stars, for the object kinds this build registers |
-| `/feeds` | Feed health, cadence expectations, and the alert armed from one |
+| `/captures` | Capture health, cadence expectations, and the alert armed from one |
 | `/ai` | The AI provider: SQL generation and the creation chat |
 | `/health` | Liveness |
 

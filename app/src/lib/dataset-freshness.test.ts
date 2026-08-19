@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { datasetForQueryId, resolveDatasetStatus } from '@/lib/dataset-freshness'
 import type { Dataset, DatasetFreshness } from '@/types/catalog'
-import type { Feed } from '@/types/feed'
+import type { Capture } from '@/types/capture'
 
 const NOW = Date.parse('2026-07-24T12:00:00Z')
 const HOUR = 3_600_000
 
-function feed(overrides: Partial<Feed> = {}): Feed {
+function capture(overrides: Partial<Capture> = {}): Capture {
   return {
     id: 'fleet-avl',
     name: 'Fleet AVL',
@@ -23,7 +23,7 @@ function freshness(overrides: Partial<DatasetFreshness> = {}): DatasetFreshness 
   return {
     lastUpdatedAt: new Date(NOW).toISOString(),
     status: 'fresh',
-    feedId: 'fleet-avl',
+    captureId: 'fleet-avl',
     ...overrides,
   }
 }
@@ -38,7 +38,7 @@ function dataset(overrides: Partial<Dataset> = {}): Dataset {
     freshness: {
       lastUpdatedAt: '2026-07-22T05:55:00Z',
       status: 'stale',
-      feedId: 'bikeshare-gbfs',
+      captureId: 'bikeshare-gbfs',
     },
     coverage: { start: '2025-01-05T00:00:00Z', end: '2026-07-22T05:55:00Z' },
     rowCount: 214_050,
@@ -54,24 +54,24 @@ function dataset(overrides: Partial<Dataset> = {}): Dataset {
 describe('resolveDatasetStatus', () => {
   it('overrules a fixture that claims Fresh three days into a one-minute cadence', () => {
     // The exact disagreement this exists to remove: the catalog printed
-    // "Fresh, 3 days ago" for the dataset behind a feed that Feed Health was
+    // "Fresh, 3 days ago" for the dataset behind a capture that Feed Health was
     // simultaneously calling Down.
     const status = resolveDatasetStatus(
       freshness({ lastUpdatedAt: new Date(NOW - 72 * HOUR).toISOString() }),
-      [feed()],
+      [capture()],
       NOW
     )
 
     expect(status).toBe('down')
   })
 
-  it('ages the dataset, not the feed, so a live feed does not excuse a stalled table', () => {
-    // The feed is delivering every minute and did so a second ago; the dataset
-    // built from it has not moved in three days. The dataset is what the badge
-    // is about.
+  it('ages the dataset, not the capture, so a live capture does not excuse a stalled table', () => {
+    // The capture is delivering every minute and did so a second ago; the
+    // dataset built from it has not moved in three days. The dataset is what
+    // the badge is about.
     const status = resolveDatasetStatus(
       freshness({ lastUpdatedAt: new Date(NOW - 72 * HOUR).toISOString() }),
-      [feed({ lastReceivedAt: new Date(NOW).toISOString() })],
+      [capture({ lastReceivedAt: new Date(NOW).toISOString() })],
       NOW
     )
 
@@ -81,7 +81,7 @@ describe('resolveDatasetStatus', () => {
   it('keeps Fresh when the dataset is inside two cadence periods', () => {
     const status = resolveDatasetStatus(
       freshness({ lastUpdatedAt: new Date(NOW - 60_000).toISOString() }),
-      [feed()],
+      [capture()],
       NOW
     )
 
@@ -89,16 +89,16 @@ describe('resolveDatasetStatus', () => {
   })
 
   it('believes a dataset that reports worse than the cadence implies', () => {
-    const status = resolveDatasetStatus(freshness({ status: 'stale' }), [feed()], NOW)
+    const status = resolveDatasetStatus(freshness({ status: 'stale' }), [capture()], NOW)
 
     expect(status).toBe('stale')
   })
 
-  it('believes a feed that reports down even when the dataset looks current', () => {
-    // The feed knows something the timestamps do not. Passing the dataset's
-    // status in as the feed's used to discard this entirely, so a feed screaming
-    // Down rendered as Fresh.
-    const status = resolveDatasetStatus(freshness({ status: 'fresh' }), [feed({ status: 'down' })], NOW)
+  it('believes a capture that reports down even when the dataset looks current', () => {
+    // The capture knows something the timestamps do not. Passing the dataset's
+    // status in as the capture's used to discard this entirely, so a capture
+    // screaming Down rendered as Fresh.
+    const status = resolveDatasetStatus(freshness({ status: 'fresh' }), [capture({ status: 'down' })], NOW)
 
     expect(status).toBe('down')
   })
@@ -106,17 +106,17 @@ describe('resolveDatasetStatus', () => {
   it('takes the worst of the three claims, not the last one checked', () => {
     const status = resolveDatasetStatus(
       freshness({ status: 'fresh', lastUpdatedAt: new Date(NOW - 5 * 60_000).toISOString() }),
-      [feed({ status: 'stale' })],
+      [capture({ status: 'stale' })],
       NOW
     )
 
-    // Derived is stale (5 minutes on a one-minute cadence), declared feed is
+    // Derived is stale (5 minutes on a one-minute cadence), declared capture is
     // stale, dataset says fresh: stale wins.
     expect(status).toBe('stale')
   })
 
-  it('falls back to the declared status when no feed backs the dataset', () => {
-    expect(resolveDatasetStatus(freshness({ feedId: undefined }), [feed()], NOW)).toBe('fresh')
+  it('falls back to the declared status when no capture backs the dataset', () => {
+    expect(resolveDatasetStatus(freshness({ captureId: undefined }), [capture()], NOW)).toBe('fresh')
     expect(resolveDatasetStatus(freshness(), [], NOW)).toBe('fresh')
     expect(resolveDatasetStatus(freshness(), undefined, NOW)).toBe('fresh')
   })
@@ -163,12 +163,12 @@ describe('the join against real instance shapes', () => {
   const bikeshare = dataset({
     id: 'q_regional_demo_bikeshare_stations_32',
     sampleQueryId: 32,
-    freshness: { lastUpdatedAt: '2026-07-22T05:55:00Z', status: 'stale', feedId: 'gbfs' },
+    freshness: { lastUpdatedAt: '2026-07-22T05:55:00Z', status: 'stale', captureId: 'gbfs' },
   })
   const weather = dataset({
     id: 'q_regional_demo_environment_current_weather_31',
     sampleQueryId: 31,
-    freshness: { lastUpdatedAt: '2026-08-01T05:00:00Z', status: 'fresh', feedId: 'owm' },
+    freshness: { lastUpdatedAt: '2026-08-01T05:00:00Z', status: 'fresh', captureId: 'owm' },
   })
   // Query 44 reads the table built by query 32. Nothing links 44 to 32 except
   // this FROM clause.

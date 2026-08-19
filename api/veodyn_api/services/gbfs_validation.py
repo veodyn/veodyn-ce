@@ -6,9 +6,9 @@ temporary directory and fetched over `file://`, which the package's fetcher
 supports; the discovery copy it reads has its member urls rewritten to that
 directory, and nothing else (a test holds that diff to urls-only).
 
-Fail closed, never absent, the same doctrine as feed_validator.py: a report
-that cannot be read as findings raises rather than passing. GBFS notices carry
-no severity, so everything blocks and there is no warning tier.
+Fail closed, never absent, the same doctrine as published_feed_validator.py: a
+report that cannot be read as findings raises rather than passing. GBFS
+notices carry no severity, so everything blocks and there is no warning tier.
 """
 
 import copy
@@ -20,7 +20,7 @@ from typing import Any
 # No py.typed in the distribution, so pyproject.toml carries the mypy override.
 from gbfs_validator import GBFS
 
-from veodyn_api.services.feed_validator import Finding, ValidationOutcome, ValidatorUnavailable
+from veodyn_api.services.published_feed_validator import Finding, ValidationOutcome, ValidatorUnavailable
 
 
 def discovery_for_validation(files: dict[str, Any], directory: str) -> dict[str, Any]:

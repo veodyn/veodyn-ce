@@ -39,7 +39,7 @@ Sections, top to bottom:
 
 - **Ungrouped**: Home, Search, Data Catalog, Discover, Favorites, then one row per configured [domain](/configuration#domains) (Transit, Freeways, ...).
 - **Library**: Queries, Dashboards, and Query Snippets when that feature is enabled. Plus KPIs and Reports on an [enterprise](/editions) build.
-- **Monitor**: Feed Health, Schedules. Plus Alerts on an enterprise build.
+- **Monitor**: Captures, Schedules. Plus Alerts on an enterprise build.
 - **Connect**: APIs, MCP.
 - **Admin** (admins only): Data Sources, Team, Plugins, Settings, and, for super admins, System Status, Query Jobs, and Outdated Queries. Plus Alert Destinations and Shared Links on an enterprise build.
 

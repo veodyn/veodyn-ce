@@ -52,7 +52,7 @@ test.describe('triage fixes', () => {
 
   // F-02: Home's freshness cards come from useCatalog and link to
   // /data/dataset/:id, so calling them "Feeds" collided with the separate
-  // useFeeds resource that /feed-health reports on.
+  // useCaptures resource that /captures reports on.
   test('F-02: Home labels dataset freshness as Freshness, not Feeds', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')

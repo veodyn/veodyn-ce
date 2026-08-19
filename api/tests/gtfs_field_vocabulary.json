@@ -7,7 +7,7 @@
     "test_gtfs_field_vocabulary.py; update the frontend in the same change,",
     "then update this. Same shape and intent as ce_module_allowlist.json.",
     "`entities` is the separate claim 'community registers exactly these', read",
-    "against services/feed_registry.py rather than the serializer: an",
+    "against services/published_feed_registry.py rather than the serializer: an",
     "enterprise pack widens the registry without touching this file, so",
     "`required`/`supported` are checked per entity this file names rather than",
     "by exhaustive equality against whatever the serializer's dicts hold."

@@ -7,7 +7,7 @@
 
 import { AppError, ErrorIds, isAppError } from '@/lib/errorIds'
 import type { Dataset, DomainHub } from '@/types/catalog'
-import type { Feed } from '@/types/feed'
+import type { Capture } from '@/types/capture'
 
 // Any error thrown out of a fetch + JSON parse pair (network failure,
 // malformed body) becomes a classified AppError so callers never see a raw
@@ -93,19 +93,21 @@ export async function fetchDomainHub(
 }
 
 /**
- * Declare how often a feed should deliver, or clear the declaration with null.
+ * Declare how often a capture should deliver, or clear the declaration with
+ * null.
  *
- * The interval is what gives lib/feed-status.ts a period to age against. With
- * none, deriveFeedStatus stops aging the feed and repeats whatever the upstream
- * last claimed, which is the state every feed on the instance was in.
+ * The interval is what gives lib/capture-status.ts a period to age against.
+ * With none, deriveCaptureStatus stops aging the capture and repeats whatever
+ * the upstream last claimed, which is the state every capture on the instance
+ * was in.
  */
-export async function setFeedExpectation(
-  feedId: string,
+export async function setCaptureExpectation(
+  captureId: string,
   expectedIntervalSeconds: number | null,
   opts: { signal?: AbortSignal } = {}
 ): Promise<void> {
   try {
-    const res = await fetch(`/api/feeds?feedId=${encodeURIComponent(feedId)}`, {
+    const res = await fetch(`/api/captures?captureId=${encodeURIComponent(captureId)}`, {
       method: 'PUT',
       credentials: 'include',
       signal: opts.signal,
@@ -113,7 +115,7 @@ export async function setFeedExpectation(
       body: JSON.stringify({ expectedIntervalSeconds }),
     })
     if (!res.ok) {
-      throw new AppError(ErrorIds.CATALOG_FETCH_FAILED, `feed expectation failed (${res.status})`, {
+      throw new AppError(ErrorIds.CATALOG_FETCH_FAILED, `capture expectation failed (${res.status})`, {
         status: res.status,
       })
     }
@@ -122,14 +124,14 @@ export async function setFeedExpectation(
   }
 }
 
-/** Arm or disarm the derived late-alert on a feed. */
-export async function setFeedAlert(
-  feedId: string,
+/** Arm or disarm the derived late-alert on a capture. */
+export async function setCaptureAlert(
+  captureId: string,
   armed: boolean,
   opts: { signal?: AbortSignal } = {}
 ): Promise<void> {
   try {
-    const res = await fetch(`/api/feeds?feedId=${encodeURIComponent(feedId)}&resource=alert`, {
+    const res = await fetch(`/api/captures?captureId=${encodeURIComponent(captureId)}&resource=alert`, {
       method: 'PUT',
       credentials: 'include',
       signal: opts.signal,
@@ -137,7 +139,7 @@ export async function setFeedAlert(
       body: JSON.stringify({ armed }),
     })
     if (!res.ok) {
-      throw new AppError(ErrorIds.CATALOG_FETCH_FAILED, `feed alert failed (${res.status})`, {
+      throw new AppError(ErrorIds.CATALOG_FETCH_FAILED, `capture alert failed (${res.status})`, {
         status: res.status,
       })
     }
@@ -146,15 +148,15 @@ export async function setFeedAlert(
   }
 }
 
-export async function fetchFeeds(opts: { signal?: AbortSignal } = {}): Promise<Feed[]> {
+export async function fetchCaptures(opts: { signal?: AbortSignal } = {}): Promise<Capture[]> {
   try {
-    const res = await fetch('/api/feeds', { credentials: 'include', signal: opts.signal })
+    const res = await fetch('/api/captures', { credentials: 'include', signal: opts.signal })
     if (!res.ok) {
-      throw new AppError(ErrorIds.CATALOG_FETCH_FAILED, `feeds fetch failed (${res.status})`, {
+      throw new AppError(ErrorIds.CATALOG_FETCH_FAILED, `captures fetch failed (${res.status})`, {
         status: res.status,
       })
     }
-    return (await res.json()) as Feed[]
+    return (await res.json()) as Capture[]
   } catch (error) {
     throw wrapCatalogError(error)
   }

@@ -75,7 +75,7 @@ describe('buildSidebarSections', () => {
   // The API serves the published-feeds list to any org member, so gating the
   // row itself would hide a page a non-admin can actually read. Only the
   // create action inside the page is admin-gated.
-  it('lists Feeds in CONNECT beside APIs and MCP', () => {
+  it('lists Published Feeds in CONNECT beside APIs and MCP', () => {
     const connect = build().find((s) => s.id === 'connect')
     expect(connect?.items.map((i) => i.href)).toEqual([
       '/connect/apis',
@@ -135,6 +135,58 @@ describe('buildSidebarSections', () => {
     expect(hrefs).toContain('/admin/plugins')
   })
 
+  // The invariant the comment at the top of buildSidebarSections states: every
+  // row's label matches the h1 of the page it links to.
+  it('labels every row with its destination h1', () => {
+    const H1_BY_HREF: Record<string, string> = {
+      '/search': 'Search',
+      '/data': 'Data Catalog',
+      '/discover': 'Discover',
+      '/favorites': 'Favorites',
+      '/queries': 'Queries',
+      '/dashboards': 'Dashboards',
+      '/query-snippets': 'Query Snippets',
+      '/captures': 'Captures',
+      '/schedules': 'Schedules',
+      '/connect/apis': 'APIs',
+      '/connect/mcp': 'MCP',
+      '/connect/feeds': 'Published Feeds',
+      '/data-sources': 'Data Sources',
+      '/destinations': 'Alert Destinations',
+      '/users': 'Team',
+      '/admin/plugins': 'Plugins',
+      '/settings': 'Settings',
+      '/admin/status': 'System Status',
+      '/admin/jobs': 'Query Jobs',
+      '/admin/outdated': 'Outdated Queries',
+    }
+    // Home's h1 interpolates the instance's own brand name, so it has no fixed
+    // string to check here.
+    const NO_FIXED_H1 = new Set(['/'])
+
+    // The strongest posture with no contributed rows, so every stock row this
+    // module can produce is present and nothing dynamic (a config domain, a
+    // feature-contributed row) is in the mix to require filtering out.
+    const rows = build(
+      { ...SUPER_ADMIN, features: { query_snippets: true, query_drafts: true } },
+      NO_FEATURE_ROWS
+    ).flatMap((section) => section.items)
+
+    // An href missing from the map fails the test rather than being skipped,
+    // so a row added later without an h1 entry here cannot pass silently.
+    const unmapped = rows
+      .filter((row) => !NO_FIXED_H1.has(row.href))
+      .filter((row) => !(row.href in H1_BY_HREF))
+      .map((row) => row.href)
+    expect(unmapped).toEqual([])
+
+    const drifted = rows
+      .filter((row) => row.href in H1_BY_HREF)
+      .filter((row) => row.label !== H1_BY_HREF[row.href])
+      .map((row) => `${row.href}: nav says "${row.label}"`)
+    expect(drifted).toEqual([])
+  })
+
   it('appends config domains as Data hub links', () => {
     const primary = build({ domains: [{ key: 'transit', label: 'Transit' }] }).find(
       (s) => s.id === 'primary'
@@ -181,7 +233,7 @@ describe('buildSidebarSections', () => {
 
     it('keeps MONITOR present with just the CE rows, not empty', () => {
       const monitor = build({}, NO_FEATURE_ROWS).find((s) => s.id === 'monitor')
-      expect(monitor?.items.map((i) => i.href)).toEqual(['/feed-health', '/schedules'])
+      expect(monitor?.items.map((i) => i.href)).toEqual(['/captures', '/schedules'])
     })
 
     it('keeps ADMIN present with just the CE rows, not empty', () => {

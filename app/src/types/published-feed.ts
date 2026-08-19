@@ -50,7 +50,7 @@ export interface PublishedFeedInput {
   // Not a Literal: each standard's serializer owns its supported set, and the
   // API refuses a version outside it naming what it does support.
   version: string
-  // Not a Literal: services/feed_registry.py holds the entity vocabulary at
+  // Not a Literal: services/published_feed_registry.py holds the entity vocabulary at
   // runtime, PER STANDARD, seeded with vehicle_positions and stations and
   // widened by an enterprise pack, so the wire contract stays one string
   // regardless of which pack is installed. See FeedCapabilities below for what

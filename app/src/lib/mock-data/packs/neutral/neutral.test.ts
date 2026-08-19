@@ -9,7 +9,7 @@ import {
   mockDestinations,
   mockDestinationTypes,
   mockDomainHubs,
-  mockFeeds,
+  mockCaptures,
   mockGroups,
   mockQueries,
   mockQueryResults,
@@ -159,9 +159,9 @@ describe('neutral demo pack, shape', () => {
     ])
   })
 
-  it('has the expected feed fixture shape (top-level keys)', () => {
-    expect(mockFeeds.length).toBeGreaterThan(0)
-    expect(Object.keys(mockFeeds[0]).sort()).toEqual([
+  it('has the expected capture fixture shape (top-level keys)', () => {
+    expect(mockCaptures.length).toBeGreaterThan(0)
+    expect(Object.keys(mockCaptures[0]).sort()).toEqual([
       'cadence',
       'datasetCount',
       'id',

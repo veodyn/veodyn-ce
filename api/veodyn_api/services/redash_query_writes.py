@@ -6,7 +6,7 @@ connection of its own; every call goes back through the client's own transport.
 
 Only two verbs, and only enough of each for the one caller that needs them.
 This service creates exactly one kind of query, the staleness probe behind a
-feed's derived alert (services/feed_alert.py). It is not a general query-writing
+feed's derived alert (services/capture_alert.py). It is not a general query-writing
 API and should not grow into one: a query authored here has no author on screen
 to correct it, so every field it carries has to be decided by code that can be
 read in one place.

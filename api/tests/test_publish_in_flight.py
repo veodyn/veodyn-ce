@@ -21,7 +21,6 @@ from sqlalchemy.orm import Session
 
 from tests.publish_stubs import CLEAN, ROWS, attempt_row, attempts, make_feed, retire_binding, run
 from veodyn_api.models.published_feed import PublishedFeed
-from veodyn_api.services.feed_validator import ValidationOutcome
 from veodyn_api.services.publish_engine import (
     BINDING_RETIRED_REASON,
     SUPERSEDED_REASON,
@@ -29,6 +28,7 @@ from veodyn_api.services.publish_engine import (
     current_artifact,
     run_attempt,
 )
+from veodyn_api.services.published_feed_validator import ValidationOutcome
 
 # --- two workers, one feed -------------------------------------------------
 

@@ -26,7 +26,7 @@ import type { MockQuerySnippet } from './types/query-snippets'
 import type { SchemaTable } from './types/schema'
 import type { Dataset, DomainHub } from '@/types/catalog'
 import type { Annotation } from '@/types/annotation'
-import type { Feed } from '@/types/feed'
+import type { Capture } from '@/types/capture'
 import type { PublishAttempt, PublishedFeed } from '@/types/published-feed'
 
 export const mockUsers: MockUser[] = []
@@ -71,6 +71,6 @@ export const mockSchema: Record<number, SchemaTable[]> = {}
 export const mockDatasets: Dataset[] = []
 export const mockDomainHubs: DomainHub[] = []
 export const mockAnnotations: Annotation[] = []
-export const mockFeeds: Feed[] = []
+export const mockCaptures: Capture[] = []
 export const mockPublishedFeeds: PublishedFeed[] = []
 export const mockPublishAttempts: Record<string, PublishAttempt[]> = {}

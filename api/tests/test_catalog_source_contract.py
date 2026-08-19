@@ -40,10 +40,10 @@ def test_dataset_ids_drops_a_shadowed_source() -> None:
 
 
 def test_a_contributed_dataset_names_no_feed(monkeypatch: pytest.MonkeyPatch) -> None:
-    """services/feeds.py excludes any dataset whose origin is not 'capture' from
+    """services/captures.py excludes any dataset whose origin is not 'capture' from
     Feed Health: a contributed dataset has no cadence and nothing feeds it. Its
-    freshness.feedId used to be set to the table name regardless, which
-    advertised a feed link that /feeds has nothing under, contradicting the
+    freshness.captureId used to be set to the table name regardless, which
+    advertised a capture link that /captures has nothing under, contradicting the
     field's documented meaning in app/src/types/catalog.ts.
     """
     from veodyn_api.services import catalog as catalog_service
@@ -56,11 +56,11 @@ def test_a_contributed_dataset_names_no_feed(monkeypatch: pytest.MonkeyPatch) ->
     with empty_registries():
         register_dataset_source_provider(lambda client, database: [source])
         datasets = catalog_service.build_catalog(FakeWarehouse(), database="historical", stale_after_minutes=60)
-    assert datasets[0].freshness.feed_id is None
+    assert datasets[0].freshness.capture_id is None
 
 
 def test_a_captured_dataset_still_names_its_feed(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The control on the test above: excluding a contributed dataset's feed id
+    """The control on the test above: excluding a contributed dataset's capture id
     must not take a captured one's with it."""
     from veodyn_api.services import catalog as catalog_service
 
@@ -72,7 +72,7 @@ def test_a_captured_dataset_still_names_its_feed(monkeypatch: pytest.MonkeyPatch
     with empty_registries():
         register_dataset_source_provider(lambda client, database: [source])
         datasets = catalog_service.build_catalog(FakeWarehouse(), database="historical", stale_after_minutes=60)
-    assert datasets[0].freshness.feed_id == "q_trips_9"
+    assert datasets[0].freshness.capture_id == "q_trips_9"
 
 
 def test_build_catalog_passes_through_a_contributed_writable_source(monkeypatch: pytest.MonkeyPatch) -> None:

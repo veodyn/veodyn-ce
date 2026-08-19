@@ -20,8 +20,8 @@ from typing import Any
 
 from veodyn_api.models.publish_attempt import PublishAttempt
 from veodyn_api.models.published_feed import PublishedFeed
-from veodyn_api.services.feed_validator import ValidationOutcome, ValidatorUnavailable
 from veodyn_api.services.gtfs_rt_serializer import SerializationError, serialize_vehicle_positions
+from veodyn_api.services.published_feed_validator import ValidationOutcome, ValidatorUnavailable
 
 # (feed_bytes, static_gtfs_ref, previous_feed) -> outcome.
 Validate = Callable[[bytes, str, bytes | None], ValidationOutcome]

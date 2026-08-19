@@ -10,7 +10,7 @@ Two things it deliberately is not:
 
 - **Not a substring scan.** The first draft of the guard grepped source for
   "Report", which appears in `telemetry.py` ("Report a failure"),
-  `models/favorite.py` and `models/feed_expectation.py`, so it was red on files
+  `models/favorite.py` and `models/capture_expectation.py`, so it was red on files
   nobody had touched, and its banned list had holes in it (`ai_annotations`,
   `kpi_eval`, `report_blocks`, `report_lifecycle`, `report_snapshot`) large
   enough to let five enterprise modules stay. An import edge is the thing that
