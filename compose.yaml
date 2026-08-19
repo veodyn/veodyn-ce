@@ -103,6 +103,9 @@ x-veodyn-api-environment: &veodyn-api-environment
   VEODYN_REDIS_URL: "redis://redis:6379/5"
   VEODYN_CLICKHOUSE_URL: "http://clickhouse:8123"
   VEODYN_CLICKHOUSE_DATABASE: "historical"
+  # Where a consumer reaches this stack's frontend. A published GBFS feed embeds
+  # it in its discovery document, so without it a gbfs publish fails closed.
+  VEODYN_FEED_PUBLIC_ORIGIN: "http://localhost:${VEODYN_APP_PORT:-3000}"
 
 services:
   # ── Datastores ──────────────────────────────────────────────────────────
@@ -398,6 +401,56 @@ services:
       server:
         condition: service_healthy
       api:
+        condition: service_healthy
+
+  # ── Content (not started by `up`) ───────────────────────────────────────
+  # Content, as opposed to the users, groups and keys redash-bootstrap creates.
+  # Behind a profile, so `up` brings an empty instance up and seeding is a thing
+  # you ask for:
+  #
+  #     docker compose --profile seed run --rm seed-catalog
+  #
+  # The node image and not the api one, for the same reason the data sources are
+  # not a SQL fixture: they are encrypted with the REDASH_SECRET_KEY that
+  # init-secrets generated for THIS stack, so they have to be created through
+  # redash.models with that key loaded. It reaches the `veodyn` database over a
+  # second connection for the sidecar tables, none of which has an encrypted
+  # column.
+  seed-catalog:
+    <<: *redash
+    profiles: ["seed"]
+    restart: "no"
+    volumes:
+      - bootstrap-redash:/run/veodyn:ro
+      - ./compose:/opt/veodyn:ro
+    command:
+      - |
+        set -a
+        . /run/veodyn/redash-secrets.env
+        set +a
+        exec python /opt/veodyn/seed-catalog.py
+    environment:
+      <<: *redash-environment
+      VEODYN_ADMIN_EMAIL: "${VEODYN_ADMIN_EMAIL:-admin@example.com}"
+      VEODYN_FIXTURES_DIR: "/opt/veodyn/fixtures"
+      # psycopg2's spelling, not the api's `postgresql+psycopg://` SQLAlchemy URL.
+      VEODYN_SIDECAR_DSN: "postgresql://postgres@postgres/veodyn"
+      # Optional upstreams. gbfs is the only one of the three that runs with no
+      # credential, so the other two are created configured-but-inert unless these
+      # are set. The captured history is seeded either way, so the catalog does
+      # not depend on any of them.
+      VEODYN_SEED_GBFS_URL: "${VEODYN_SEED_GBFS_URL:-}"
+      VEODYN_SEED_GTFS_WS_URL: "${VEODYN_SEED_GTFS_WS_URL:-}"
+      VEODYN_SEED_OPENWEATHER_KEY: "${VEODYN_SEED_OPENWEATHER_KEY:-}"
+      # scripts/dev-stack.sh sets this on the ee path, to a fixture holding the
+      # enterprise tables. Unset on ce, where those tables do not exist.
+      VEODYN_EE_FIXTURE: "${VEODYN_EE_FIXTURE:-}"
+    depends_on:
+      redash-bootstrap:
+        condition: service_completed_successfully
+      api-migrate:
+        condition: service_completed_successfully
+      clickhouse:
         condition: service_healthy
 
   # ── Verification (not started by `up`) ──────────────────────────────────

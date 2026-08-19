@@ -52,6 +52,19 @@ FRONTEND_SECRETS_DIR = Path(os.environ.get("VEODYN_FRONTEND_SECRETS_DIR", "/run/
 SERVICE_SECRETS_DIR = Path(os.environ.get("VEODYN_SERVICE_SECRETS_DIR", "/run/veodyn/service"))
 ADMIN_EMAIL = os.environ.get("VEODYN_ADMIN_EMAIL", "admin@example.com")
 SERVICE_EMAIL = os.environ.get("VEODYN_SERVICE_EMAIL", "kpi-service@example.com")
+API_URL = os.environ.get("VEODYN_API_URL", "http://api:8000").rstrip("/")
+# "ce", "ee", or unset to skip the edition check. scripts/dev-stack.sh sets it from
+# what is actually running.
+EXPECT_EDITION = os.environ.get("VEODYN_EXPECT_EDITION", "")
+# Opt-in, and it has to be. compose/smoke-test.sh brings a stack up WITHOUT the
+# `seed` profile and then runs this, so an unconditional catalog check would fail
+# the repository's own smoke test on a stack that is behaving exactly as intended.
+# scripts/dev-stack.sh sets it, because there seeding is part of the workflow.
+EXPECT_CATALOG = os.environ.get("VEODYN_EXPECT_CATALOG", "") not in ("", "0", "false")
+
+# One enterprise path, used as the probe. Any of the pack's routers would do; this
+# one is picked because it is the oldest and the least likely to be renamed.
+ENTERPRISE_PROBE_PATH = "/kpis"
 
 # Must stay identical to SERVICE_GROUP_PERMISSIONS in compose/seed-redash.py, which
 # carries the derivation of why each string is on the list. Kept as a literal rather
@@ -134,15 +147,87 @@ def check_service(label: str, key: str) -> list[str]:
     return failures
 
 
-def main() -> int:
-    failures = check_admin(
-        "REDASH_INTERNAL_API_KEY",
-        read_key(FRONTEND_SECRETS_DIR, "frontend.env", "REDASH_INTERNAL_API_KEY"),
+def get_json(url: str, key: str | None = None) -> dict:
+    headers = {"Authorization": f"Key {key}"} if key else {}
+    request = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(request, timeout=15) as response:
+        return json.load(response)
+
+
+def check_catalog(key: str) -> list[str]:
+    """That the stack has CONTENT, not just users.
+
+    Separate from the key checks above because it fails for a different reason and
+    has a different fix: those mean the bootstrap is broken, this one means nobody
+    ran the seed profile. An instance with valid keys and nothing in it is a
+    perfectly healthy stack showing empty screens, which is the state this check
+    exists to name.
+    """
+    counts = {}
+    for what in ("data_sources", "queries", "dashboards"):
+        try:
+            payload = get_json(f"{REDASH_URL}/api/{what}", key)
+        except (urllib.error.HTTPError, urllib.error.URLError) as exc:
+            return [f"catalog: GET /api/{what} failed: {exc}"]
+        # /api/data_sources answers a bare list; the other two paginate.
+        counts[what] = len(payload) if isinstance(payload, list) else payload.get("count", 0)
+
+    empty = [what for what, count in counts.items() if not count]
+    if empty:
+        return [
+            "catalog: no " + ", ".join(empty) + ". "
+            "Run `scripts/dev-stack.sh seed`, or "
+            "`docker compose --profile seed run --rm seed-catalog`."
+        ]
+    print(
+        "verify-seed: PASS catalog holds "
+        + ", ".join(f"{count} {what.replace('_', ' ')}" for what, count in counts.items())
     )
+    return []
+
+
+def check_edition(expected: str) -> list[str]:
+    """That the api serves the edition that was asked for.
+
+    Read off the live /openapi.json rather than by asking the container what it was
+    configured with. An enterprise image whose VEODYN_EXTRA_MODULES never got set
+    serves the community API, passes every health check, and shows an empty KPI
+    page, which reads as "no KPIs yet" rather than as a broken stack. Enumerating
+    app.routes would not catch it either: _IncludedRouter objects are not expanded,
+    so that under-reports.
+    """
+    try:
+        schema = get_json(f"{API_URL}/openapi.json")
+    except (urllib.error.HTTPError, urllib.error.URLError) as exc:
+        return [f"edition: GET {API_URL}/openapi.json failed: {exc}"]
+
+    paths = schema.get("paths") or {}
+    has_enterprise = any(path.startswith(ENTERPRISE_PROBE_PATH) for path in paths)
+    if expected == "ee" and not has_enterprise:
+        return [
+            f"edition: expected ee, but {ENTERPRISE_PROBE_PATH} is not in the served schema. "
+            "The image carries the pack and nothing registered it: check VEODYN_EXTRA_MODULES."
+        ]
+    if expected == "ce" and has_enterprise:
+        return [
+            f"edition: expected ce, but {ENTERPRISE_PROBE_PATH} is served. "
+            "This stack is running an enterprise image."
+        ]
+    print(f"verify-seed: PASS the api serves the {expected} surface ({len(paths)} paths)")
+    return []
+
+
+def main() -> int:
+    admin_key = read_key(FRONTEND_SECRETS_DIR, "frontend.env", "REDASH_INTERNAL_API_KEY")
+    failures = check_admin("REDASH_INTERNAL_API_KEY", admin_key)
     failures += check_service(
         "VEODYN_REDASH_SERVICE_API_KEY",
         read_key(SERVICE_SECRETS_DIR, "service-account.env", "VEODYN_REDASH_SERVICE_API_KEY"),
     )
+    if EXPECT_CATALOG:
+        failures += check_catalog(admin_key)
+    if EXPECT_EDITION:
+        failures += check_edition(EXPECT_EDITION)
     for failure in failures:
         print(f"verify-seed: FAIL {failure}", file=sys.stderr)
     return 1 if failures else 0

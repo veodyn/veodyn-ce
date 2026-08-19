@@ -1,0 +1,284 @@
+{
+  "_readme": [
+    "Content for the local stack, applied by compose/seed-catalog.py.",
+    "",
+    "Data sources are declared here but created through redash.models, never as SQL.",
+    "compose/init-secrets.sh generates REDASH_SECRET_KEY per stack, and that key",
+    "encrypts data_sources.encrypted_options, so a checked-in dump of that column",
+    "would decrypt on exactly one machine.",
+    "",
+    "All three types are in default_query_runners, so this needs no pack and no",
+    "REDASH_ADDITIONAL_QUERY_RUNNERS line. Only gbfs runs with no credential; the",
+    "other two are created configured-but-inert until their env var is set.",
+    "",
+    "The inert defaults are non-empty on purpose: feed_url and app_id are REQUIRED",
+    "by their runners, so an empty one fails validation and the source is never",
+    "created, which would leave the queries below pointing at nothing. .invalid is",
+    "reserved and never resolves, so the placeholder cannot reach a real host.",
+    "",
+    "A ${VAR:-fallback} fallback may not contain a closing brace: seed-catalog.py",
+    "reads to the first one. That is why the placeholder feed URL carries no",
+    "{routes} segment; a real one supplied through the env var can.",
+    "",
+    "`rows` and historical.sql are NOT the same data and neither is derived from",
+    "the other. `rows` becomes the query's stored result, which is what a dashboard",
+    "widget renders without running anything; historical.sql is what capture would",
+    "have accumulated over days, which is what the Data Catalog and the feed-health",
+    "board read. A stack with only the second shows populated datasets and empty",
+    "dashboards, which is how this fixture behaved until it carried both.",
+    "",
+    "`columns` types are Redash's own (string, integer, float, boolean, datetime,",
+    "date); seed-catalog.py maps them for both destinations."
+  ],
+  "data_sources": [
+    {
+      "key": "bikeshare",
+      "name": "Regional GBFS Bikeshare",
+      "type": "gbfs",
+      "options": {
+        "discovery_url": "${VEODYN_SEED_GBFS_URL:-https://gbfs.citibikenyc.com/gbfs/gbfs.json}",
+        "language": "en"
+      }
+    },
+    {
+      "key": "transit",
+      "name": "Regional Transit Realtime",
+      "type": "gtfs_realtime",
+      "options": {
+        "feed_url": "${VEODYN_SEED_GTFS_WS_URL:-wss://gtfs-rt.example.invalid/ws/vehicle_positions/}",
+        "route_labels": "{\"1\": \"Blue Line\", \"2\": \"Green Line\", \"3\": \"Red Line\"}",
+        "sample_seconds": 5
+      }
+    },
+    {
+      "key": "weather",
+      "name": "Environment: OpenWeatherMap",
+      "type": "openweathermap",
+      "options": {
+        "base_url": "https://api.openweathermap.org/data/2.5/weather",
+        "app_id": "${VEODYN_SEED_OPENWEATHER_KEY:-set-VEODYN_SEED_OPENWEATHER_KEY-to-use-this}"
+      }
+    }
+  ],
+  "queries": [
+    {
+      "key": "bikeshare_stations",
+      "captured": true,
+      "name": "Bikeshare stations",
+      "source": "bikeshare",
+      "description": "Every dock in the system, with its capacity and position.",
+      "query": "{\"resource\": \"station_information\"}",
+      "tags": ["domain:micromobility", "catalog"],
+      "columns": [
+        ["station_id", "string"],
+        ["name", "string"],
+        ["lat", "float"],
+        ["lon", "float"],
+        ["address", "string"],
+        ["capacity", "integer"]
+      ],
+      "rows": [
+        ["ST-0001", "Market St & 5th", 40.7411, -73.9897, "350 Market St", 31],
+        ["ST-0002", "Harbor Plaza", 40.7052, -74.0143, "1 Harbor Plaza", 24],
+        ["ST-0003", "Union Depot", 40.7506, -73.9935, "89 Depot Way", 47],
+        ["ST-0004", "Riverside Park North", 40.7987, -73.9721, "Riverside Dr", 18],
+        ["ST-0005", "Civic Center", 40.7139, -74.0043, "22 Civic Sq", 39],
+        ["ST-0006", "University Gate", 40.7291, -73.9965, "University Pl", 27]
+      ],
+      "visualizations": [{ "name": "Table", "type": "TABLE", "options": {} }]
+    },
+    {
+      "key": "bikeshare_availability",
+      "captured": true,
+      "name": "Bikeshare availability",
+      "source": "bikeshare",
+      "description": "Bikes and docks free per station, as last reported by the system.",
+      "query": "{\"resource\": \"station_status\"}",
+      "tags": ["domain:micromobility"],
+      "columns": [
+        ["station_id", "string"],
+        ["num_bikes_available", "integer"],
+        ["num_docks_available", "integer"],
+        ["is_renting", "integer"],
+        ["last_reported", "integer"]
+      ],
+      "rows": [
+        ["ST-0001", 17, 14, 1, 1],
+        ["ST-0002", 8, 16, 1, 1],
+        ["ST-0003", 19, 28, 1, 1],
+        ["ST-0004", 6, 12, 1, 1],
+        ["ST-0005", 20, 19, 1, 1],
+        ["ST-0006", 15, 12, 1, 1]
+      ],
+      "visualizations": [
+        { "name": "Table", "type": "TABLE", "options": {} },
+        {
+          "name": "Stations reporting",
+          "type": "COUNTER",
+          "options": {
+            "countRow": true,
+            "stringDecimal": 0
+          }
+        },
+        {
+          "name": "Bikes by station",
+          "type": "CHART",
+          "options": {
+            "globalSeriesType": "column",
+            "sortX": true,
+            "legend": { "enabled": false },
+            "columnMapping": { "station_id": "x", "num_bikes_available": "y" }
+          }
+        }
+      ]
+    },
+    {
+      "key": "transit_vehicles",
+      "captured": true,
+      "name": "Transit vehicle positions",
+      "source": "transit",
+      "description": "A short sample of the realtime vehicle feed, one row per vehicle.",
+      "query": "{\"resource\": \"vehicle_positions\", \"params\": {\"sample_seconds\": 5}}",
+      "tags": ["domain:transit", "catalog"],
+      "columns": [
+        ["vehicle_id", "string"],
+        ["route_id", "string"],
+        ["line", "string"],
+        ["latitude", "float"],
+        ["longitude", "float"],
+        ["bearing", "float"],
+        ["speed", "float"],
+        ["direction_id", "integer"]
+      ],
+      "rows": [
+        ["V-1041", "1", "Blue Line", 40.7233, -73.9994, 90.0, 9.1, 0],
+        ["V-1042", "1", "Blue Line", 40.7188, -74.0033, 271.0, 13.0, 1],
+        ["V-2088", "2", "Green Line", 40.7566, -73.9744, 10.0, 6.2, 0],
+        ["V-2089", "2", "Green Line", 40.7544, -73.9822, 192.0, 11.7, 1],
+        ["V-3011", "3", "Red Line", 40.7133, -74.0021, 44.0, 3.8, 0]
+      ],
+      "visualizations": [
+        { "name": "Table", "type": "TABLE", "options": {} },
+        {
+          "name": "Speed by vehicle",
+          "type": "CHART",
+          "options": {
+            "globalSeriesType": "column",
+            "sortX": true,
+            "legend": { "enabled": false },
+            "columnMapping": { "vehicle_id": "x", "speed": "y" }
+          }
+        }
+      ]
+    },
+    {
+      "key": "weather_current",
+      "name": "Environment: current weather",
+      "source": "weather",
+      "description": "Current conditions at the city centre.",
+      "query": "{\"resource\": \"current\", \"params\": {\"lat\": \"40.7128\", \"lon\": \"-74.0060\", \"units\": \"imperial\"}}",
+      "tags": ["domain:weather", "catalog"],
+      "columns": [
+        ["name", "string"],
+        ["temp", "float"],
+        ["humidity", "float"],
+        ["pressure", "float"],
+        ["main", "string"],
+        ["description", "string"]
+      ],
+      "rows": [["New York", 72.0, 57.0, 1013.0, "Clouds", "broken clouds"]],
+      "visualizations": [
+        { "name": "Table", "type": "TABLE", "options": {} },
+        {
+          "name": "Temperature",
+          "type": "COUNTER",
+          "options": {
+            "counterColName": "temp",
+            "rowNumber": 1,
+            "stringDecimal": 1,
+            "stringSuffix": " F"
+          }
+        }
+      ]
+    },
+    {
+      "key": "weather_history",
+      "captured": true,
+      "name": "Weather and temperature history",
+      "source": "weather",
+      "description": "Captured observations over the last few days.",
+      "query": "{\"resource\": \"current\", \"params\": {\"lat\": \"40.7128\", \"lon\": \"-74.0060\", \"units\": \"imperial\"}}",
+      "tags": ["domain:weather"],
+      "columns": [
+        ["name", "string"],
+        ["temp", "float"],
+        ["humidity", "float"]
+      ],
+      "rows": [["New York", 72.0, 57.0]],
+      "visualizations": [{ "name": "Table", "type": "TABLE", "options": {} }]
+    }
+  ],
+  "dashboards": [
+    {
+      "name": "System overview",
+      "slug": "system-overview",
+      "tags": ["domain:transit", "domain:micromobility"],
+      "widgets": [
+        {
+          "query": "bikeshare_availability",
+          "visualization": "Stations reporting",
+          "position": { "col": 0, "row": 0, "sizeX": 2, "sizeY": 5 }
+        },
+        {
+          "query": "weather_current",
+          "visualization": "Temperature",
+          "position": { "col": 2, "row": 0, "sizeX": 2, "sizeY": 5 }
+        },
+        {
+          "query": "transit_vehicles",
+          "visualization": "Speed by vehicle",
+          "position": { "col": 0, "row": 5, "sizeX": 6, "sizeY": 8 }
+        },
+        {
+          "query": "transit_vehicles",
+          "visualization": "Table",
+          "position": { "col": 0, "row": 13, "sizeX": 6, "sizeY": 10 }
+        }
+      ]
+    },
+    {
+      "name": "Bikeshare",
+      "slug": "bikeshare",
+      "tags": ["domain:micromobility"],
+      "widgets": [
+        {
+          "query": "bikeshare_availability",
+          "visualization": "Bikes by station",
+          "position": { "col": 0, "row": 0, "sizeX": 6, "sizeY": 8 }
+        },
+        {
+          "query": "bikeshare_stations",
+          "visualization": "Table",
+          "position": { "col": 0, "row": 8, "sizeX": 6, "sizeY": 10 }
+        }
+      ]
+    },
+    {
+      "name": "Weather",
+      "slug": "weather",
+      "tags": ["domain:weather"],
+      "widgets": [
+        {
+          "query": "weather_current",
+          "visualization": "Temperature",
+          "position": { "col": 0, "row": 0, "sizeX": 2, "sizeY": 5 }
+        },
+        {
+          "query": "weather_history",
+          "visualization": "Table",
+          "position": { "col": 0, "row": 5, "sizeX": 6, "sizeY": 10 }
+        }
+      ]
+    }
+  ]
+}

@@ -78,6 +78,9 @@ app:
     # This service's own database, not Redash's metadata database.
     VEODYN_DATABASE_URL: "secret:VEODYN_DATABASE_URL"
     VEODYN_REDIS_URL: "secret:VEODYN_REDIS_URL"
+    # The origin consumers reach the frontend at; a gbfs discovery document
+    # embeds it. Unset fails a gbfs publish closed.
+    VEODYN_FEED_PUBLIC_ORIGIN: "https://veodyn.example.com"
     # --- Telemetry (optional) ---
     # Deliberately in the shared env rather than the API overlay: an unhandled
     # error in a background release is exactly as invisible as one in a request,
