@@ -36,6 +36,7 @@ const PRIVATE_FEED: PublishedFeed = {
   version: '2.0',
   entity: 'vehicle_positions',
   staticGtfsRef: 'https://example.org/gtfs.zip',
+  systemInfo: null,
   sourceColumn: null,
   columnMap: {},
   onError: 'block',

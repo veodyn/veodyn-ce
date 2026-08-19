@@ -19,7 +19,7 @@ from veodyn_api.routers.published_feeds import load_feed, require_admin
 from veodyn_api.schemas.published_feed import FindingOut, PublishAttemptOut
 from veodyn_api.services.publish_engine import run_attempt
 from veodyn_api.services.publish_source import latest_result
-from veodyn_api.services.publish_validator import build_validate
+from veodyn_api.services.publish_validator import build_gbfs_publisher, build_validate
 from veodyn_api.services.redash import RedashClient
 from veodyn_api.settings import Settings, get_settings
 
@@ -116,6 +116,7 @@ def publish_now(
         query_result_id=source.result_id,
         feed_timestamp=source.retrieved_at,
         validate=build_validate(settings),
+        gbfs=build_gbfs_publisher(settings),
     )
 
     # Narrowed to the row this call wrote, not merely the newest row for the feed:

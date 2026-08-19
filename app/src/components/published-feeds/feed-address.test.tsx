@@ -11,6 +11,7 @@ const FEED: PublishedFeed = {
   version: '2.0',
   entity: 'vehicle_positions',
   staticGtfsRef: 'https://example.org/gtfs.zip',
+  systemInfo: null,
   sourceColumn: null,
   columnMap: { vehicle_id: 'bus', latitude: 'lat', longitude: 'lon' },
   onError: 'block',

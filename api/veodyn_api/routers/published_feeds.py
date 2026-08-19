@@ -102,6 +102,7 @@ def _out(feed: PublishedFeed, binding_state: str) -> PublishedFeedOut:
         version=feed.version,
         entity=feed.entity,
         static_gtfs_ref=feed.static_gtfs_ref,
+        system_info=feed.system_info,
         source_column=feed.source_column,
         column_map=feed.column_map,
         on_error=feed.on_error,
@@ -122,7 +123,7 @@ def _check(redash: RedashClient, settings: Settings, body: PublishedFeedIn) -> s
     # the binding names rather than a row of its data.
     require_a_readable_query(redash, settings, body.query_id)
     columns = query_result_columns(redash, body.query_id, settings.redash_service_api_key)
-    check = check_column_map(body.entity, body.column_map, columns)
+    check = check_column_map(body.standard, body.entity, body.column_map, columns)
     if check.state == "invalid":
         # ApiError carries no structured extra, so the problems go in the
         # message. A refusal nobody can act on is barely a refusal.
@@ -167,6 +168,7 @@ def create_feed(
         version=body.version,
         entity=body.entity,
         static_gtfs_ref=body.static_gtfs_ref,
+        system_info=body.system_info,
         source_column=body.source_column,
         column_map=body.column_map,
         on_error=body.on_error,
@@ -232,9 +234,13 @@ def update_feed(
     state = _check(redash, settings, body)
 
     feed.query_id = body.query_id
+    # Moves with the two fields it gates, or an edit swapping the standard
+    # leaves the row violating both CHECK constraints at commit.
+    feed.standard = body.standard
     feed.version = body.version
     feed.entity = body.entity
     feed.static_gtfs_ref = body.static_gtfs_ref
+    feed.system_info = body.system_info
     feed.source_column = body.source_column
     feed.column_map = body.column_map
     feed.on_error = body.on_error

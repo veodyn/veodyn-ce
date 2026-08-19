@@ -154,6 +154,7 @@ const SINGLE_EMPTY: { [Id in SingleSlotId]: SlotProps[Id] } = {
   'feedHealth.metrics': { datasets: [] },
   'publishedFeed.tokenPanel': { slug: 'vehicles-live' },
   'publishedFeed.blockedAttribution': { slug: 'vehicles-live', attemptId: 1 },
+  'publishedFeed.schedule': { slug: 'vehicles-live' },
   'dataset.records': { dataset: DATASET },
   'dataset.headerActions': { dataset: DATASET },
 }

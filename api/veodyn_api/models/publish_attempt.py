@@ -60,11 +60,17 @@ class PublishAttempt(Base):
             "decision IN ('published', 'blocked', 'failed')",
             name="ck_publish_attempt_decision",
         ),
-        # Bytes exist if and only if the attempt published: a blocked attempt
-        # holding servable bytes is one mistake away from being served.
+        # An artifact exists if and only if the attempt published: a blocked
+        # attempt holding a servable artifact is one mistake away from being
+        # served. Which kind it is depends on the standard, and an attempt
+        # carries one, never both.
         CheckConstraint(
-            "(decision = 'published') = (feed_bytes IS NOT NULL)",
-            name="ck_publish_attempt_bytes_match_decision",
+            "(decision = 'published') = (feed_bytes IS NOT NULL OR feed_files IS NOT NULL)",
+            name="ck_publish_attempt_artifact_matches_decision",
+        ),
+        CheckConstraint(
+            "NOT (feed_bytes IS NOT NULL AND feed_files IS NOT NULL)",
+            name="ck_publish_attempt_one_artifact_kind",
         ),
         Index(
             "uq_publish_attempt_current",
@@ -89,6 +95,13 @@ class PublishAttempt(Base):
     # Null unless the attempt published: blocked and failed attempts are kept
     # for the record, but their bytes were never fit to serve.
     feed_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+
+    # Filename to parsed JSON object: the served artifact of a gbfs publish.
+    # Exactly one of feed_bytes / feed_files is set, per the CHECK above.
+    # `none_as_null`, or a Python None is written as JSON `null`, which is NOT
+    # NULL in SQL and makes a bytes-only attempt look like it holds both kinds.
+    feed_files: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
+
     feed_timestamp: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     findings: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, server_default="[]")

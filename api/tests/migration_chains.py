@@ -32,6 +32,7 @@ EE_TABLES = frozenset(
         "managed_dataset",
         "managed_dataset_column",
         "managed_record",
+        "published_feed_schedule",
     }
 )
 """The enterprise chain's allowlist, restated rather than imported.
@@ -48,7 +49,7 @@ pipeline checks out both trees.
 PRODUCT_TABLES = CE_TABLES | EE_TABLES
 """Both allowlists together: every table either chain owns."""
 
-CE_REVISIONS = ("0013", "0012", "0011", "0010", "0009", "0006", "0005")
+CE_REVISIONS = ("0014", "0013", "0012", "0011", "0010", "0009", "0006", "0005")
 """The community chain, newest first. Ids, not positions: these are stamped in
 every existing database, so a renumbering orphans the stamp rather than tidying
 anything.
@@ -81,7 +82,7 @@ it is written out and `test_migration_chain.py` holds the chain to it.
 Add an id here only once a revision has actually shipped. Removing one is the
 error this guards."""
 
-EE_REVISIONS = ("0008", "0007", "0004", "0003", "0002", "0001")
+EE_REVISIONS = ("0011", "0010", "0009", "0008", "0007", "0004", "0003", "0002", "0001")
 """The enterprise chain, newest first."""
 
 Diff = tuple[object, ...]

@@ -43,7 +43,12 @@ from tests.migration_chains import (
     tables_touched,
 )
 
-ORIGINAL_IDS = frozenset(CE_REVISIONS) | frozenset(EE_REVISIONS)
+SPLIT_IDS = frozenset(f"{number:04d}" for number in range(1, 11))
+"""The ten revisions that were one chain before the split, as a literal.
+
+Derived from the two tuples instead, it would assert nothing: they are what
+the two halves of this comparison are already checked against.
+"""
 
 
 def walked(config: Config, head: str) -> list[str]:
@@ -81,10 +86,11 @@ def test_no_shipped_community_revision_id_was_renumbered() -> None:
 
 def test_the_enterprise_chain_is_linear_and_walks_into_no_community_revision() -> None:
     script = ScriptDirectory.from_config(ee_config())
+    head = EE_REVISIONS[0]
 
-    assert list(script.get_heads()) == ["0008"], f"expected one enterprise head, got {script.get_heads()}"
+    assert list(script.get_heads()) == [head], f"expected one enterprise head, got {script.get_heads()}"
     assert list(script.get_bases()) == ["0001"], f"expected one enterprise root, got {script.get_bases()}"
-    assert walked(ee_config(), "0008") == list(EE_REVISIONS)
+    assert walked(ee_config(), head) == list(EE_REVISIONS)
 
 
 def test_every_community_parent_is_a_community_revision() -> None:
@@ -118,11 +124,15 @@ def test_no_revision_id_changed_when_the_chain_split() -> None:
     community = set(declared_revisions(ce_version_files()))
     enterprise = set(declared_revisions(ee_version_files()))
 
-    # An empty enterprise directory would satisfy the union on its own, since
+    # An empty enterprise directory would satisfy the check on its own, since
     # the community directory held all ten before the split.
     assert len(enterprise) == len(EE_REVISIONS), "the enterprise revisions are not in the pack"
-    assert community | enterprise == ORIGINAL_IDS
-    assert community & enterprise == set(), "the two chains would write conflicting rows for one id"
+    for original in sorted(SPLIT_IDS):
+        assert original in community or original in enterprise, f"{original} is declared by neither chain"
+
+    # Ids added SINCE the split may repeat across the two. Each chain stamps its
+    # own version table, so the pack's 0009 and the community's 0009 are two
+    # revisions with one number and never two rows for one id.
 
 
 def test_the_community_revision_files_are_exactly_the_community_chain() -> None:

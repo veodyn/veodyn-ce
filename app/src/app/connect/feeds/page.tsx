@@ -18,13 +18,15 @@ import { useAuthStore } from '@/stores/auth-store'
 import { PageContainer } from '@/components/layout/page-container'
 import type { PublishedFeed } from '@/types/published-feed'
 
-// Only one standard exists today, but the label lives in a map rather than a
-// literal string so a second standard slots in without touching the render.
+// Typed against the standard union, so adding one fails to compile here until
+// it has a label rather than rendering a raw wire value.
 const STANDARD_LABEL: Record<PublishedFeed['standard'], string> = {
   'gtfs-rt': 'GTFS-Realtime',
+  gbfs: 'GBFS',
 }
 const ENTITY_LABEL: Record<PublishedFeed['entity'], string> = {
   vehicle_positions: 'vehicle positions',
+  stations: 'stations',
 }
 
 // The address column is the slug plus what it is bound to, matching Feed

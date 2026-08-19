@@ -97,6 +97,7 @@ describe('editing an existing binding', () => {
     version: '2.0',
     entity: 'vehicle_positions',
     staticGtfsRef: 'https://example.com/static.zip',
+    systemInfo: null,
     sourceColumn: null,
     columnMap: { vehicle_id: 'station_name', latitude: 'lat', longitude: 'lon' },
     onError: 'block',

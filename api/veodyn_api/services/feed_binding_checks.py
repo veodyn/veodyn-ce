@@ -4,13 +4,19 @@ saved, long before any bytes are produced.
 Pure. The caller supplies the query's known column names, because discovering them
 costs a whole result body (see `ai_grounding.query_result_columns`).
 
-`REQUIRED_FIELDS` and `SUPPORTED_FIELDS` come from the serializer, the module that
-actually writes the fields, so the vocabulary cannot drift between the two.
+Both vocabularies come from the serializers, the modules that actually write the
+fields, so they cannot drift from what is served.
 """
 
 from dataclasses import dataclass
 
-from veodyn_api.services.gtfs_rt_serializer import REQUIRED_FIELDS, SUPPORTED_FIELDS
+from veodyn_api.services import gbfs_serializer, gtfs_rt_serializer
+
+# Standard to (required fields, supported fields), each keyed by entity.
+_VOCABULARIES: dict[str, tuple[dict[str, frozenset[str]], dict[str, frozenset[str]]]] = {
+    "gtfs-rt": (gtfs_rt_serializer.REQUIRED_FIELDS, gtfs_rt_serializer.SUPPORTED_FIELDS),
+    "gbfs": (gbfs_serializer.REQUIRED_FIELDS, gbfs_serializer.SUPPORTED_FIELDS),
+}
 
 
 @dataclass(frozen=True)
@@ -27,16 +33,22 @@ class BindingCheck:
 
 
 def check_column_map(
+    standard: str,
     entity: str,
     column_map: dict[str, str],
     result_columns: tuple[str, ...],
 ) -> BindingCheck:
-    """Structure first, then the mapping against real columns."""
-    required = REQUIRED_FIELDS.get(entity)
-    supported = SUPPORTED_FIELDS.get(entity)
+    """Structure first, then the mapping against real columns.
+
+    `standard` leads because it selects the vocabulary: the same entity name and
+    the same map mean different things under each standard.
+    """
+    required_by_entity, supported_by_entity = _VOCABULARIES.get(standard, ({}, {}))
+    required = required_by_entity.get(entity)
+    supported = supported_by_entity.get(entity)
     if required is None or supported is None:
-        known = ", ".join(sorted(set(REQUIRED_FIELDS) & set(SUPPORTED_FIELDS)))
-        return BindingCheck("invalid", (f"entity {entity!r} is not supported (have: {known})",))
+        known = ", ".join(sorted(set(required_by_entity) & set(supported_by_entity))) or "(none)"
+        return BindingCheck("invalid", (f"entity {entity!r} is not supported for {standard} (have: {known})",))
 
     problems: list[str] = []
 

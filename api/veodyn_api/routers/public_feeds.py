@@ -1,11 +1,11 @@
-"""The one unauthenticated route in this service's community surface.
+"""The unauthenticated routes in this service's community surface.
 
-No `Identity` dependency, no cookie, no key: a public GTFS-Realtime feed is
-meant to be read by anything that speaks the format. Every refusal answers 404
-with the same body whatever caused it (unknown slug, private feed, nothing
-published yet), so a caller cannot learn which slugs are taken one guess at a
-time. `app/src/app/api/public/visualizations/[token]/route.ts` draws the same
-line.
+No `Identity` dependency, no cookie, no key: a public GTFS-Realtime or GBFS feed
+is meant to be read by anything that speaks the format. Every refusal answers
+404 with the same body whatever caused it (unknown slug, private feed, nothing
+published yet, no such member file), so a caller cannot learn which slugs are
+taken one guess at a time.
+`app/src/app/api/public/visualizations/[token]/route.ts` draws the same line.
 
 `slug` is unique only within one org, and this path carries no org segment, so
 migration 0013's partial unique index on `slug` where `visibility = 'public'`
@@ -16,7 +16,7 @@ for one that reached head some other way.
 """
 
 import time
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import JSONResponse
@@ -33,6 +33,11 @@ router = APIRouter(prefix="/public/feeds", tags=["public-feeds"])
 DbDep = Annotated[Session, Depends(get_db)]
 
 GTFS_RT_CONTENT_TYPE = "application/x-protobuf"
+GBFS_CONTENT_TYPE = "application/json"
+
+# The one member file a GBFS system is addressed by; the rest hang off it.
+GBFS_DISCOVERY_FILE = "gbfs.json"
+GBFS_STANDARD = "gbfs"
 
 
 def _now_epoch() -> int:
@@ -91,22 +96,13 @@ def _too_stale(slug: str, cap_seconds: int | None) -> JSONResponse:
     )
 
 
-# Declared because the return annotation is a bare `Response`, whose FastAPI
-# default is `application/json`: left alone, the committed openapi.json
-# advertises JSON for an endpoint that only ever answers protobuf, and a
-# generated client tries to JSON-decode a GTFS-Realtime message.
-@router.get(
-    "/{slug}",
-    response_class=Response,
-    responses={
-        200: {
-            "content": {GTFS_RT_CONTENT_TYPE: {"schema": {"type": "string", "format": "binary"}}},
-            "description": "The feed's current GTFS-Realtime message.",
-        }
-    },
-)
-def get_public_feed(slug: str, db: DbDep) -> Response:
-    """The current artifact for one public feed, as raw GTFS-Realtime bytes."""
+def _served(db: DbDep, slug: str) -> tuple[PublishedFeed, PublishAttempt]:
+    """The public binding at `slug` and the artifact it currently serves.
+
+    Shared by both routes so the refusals cannot drift apart: a member file that
+    resolved by a different rule than the discovery document would be a second
+    place to learn which slugs exist.
+    """
     # ONE statement, joining the artifact to the binding that authorizes it.
     # Two statements are two snapshots under READ COMMITTED, so a feed flipped to
     # `private` and republished between them would have served the new private
@@ -142,28 +138,110 @@ def get_public_feed(slug: str, db: DbDep) -> Response:
         raise _not_found(slug)
 
     feed, artifact = rows[0]
-    if artifact is None or artifact.feed_bytes is None:
+    if artifact is None or (artifact.feed_bytes is None and artifact.feed_files is None):
         # Declared, but nothing servable exists yet: no attempt has published, or
-        # none since a binding edit took the feed off the air. `feed_bytes is
-        # None` is defensive, since `ck_publish_attempt_bytes_match_decision`
-        # already ties a `published` decision to non-null bytes.
+        # none since a binding edit took the feed off the air. The artifact check
+        # is defensive, since `ck_publish_attempt_artifact_matches_decision`
+        # already ties a `published` decision to one artifact kind or the other.
         raise _not_found(slug)
 
-    # Design section 6.5: `block` never stops serving on age alone, so it needs
-    # no branch here; it refuses to PUBLISH a bad read, which the engine already
-    # did before these bytes became current. `last_good` serves the same last
-    # valid artifact PLUS its required cap, past which this answers 503.
-    if feed.on_error == "last_good":
-        # Non-null whenever the mode is `last_good`, by
-        # ck_published_feed_cap_matches_mode.
-        cap = feed.last_good_max_age_seconds
-        stamp = artifact.feed_timestamp
-        if cap is None or stamp is None or _now_epoch() - stamp > cap:
-            # Measured against the artifact's own HEADER timestamp, which is what
-            # the served bytes tell a consumer the data's time is and what the
-            # cap promises about; `created_at` would measure our pipeline instead
-            # and call a fresh publish of hours-old rows current. A missing stamp
-            # or cap fails closed into the same branch.
-            return _too_stale(slug, cap)
+    return feed, artifact
 
+
+def _staleness_refusal(feed: PublishedFeed, artifact: PublishAttempt, slug: str) -> JSONResponse | None:
+    """The 503, or None when the artifact may be served.
+
+    Design section 6.5: `block` never stops serving on age alone, so it needs no
+    branch here; it refuses to PUBLISH a bad read, which the engine already did
+    before this artifact became current. `last_good` serves the same last valid
+    artifact PLUS its required cap, past which this answers 503.
+    """
+    if feed.on_error != "last_good":
+        return None
+    # Non-null whenever the mode is `last_good`, by
+    # ck_published_feed_cap_matches_mode.
+    cap = feed.last_good_max_age_seconds
+    stamp = artifact.feed_timestamp
+    if cap is None or stamp is None or _now_epoch() - stamp > cap:
+        # Measured against the artifact's own HEADER timestamp, which is what the
+        # served artifact tells a consumer the data's time is and what the cap
+        # promises about; `created_at` would measure our pipeline instead and
+        # call a fresh publish of hours-old rows current. For gbfs that stamp is
+        # the discovery document's `last_updated`. A missing stamp or cap fails
+        # closed into the same branch.
+        return _too_stale(slug, cap)
+    return None
+
+
+# The content map is declared because the return annotation is a bare
+# `Response`, whose FastAPI default is `application/json`: left alone, the
+# committed openapi.json advertises JSON for an endpoint that answers protobuf
+# for a gtfs-rt feed, and a generated client tries to JSON-decode a
+# GTFS-Realtime message.
+@router.get(
+    "/{slug}",
+    response_class=Response,
+    responses={
+        200: {
+            "content": {
+                GTFS_RT_CONTENT_TYPE: {"schema": {"type": "string", "format": "binary"}},
+                GBFS_CONTENT_TYPE: {"schema": {"type": "object"}},
+            },
+            "description": "The feed's current artifact: a GTFS-Realtime message, or a GBFS discovery document.",
+        }
+    },
+)
+def get_public_feed(slug: str, db: DbDep) -> Response:
+    """The current artifact for one public feed, by its standard."""
+    feed, artifact = _served(db, slug)
+
+    # The BINDING's standard decides which artifact this address answers with,
+    # not the artifact's shape: the CHECK permits a gtfs-rt row carrying
+    # `feed_files`, and reading the shape would serve GBFS off a gtfs-rt feed.
+    #
+    # Resolved BEFORE the staleness branch, for the reason the member route
+    # gives: the 503 discloses a live public feed, so an address with nothing to
+    # answer must not answer differently once its artifact goes stale.
+    discovery: Any | None = None
+    if feed.standard == GBFS_STANDARD:
+        if artifact.feed_files is None:
+            raise _not_found(slug)
+        discovery = artifact.feed_files.get(GBFS_DISCOVERY_FILE)
+        if discovery is None:
+            raise _not_found(slug)
+    elif artifact.feed_bytes is None:
+        raise _not_found(slug)
+
+    stale = _staleness_refusal(feed, artifact, slug)
+    if stale is not None:
+        return stale
+
+    if discovery is not None:
+        return JSONResponse(status_code=200, content=discovery)
     return Response(content=artifact.feed_bytes, media_type=GTFS_RT_CONTENT_TYPE)
+
+
+@router.get("/{slug}/{file_name}")
+def get_public_feed_file(slug: str, file_name: str, db: DbDep) -> JSONResponse:
+    """One member file of a GBFS artifact.
+
+    Every refusal is the same 404 as the discovery route's, whatever caused it:
+    an unknown slug, a private feed, nothing published, a gtfs-rt feed with no
+    member files at all, or a name outside the published set. The name is never
+    echoed back, so the file set cannot be enumerated either.
+
+    The missing-file 404 comes BEFORE the staleness branch on purpose. The 503
+    does disclose that the slug names a live public feed, and a name that is not
+    in the set must not answer differently for a stale feed than for any other.
+    """
+    feed, artifact = _served(db, slug)
+    # The BINDING's standard decides, not the artifact's shape. Nothing writes
+    # member files for a gtfs-rt binding today, and the database would allow it.
+    if feed.standard != GBFS_STANDARD or artifact.feed_files is None or file_name not in artifact.feed_files:
+        raise _not_found(slug)
+
+    stale = _staleness_refusal(feed, artifact, slug)
+    if stale is not None:
+        return stale
+
+    return JSONResponse(status_code=200, content=artifact.feed_files[file_name])

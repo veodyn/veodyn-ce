@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     # unvalidated bytes.
     feed_validator_url: str = ""
 
+    # The origin consumers reach the frontend at, which is where a published
+    # feed's public address lives. A gbfs discovery document embeds it in every
+    # member file's url, so empty fails a gbfs publish closed rather than
+    # serving a document that points nowhere.
+    feed_public_origin: str = ""
+
     # Dotted module paths, comma separated, imported at startup by both the API
     # and the worker. Importing a module is what registers whatever it
     # contributes (routers, jobs, object types, hub providers), mirroring

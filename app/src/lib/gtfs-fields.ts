@@ -25,10 +25,19 @@ export const GTFS_FIELDS: GtfsField[] = [
 
 export const REQUIRED_GTFS_FIELDS = GTFS_FIELDS.filter((field) => field.required).map((f) => f.name)
 
-/** What the create/edit form sends: mapped fields only, unmapped ones absent. */
-export function toColumnMap(selection: Record<string, string | null>): Record<string, string> {
+/**
+ * What the create/edit form sends: mapped fields only, unmapped ones absent.
+ *
+ * `fields` is a parameter rather than this file's own list, because each
+ * standard has its own vocabulary and a map built from the wrong one is a
+ * binding full of fields its serializer does not write. See `gbfs-fields.ts`.
+ */
+export function toColumnMap(
+  fields: GtfsField[],
+  selection: Record<string, string | null>
+): Record<string, string> {
   const map: Record<string, string> = {}
-  for (const field of GTFS_FIELDS) {
+  for (const field of fields) {
     const column = selection[field.name]
     if (column) map[field.name] = column
   }
@@ -36,6 +45,9 @@ export function toColumnMap(selection: Record<string, string | null>): Record<st
 }
 
 /** The problems the form can catch before it posts. */
-export function missingRequired(selection: Record<string, string | null>): string[] {
-  return REQUIRED_GTFS_FIELDS.filter((name) => !selection[name])
+export function missingRequired(
+  fields: GtfsField[],
+  selection: Record<string, string | null>
+): string[] {
+  return fields.filter((field) => field.required && !selection[field.name]).map((f) => f.name)
 }

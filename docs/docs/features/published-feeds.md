@@ -1,14 +1,14 @@
 ---
 sidebar_position: 15
 title: Published Feeds
-description: "Re-publishing a query's results as a standard GTFS-Realtime feed: the binding form, validation, the publish history, and the anonymous address consumers read."
+description: "Re-publishing a query's results as a standard GTFS-Realtime or GBFS feed: the binding form, validation, the publish history, and the anonymous address consumers read."
 ---
 
 # Published Feeds
 
 The other pages in this section are about getting data out of the instance in whatever shape your own tools want. This one goes the other way. It takes a saved query's results and serves them in a format other people's software already speaks, so a rider app or a downstream agency can consume them without knowing anything about Veodyn.
 
-Today that format is GTFS-Realtime 2.0. A published feed says that one query, mapped one particular way, is the source of one feed at one address.
+Today the formats are GTFS-Realtime 2.0 and GBFS (2.3 and 3.0). A published feed says that one query, mapped one particular way, is the source of one feed at one address.
 
 It lives at **Connect → Feeds** in the sidebar (`/connect/feeds`); the page itself is titled Published Feeds.
 
@@ -33,7 +33,7 @@ Four columns, and clicking a row opens that feed's page.
 | Column | Holds |
 |---|---|
 | Address | The feed's slug, with the name of the query behind it underneath |
-| Standard | `GTFS-Realtime 2.0 · vehicle positions` |
+| Standard | `GTFS-Realtime 2.0 · vehicle positions`, or `GBFS 2.3 · stations` |
 | Access | Public or Private |
 | Revision | Which revision of the binding is current |
 
@@ -55,6 +55,20 @@ Pick the saved query whose latest results become the feed. The picker searches e
 
 Switching to a different query clears the column mapping. A field mapped against one query's columns means nothing against another's, and carrying it over is how a form quietly submits a mapping full of columns that no longer exist. Re-picking the same query after pressing **Change** keeps the mapping, so opening the picker and closing it again costs you nothing.
 
+#### Normalizing before you publish
+
+An ingested feed is not always a publishable one. Values that a source system writes without complaint can still be outside what the standard allows, and a publish attempt refuses them rather than passing them on: a station whose `last_reported` sits below the earliest timestamp GBFS accepts blocks the whole attempt, and the reason names the row.
+
+The fix is a query, not a setting. Add a data source of type `results`, which runs SQL over the cached results of other queries, point it at the connector read you already have, and bind the feed to that instead:
+
+```sql
+SELECT station_id, name, lat, lon, num_bikes_available, last_reported
+FROM cached_query_7
+WHERE last_reported >= 1450155600
+```
+
+The same seam handles the rest of it: dropping stations that are out of service, joining a name table the upstream feed omits, converting a unit, or combining two systems into one published feed. Whatever the query returns is what the mapping reads, so a feed is only ever as clean as the query behind it.
+
 ### Address
 
 The slug is the feed's address and half its identity: `vehicles-live`, not a number. It takes lowercase letters, digits and hyphens, has to start with a letter or a digit, and runs to 64 characters.
@@ -72,24 +86,40 @@ A public slug is claimed across the whole instance rather than within your org, 
 
 ### Shape
 
-Standard and version appear as plain facts (`gtfs-rt`, `2.0`) instead of dropdowns with one entry each, since a control with a single choice invites you to click it and find out what else is in there.
+Standard is a choice of two, `gtfs-rt` and `gbfs`. Version follows from it. GTFS-Realtime has one version, `2.0`, and it appears as a plain fact instead of a dropdown with one entry, since a control with a single choice invites you to click it and find out what else is in there. GBFS has two, `2.3` and `3.0`, so it gets a picker.
 
 Entity is a fact or a picker, depending on what this deployment registered. A community build registers one, `vehicle_positions`, and shows it. An [enterprise](/editions) build whose pack registers more gets a picker over the real list. The form asks the running service what it holds instead of inferring it from a values file, and if that lookup is slow or fails it falls back to the single fact rather than showing an empty picker.
 
 ### Mapping
 
-A static GTFS reference, meaning the scheduled feed this realtime feed extends, is required.
+The column map puts each field the chosen standard needs against a column of the query's own result.
 
-Then the column map: each GTFS field against a column of the query's own result.
+Missing required fields are named when you submit, and the list updates as you map them instead of freezing on whatever was missing the first time.
+
+A query that has never run has no columns to offer. The table says so, instead of showing a column of dropdowns whose only selectable value is *Not mapped*. You can still save a mapping in that state, and the page tells you the catch: nothing has checked it.
+
+#### GTFS-Realtime
+
+A static GTFS reference, meaning the scheduled feed this realtime feed extends, is required.
 
 | Field | Required |
 |---|---|
 | `vehicle_id`, `latitude`, `longitude` | Yes |
 | `trip_id`, `route_id`, `bearing`, `speed`, `timestamp` | No |
 
-Missing required fields are named when you submit, and the list updates as you map them instead of freezing on whatever was missing the first time.
+#### GBFS
 
-A query that has never run has no columns to offer. The table says so, instead of showing eight dropdowns whose only selectable value is *Not mapped*. You can still save a mapping in that state, and the page tells you the catch: nothing has checked it.
+| Field | Required |
+|---|---|
+| `station_id`, `name`, `lat`, `lon` | Yes |
+| `num_vehicles_available`, `is_installed`, `is_renting`, `is_returning`, `last_reported` | Yes |
+| `num_docks_available`, `capacity`, `address` | No |
+
+The mapped fields are split into `station_information` and `station_status` automatically, so you map them once as one list.
+
+#### System
+
+A GBFS system also declares facts no query returns: a system id, a language, a display name and a timezone, and on 3.0 opening hours and a contact email. These are typed into the form and published as `system_information.json`.
 
 ### On failure
 
@@ -103,6 +133,8 @@ So the tolerant-sounding option is the one that can take a feed dark, because wh
 ### What is checked when you save
 
 The binding is validated before anything is written, so a refused save leaves the stored binding and whatever is currently being served untouched. The query has to exist and be readable, and the column map has to name columns its results actually have. A map that cannot produce the feed comes back with every problem named at once, while the person who wrote it is still looking at it.
+
+A GBFS feed is validated as a whole system against the version's JSON Schemas before anything is served; a finding blocks the publish, and GBFS findings are always blocking, so a GBFS feed publishes clean or not at all.
 
 ## The feed's page
 
@@ -129,6 +161,8 @@ This is serving state, not mapping state. The page will not tell you the binding
 ### Address
 
 A public feed shows its full address with a copy button, and says that anyone can read it without a credential once an attempt has published.
+
+A GBFS feed's address answers with the discovery document (`gbfs.json`); the member files it names sit underneath it, at `/api/public/feeds/<slug>/station_status.json` and its siblings.
 
 A private feed shows no address at all, and says why: reaching one takes an issued token, and the token model (issuance, rotation, revocation) has not been built. Printing a URL that refuses everything would only send someone hunting for a credential that does not exist.
 
@@ -232,6 +266,14 @@ This is the intended behaviour and not a misconfiguration to work around: an emp
 | A worker that publishes on a schedule | | ● |
 
 So a community build publishes when an administrator presses the button, and an enterprise one also publishes on a cadence of its own.
+
+### Publishing on a cadence
+
+An enterprise deployment runs a worker beside the API, and a feed's page carries an **Automatic publishing** panel. An administrator picks how often the feed republishes: every minute, every five, every fifteen, hourly, or daily. A minute is the floor, because that is how often the worker looks.
+
+Each pass reads the bound query's newest cached result. When the query has produced nothing since the last publish, the pass records no attempt: the publish history stays a record of what was served, rather than a line per tick. A pass that fails backs the feed off, doubling from two minutes up to an hour, and the panel says how many failures have run together.
+
+Turning it off leaves the feed as it is, still serving its last published artifact and still publishable by hand.
 
 Downgrades fail closed rather than reinterpreting anything. A feed bound to an entity the current build no longer registers goes on showing the entity it was bound to, not a value invented from today's registry.
 

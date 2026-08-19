@@ -23,11 +23,17 @@ const CAPABILITIES_KEY = ['published-feeds', 'capabilities']
 const feedKey = (slug: string) => ['published-feeds', slug]
 const attemptsKey = (slug: string) => ['published-feeds', slug, 'attempts']
 
-// Community's own registry, seeded with the one entity every deployment has.
-// What a real fixture-mode session returns when there is no backend to ask,
-// matching services/feed_registry.py's seed: mock mode is what pnpm test:e2e
-// runs on, and it must show the single-fact form, not an empty picker.
-const MOCK_CAPABILITIES: FeedCapabilities = { entities: ['vehicle_positions'] }
+// Community's own registry, exactly as services/feed_registry.py seeds it: one
+// entity per standard, and each standard's own supported versions. What a real
+// fixture-mode session returns when there is no backend to ask. Mock mode is
+// what pnpm test:e2e runs on, so the entity must show as a fact, not an empty
+// picker, while the gbfs version list is genuinely two.
+const MOCK_CAPABILITIES: FeedCapabilities = {
+  standards: [
+    { standard: 'gbfs', versions: ['2.3', '3.0'], entities: ['stations'] },
+    { standard: 'gtfs-rt', versions: ['2.0'], entities: ['vehicle_positions'] },
+  ],
+}
 
 export interface QueryResultColumns {
   /** Redash's own result id, so a later read can tell whether it has moved on. */

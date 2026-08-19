@@ -43,6 +43,18 @@ class PublishedFeed(Base):
             "visibility IN ('private', 'public')",
             name="ck_published_feed_visibility",
         ),
+        # Each standard requires exactly one of these two and refuses the other,
+        # so a binding cannot carry the half that belongs to the standard it is
+        # not. Declared here as well as in the migration: tests build the schema
+        # from this metadata, production gets it from `0014`.
+        CheckConstraint(
+            "(standard = 'gtfs-rt') = (static_gtfs_ref IS NOT NULL)",
+            name="ck_published_feed_static_ref_matches_standard",
+        ),
+        CheckConstraint(
+            "(standard = 'gbfs') = (system_info IS NOT NULL)",
+            name="ck_published_feed_system_info_matches_standard",
+        ),
         # `GET /public/feeds/<slug>` has no org segment, so a slug shared by two
         # `public` feeds leaves it unable to say which was meant, and refusing
         # that at read time would let any other org's administrator claim a
@@ -78,7 +90,13 @@ class PublishedFeed(Base):
     version: Mapped[str] = mapped_column(Text, nullable=False)
     entity: Mapped[str] = mapped_column(Text, nullable=False)
 
-    static_gtfs_ref: Mapped[str] = mapped_column(Text, nullable=False)
+    static_gtfs_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # The system-level GBFS declaration (system_id, language, name, timezone,
+    # and 3.0's two extras). Not query output, so it lives on the binding.
+    # `none_as_null`, or a Python None is written as JSON `null`, which is NOT
+    # NULL in SQL and satisfies the standard CHECK it is supposed to violate.
+    system_info: Mapped[dict[str, str] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
 
     # Optional at node tier: provenance here usually names a provider, and a
     # single-provider feed has nothing to partition. It becomes required at

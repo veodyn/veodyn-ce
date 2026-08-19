@@ -14,6 +14,7 @@ import { AttemptHistory } from '@/components/published-feeds/attempt-history'
 import { BindingSummary } from '@/components/published-feeds/binding-summary'
 import { FeedAddress } from '@/components/published-feeds/feed-address'
 import { AdministeredNote } from '@/components/published-feeds/administered-note'
+import { Slot } from '@/features/slots'
 import {
   useAttempts,
   useDeletePublishedFeed,
@@ -159,6 +160,8 @@ export default function FeedDetailPage({ params }: { params: Promise<{ slug: str
       <div className="space-y-4">
         <FeedAddress feed={feed} />
         <BindingSummary feed={feed} />
+        {/* Automatic publishing, which a community build has no worker for. */}
+        <Slot id="publishedFeed.schedule" props={{ slug }} fallback={null} />
       </div>
 
       <div className="mt-6 space-y-3">

@@ -17,6 +17,10 @@ from typing import Any
 
 from google.transit import gtfs_realtime_pb2
 
+# The versions this serializer can write. `schemas/published_feed.py` refuses
+# anything else, and `feed_registry.VERSIONS_BY_STANDARD` must agree.
+SUPPORTED_VERSIONS: tuple[str, ...] = ("2.0",)
+
 REQUIRED_FIELDS: dict[str, frozenset[str]] = {
     "vehicle_positions": frozenset({"vehicle_id", "latitude", "longitude"}),
 }

@@ -44,20 +44,26 @@ from tests.migration_chains import (
     ce_config,
 )
 
-HEAD_OBJECT = "uq_published_feed_public_slug"
-HEAD_OBJECT_DROP = f"DROP INDEX {HEAD_OBJECT}"
-"""What the head revision creates, and the statement that takes it back.
+HEAD_OBJECT = ("published_feed", "system_info")
+HEAD_OBJECT_DROP = (
+    "ALTER TABLE published_feed DROP CONSTRAINT ck_published_feed_static_ref_matches_standard",
+    "ALTER TABLE published_feed DROP CONSTRAINT ck_published_feed_system_info_matches_standard",
+    "ALTER TABLE published_feed DROP COLUMN system_info",
+    "ALTER TABLE published_feed ALTER COLUMN static_gtfs_ref SET NOT NULL",
+    "ALTER TABLE publish_attempt DROP CONSTRAINT ck_publish_attempt_artifact_matches_decision",
+    "ALTER TABLE publish_attempt DROP CONSTRAINT ck_publish_attempt_one_artifact_kind",
+    "ALTER TABLE publish_attempt DROP COLUMN feed_files",
+    "ALTER TABLE publish_attempt ADD CONSTRAINT ck_publish_attempt_bytes_match_decision "
+    "CHECK ((decision = 'published') = (feed_bytes IS NOT NULL))",
+)
+"""One thing the head revision creates, and the statements that take ALL of it
+back.
 
-Named here rather than inline so the pairing with `CE_HEAD` is one thing to
-update when a revision lands, and so a mismatch reads as these constants being
-stale rather than as a puzzling `DuplicateTable` inside the upgrade.
-
-It was `HEAD_TABLE = "publish_attempt"` with a hardcoded `DROP TABLE`, which
-held only while every revision happened to create a table. 0013 creates an
-INDEX, so the drop statement had to become part of what this names: a revision
-adding a column or a constraint will move it again, and that is the point.
-`relation` in Postgres covers both, which is why the stale version failed as
-`DuplicateTable` for an index."""
+Both move with head, and the pairing with `CE_HEAD` is one thing to update when
+a revision lands, so a mismatch reads as these constants being stale rather than
+as a puzzling `DuplicateColumn` inside the upgrade. Head is not always a table
+or an index: 0014 adds columns and constraints and drops one, and the reversal
+has to restore what it dropped or the upgrade cannot run its own drop."""
 
 CHAIN_DATABASE = "veodyn_migration_chain"
 """Its own database, named rather than randomised so a crashed run leaves one
@@ -222,23 +228,9 @@ def test_the_body_recorder_records(fresh_url: str) -> None:
     seed_like_prod(fresh_url, stamp=CE_PREVIOUS)
     engine = create_engine(fresh_url)
     with engine.begin() as connection:
-        connection.execute(text(HEAD_OBJECT_DROP))
+        for statement in HEAD_OBJECT_DROP:
+            connection.execute(text(statement))
     engine.dispose()
 
     assert run_upgrade_recording_bodies(ce_config()) == [CE_HEAD]
-    assert HEAD_OBJECT in relations_in(fresh_url)
-
-
-def relations_in(url: str) -> set[str]:
-    """Tables AND indexes, because head is not always a table.
-
-    `tables_in` was enough while every revision created one. It silently answers
-    "absent" for an index, so using it here would have made the assertion above
-    fail for the right reason by accident and then pass for the wrong one the
-    moment somebody made it lenient.
-    """
-    engine = create_engine(url)
-    with engine.begin() as connection:
-        names = set(connection.execute(text("SELECT relname FROM pg_class")).scalars())
-    engine.dispose()
-    return names
+    assert HEAD_OBJECT in columns_in(fresh_url)

@@ -39,7 +39,8 @@ COLUMNS: dict[str, bool] = {
     "standard": False,
     "version": False,
     "entity": False,
-    "static_gtfs_ref": False,
+    "static_gtfs_ref": True,
+    "system_info": True,
     "source_column": True,
     "column_map": False,
     "on_error": False,
@@ -61,6 +62,8 @@ CONSTRAINTS = frozenset(
         "ck_published_feed_cap_matches_mode",
         "ck_published_feed_on_error",
         "ck_published_feed_visibility",
+        "ck_published_feed_static_ref_matches_standard",
+        "ck_published_feed_system_info_matches_standard",
     }
 )
 

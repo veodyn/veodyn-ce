@@ -35,7 +35,9 @@ VOCABULARY = json.loads((Path(__file__).parent / "gtfs_field_vocabulary.json").r
 
 
 def test_the_registered_entities_are_the_ones_the_vocabulary_documents() -> None:
-    assert set(feed_registry.entities()) == set(VOCABULARY["entities"])
+    # Scoped to gtfs-rt: this fixture documents the GTFS-Realtime picker, and the
+    # registry now holds a set per standard.
+    assert set(feed_registry.entities("gtfs-rt")) == set(VOCABULARY["entities"])
 
 
 def test_the_required_fields_are_the_ones_the_frontend_marks_required() -> None:

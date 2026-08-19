@@ -69,6 +69,7 @@ export type SingleSlotId =
   | 'feedHealth.metrics'
   | 'publishedFeed.tokenPanel'
   | 'publishedFeed.blockedAttribution'
+  | 'publishedFeed.schedule'
   | 'dataset.records'
   | 'dataset.headerActions'
 
@@ -130,6 +131,12 @@ export interface SlotProps {
    * validator's own shape.
    */
   'publishedFeed.blockedAttribution': { slug: string; attemptId: number }
+  /**
+   * Automatic publishing for one feed, on its detail page. The slug only: the
+   * cadence is the feature's own row, and a community build has no worker to
+   * honour one.
+   */
+  'publishedFeed.schedule': { slug: string }
   /**
    * No props: a favorites section reads the caller's own starred ids through
    * the community `useVeodynFavorites` and intersects them with its own list.

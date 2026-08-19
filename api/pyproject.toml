@@ -14,6 +14,9 @@ dependencies = [
     # The official protobuf bindings for GTFS-Realtime. Pure generated Python
     # over `protobuf`; nothing here speaks to a network.
     "gtfs-realtime-bindings>=1.0",
+    # Our own GBFS validator (PyPI, zero runtime dependencies). Pinned exactly:
+    # gbfs_validation.py reads its report shape, which is contract, not API.
+    "gbfs-validator==0.1.0",
     "alembic>=1.14",
     "httpx>=0.27",
     # rq and rq-scheduler are imported by nothing in veodyn_api, and removing
@@ -77,6 +80,13 @@ plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = ["rq.*", "rq_scheduler.*"]
+ignore_missing_imports = true
+
+# gbfs_validator ships no py.typed marker, so mypy cannot see its inline
+# annotations. Declared here rather than as an inline ignore, matching the line
+# above and validator/pyproject.toml's handling of gtfs_rt_validator.
+[[tool.mypy.overrides]]
+module = ["gbfs_validator.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

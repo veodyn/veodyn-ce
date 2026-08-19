@@ -11,6 +11,7 @@ from pydantic import Field, field_validator, model_validator
 
 from veodyn_api.schemas.catalog import CamelModel
 from veodyn_api.services import feed_registry
+from veodyn_api.services.gbfs_serializer import check_system_info
 
 # PostgreSQL `INTEGER`, which is the column type behind both of the integer
 # fields below. Without the bound a larger value passes request validation and
@@ -38,13 +39,14 @@ class PublishedFeedIn(CamelModel):
 
     slug: str = Field(min_length=1, max_length=64, pattern=r"^[a-z0-9][a-z0-9-]*$")
     query_id: int = Field(gt=0, le=PG_INT_MAX)
-    standard: Literal["gtfs-rt"]
-    # A Literal, not a non-empty string. `gtfs_rt_serializer` writes
-    # `gtfs_realtime_version = "2.0"` unconditionally, so any other value here
-    # was a binding claiming a version it does not publish -- accepted, stored,
-    # and contradicted by the very bytes served under it. The set widens when a
-    # serializer learns a second version, and the type is what will say so.
-    version: Literal["2.0"]
+    # A Literal, because both standards are community code rather than something
+    # a pack adds, so the committed openapi may name them.
+    standard: Literal["gtfs-rt", "gbfs"]
+    # A plain string, checked against the chosen standard's supported set in
+    # `_shape_matches_standard`. A binding may not claim a version its own
+    # serializer would contradict, and the refusal names the set it may claim
+    # instead, which is the same argument `entity` makes below.
+    version: str = Field(min_length=1)
     # A plain string, validated against `feed_registry` below, not a `Literal`.
     # A `Literal` here would make the generated openapi schema depend on which
     # pack is installed, and `api/openapi.json` is committed and diffed in CI:
@@ -55,7 +57,11 @@ class PublishedFeedIn(CamelModel):
     # of that design put `visibility` in this same registry -- it does not
     # belong here, see `feed_registry.py`.
     entity: str = Field(min_length=1)
-    static_gtfs_ref: str = Field(min_length=1)
+    # Each of these belongs to exactly one standard, so both are optional here
+    # and paired with their standard by `_shape_matches_standard`, which mirrors
+    # the two CHECK constraints on the table.
+    static_gtfs_ref: str | None = None
+    system_info: dict[str, str] | None = None
     source_column: str | None = None
     column_map: dict[str, str]
     on_error: Literal["block", "last_good"] = "block"
@@ -86,19 +92,48 @@ class PublishedFeedIn(CamelModel):
             )
         return value
 
-    @field_validator("entity")
-    @classmethod
-    def _entity_is_registered(cls, value: str) -> str:
-        """Names the deployment, not the enum. A caller reading this should
-        conclude "this deployment does not support that entity" and see what it
-        does support, rather than parsing a 422 about a value nobody told them
-        the valid set of."""
-        if not feed_registry.is_registered(value):
-            supported = ", ".join(sorted(feed_registry.entities())) or "(none registered)"
+    @model_validator(mode="after")
+    def _shape_matches_standard(self) -> "PublishedFeedIn":
+        """Every rule that needs to know which standard this is.
+
+        `entity` is checked here rather than as a field validator because a
+        field validator cannot see `standard`, and `stations` is a real entity
+        under one standard and a typo under the other. The refusal names the
+        deployment, not an enum: a caller should read it as "this deployment
+        does not support that entity" and see what it does support.
+
+        The two shape fields are refused here as well as by their CHECK
+        constraints, so the caller gets a 422 naming the field rather than a 500
+        out of a constraint violation.
+        """
+        versions = feed_registry.VERSIONS_BY_STANDARD[self.standard]
+        if self.version not in versions:
             raise ValueError(
-                f"{value!r} is not a supported entity in this deployment; this deployment supports: {supported}"
+                f"version {self.version!r} is not supported for {self.standard}; supported: {', '.join(versions)}"
             )
-        return value
+        if not feed_registry.is_registered(self.entity, self.standard):
+            supported = ", ".join(sorted(feed_registry.entities(self.standard))) or "(none registered)"
+            raise ValueError(
+                f"{self.entity!r} is not a supported entity in this deployment for {self.standard}; "
+                f"this deployment supports: {supported}"
+            )
+        # Blank collapses to None BEFORE the pairing is judged, and the collapsed
+        # value is what gets stored. A blank kept as "" reads as absent here and
+        # as NOT NULL to ck_published_feed_static_ref_matches_standard, which is
+        # a 500 at COMMIT instead of the 422 below.
+        if self.static_gtfs_ref is not None and not self.static_gtfs_ref.strip():
+            self.static_gtfs_ref = None
+        if (self.standard == "gtfs-rt") != (self.static_gtfs_ref is not None):
+            raise ValueError("a gtfs-rt feed requires a static GTFS reference, and a gbfs feed cannot carry one")
+        if (self.standard == "gbfs") != (self.system_info is not None):
+            raise ValueError("a gbfs feed requires system information, and a gtfs-rt feed cannot carry it")
+        if self.system_info is not None:
+            # The serializer owns this vocabulary: it is the module that writes
+            # the file these keys become.
+            problems = check_system_info(self.version, self.system_info)
+            if problems:
+                raise ValueError("; ".join(problems))
+        return self
 
     @model_validator(mode="after")
     def _cap_matches_mode(self) -> "PublishedFeedIn":
@@ -117,7 +152,8 @@ class PublishedFeedOut(CamelModel):
     standard: str
     version: str
     entity: str
-    static_gtfs_ref: str
+    static_gtfs_ref: str | None
+    system_info: dict[str, str] | None
     source_column: str | None
     column_map: dict[str, str]
     on_error: str
@@ -137,21 +173,35 @@ class PublishedFeedOut(CamelModel):
     binding_state: str
 
 
+class StandardCapabilityOut(CamelModel):
+    """One standard this deployment can bind a feed to, with the versions it can
+    publish and the entities registered under it.
+
+    `versions` comes from `feed_registry.VERSIONS_BY_STANDARD` and is empty for a
+    standard only a pack registers entities under.
+    """
+
+    standard: str
+    versions: list[str]
+    entities: list[str]
+
+
 class FeedCapabilitiesOut(CamelModel):
-    """What this deployment's entity registry actually holds, read at runtime
+    """What this deployment's feed registry actually holds, read at runtime
     rather than inferred from a values file or a matching image digest.
 
     Root CLAUDE.md records that an installed layer is inert until a deployment
     names it, and the deploy succeeds either way -- costing four releases before
-    this pattern got an interrogation endpoint. `entities` is sorted so the
-    response is stable across the registry's unordered set.
+    this pattern got an interrogation endpoint. `standards`, and `entities`
+    within each, are sorted so the response is stable across the registry's
+    unordered sets.
 
     The frontend's binding form renders `entity` as a stated fact when there is
     exactly one, and as a picker otherwise (design section 4's "one
     consequence"); this is the response that decision reads.
     """
 
-    entities: list[str]
+    standards: list[StandardCapabilityOut]
 
 
 class FindingOut(CamelModel):

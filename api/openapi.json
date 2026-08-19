@@ -573,18 +573,18 @@
         "type": "object"
       },
       "FeedCapabilitiesOut": {
-        "description": "What this deployment's entity registry actually holds, read at runtime\nrather than inferred from a values file or a matching image digest.\n\nRoot CLAUDE.md records that an installed layer is inert until a deployment\nnames it, and the deploy succeeds either way -- costing four releases before\nthis pattern got an interrogation endpoint. `entities` is sorted so the\nresponse is stable across the registry's unordered set.\n\nThe frontend's binding form renders `entity` as a stated fact when there is\nexactly one, and as a picker otherwise (design section 4's \"one\nconsequence\"); this is the response that decision reads.",
+        "description": "What this deployment's feed registry actually holds, read at runtime\nrather than inferred from a values file or a matching image digest.\n\nRoot CLAUDE.md records that an installed layer is inert until a deployment\nnames it, and the deploy succeeds either way -- costing four releases before\nthis pattern got an interrogation endpoint. `standards`, and `entities`\nwithin each, are sorted so the response is stable across the registry's\nunordered sets.\n\nThe frontend's binding form renders `entity` as a stated fact when there is\nexactly one, and as a picker otherwise (design section 4's \"one\nconsequence\"); this is the response that decision reads.",
         "properties": {
-          "entities": {
+          "standards": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StandardCapabilityOut"
             },
-            "title": "Entities",
+            "title": "Standards",
             "type": "array"
           }
         },
         "required": [
-          "entities"
+          "standards"
         ],
         "title": "FeedCapabilitiesOut",
         "type": "object"
@@ -1191,17 +1191,40 @@
             "title": "Sourcecolumn"
           },
           "standard": {
-            "const": "gtfs-rt",
+            "enum": [
+              "gtfs-rt",
+              "gbfs"
+            ],
             "title": "Standard",
             "type": "string"
           },
           "staticGtfsRef": {
-            "minLength": 1,
-            "title": "Staticgtfsref",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staticgtfsref"
+          },
+          "systemInfo": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Systeminfo"
           },
           "version": {
-            "const": "2.0",
+            "minLength": 1,
             "title": "Version",
             "type": "string"
           },
@@ -1221,7 +1244,6 @@
           "standard",
           "version",
           "entity",
-          "staticGtfsRef",
           "columnMap"
         ],
         "title": "PublishedFeedIn",
@@ -1287,8 +1309,29 @@
             "type": "string"
           },
           "staticGtfsRef": {
-            "title": "Staticgtfsref",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staticgtfsref"
+          },
+          "systemInfo": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Systeminfo"
           },
           "version": {
             "title": "Version",
@@ -1307,6 +1350,7 @@
           "version",
           "entity",
           "staticGtfsRef",
+          "systemInfo",
           "sourceColumn",
           "columnMap",
           "onError",
@@ -1428,6 +1472,36 @@
           "description"
         ],
         "title": "SnippetProposalOut",
+        "type": "object"
+      },
+      "StandardCapabilityOut": {
+        "description": "One standard this deployment can bind a feed to, with the versions it can\npublish and the entities registered under it.\n\n`versions` comes from `feed_registry.VERSIONS_BY_STANDARD` and is empty for a\nstandard only a pack registers entities under.",
+        "properties": {
+          "entities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Entities",
+            "type": "array"
+          },
+          "standard": {
+            "title": "Standard",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "standard",
+          "versions",
+          "entities"
+        ],
+        "title": "StandardCapabilityOut",
         "type": "object"
       },
       "TagCountOut": {
@@ -2346,7 +2420,7 @@
     },
     "/public/feeds/{slug}": {
       "get": {
-        "description": "The current artifact for one public feed, as raw GTFS-Realtime bytes.",
+        "description": "The current artifact for one public feed, by its standard.",
         "operationId": "get_public_feed_public_feeds__slug__get",
         "parameters": [
           {
@@ -2362,6 +2436,11 @@
         "responses": {
           "200": {
             "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              },
               "application/x-protobuf": {
                 "schema": {
                   "format": "binary",
@@ -2369,7 +2448,7 @@
                 }
               }
             },
-            "description": "The feed's current GTFS-Realtime message."
+            "description": "The feed's current artifact: a GTFS-Realtime message, or a GBFS discovery document."
           },
           "422": {
             "content": {
@@ -2383,6 +2462,56 @@
           }
         },
         "summary": "Get Public Feed",
+        "tags": [
+          "public-feeds"
+        ]
+      }
+    },
+    "/public/feeds/{slug}/{file_name}": {
+      "get": {
+        "description": "One member file of a GBFS artifact.\n\nEvery refusal is the same 404 as the discovery route's, whatever caused it:\nan unknown slug, a private feed, nothing published, a gtfs-rt feed with no\nmember files at all, or a name outside the published set. The name is never\nechoed back, so the file set cannot be enumerated either.\n\nThe missing-file 404 comes BEFORE the staleness branch on purpose. The 503\ndoes disclose that the slug names a live public feed, and a name that is not\nin the set must not answer differently for a stale feed than for any other.",
+        "operationId": "get_public_feed_file_public_feeds__slug___file_name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "file_name",
+            "required": true,
+            "schema": {
+              "title": "File Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Public Feed File",
         "tags": [
           "public-feeds"
         ]
@@ -2532,7 +2661,7 @@
     },
     "/published-feeds/capabilities": {
       "get": {
-        "description": "Name the feed entities this build can bind a feed to. A read open to any\norg member, the same authorization as listing feeds.",
+        "description": "Name the standards, versions and feed entities this build can bind a feed\nto. A read open to any org member, the same authorization as listing feeds.",
         "operationId": "get_capabilities_published_feeds_capabilities_get",
         "parameters": [
           {

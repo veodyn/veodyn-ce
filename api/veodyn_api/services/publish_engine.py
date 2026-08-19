@@ -22,7 +22,6 @@ the staleness comparison) is scoped to one revision, because a binding edit
 bumps the revision and changes what the compared numbers mean.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -32,14 +31,32 @@ from sqlalchemy.orm import Session
 
 from veodyn_api.models.publish_attempt import PublishAttempt
 from veodyn_api.models.published_feed import PublishedFeed
-from veodyn_api.services.feed_validator import Finding, ValidationOutcome, ValidatorUnavailable
+from veodyn_api.services.feed_validator import Finding, ValidationOutcome
 from veodyn_api.services.finding_json import findings_as_json
-from veodyn_api.services.gtfs_rt_serializer import SerializationError, serialize_vehicle_positions
+from veodyn_api.services.publish_produce import (
+    GbfsPublisher,
+    Refused,
+    Validate,
+    produce_gbfs,
+    produce_gtfs_rt,
+)
 
+__all__ = [
+    "AttemptResult",
+    "GbfsPublisher",
+    "Validate",
+    "current_artifact",
+    "previous_artifact_of_revision",
+    "run_attempt",
+]
+
+_GBFS_STANDARD = "gbfs"
+
+# The one entity each standard can publish in a community build. A pack widens
+# the binding vocabulary, and an entity this engine cannot serialize is a failed
+# attempt rather than an exception.
 _SUPPORTED_ENTITY = "vehicle_positions"
-
-# (feed_bytes, static_gtfs_ref, previous_feed) -> outcome.
-Validate = Callable[[bytes, str, bytes | None], ValidationOutcome]
+_SUPPORTED_ENTITIES: dict[str, str] = {"gtfs-rt": _SUPPORTED_ENTITY, _GBFS_STANDARD: "stations"}
 
 # The partial unique index behind the served pointer. Matched by name because
 # only this one collision is an ordinary outcome; any other integrity error on
@@ -113,12 +130,14 @@ def _record(
     outcome: ValidationOutcome | None = None,
     feed_bytes: bytes | None = None,
     feed_timestamp: int | None = None,
+    feed_files: dict[str, Any] | None = None,
 ) -> AttemptResult:
     """Write the attempt down and answer with it.
 
-    `feed_bytes` defaults to None and is passed only on the publishing path. The
-    database holds the same line with a CHECK, because a blocked artifact
-    carrying bytes is one query away from being served.
+    The two artifact columns default to None and are passed only on the
+    publishing path, exactly one of them per standard. The database holds the
+    same line with a CHECK, because a blocked artifact carrying an artifact is
+    one query away from being served.
     """
     findings = outcome.findings if outcome is not None else ()
     db.add(
@@ -130,6 +149,7 @@ def _record(
             decision=decision,
             reason=reason,
             feed_bytes=feed_bytes,
+            feed_files=feed_files,
             feed_timestamp=feed_timestamp,
             findings=findings_as_json(findings),
             enabled_rules=list(outcome.enabled_rules) if outcome is not None else [],
@@ -147,9 +167,23 @@ def run_attempt(
     query_result_id: int,
     feed_timestamp: int,
     validate: Validate,
+    *,
+    gbfs: GbfsPublisher | None = None,
 ) -> AttemptResult:
-    """Serialize, validate, decide, record. Never raises for an expected failure."""
-    if feed.entity != _SUPPORTED_ENTITY:
+    """Serialize, validate, decide, record. Never raises for an expected failure.
+
+    `gbfs` is keyword-only and optional because the enterprise worker calls this
+    positionally from another repository. A gbfs feed reaching a worker that
+    passed none is a failed attempt, not a crash.
+
+    Only the production step differs by standard. Everything from the verdict
+    onward is shared, so a second standard cannot quietly acquire a weaker
+    ordering guard or a looser pointer move.
+    """
+    supported = _SUPPORTED_ENTITIES.get(feed.standard)
+    if supported is None:
+        return _record(db, feed, query_result_id, "failed", f"standard {feed.standard!r} is not supported yet")
+    if feed.entity != supported:
         return _record(db, feed, query_result_id, "failed", f"entity {feed.entity!r} is not supported yet")
 
     # Two rows, two questions. `served` is the row a publish must clear, whatever
@@ -172,16 +206,12 @@ def run_attempt(
         )
 
     try:
-        feed_bytes = serialize_vehicle_positions(rows, feed.column_map, feed_timestamp)
-    except SerializationError as exc:
-        # The validator is never called: it would name a downstream rule instead
-        # of the mapping that is actually at fault.
-        return _record(db, feed, query_result_id, "failed", exc.reason)
-
-    try:
-        outcome = validate(feed_bytes, feed.static_gtfs_ref, previous.feed_bytes if previous is not None else None)
-    except ValidatorUnavailable as exc:
-        return _record(db, feed, query_result_id, "failed", str(exc))
+        if feed.standard == _GBFS_STANDARD:
+            outcome, feed_bytes, feed_files = produce_gbfs(feed, rows, feed_timestamp, gbfs)
+        else:
+            outcome, feed_bytes, feed_files = produce_gtfs_rt(feed, rows, feed_timestamp, previous, validate)
+    except Refused as refusal:
+        return _record(db, feed, query_result_id, "failed", refusal.reason)
 
     if not outcome.enabled_rules:
         # No rule produced this verdict, so it is not evidence about the feed.
@@ -225,7 +255,17 @@ def run_attempt(
             served.is_current = False
             db.flush()
 
-        return _record(db, feed, query_result_id, "published", "", outcome, feed_bytes, feed_timestamp)
+        return _record(
+            db,
+            feed,
+            query_result_id,
+            "published",
+            "",
+            outcome,
+            feed_bytes,
+            feed_timestamp,
+            feed_files=feed_files,
+        )
     except IntegrityError as exc:
         if _CURRENT_POINTER_INDEX not in str(exc.orig):
             # Some other constraint, which means a defect rather than a race.

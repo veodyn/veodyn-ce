@@ -255,6 +255,15 @@ wheels = [
 ]
 
 [[package]]
+name = "gbfs-validator"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/96/44/04800986ced09e9d0cf8e05e4737c3dd7c3b4f476a7aed6050b25ecd8267/gbfs_validator-0.1.0.tar.gz", hash = "sha256:e1878c5c25a7022248a723e56a4e5b127873974dd172a6c4b623b2fe66fb9167", size = 142289, upload-time = "2026-08-18T11:46:32.732Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/80/c7/213a699564d310702c557f0b993c79f5ffa7029abddc7d9b9f7658d5f468/gbfs_validator-0.1.0-py3-none-any.whl", hash = "sha256:372f1e88075de28b4fe92e44f56e332c52cace76ec866243727f1f0ee77512f3", size = 194453, upload-time = "2026-08-18T11:46:31.611Z" },
+]
+
+[[package]]
 name = "greenlet"
 version = "3.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1021,6 +1030,7 @@ source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "fastapi" },
+    { name = "gbfs-validator" },
     { name = "gtfs-realtime-bindings" },
     { name = "httpx" },
     { name = "posthog" },
@@ -1048,6 +1058,7 @@ dev = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.14" },
     { name = "fastapi", specifier = ">=0.115" },
+    { name = "gbfs-validator", specifier = "==0.1.0" },
     { name = "gtfs-realtime-bindings", specifier = ">=1.0" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "posthog", specifier = ">=3.7" },

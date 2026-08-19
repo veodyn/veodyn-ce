@@ -1,0 +1,26 @@
+{
+  "_comment": [
+    "The GBFS station field vocabulary, as a ratchet against the frontend.",
+    "The mapping editor offers exactly these fields and marks exactly these as",
+    "required, and nothing on the wire carries them, so this file is what holds",
+    "the two copies together. Changing the serializer fails the vocabulary tests",
+    "in test_gbfs_serializer.py; update the frontend in the same change, then",
+    "update this. Same shape and intent as gtfs_field_vocabulary.json.",
+    "The vocabulary is version-neutral: 2.3 and 3.0 differ in spelling on the",
+    "wire, not in the fields a binding maps."
+  ],
+  "stations": {
+    "required": [
+      "is_installed",
+      "is_renting",
+      "is_returning",
+      "last_reported",
+      "lat",
+      "lon",
+      "name",
+      "num_vehicles_available",
+      "station_id"
+    ],
+    "optional": ["address", "capacity", "num_docks_available"]
+  }
+}

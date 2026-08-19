@@ -1,4 +1,5 @@
-"""The entity vocabulary: what `entity` may name, and how a pack widens it.
+"""The entity vocabulary: what `entity` may name per standard, and how a pack
+widens it.
 
 `schemas/published_feed.py` validates `entity` against `feed_registry` rather
 than pinning a `Literal`, because `api/openapi.json` is committed and diffed in
@@ -13,6 +14,11 @@ schema` goes straight at the schema instead, because that is the only way to
 prove the registration seam actually works rather than merely exists: nothing
 in this process registers `trip_updates` at import, so this test is standing in
 for an enterprise pack's own registration module.
+
+`test_a_one_argument_registration_still_means_gtfs_rt` guards that same pack
+from the other side: it lives in another repository and calls
+`register_entity(entity)` with one argument, so the standard parameter's
+default is a contract rather than a convenience.
 """
 
 import pytest
@@ -44,6 +50,62 @@ def test_an_unregistered_entity_is_refused_naming_what_is_supported(
     assert "trip_updates" in message
     assert "not a supported entity in this deployment" in message
     assert "vehicle_positions" in message
+
+
+def test_community_seeds_one_entity_per_standard() -> None:
+    assert feed_registry.entities("gtfs-rt") == frozenset({"vehicle_positions"})
+    assert feed_registry.entities("gbfs") == frozenset({"stations"})
+    assert feed_registry.standards() == frozenset({"gtfs-rt", "gbfs"})
+
+
+def test_a_name_registered_under_one_standard_is_not_registered_under_the_other() -> None:
+    """The point of keying by standard: `stations` is a real GBFS entity and not
+    a GTFS-Realtime one, so a flat set would accept it under either."""
+    assert feed_registry.is_registered("stations", "gbfs")
+    assert not feed_registry.is_registered("stations", "gtfs-rt")
+    assert feed_registry.is_registered("vehicle_positions", "gtfs-rt")
+    assert not feed_registry.is_registered("vehicle_positions", "gbfs")
+
+
+def test_an_unknown_standard_reads_as_empty_rather_than_raising() -> None:
+    assert feed_registry.entities("gtfs-static") == frozenset()
+    assert not feed_registry.is_registered("shapes", "gtfs-static")
+
+
+def test_versions_are_declared_per_standard() -> None:
+    assert feed_registry.VERSIONS_BY_STANDARD["gtfs-rt"] == ("2.0",)
+    assert feed_registry.VERSIONS_BY_STANDARD["gbfs"] == ("2.3", "3.0")
+
+
+def test_a_one_argument_registration_still_means_gtfs_rt() -> None:
+    """The enterprise pack calls `register_entity(entity)` from another
+    repository. Dropping the default breaks its build with nothing in this tree
+    to notice."""
+    with feed_registry.restored_entities():
+        feed_registry.register_entity("trip_updates")
+
+        assert feed_registry.is_registered("trip_updates", "gtfs-rt")
+        assert not feed_registry.is_registered("trip_updates", "gbfs")
+
+
+def test_restoring_undoes_a_widening_of_an_existing_standard() -> None:
+    """A shallow copy of the dict shares its sets, so the restore would keep the
+    registration it was meant to drop. Asserted per standard for that reason."""
+    before = {standard: feed_registry.entities(standard) for standard in feed_registry.standards()}
+
+    with feed_registry.restored_entities():
+        feed_registry.register_entity("trip_updates", "gtfs-rt")
+        feed_registry.register_entity("geofencing_zones", "gbfs")
+
+    assert {standard: feed_registry.entities(standard) for standard in feed_registry.standards()} == before
+
+
+def test_restoring_undoes_a_whole_new_standard() -> None:
+    with feed_registry.restored_entities():
+        feed_registry.register_entity("shapes", "gtfs-static")
+        assert "gtfs-static" in feed_registry.standards()
+
+    assert "gtfs-static" not in feed_registry.standards()
 
 
 def test_registering_an_entity_through_the_pack_seam_widens_the_schema() -> None:

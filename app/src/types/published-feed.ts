@@ -39,19 +39,31 @@ export interface PublishAttempt {
   createdAt: string
 }
 
+/** The standards a binding may name. Both are community code. */
+export type FeedStandard = 'gtfs-rt' | 'gbfs'
+
 /** What a write sends. Every field, every time: the endpoint is a PUT. */
 export interface PublishedFeedInput {
   slug: string
   queryId: number
-  standard: 'gtfs-rt'
-  version: '2.0'
+  standard: FeedStandard
+  // Not a Literal: each standard's serializer owns its supported set, and the
+  // API refuses a version outside it naming what it does support.
+  version: string
   // Not a Literal: services/feed_registry.py holds the entity vocabulary at
-  // runtime, seeded with vehicle_positions and widened by an enterprise pack,
-  // so the wire contract stays one string regardless of which pack is
-  // installed. See FeedCapabilities below for what a deployment actually
-  // registers.
+  // runtime, PER STANDARD, seeded with vehicle_positions and stations and
+  // widened by an enterprise pack, so the wire contract stays one string
+  // regardless of which pack is installed. See FeedCapabilities below for what
+  // a deployment actually registers.
   entity: string
-  staticGtfsRef: string
+  /** The scheduled feed a gtfs-rt feed extends. Null for gbfs, which has none. */
+  staticGtfsRef: string | null
+  /**
+   * What system_information.json declares and no query returns: system_id,
+   * language, name and timezone, plus opening_hours and feed_contact_email on
+   * 3.0. Null for gtfs-rt, which publishes no such file.
+   */
+  systemInfo: Record<string, string> | null
   sourceColumn: string | null
   columnMap: Record<string, string>
   onError: 'block' | 'last_good'
@@ -66,14 +78,20 @@ export interface PublishedFeed extends PublishedFeedInput {
   bindingState: string
 }
 
+/** One standard this deployment can publish, and what it offers under it. */
+export interface StandardCapability {
+  standard: string
+  versions: string[]
+  entities: string[]
+}
+
 /**
- * What GET /published-feeds/capabilities answers: the entity vocabulary this
- * deployment actually registered, sorted. One entry is the community case and
- * renders as a stated fact; more than one means a pack widened the registry
- * and the binding form renders a picker instead. Read at runtime rather than
- * inferred from a values file, per root CLAUDE.md's note that an installed
- * layer is inert until a deployment names it.
+ * What GET /published-feeds/capabilities answers: what this deployment actually
+ * registered, per standard, sorted. A list of one renders as a stated fact and
+ * a longer one as a picker, for versions and entities alike. Read at runtime
+ * rather than inferred from a values file, per root CLAUDE.md's note that an
+ * installed layer is inert until a deployment names it.
  */
 export interface FeedCapabilities {
-  entities: string[]
+  standards: StandardCapability[]
 }

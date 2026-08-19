@@ -29,11 +29,28 @@ export function BindingSummary({ feed }: { feed: PublishedFeed }) {
           <Detail label="Query" value={String(feed.queryId)} />
           <Detail label="Standard" value={`${feed.standard} ${feed.version}`} />
           <Detail label="Entity" value={feed.entity} />
-          <Detail label="Static GTFS reference" value={feed.staticGtfsRef} />
+          {/* Each standard carries one of these and never the other, so the row
+              is absent rather than blank on the standard it does not apply to. */}
+          {feed.staticGtfsRef !== null && (
+            <Detail label="Static GTFS reference" value={feed.staticGtfsRef} />
+          )}
           <Detail label="On error" value={onErrorLabel} />
           <Detail label="Visibility" value={feed.visibility} />
           <Detail label="Revision" value={String(feed.revision)} />
         </dl>
+        {feed.systemInfo && (
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium">System</h3>
+            <dl className="space-y-0.5">
+              {Object.entries(feed.systemInfo).map(([field, value]) => (
+                <div key={field} className="flex gap-2 font-mono text-xs text-muted-foreground">
+                  <dt>{field}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
         <div className="space-y-1">
           <h3 className="text-sm font-medium">Column map</h3>
           <dl className="space-y-0.5">

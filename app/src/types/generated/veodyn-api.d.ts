@@ -264,9 +264,38 @@ export interface paths {
         };
         /**
          * Get Public Feed
-         * @description The current artifact for one public feed, as raw GTFS-Realtime bytes.
+         * @description The current artifact for one public feed, by its standard.
          */
         get: operations["get_public_feed_public_feeds__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/feeds/{slug}/{file_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Public Feed File
+         * @description One member file of a GBFS artifact.
+         *
+         *     Every refusal is the same 404 as the discovery route's, whatever caused it:
+         *     an unknown slug, a private feed, nothing published, a gtfs-rt feed with no
+         *     member files at all, or a name outside the published set. The name is never
+         *     echoed back, so the file set cannot be enumerated either.
+         *
+         *     The missing-file 404 comes BEFORE the staleness branch on purpose. The 503
+         *     does disclose that the slug names a live public feed, and a name that is not
+         *     in the set must not answer differently for a stale feed than for any other.
+         */
+        get: operations["get_public_feed_file_public_feeds__slug___file_name__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -302,8 +331,8 @@ export interface paths {
         };
         /**
          * Get Capabilities
-         * @description Name the feed entities this build can bind a feed to. A read open to any
-         *     org member, the same authorization as listing feeds.
+         * @description Name the standards, versions and feed entities this build can bind a feed
+         *     to. A read open to any org member, the same authorization as listing feeds.
          */
         get: operations["get_capabilities_published_feeds_capabilities_get"];
         put?: never;
@@ -614,21 +643,22 @@ export interface components {
         };
         /**
          * FeedCapabilitiesOut
-         * @description What this deployment's entity registry actually holds, read at runtime
+         * @description What this deployment's feed registry actually holds, read at runtime
          *     rather than inferred from a values file or a matching image digest.
          *
          *     Root CLAUDE.md records that an installed layer is inert until a deployment
          *     names it, and the deploy succeeds either way -- costing four releases before
-         *     this pattern got an interrogation endpoint. `entities` is sorted so the
-         *     response is stable across the registry's unordered set.
+         *     this pattern got an interrogation endpoint. `standards`, and `entities`
+         *     within each, are sorted so the response is stable across the registry's
+         *     unordered sets.
          *
          *     The frontend's binding form renders `entity` as a stated fact when there is
          *     exactly one, and as a picker otherwise (design section 4's "one
          *     consequence"); this is the response that decision reads.
          */
         FeedCapabilitiesOut: {
-            /** Entities */
-            entities: string[];
+            /** Standards */
+            standards: components["schemas"]["StandardCapabilityOut"][];
         };
         /**
          * FeedOut
@@ -879,16 +909,17 @@ export interface components {
             sourceColumn?: string | null;
             /**
              * Standard
-             * @constant
+             * @enum {string}
              */
-            standard: "gtfs-rt";
+            standard: "gtfs-rt" | "gbfs";
             /** Staticgtfsref */
-            staticGtfsRef: string;
-            /**
-             * Version
-             * @constant
-             */
-            version: "2.0";
+            staticGtfsRef?: string | null;
+            /** Systeminfo */
+            systemInfo?: {
+                [key: string]: string;
+            } | null;
+            /** Version */
+            version: string;
             /**
              * Visibility
              * @default private
@@ -921,7 +952,11 @@ export interface components {
             /** Standard */
             standard: string;
             /** Staticgtfsref */
-            staticGtfsRef: string;
+            staticGtfsRef: string | null;
+            /** Systeminfo */
+            systemInfo: {
+                [key: string]: string;
+            } | null;
             /** Version */
             version: string;
             /** Visibility */
@@ -978,6 +1013,22 @@ export interface components {
             snippet: string;
             /** Trigger */
             trigger: string;
+        };
+        /**
+         * StandardCapabilityOut
+         * @description One standard this deployment can bind a feed to, with the versions it can
+         *     publish and the entities registered under it.
+         *
+         *     `versions` comes from `feed_registry.VERSIONS_BY_STANDARD` and is empty for a
+         *     standard only a pack registers entities under.
+         */
+        StandardCapabilityOut: {
+            /** Entities */
+            entities: string[];
+            /** Standard */
+            standard: string;
+            /** Versions */
+            versions: string[];
         };
         /** TagCountOut */
         TagCountOut: {
@@ -1427,13 +1478,46 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The feed's current GTFS-Realtime message. */
+            /** @description The feed's current artifact: a GTFS-Realtime message, or a GBFS discovery document. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": Record<string, never>;
                     "application/x-protobuf": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_public_feed_file_public_feeds__slug___file_name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                file_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

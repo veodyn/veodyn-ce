@@ -53,7 +53,12 @@ EE_PATH_PREFIXES = ("/kpis", "/reports", "/public", "/admin/shared-links", "/ai/
 # allowlist and the import check all three. An exact-match exception keeps the
 # deny-by-default and costs one line whenever community genuinely adds a public
 # route, which is the trade this guard exists to make.
-CE_PUBLIC_PATHS = frozenset({"/public/feeds/{slug}"})
+# The member-file route serves one file of a gbfs artifact and is community for
+# the same reason the discovery route is. It also means an enterprise
+# `/public/feeds/{slug}/tokens` has to be REGISTERED FIRST to be reachable, the
+# ordering `routers/__init__.py` already keeps for capabilities against
+# `/published-feeds/{slug}`; this exact-match list still catches it either way.
+CE_PUBLIC_PATHS = frozenset({"/public/feeds/{slug}", "/public/feeds/{slug}/{file_name}"})
 EE_SCHEMA_PREFIXES = ("Kpi", "Report", "SharedLink", "Public", "Digest", "Outline", "Annotation")
 EE_SCHEMA_KEEP = frozenset(
     {

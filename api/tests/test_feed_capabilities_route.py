@@ -1,5 +1,5 @@
-"""GET /published-feeds/capabilities: what this deployment's entity registry
-actually holds, read at runtime.
+"""GET /published-feeds/capabilities: what this deployment's feed registry
+actually holds, per standard, read at runtime.
 
 Root CLAUDE.md records that an installed layer is inert until a deployment
 names it, and the deploy succeeds either way -- a values file that looks
@@ -11,7 +11,7 @@ regression guard for the routing order this module's own docstring describes:
 `published_feeds_router` so `/published-feeds/{slug}` cannot swallow
 `/published-feeds/capabilities` first. If that ordering ever regressed, this
 request would come back as a 404 naming a feed called "capabilities" rather
-than the entities list these tests assert on.
+than the standards list these tests assert on.
 """
 
 import respx
@@ -28,12 +28,18 @@ def test_capabilities_reports_what_is_registered(api: TestClient) -> None:
     response = api.get("/published-feeds/capabilities", headers=auth())
 
     assert response.status_code == 200
-    # The literal, not `sorted(feed_registry.entities())`. Comparing the
-    # response to the same expression the handler evaluates makes the two move
+    # The literals, not the expressions the handler evaluates. Comparing the
+    # response to `sorted(feed_registry.entities(...))` would make the two move
     # together: a community build that stopped seeding its own vocabulary would
-    # answer `[]` and still pass. Pinned here, so this test says what community
-    # ships rather than only that the handler reads the registry it reads.
-    assert response.json() == {"entities": ["vehicle_positions"]}
+    # answer empty lists and still pass. Pinned here, so this test says what
+    # community ships rather than only that the handler reads the registry it
+    # reads.
+    assert response.json() == {
+        "standards": [
+            {"standard": "gbfs", "versions": ["2.3", "3.0"], "entities": ["stations"]},
+            {"standard": "gtfs-rt", "versions": ["2.0"], "entities": ["vehicle_positions"]},
+        ]
+    }
 
 
 @respx.mock
@@ -44,7 +50,24 @@ def test_widening_the_registry_widens_what_this_endpoint_reports(api: TestClient
         feed_registry.register_entity("trip_updates")
         response = api.get("/published-feeds/capabilities", headers=auth())
 
-    assert response.json() == {"entities": ["trip_updates", "vehicle_positions"]}
+    by_standard = {entry["standard"]: entry for entry in response.json()["standards"]}
+    assert by_standard["gtfs-rt"]["entities"] == ["trip_updates", "vehicle_positions"]
+    # The widening is scoped to one standard, so the other must not move.
+    assert by_standard["gbfs"]["entities"] == ["stations"]
+
+
+@respx.mock
+def test_a_standard_only_a_pack_registers_appears_with_no_declared_versions(api: TestClient) -> None:
+    """`VERSIONS_BY_STANDARD` is community's declaration, so a standard a pack
+    invents reports an empty version list rather than failing the read."""
+    as_user(ADMIN)
+
+    with feed_registry.restored_entities():
+        feed_registry.register_entity("shapes", "gtfs-static")
+        response = api.get("/published-feeds/capabilities", headers=auth())
+
+    by_standard = {entry["standard"]: entry for entry in response.json()["standards"]}
+    assert by_standard["gtfs-static"] == {"standard": "gtfs-static", "versions": [], "entities": ["shapes"]}
 
 
 @respx.mock

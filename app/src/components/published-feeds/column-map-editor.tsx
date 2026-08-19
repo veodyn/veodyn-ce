@@ -1,12 +1,15 @@
 'use client'
 
-import { GTFS_FIELDS } from '@/lib/gtfs-fields'
+import type { GtfsField } from '@/lib/gtfs-fields'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface ColumnMapEditorProps {
   /** The bound query's latest result columns, or [] when it has never run. */
   columns: string[]
+  /** The standard's own field vocabulary. A map built from the wrong one
+   *  names fields its serializer does not write. */
+  fields: GtfsField[]
   selection: Record<string, string | null>
   onChange: (field: string, column: string | null) => void
   fieldErrors?: Record<string, string>
@@ -19,7 +22,7 @@ interface ColumnMapEditorProps {
 const NOT_MAPPED = '__not_mapped__'
 
 /**
- * A Table with a row per GTFS_FIELDS entry, each row a Select over the
+ * A Table with a row per `fields` entry, each row a Select over the
  * query's known result columns. `items` is passed explicitly rather than
  * derived from SelectItem children, because the options here are query-backed
  * (see the doc comment on `Select` in @/components/ui/select).
@@ -28,7 +31,7 @@ const NOT_MAPPED = '__not_mapped__'
  * there is nothing to offer: rather than a table of Selects with only "not
  * mapped" ever selectable, this renders the one fact that matters instead.
  */
-export function ColumnMapEditor({ columns, selection, onChange, fieldErrors }: ColumnMapEditorProps) {
+export function ColumnMapEditor({ columns, fields, selection, onChange, fieldErrors }: ColumnMapEditorProps) {
   if (columns.length === 0) {
     return (
       <Table>
@@ -55,7 +58,7 @@ export function ColumnMapEditor({ columns, selection, onChange, fieldErrors }: C
         </TableRow>
       </TableHeader>
       <TableBody>
-        {GTFS_FIELDS.map((field) => {
+        {fields.map((field) => {
           const value = selection[field.name] ?? NOT_MAPPED
           const fieldError = fieldErrors?.[field.name]
           return (

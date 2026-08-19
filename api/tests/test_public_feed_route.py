@@ -1,5 +1,5 @@
-"""GET /public/feeds/{slug}: the one unauthenticated route in this service's
-community surface.
+"""GET /public/feeds/{slug} and /{slug}/{file_name}: the unauthenticated routes
+in this service's community surface.
 
 No cookie, no key, no `as_user`/`auth` stub -- that absence is the point, see
 `routers/public_feeds.py`. Built on `publish_stubs.make_feed`/`attempt_row`

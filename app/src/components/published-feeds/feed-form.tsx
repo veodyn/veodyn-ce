@@ -5,16 +5,19 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { GTFS_FIELDS, missingRequired, toColumnMap } from '@/lib/gtfs-fields'
+import { fieldsFor } from '@/lib/gbfs-fields'
+import { missingRequired } from '@/lib/gtfs-fields'
 import { useFeedCapabilities, useQueryResultColumns } from '@/hooks/use-published-feeds'
 import { SUBSECTION_HEADING } from '@/lib/section-heading'
 import { QueryPicker } from './query-picker'
+import { AddressSection } from './feed-form-address'
 import { ColumnMapEditor } from './column-map-editor'
 import { OnFailureSection, lastGoodAgeError } from './feed-form-on-failure'
-import { STANDARD, VERSION, ShapeSection } from './feed-form-shape'
+import { ShapeSection } from './feed-form-shape'
+import { SystemInfoSection } from './system-info-section'
+import { buildInput, missingSystemFields, submitError, type FormValues } from './feed-form-submit'
 import { resolveEntitySelection } from './entity-selection'
-import type { PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
+import type { FeedStandard, PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
 
 interface FeedFormProps {
   /** Prefilled for an edit, absent for a create. */
@@ -29,9 +32,20 @@ interface FeedFormProps {
   onCancel: () => void
 }
 
-function initialSelection(feed: PublishedFeed | undefined): Record<string, string | null> {
+// What each standard starts a create form on, and what a version picker falls
+// back to before capabilities resolve.
+const DEFAULT_VERSION: Record<FeedStandard, string> = { 'gtfs-rt': '2.0', gbfs: '2.3' }
+const FALLBACK_VERSIONS: Record<FeedStandard, string[]> = {
+  'gtfs-rt': ['2.0'],
+  gbfs: ['2.3', '3.0'],
+}
+
+function initialSelection(
+  feed: PublishedFeed | undefined,
+  standard: FeedStandard
+): Record<string, string | null> {
   const selection: Record<string, string | null> = {}
-  for (const field of GTFS_FIELDS) selection[field.name] = feed?.columnMap[field.name] ?? null
+  for (const field of fieldsFor(standard)) selection[field.name] = feed?.columnMap[field.name] ?? null
   return selection
 }
 
@@ -45,15 +59,18 @@ export function FeedForm({
   onSubmit,
   onCancel,
 }: FeedFormProps) {
-  const slugId = useId()
   const staticGtfsRefId = useId()
 
+  const [standard, setStandard] = useState<FeedStandard>(initial?.standard ?? 'gtfs-rt')
+  const [version, setVersion] = useState(initial?.version ?? DEFAULT_VERSION[standard])
   const [slug, setSlug] = useState(initial?.slug ?? '')
   const [visibility, setVisibility] = useState<PublishedFeedInput['visibility']>(
     initial?.visibility ?? 'private'
   )
   const [selectedQueryId, setSelectedQueryId] = useState<number | null>(initial?.queryId ?? null)
-  const [selection, setSelection] = useState<Record<string, string | null>>(() => initialSelection(initial))
+  const [selection, setSelection] = useState<Record<string, string | null>>(() =>
+    initialSelection(initial, initial?.standard ?? 'gtfs-rt')
+  )
   // The query id the current `selection` was built against, tracked apart
   // from `selectedQueryId` (which goes back to null while QueryPicker is in
   // its search view, between clicking "Change" and picking the next query).
@@ -62,6 +79,7 @@ export function FeedForm({
   // that started with a prefilled columnMap.
   const [mappedQueryId, setMappedQueryId] = useState<number | null>(initial?.queryId ?? null)
   const [staticGtfsRef, setStaticGtfsRef] = useState(initial?.staticGtfsRef ?? '')
+  const [systemInfo, setSystemInfo] = useState<Record<string, string>>(initial?.systemInfo ?? {})
   const [onError, setOnError] = useState<PublishedFeedInput['onError']>(initial?.onError ?? 'block')
   const [lastGoodMaxAgeSeconds, setLastGoodMaxAgeSeconds] = useState(
     initial?.lastGoodMaxAgeSeconds != null ? String(initial.lastGoodMaxAgeSeconds) : ''
@@ -77,7 +95,8 @@ export function FeedForm({
 
   const { data: resultColumns } = useQueryResultColumns(selectedQueryId ?? undefined)
   const columns = resultColumns?.columns ?? []
-  const missing = missingRequired(selection)
+  const fields = fieldsFor(standard)
+  const missing = missingRequired(fields, selection)
   const ageError = attempted ? lastGoodAgeError(onError, lastGoodMaxAgeSeconds) : null
 
   const {
@@ -89,17 +108,45 @@ export function FeedForm({
   // degrade to the single-fact form rather than an empty picker or a spinner
   // blocking the whole form. A community deployment has exactly one entity
   // and must never see the form degrade because a secondary request was slow.
-  const registeredEntities =
-    capabilitiesLoading || capabilitiesError ? undefined : capabilities?.entities
-  const entitySelection = resolveEntitySelection(registeredEntities, initial?.entity, pickedEntity)
+  const capability = capabilitiesLoading || capabilitiesError
+    ? undefined
+    : capabilities?.standards.find((entry) => entry.standard === standard)
+  const versionOptions = capability?.versions ?? FALLBACK_VERSIONS[standard]
+  const entitySelection = resolveEntitySelection(
+    capability?.entities,
+    initial?.entity,
+    pickedEntity,
+    standard
+  )
 
   const mappingErrors: Record<string, string> = {}
-  for (const field of GTFS_FIELDS) {
+  for (const field of fields) {
     if (fieldErrors[field.name]) mappingErrors[field.name] = fieldErrors[field.name]
   }
   if (attempted) {
     for (const name of missing) {
       mappingErrors[name] = mappingErrors[name] ?? 'This field is required and is not mapped.'
+    }
+  }
+
+  const values: FormValues = {
+    slug,
+    queryId: selectedQueryId ?? 0,
+    standard,
+    version,
+    entity: entitySelection.entity,
+    staticGtfsRef,
+    systemInfo,
+    selection,
+    onError,
+    lastGoodMaxAgeSeconds,
+    visibility,
+  }
+
+  const systemErrors: Record<string, string> = {}
+  if (attempted) {
+    for (const field of missingSystemFields(values)) {
+      systemErrors[field] = 'This field is required.'
     }
   }
 
@@ -113,55 +160,38 @@ export function FeedForm({
   // query after "Change" keeps the mapping instead of wiping it.
   const handleSelectQuery = (queryId: number) => {
     if (queryId !== mappedQueryId) {
-      setSelection(initialSelection(undefined))
+      setSelection(initialSelection(undefined, standard))
       setMappedQueryId(queryId)
     }
     setSelectedQueryId(queryId)
   }
 
+  // The same doctrine one step up: the two standards share no field vocabulary,
+  // so a map built for one names nothing the other writes. Everything the old
+  // standard owned is cleared rather than carried across.
+  const handleStandardChange = (next: FeedStandard) => {
+    if (next === standard) return
+    setStandard(next)
+    setVersion(DEFAULT_VERSION[next])
+    setSelection(initialSelection(undefined, next))
+    setPickedEntity(null)
+    setStaticGtfsRef('')
+    setSystemInfo({})
+  }
+
   const handleSubmit = () => {
     setAttempted(true)
-    if (missing.length > 0) {
-      setLocalError(`Map every required field before publishing: ${missing.join(', ')}.`)
-      return
-    }
     if (selectedQueryId == null) {
       setLocalError('Pick a source query before publishing.')
       return
     }
-    if (!slug.trim()) {
-      setLocalError('Give this feed an address before publishing.')
-      return
-    }
-    if (!staticGtfsRef.trim()) {
-      setLocalError('A static GTFS reference is required.')
-      return
-    }
-    const capError = lastGoodAgeError(onError, lastGoodMaxAgeSeconds)
-    if (capError) {
-      setLocalError(capError)
+    const problem = submitError(values) ?? lastGoodAgeError(onError, lastGoodMaxAgeSeconds)
+    if (problem) {
+      setLocalError(problem)
       return
     }
     setLocalError(null)
-    onSubmit({
-      slug: slug.trim(),
-      queryId: selectedQueryId,
-      standard: STANDARD,
-      version: VERSION,
-      entity: entitySelection.entity,
-      staticGtfsRef: staticGtfsRef.trim(),
-      // Carried through, never re-sent as null. The endpoint is a whole-binding
-      // PUT, and `source_column` is real: it records the provenance of a row and
-      // is required at hub tier. Bindings created by calling the sidecar
-      // directly are the premise of this whole surface, so a hardcoded null here
-      // meant the first edit of one silently threw the field away. This form
-      // offers no editor for it, which is fine; destroying it is not.
-      sourceColumn: initial?.sourceColumn ?? null,
-      columnMap: toColumnMap(selection),
-      onError,
-      lastGoodMaxAgeSeconds: onError === 'last_good' ? Number(lastGoodMaxAgeSeconds) : null,
-      visibility,
-    })
+    onSubmit(buildInput({ ...values, queryId: selectedQueryId }, initial))
   }
 
   const shownError = localError ?? error
@@ -179,57 +209,57 @@ export function FeedForm({
           />
         </div>
 
-        <div className="space-y-3">
-          <h2 className={SUBSECTION_HEADING}>Address</h2>
-          <div className="space-y-1">
-            <Label htmlFor={slugId}>Slug</Label>
-            <Input
-              id={slugId}
-              type="text"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              disabled={slugLocked}
-              placeholder="vehicles-live"
-            />
-            {fieldErrors.slug && (
-              <p role="alert" className="text-sm text-destructive">
-                {fieldErrors.slug}
-              </p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <Label>Visibility</Label>
-            <RadioGroup
-              value={visibility}
-              onValueChange={(v) => v && setVisibility(v as PublishedFeedInput['visibility'])}
-            >
-              <VisibilityOption value="private" label="Private" description="Only signed-in org members can read it." />
-              <VisibilityOption value="public" label="Public" description="Anyone with the URL can read it." />
-            </RadioGroup>
-          </div>
-        </div>
+        <AddressSection
+          slug={slug}
+          onSlugChange={setSlug}
+          slugLocked={slugLocked}
+          slugError={fieldErrors.slug}
+          visibility={visibility}
+          onVisibilityChange={setVisibility}
+        />
 
         <ShapeSection
+          standard={standard}
+          onStandardChange={handleStandardChange}
+          // An edit cannot change standards. The stored artifacts, the column
+          // map and the system declaration all belong to the one it was created
+          // under, so switching is a different feed, like the slug.
+          standardLocked={Boolean(initial)}
+          version={version}
+          onVersionChange={setVersion}
+          versionOptions={versionOptions}
           entity={entitySelection.entity}
           onEntityChange={setPickedEntity}
-          isPicker={entitySelection.isPicker}
-          options={entitySelection.options}
+          isEntityPicker={entitySelection.isPicker}
+          entityOptions={entitySelection.options}
         />
+
+        {standard === 'gbfs' && (
+          <SystemInfoSection
+            version={version}
+            value={systemInfo}
+            onChange={(field, next) => setSystemInfo((s) => ({ ...s, [field]: next }))}
+            errors={systemErrors}
+          />
+        )}
 
         <div className="space-y-3">
           <h2 className={SUBSECTION_HEADING}>Mapping</h2>
-          <div className="space-y-1">
-            <Label htmlFor={staticGtfsRefId}>Static GTFS reference</Label>
-            <Input
-              id={staticGtfsRefId}
-              type="text"
-              value={staticGtfsRef}
-              onChange={(e) => setStaticGtfsRef(e.target.value)}
-              placeholder="the static feed this realtime feed extends"
-            />
-          </div>
+          {standard === 'gtfs-rt' && (
+            <div className="space-y-1">
+              <Label htmlFor={staticGtfsRefId}>Static GTFS reference</Label>
+              <Input
+                id={staticGtfsRefId}
+                type="text"
+                value={staticGtfsRef}
+                onChange={(e) => setStaticGtfsRef(e.target.value)}
+                placeholder="the static feed this realtime feed extends"
+              />
+            </div>
+          )}
           <ColumnMapEditor
             columns={columns}
+            fields={fields}
             selection={selection}
             onChange={(field, column) => setSelection((s) => ({ ...s, [field]: column }))}
             fieldErrors={mappingErrors}
@@ -260,18 +290,5 @@ export function FeedForm({
         </div>
       </CardContent>
     </Card>
-  )
-}
-
-function VisibilityOption({ value, label, description }: { value: string; label: string; description: string }) {
-  const id = useId()
-  return (
-    <div className="flex items-start gap-2">
-      <RadioGroupItem value={value} id={id} className="mt-0.5" />
-      <Label htmlFor={id} className="flex flex-col gap-0.5 font-normal">
-        <span>{label}</span>
-        <span className="text-xs text-muted-foreground">{description}</span>
-      </Label>
-    </div>
   )
 }
