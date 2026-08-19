@@ -3,8 +3,7 @@
 An HTTP wrapper around the `gtfs-rt-validator` PyPI package (0.3.0, pinned
 exactly), so the sidecar can validate a GTFS-Realtime feed over the network
 instead of holding a prepared archive (~584 MB, per feed) in every `veodyn-api`
-replica. Built to the contract in
-`.superpowers/sdd/validator-service/brief.md`;
+replica. The HTTP contract below is the specification;
 `api/veodyn_api/services/published_feed_validator.py` is the client written
 against exactly this.
 

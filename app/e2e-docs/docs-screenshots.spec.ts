@@ -31,13 +31,13 @@ const PAINT_SETTLE_MS = 1200
 
 // The three images that are not a plain navigation in either table, named here
 // so the completeness check at the bottom accounts for every file on disk.
-const DRIVEN_SCREENS = ['chart-editor', 'visual-builder', 'ai-create-chat']
+const DRIVEN_SCREENS = ['chart-editor', 'visual-builder', 'ai-create-chat', 'kpi-new-source']
 
-// Pack-only states this community harness cannot reproduce: two have no route
-// here at all, and managed-dataset-records is a pack state on a route that does
-// exist. Listed so the completeness check does not call the existing files
-// orphans; regenerating them takes a composed tree.
-const PACK_SCREENS = ['admin-managed-datasets', 'managed-dataset-records', 'kpi-new-source']
+// The two images this harness cannot produce. Both managed-dataset surfaces
+// read the sidecar with no mock branch, so mock mode paints an error state
+// rather than the declarations the docs describe. Listed so the completeness
+// check does not call the existing files orphans; they need a live backend.
+const PACK_SCREENS = ['admin-managed-datasets', 'managed-dataset-records']
 
 async function capture(page: Page, name: string) {
   await page.waitForLoadState('networkidle')
@@ -124,6 +124,21 @@ test.describe('signed in', () => {
     await pencil.click()
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: SURFACE_TIMEOUT })
     await capture(page, 'chart-editor')
+  })
+
+  test('kpi-new-source', async ({ page }) => {
+    // The source-type control decides which source fields the form asks for, so
+    // the state features/kpis.md documents is the one with a capture chosen,
+    // not the default the plain kpi-new capture already shows.
+    await page.goto('/kpis/new')
+    const kind = page.getByRole('combobox', { name: 'Source type' })
+    await expect(kind).toBeVisible({ timeout: SURFACE_TIMEOUT })
+    await kind.click()
+    await page.getByRole('option', { name: 'Capture', exact: true }).click()
+    await expect(page.getByRole('combobox', { name: 'Capture' })).toBeVisible({
+      timeout: SURFACE_TIMEOUT,
+    })
+    await capture(page, 'kpi-new-source')
   })
 
   test('visual-builder', async ({ page }) => {

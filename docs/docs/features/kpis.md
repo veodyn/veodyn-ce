@@ -61,23 +61,23 @@ Three different situations, three different messages: *Unable to load KPIs. The 
 
 ### What a KPI can measure
 
-A KPI used to mean one thing: a saved query, and which of its columns holds the number. It can now also measure a feed directly, which saves writing a query whose only job is to count how well a feed is behaving.
+A KPI used to mean one thing: a saved query, and which of its columns holds the number. It can now also measure a [capture](/features/captures) or a published feed directly, which saves writing a query whose only job is to count how well one of them is behaving.
 
-**Source type** on the form picks between them, and the two fields beside it change with it. A saved query asks for a query and a value column; either feed kind asks for a feed and a measure.
+**Source type** on the form picks between them, and the two fields beside it change with it. A saved query asks for a query and a value column; the other two ask for a source and a measure.
 
-![The New KPI form with Source type set to Capture feed, so the source fields ask for a feed and a measure](/img/screenshots/kpi-new-source.png)
+![The New KPI form with Source type set to Capture, so the source fields ask for a capture and a measure](/img/screenshots/kpi-new-source.png)
 
 | Source type | You pick | The number is |
 |---|---|---|
 | Saved query | A saved query and one of its result columns | Whatever that column holds |
-| Capture feed | A captured feed and a measure | Computed from what the feed has landed in the warehouse |
+| Capture | A [capture](/features/captures) and a measure | Computed from what it has landed in the warehouse |
 | Published feed | A [published feed](/features/published-feeds) and a measure | Computed from its publish attempts |
 
-The two feed kinds are separate rather than one kind with a switch, because their identifiers are not the same thing: a capture feed is keyed on its warehouse table name and a published feed on the slug an operator chose.
+Those two are separate kinds rather than one kind with a switch, because their identifiers are not the same thing: a capture is keyed on its warehouse table name and a published feed on the slug an operator chose.
 
 The measures are a fixed list, each with its own unit and its own sense of which direction is good, so the form fills in the direction rather than making you reason it out.
 
-**Capture feed:**
+**Capture:**
 
 | Measure | Unit | Good direction |
 |---|---|---|
@@ -96,7 +96,7 @@ The measures are a fixed list, each with its own unit and its own sense of which
 
 Some measures take a parameter, usually the window to measure over, and delivery ratio also takes the interval the feed is expected to keep.
 
-A KPI measuring a feed that later disappears keeps its history rather than being deleted with it, so the record of what that feed used to do survives.
+A KPI measuring a source that later disappears keeps its history rather than being deleted with it, so the record of what that source used to do survives.
 
 ### You do not type the current value
 
