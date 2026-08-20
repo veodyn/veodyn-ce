@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-**node**, the query backend: a headless query, dashboard and scheduling API. Flask backend with SQLAlchemy ORM. Background jobs via Redis Queue (RQ). Data sources come from a pluggable query runner system. The default list has 40 entries, 13 of them the transportation connectors. The React client and `viz-lib` visualization library that used to live in this tree were deleted; the product UI is the separate Next.js app in `app/`.
+**node**, the query backend: a headless query, dashboard and scheduling API. Flask backend with SQLAlchemy ORM. Background jobs via Redis Queue (RQ). Data sources come from a pluggable query runner system. The default list has 41 entries, 14 of them the transportation connectors. The React client and `viz-lib` visualization library that used to live in this tree were deleted; the product UI is the separate Next.js app in `app/`.
 
 The inner Python package is named `redash` (`import redash`, `redash.settings`), and the paths below are literal: the name is a deployed contract across module paths, settings and migrations, so it is not renamed. `NOTICE` at the repository root carries the licensing.
 
@@ -52,7 +52,7 @@ python manage.py ds ...             # Data source management
 
 - **`handlers/`**: Flask-RESTful API endpoints (26 handler modules). `handlers/api.py` wires routes. Largest: `handlers/queries.py`.
 
-- **`query_runner/`**: Pluggable data source drivers (54 files, 40 registered in the default list). Base classes in `query_runner/__init__.py`: `BaseQueryRunner`, `BaseSQLQueryRunner`, `BaseHTTPQueryRunner`. Each driver implements `run_query()`, `get_schema()`, and declares `configuration_schema()`. Drivers are auto-discovered via `redash/settings/__init__.py` (`QUERY_RUNNERS` list). Not every file in the directory is registered: the curation that picked the shipping set left the rest in place.
+- **`query_runner/`**: Pluggable data source drivers (57 files, 41 registered in the default list). Base classes in `query_runner/__init__.py`: `BaseQueryRunner`, `BaseSQLQueryRunner`, `BaseHTTPQueryRunner`. Each driver implements `run_query()`, `get_schema()`, and declares `configuration_schema()`. Drivers are auto-discovered via `redash/settings/__init__.py` (`QUERY_RUNNERS` list). Not every file in the directory is registered: the curation that picked the shipping set left the rest in place.
 
 - **`destinations/`**: Alert notification channels (3 files, 2 registered by default). Same plugin pattern as query runners: `BaseDestination` base class, auto-discovered via settings.
 

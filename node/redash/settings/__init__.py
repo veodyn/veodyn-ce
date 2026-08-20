@@ -337,6 +337,7 @@ default_query_runners = [
     "redash.query_runner.duckdb",
     "redash.query_runner.metrocloudalliance",
     "redash.query_runner.gtfs_realtime",
+    "redash.query_runner.gtfs_static",
     "redash.query_runner.socaltransport",
     "redash.query_runner.geotab",
     "redash.query_runner.airnow",

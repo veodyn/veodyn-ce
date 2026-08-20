@@ -27,6 +27,7 @@ geotab
 go511
 google_spreadsheets
 gtfs_realtime
+gtfs_static
 influxdb
 influxdbv2
 json
