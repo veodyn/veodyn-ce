@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 from sqlalchemy.orm import Session
 
-from tests.publish_stubs import CLEAN, ERRORED, ROWS, UNCHECKED, make_feed
+from tests.publish_stubs import CLEAN, ERRORED, ROWS, UNCHECKED, gbfs_feed, make_feed, never_called
 from veodyn_api.models.published_feed import PublishedFeed
 from veodyn_api.services.gtfs_rt_serializer import SerializationError
 from veodyn_api.services.publish_engine import GbfsPublisher, current_artifact, run_attempt
@@ -21,27 +21,6 @@ FILES: dict[str, Any] = {
     "gbfs.json": {"last_updated": 1, "ttl": 0, "version": "2.3", "data": {"en": {"feeds": []}}},
     "station_status.json": {"last_updated": 1, "ttl": 0, "version": "2.3", "data": {"stations": []}},
 }
-
-SYSTEM_INFO = {"system_id": "acme", "language": "en", "name": "Acme Bikes", "timezone": "UTC"}
-
-
-def gbfs_feed(db: Session, **overrides: Any) -> PublishedFeed:
-    fields: dict[str, Any] = {
-        "slug": "bikes",
-        "standard": "gbfs",
-        "version": "2.3",
-        "entity": "stations",
-        "static_gtfs_ref": None,
-        "system_info": SYSTEM_INFO,
-        "column_map": {"station_id": "sid", "name": "nm", "lat": "lat", "lon": "lon"},
-    }
-    fields.update(overrides)
-    return make_feed(db, **fields)
-
-
-def never_called(*args: Any, **kwargs: Any) -> ValidationOutcome:
-    raise AssertionError("the gtfs-rt validator must not run for a gbfs feed")
-
 
 # So `files=None` can mean "produced nothing" rather than "use the default".
 _DEFAULT = object()
@@ -59,7 +38,7 @@ def publisher(
             raise serialize_error
         return FILES if files is _DEFAULT else files
 
-    def validate(produced: dict[str, Any], version: str) -> ValidationOutcome:
+    def validate(produced: dict[str, Any], version: str, shape: str) -> ValidationOutcome:
         if validate_error is not None:
             raise validate_error
         return outcome
@@ -94,7 +73,7 @@ def test_a_worker_with_no_publisher_fails_closed(db: Session) -> None:
 
 
 def test_a_serialization_fault_never_reaches_the_validator(db: Session) -> None:
-    def exploding_validate(produced: dict[str, Any], version: str) -> ValidationOutcome:
+    def exploding_validate(produced: dict[str, Any], version: str, shape: str) -> ValidationOutcome:
         raise AssertionError("a mapping fault must be named before any rule runs")
 
     broken = GbfsPublisher(
@@ -107,6 +86,25 @@ def test_a_serialization_fault_never_reaches_the_validator(db: Session) -> None:
 
     assert result.decision == "failed"
     assert result.reason == "row 0: lat is blank"
+
+
+def test_the_validator_is_told_the_files_the_version_and_the_shape(db: Session) -> None:
+    """The shape is the third argument and decides which member files the
+    validator requires of the set, so a publisher handed only the version would
+    judge a dockless feed against the docked table."""
+    seen: list[tuple[dict[str, Any], str, str]] = []
+
+    def spying_validate(produced: dict[str, Any], version: str, shape: str) -> ValidationOutcome:
+        seen.append((produced, version, shape))
+        return CLEAN
+
+    feed = gbfs_feed(db, slug="scooters", entity="vehicles", version="3.0")
+    watched = GbfsPublisher(serialize=lambda rows, binding, stamp: FILES, validate=spying_validate)
+
+    result = run_attempt(db, feed, ROWS, 1, 10, never_called, gbfs=watched)
+
+    assert result.decision == "published", result.reason
+    assert seen == [(FILES, "3.0", "vehicles")]
 
 
 def test_an_unavailable_validator_is_a_failure_not_a_pass(db: Session) -> None:
@@ -153,12 +151,14 @@ def test_a_serializer_that_produced_nothing_is_a_failure_not_a_500(db: Session, 
 
 
 def test_an_unsupported_gbfs_entity_is_refused(db: Session) -> None:
-    feed = gbfs_feed(db, entity="vehicles")
+    """`docks` is a shape GBFS has no file for, and one a pack could still
+    register: the engine publishes only what it can serialize."""
+    feed = gbfs_feed(db, entity="docks")
 
     result = run_attempt(db, feed, ROWS, 1, 10, never_called, gbfs=publisher())
 
     assert result.decision == "failed"
-    assert "vehicles" in result.reason
+    assert "docks" in result.reason
 
 
 def test_an_older_query_result_is_refused_for_gbfs_too(db: Session) -> None:
@@ -189,70 +189,6 @@ def test_a_gtfs_rt_feed_is_unaffected_by_the_publisher_argument(db: Session) -> 
     assert artifact is not None
     assert artifact.feed_bytes is not None
     assert artifact.feed_files is None
-
-
-def test_an_unset_public_origin_fails_the_attempt_rather_than_publishing(db: Session) -> None:
-    """The production publisher, not a stub: a deployment that cannot name its
-    own public origin would otherwise publish a discovery document whose member
-    urls point nowhere."""
-    from veodyn_api.services.publish_validator import build_gbfs_publisher
-    from veodyn_api.settings import Settings
-
-    settings = Settings(feed_public_origin="")
-    feed = gbfs_feed(db)
-
-    result = run_attempt(db, feed, ROWS, 1, 10, never_called, gbfs=build_gbfs_publisher(settings))
-
-    assert result.decision == "failed"
-    assert "VEODYN_FEED_PUBLIC_ORIGIN" in result.reason
-    assert current_artifact(db, feed) is None
-
-
-def test_the_production_publisher_serializes_and_validates_for_real(db: Session) -> None:
-    """One end-to-end pass with nothing stubbed but the clock: real serializer,
-    real gbfs-validator, real origin. This is the case that would catch the two
-    halves agreeing with the plan and not with each other."""
-    from veodyn_api.services.publish_validator import build_gbfs_publisher
-    from veodyn_api.settings import Settings
-
-    settings = Settings(feed_public_origin="https://veodyn.example")
-    feed = gbfs_feed(
-        db,
-        column_map={
-            "station_id": "sid",
-            "name": "nm",
-            "lat": "lat",
-            "lon": "lon",
-            "num_vehicles_available": "bikes",
-            "is_installed": "inst",
-            "is_renting": "rent",
-            "is_returning": "ret",
-            "last_reported": "seen",
-        },
-    )
-    rows = [
-        {
-            "sid": "s1",
-            "nm": "Main St",
-            "lat": 34.05,
-            "lon": -118.24,
-            "bikes": 4,
-            "inst": 1,
-            "rent": 1,
-            "ret": 1,
-            "seen": 1755400000,
-        }
-    ]
-
-    result = run_attempt(db, feed, rows, 1, 1755400100, never_called, gbfs=build_gbfs_publisher(settings))
-
-    assert result.decision == "published", result.reason
-    artifact = current_artifact(db, feed)
-    assert artifact is not None and artifact.feed_files is not None
-    feeds = artifact.feed_files["gbfs.json"]["data"]["en"]["feeds"]
-    urls = {entry["name"]: entry["url"] for entry in feeds}
-    assert urls["station_status"] == "https://veodyn.example/api/public/feeds/bikes/station_status.json"
-    assert artifact.enabled_rules
 
 
 @pytest.mark.parametrize("standard", ["siri", ""])

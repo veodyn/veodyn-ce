@@ -52,9 +52,9 @@ def test_an_unregistered_entity_is_refused_naming_what_is_supported(
     assert "vehicle_positions" in message
 
 
-def test_community_seeds_one_entity_per_standard() -> None:
+def test_community_seeds_the_entities_its_serializers_write() -> None:
     assert published_feed_registry.entities("gtfs-rt") == frozenset({"vehicle_positions"})
-    assert published_feed_registry.entities("gbfs") == frozenset({"stations"})
+    assert published_feed_registry.entities("gbfs") == frozenset({"stations", "vehicles"})
     assert published_feed_registry.standards() == frozenset({"gtfs-rt", "gbfs"})
 
 

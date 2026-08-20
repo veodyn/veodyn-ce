@@ -22,6 +22,16 @@ STATION_MAP = {
 }
 STATION_COLUMNS = ("sid", "label", "lat", "lon", "bikes", "inst", "rent", "ret", "seen", "cap")
 
+VEHICLE_MAP = {
+    "vehicle_id": "vid",
+    "lat": "y",
+    "lon": "x",
+    "is_reserved": "res",
+    "is_disabled": "dis",
+    "last_reported": "seen",
+}
+VEHICLE_COLUMNS = ("vid", "y", "x", "res", "dis", "seen", "range", "kind")
+
 
 def test_a_complete_map_over_known_columns_is_ok():
     check = check_column_map(
@@ -169,6 +179,28 @@ def test_a_field_the_gbfs_serializer_does_not_write_is_invalid():
 
     assert check.state == "invalid"
     assert any("num_bikes_available" in problem for problem in check.problems)
+
+
+def test_a_complete_vehicle_map_is_ok():
+    check = check_column_map("gbfs", "vehicles", VEHICLE_MAP, VEHICLE_COLUMNS)
+
+    assert check.state == "ok"
+    assert check.problems == ()
+
+
+def test_the_two_gbfs_shapes_do_not_share_a_vocabulary():
+    """Same standard, different shape: a station map under `vehicles` names
+    nothing that file set writes, and vehicle_types.json is not published, so
+    `vehicle_type_id` is unknown rather than optional."""
+    crossed = check_column_map("gbfs", "vehicles", STATION_MAP, STATION_COLUMNS)
+
+    assert crossed.state == "invalid"
+    assert any("station_id" in problem for problem in crossed.problems)
+
+    typed = check_column_map("gbfs", "vehicles", {**VEHICLE_MAP, "vehicle_type_id": "kind"}, VEHICLE_COLUMNS)
+
+    assert typed.state == "invalid"
+    assert any("vehicle_type_id" in problem for problem in typed.problems)
 
 
 def test_an_entity_from_the_other_standard_is_invalid():

@@ -20,6 +20,7 @@ from typing import Any
 # No py.typed in the distribution, so pyproject.toml carries the mypy override.
 from gbfs_validator import GBFS
 
+from veodyn_api.services.gbfs_serializer import SHAPES
 from veodyn_api.services.published_feed_validator import Finding, ValidationOutcome, ValidatorUnavailable
 
 
@@ -35,13 +36,20 @@ def discovery_for_validation(files: dict[str, Any], directory: str) -> dict[str,
     return discovery
 
 
-def _run(files: dict[str, Any], version: str) -> dict[str, Any]:
+def _run(files: dict[str, Any], version: str, shape: str) -> dict[str, Any]:
+    # The shape decides which member files the package requires of the set: a
+    # docked system owes station_information and station_status, a free-floating
+    # one owes the version's vehicle status file. `validate_gbfs_files` has
+    # already refused anything outside the two.
+    docked = shape == "stations"
     with tempfile.TemporaryDirectory() as directory:
         try:
             for name, body in files.items():
                 written = discovery_for_validation(files, directory) if name == "gbfs.json" else body
                 Path(directory, name).write_text(json.dumps(written), encoding="utf-8")
-            report = GBFS(f"file://{directory}/gbfs.json", docked=True, version=version).validation()
+            report = GBFS(
+                f"file://{directory}/gbfs.json", docked=docked, freefloating=not docked, version=version
+            ).validation()
         except Exception as exc:
             raise ValidatorUnavailable(f"gbfs validator did not return a report: {exc}") from exc
     if not isinstance(report, dict):
@@ -105,9 +113,14 @@ def _findings_for(entry: dict[str, Any]) -> list[Finding]:
     return findings
 
 
-def validate_gbfs_files(files: dict[str, Any], version: str) -> ValidationOutcome:
-    """One serialized file set against its GBFS version. Raises rather than guessing."""
-    report = _run(files, version)
+def validate_gbfs_files(files: dict[str, Any], version: str, shape: str) -> ValidationOutcome:
+    """One serialized file set against its GBFS version and shape. Raises rather
+    than guessing, and a shape it cannot name a file table for is one of those:
+    falling through to free-floating would judge the set against rules nobody
+    asked for."""
+    if shape not in SHAPES:
+        raise ValidatorUnavailable(f"gbfs shape {shape!r} is not one this adapter can judge a file set as")
+    report = _run(files, version, shape)
     # `or {}` would turn an absent summary into a clean verdict, which is the one
     # shape this adapter exists to refuse: no summary means no verdict at all.
     summary = report.get("summary")

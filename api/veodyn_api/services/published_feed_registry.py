@@ -4,9 +4,9 @@ name, given the `standard` it names alongside.
 Same shape as the five seams in `registry.py`, a mutable module-level mapping an
 import fills in. Its own module because the read side is
 `schemas/published_feed.py` validating a request body. Community seeds
-`vehicle_positions` under `gtfs-rt` and `stations` under `gbfs` below; a pack
-widens one standard's set with `register_entity`, and `extras.load_extra_modules`
-is what makes the pack's import happen.
+`vehicle_positions` under `gtfs-rt` and the two GBFS shapes below; a pack widens
+one standard's set with `register_entity`, and `extras.load_extra_modules` is
+what makes the pack's import happen.
 
 **Visibility is not here.** This answers what feed content a binding may name, not
 who may read one. See
@@ -60,6 +60,7 @@ def is_registered(entity: str, standard: str) -> bool:
 # Community's own seed, at import, the same trigger `extras.py` documents.
 register_entity("vehicle_positions", "gtfs-rt")
 register_entity("stations", "gbfs")
+register_entity("vehicles", "gbfs")
 
 
 @contextmanager

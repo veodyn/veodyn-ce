@@ -42,10 +42,11 @@ const FALLBACK_VERSIONS: Record<FeedStandard, string[]> = {
 
 function initialSelection(
   feed: PublishedFeed | undefined,
-  standard: FeedStandard
+  standard: FeedStandard,
+  entity: string | undefined
 ): Record<string, string | null> {
   const selection: Record<string, string | null> = {}
-  for (const field of fieldsFor(standard)) selection[field.name] = feed?.columnMap[field.name] ?? null
+  for (const field of fieldsFor(standard, entity)) selection[field.name] = feed?.columnMap[field.name] ?? null
   return selection
 }
 
@@ -69,7 +70,7 @@ export function FeedForm({
   )
   const [selectedQueryId, setSelectedQueryId] = useState<number | null>(initial?.queryId ?? null)
   const [selection, setSelection] = useState<Record<string, string | null>>(() =>
-    initialSelection(initial, initial?.standard ?? 'gtfs-rt')
+    initialSelection(initial, initial?.standard ?? 'gtfs-rt', initial?.entity)
   )
   // The query id the current `selection` was built against, tracked apart
   // from `selectedQueryId` (which goes back to null while QueryPicker is in
@@ -95,8 +96,6 @@ export function FeedForm({
 
   const { data: resultColumns } = useQueryResultColumns(selectedQueryId ?? undefined)
   const columns = resultColumns?.columns ?? []
-  const fields = fieldsFor(standard)
-  const missing = missingRequired(fields, selection)
   const ageError = attempted ? lastGoodAgeError(onError, lastGoodMaxAgeSeconds) : null
 
   const {
@@ -106,8 +105,8 @@ export function FeedForm({
   } = useFeedCapabilities()
   // Undefined covers both "still loading" and "the request failed": both
   // degrade to the single-fact form rather than an empty picker or a spinner
-  // blocking the whole form. A community deployment has exactly one entity
-  // and must never see the form degrade because a secondary request was slow.
+  // blocking the whole form. A deployment registering one entity for this
+  // standard must never see the form degrade because a secondary request was slow.
   const capability = capabilitiesLoading || capabilitiesError
     ? undefined
     : capabilities?.standards.find((entry) => entry.standard === standard)
@@ -118,6 +117,11 @@ export function FeedForm({
     pickedEntity,
     standard
   )
+
+  // After the entity is resolved: under gbfs the shape, not the standard, picks
+  // the vocabulary.
+  const fields = fieldsFor(standard, entitySelection.entity)
+  const missing = missingRequired(fields, selection)
 
   const mappingErrors: Record<string, string> = {}
   for (const field of fields) {
@@ -155,7 +159,7 @@ export function FeedForm({
   // query after "Change" keeps the mapping instead of wiping it.
   const handleSelectQuery = (queryId: number) => {
     if (queryId !== mappedQueryId) {
-      setSelection(initialSelection(undefined, standard))
+      setSelection(initialSelection(undefined, standard, entitySelection.entity))
       setMappedQueryId(queryId)
     }
     setSelectedQueryId(queryId)
@@ -168,7 +172,7 @@ export function FeedForm({
     if (next === standard) return
     setStandard(next)
     setVersion(DEFAULT_VERSION[next])
-    setSelection(initialSelection(undefined, next))
+    setSelection(initialSelection(undefined, next, undefined))
     setPickedEntity(null)
     setStaticGtfsRef('')
     setSystemInfo({})

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import { FeedForm } from './feed-form'
@@ -41,10 +41,47 @@ const GBFS_FEED: PublishedFeed = {
   bindingState: 'unknown',
 }
 
-function renderEdit(onSubmit = vi.fn()) {
+const VEHICLES_FEED: PublishedFeed = {
+  ...GBFS_FEED,
+  slug: 'scooters-live',
+  entity: 'vehicles',
+  columnMap: {
+    vehicle_id: 'vid',
+    lat: 'y',
+    lon: 'x',
+    is_reserved: 'res',
+    is_disabled: 'dis',
+    last_reported: 'seen',
+  },
+}
+
+// Query 3 points at result 103, whose columns are real enough to map against:
+// station_name / lat / lon / bikes / docks / total_capacity / pct_full. The six
+// required fields are prefilled from them and current_range_meters is left for
+// the test to map, which is the only way its row gets rendered at all.
+const MAPPABLE_VEHICLES_FEED: PublishedFeed = {
+  ...VEHICLES_FEED,
+  queryId: 3,
+  columnMap: {
+    vehicle_id: 'station_name',
+    lat: 'lat',
+    lon: 'lon',
+    is_reserved: 'bikes',
+    is_disabled: 'docks',
+    last_reported: 'pct_full',
+  },
+}
+
+async function mapField(user: ReturnType<typeof userEvent.setup>, field: string, column: string) {
+  const row = screen.getByText(field).closest('tr') as HTMLElement
+  await user.click(within(row).getByRole('combobox'))
+  await user.click(await screen.findByRole('option', { name: column }))
+}
+
+function renderEdit(onSubmit = vi.fn(), initial: PublishedFeed = GBFS_FEED) {
   renderWithProviders(
     <FeedForm
-      initial={GBFS_FEED}
+      initial={initial}
       slugLocked
       submitLabel="Save"
       isPending={false}
@@ -67,6 +104,39 @@ describe('editing a gbfs binding', () => {
     // The gtfs-rt half must be absent, not blank.
     expect(screen.queryByLabelText(/static gtfs reference/i)).not.toBeInTheDocument()
     expect(screen.queryByText('vehicle_id')).not.toBeInTheDocument()
+  })
+
+  it('submits a vehicles binding under its own column map', async () => {
+    // Both feeds are gbfs at 2.3, so the standard cannot be what picks the
+    // vocabulary: read as stations, none of these fields would survive the
+    // round trip and the form would refuse on the mapping instead.
+    const user = userEvent.setup()
+    const onSubmit = renderEdit(vi.fn(), VEHICLES_FEED)
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ entity: 'vehicles', columnMap: VEHICLES_FEED.columnMap })
+    )
+  })
+
+  it('offers current_range_meters as an optional field and submits what it is mapped to', async () => {
+    // The one optional field of the dockless shape. Dropped from the
+    // vocabulary, this row would not render and nothing else here would notice.
+    const user = userEvent.setup()
+    const onSubmit = renderEdit(vi.fn(), MAPPABLE_VEHICLES_FEED)
+
+    // Awaited: the mapping table is a row of prose until the bound query's
+    // columns land, so there is nothing to map against on the first render.
+    expect(await screen.findByText('current_range_meters')).toBeInTheDocument()
+    await mapField(user, 'current_range_meters', 'total_capacity')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        columnMap: { ...MAPPABLE_VEHICLES_FEED.columnMap, current_range_meters: 'total_capacity' },
+      })
+    )
   })
 
   it('never offers to convert the binding, which would destroy its system info', () => {

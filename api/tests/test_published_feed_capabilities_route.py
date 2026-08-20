@@ -42,7 +42,7 @@ def test_capabilities_reports_what_is_registered(api: TestClient) -> None:
         entry.pop("timezones")
     assert body == {
         "standards": [
-            {"standard": "gbfs", "versions": ["2.3", "3.0"], "entities": ["stations"]},
+            {"standard": "gbfs", "versions": ["2.3", "3.0"], "entities": ["stations", "vehicles"]},
             {"standard": "gtfs-rt", "versions": ["2.0"], "entities": ["vehicle_positions"]},
         ]
     }
@@ -83,7 +83,7 @@ def test_an_unreadable_schema_reports_no_timezones_rather_than_failing(api: Test
     assert response.status_code == 200
     by_standard = {entry["standard"]: entry for entry in response.json()["standards"]}
     assert by_standard["gbfs"]["timezones"] == []
-    assert by_standard["gbfs"]["entities"] == ["stations"]
+    assert by_standard["gbfs"]["entities"] == ["stations", "vehicles"]
 
 
 @respx.mock
@@ -97,7 +97,7 @@ def test_widening_the_registry_widens_what_this_endpoint_reports(api: TestClient
     by_standard = {entry["standard"]: entry for entry in response.json()["standards"]}
     assert by_standard["gtfs-rt"]["entities"] == ["trip_updates", "vehicle_positions"]
     # The widening is scoped to one standard, so the other must not move.
-    assert by_standard["gbfs"]["entities"] == ["stations"]
+    assert by_standard["gbfs"]["entities"] == ["stations", "vehicles"]
 
 
 @respx.mock

@@ -51,7 +51,7 @@ export function systemFieldErrors(values: FormValues): Record<string, string> {
  * furthest up the form first rather than being sent back and forth.
  */
 export function submitError(values: FormValues): string | null {
-  const missing = missingRequired(fieldsFor(values.standard), values.selection)
+  const missing = missingRequired(fieldsFor(values.standard, values.entity), values.selection)
   if (missing.length > 0) {
     return `Map every required field before publishing: ${missing.join(', ')}.`
   }
@@ -96,7 +96,7 @@ export function buildInput(values: FormValues, initial: PublishedFeed | undefine
     staticGtfsRef: isGbfs ? null : values.staticGtfsRef.trim(),
     systemInfo: isGbfs ? systemInfo : null,
     sourceColumn: initial?.sourceColumn ?? null,
-    columnMap: toColumnMap(fieldsFor(values.standard), values.selection),
+    columnMap: toColumnMap(fieldsFor(values.standard, values.entity), values.selection),
     onError: values.onError,
     lastGoodMaxAgeSeconds:
       values.onError === 'last_good' ? Number(values.lastGoodMaxAgeSeconds) : null,

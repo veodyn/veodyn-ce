@@ -1,11 +1,12 @@
 """Shared setup for the publish-attempt tests.
 
-Three test modules drive the same engine from different angles -- what it
+Several test modules drive the same engine from different angles -- what it
 decides (`test_publish_engine.py`), what the artifact row is allowed to hold
-(`test_publish_attempt_artifact.py`) and what happens when something else moves
-underneath an attempt already running (`test_publish_in_flight.py`) -- and one
-binding plus three canned verdicts is all any of them needs. Kept here rather
-than duplicated, so they cannot drift into testing three different feeds.
+(`test_publish_attempt_artifact.py`), what happens when something else moves
+underneath an attempt already running (`test_publish_in_flight.py`) and the two
+gbfs modules -- and one binding per standard plus three canned verdicts is all
+any of them needs. Kept here rather than duplicated, so they cannot drift into
+testing different feeds.
 
 The verdicts are `ValidationOutcome` values built by hand. Nothing here speaks
 to a validator, because the engine takes `validate` as a callable: that seam is
@@ -66,6 +67,28 @@ def make_feed(db: Session, **overrides: Any) -> PublishedFeed:
     db.add(feed)
     db.commit()
     return feed
+
+
+GBFS_SYSTEM_INFO = {"system_id": "acme", "language": "en", "name": "Acme Bikes", "timezone": "UTC"}
+
+
+def gbfs_feed(db: Session, **overrides: Any) -> PublishedFeed:
+    """A committed gbfs binding, defaulting to the docked shape at 2.3."""
+    fields: dict[str, Any] = {
+        "slug": "bikes",
+        "standard": "gbfs",
+        "version": "2.3",
+        "entity": "stations",
+        "static_gtfs_ref": None,
+        "system_info": GBFS_SYSTEM_INFO,
+        "column_map": {"station_id": "sid", "name": "nm", "lat": "lat", "lon": "lon"},
+    }
+    fields.update(overrides)
+    return make_feed(db, **fields)
+
+
+def never_called(*args: Any, **kwargs: Any) -> ValidationOutcome:
+    raise AssertionError("the gtfs-rt validator must not run for a gbfs feed")
 
 
 def edit_binding(db: Session, feed: PublishedFeed, **changes: Any) -> PublishedFeed:

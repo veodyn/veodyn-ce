@@ -4,6 +4,9 @@ Pure, like gtfs_rt_serializer: no database, no HTTP, no clock. The version
 decides spellings and shapes; the field vocabulary the column map uses is
 version-neutral. Nothing is dropped: a value that cannot honestly become its
 field is refused with its row index, and genuine absence stays absent.
+
+Two shapes, each with its own file set: `stations` for a docked system,
+`vehicles` for a free-floating one.
 """
 
 import math
@@ -28,12 +31,15 @@ REQUIRED_FIELDS: dict[str, frozenset[str]] = {
             "last_reported",
         }
     ),
+    "vehicles": frozenset({"vehicle_id", "lat", "lon", "is_reserved", "is_disabled", "last_reported"}),
 }
 
 # A key outside this set is refused rather than skipped, which would publish a
-# quietly incomplete feed.
+# quietly incomplete feed. `vehicle_type_id` is outside it: it names a
+# vehicle_types.json nothing here writes.
 SUPPORTED_FIELDS: dict[str, frozenset[str]] = {
     "stations": REQUIRED_FIELDS["stations"] | frozenset({"num_docks_available", "capacity", "address"}),
+    "vehicles": REQUIRED_FIELDS["vehicles"] | frozenset({"current_range_meters"}),
 }
 
 # The keys the binding supplies. 3.0 writes `language` out as `languages`.
@@ -42,7 +48,18 @@ SYSTEM_INFO_REQUIRED: dict[str, frozenset[str]] = {
     "3.0": frozenset({"system_id", "language", "name", "timezone", "opening_hours", "feed_contact_email"}),
 }
 
-MEMBER_FILES: tuple[str, ...] = ("system_information.json", "station_information.json", "station_status.json")
+_SYSTEM_FILE = "system_information.json"
+_STATION_FILES = ("station_information.json", "station_status.json")
+# 3.0 renamed the free-floating status file, its data key and its id field
+# together; 2.3 spells all three the older way.
+_VEHICLE_FILE: dict[str, str] = {"2.3": "free_bike_status.json", "3.0": "vehicle_status.json"}
+_VEHICLE_KEY: dict[str, str] = {"2.3": "bikes", "3.0": "vehicles"}
+_VEHICLE_ID: dict[str, str] = {"2.3": "bike_id", "3.0": "vehicle_id"}
+
+_ID_FIELDS: dict[str, str] = {"stations": "station_id", "vehicles": "vehicle_id"}
+
+# The shapes this module writes, which is what `REQUIRED_FIELDS` is keyed by.
+SHAPES: frozenset[str] = frozenset(REQUIRED_FIELDS)
 
 _INFORMATION_FIELDS = ("name", "lat", "lon", "address", "capacity")
 _STATUS_FIELDS = (
@@ -53,9 +70,10 @@ _STATUS_FIELDS = (
     "is_returning",
     "last_reported",
 )
-_FLOAT_FIELDS = frozenset({"lat", "lon"})
+_VEHICLE_FIELDS = ("lat", "lon", "is_reserved", "is_disabled", "current_range_meters", "last_reported")
+_FLOAT_FIELDS = frozenset({"lat", "lon", "current_range_meters"})
 _COUNT_FIELDS = frozenset({"num_vehicles_available", "num_docks_available", "capacity"})
-_BOOL_FIELDS = frozenset({"is_installed", "is_renting", "is_returning"})
+_BOOL_FIELDS = frozenset({"is_installed", "is_renting", "is_returning", "is_reserved", "is_disabled"})
 
 # WGS-84, and the bounds the GBFS schemas put on these two fields.
 _COORDINATE_LIMITS: dict[str, float] = {"lat": 90.0, "lon": 180.0}
@@ -64,6 +82,21 @@ _COORDINATE_LIMITS: dict[str, float] = {"lat": 90.0, "lon": 180.0}
 # `datetime.fromtimestamp` from raising OverflowError on the 3.0 path.
 _MIN_POSIX = 1450155600
 _MAX_POSIX = 2**31 - 1
+
+
+def member_files(shape: str, version: str) -> tuple[str, ...]:
+    """The files a shape publishes under `version`, the discovery document aside.
+
+    Both arguments are checked here as well as in `serialize_gbfs`, because a
+    shape falling through to the free-floating branch would answer for a name
+    nothing writes.
+    """
+    if shape not in SHAPES:
+        raise SerializationError(f"shape {shape!r} is not one this serializer writes")
+    if version not in SUPPORTED_VERSIONS:
+        raise SerializationError(f"version {version!r} is not one this serializer writes")
+    rest = _STATION_FILES if shape == "stations" else (_VEHICLE_FILE[version],)
+    return (_SYSTEM_FILE, *rest)
 
 
 def check_system_info(version: str, info: dict[str, str]) -> tuple[str, ...]:
@@ -109,9 +142,11 @@ def _value(row: dict[str, Any], column: str, field: str, index: int) -> Any:
         # nan and inf serialize as bare NaN/Infinity, which are not JSON at all.
         if not math.isfinite(number):
             raise SerializationError(f"row {index}: {field} value {value!r} is not a finite number")
-        limit = _COORDINATE_LIMITS[field]
-        if abs(number) > limit:
+        limit = _COORDINATE_LIMITS.get(field)
+        if limit is not None and abs(number) > limit:
             raise SerializationError(f"row {index}: {field} value {number} is outside -{limit}..{limit}")
+        if field == "current_range_meters" and number < 0:
+            raise SerializationError(f"row {index}: {field} value {number} is negative")
         return number
     if field in _COUNT_FIELDS or field == "last_reported":
         # bool is an int subclass, and True as a bike count is never what was meant.
@@ -131,7 +166,61 @@ def _value(row: dict[str, Any], column: str, field: str, index: int) -> Any:
     return str(value)
 
 
-def serialize_gbfs_stations(
+def _row_values(shape: str, rows: list[dict[str, Any]], column_map: dict[str, str]) -> list[dict[str, Any]]:
+    """Every row's coerced fields, refusing a blank required one or a repeated id."""
+    id_field = _ID_FIELDS[shape]
+    coerced: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for index, row in enumerate(rows):
+        values = {field: _value(row, column, field, index) for field, column in column_map.items()}
+        for field in sorted(REQUIRED_FIELDS[shape]):
+            if values.get(field) is None:
+                raise SerializationError(f"row {index}: required field {field} is blank")
+        entity_id = str(values[id_field])
+        if entity_id in seen_ids:
+            raise SerializationError(f"row {index}: duplicate {id_field} {entity_id!r}")
+        seen_ids.add(entity_id)
+        values[id_field] = entity_id
+        coerced.append(values)
+    return coerced
+
+
+def _station_files(rows: list[dict[str, Any]], language: str, version: str) -> dict[str, Any]:
+    information: list[dict[str, Any]] = []
+    status: list[dict[str, Any]] = []
+    for values in rows:
+        info_entry: dict[str, Any] = {"station_id": values["station_id"]}
+        for field in _INFORMATION_FIELDS:
+            if values.get(field) is None:
+                continue
+            info_entry[field] = _localized(values[field], language, version) if field == "name" else values[field]
+        information.append(info_entry)
+
+        status_entry: dict[str, Any] = {"station_id": values["station_id"]}
+        for field in _STATUS_FIELDS:
+            if values.get(field) is None:
+                continue
+            spelled = "num_bikes_available" if field == "num_vehicles_available" and version == "2.3" else field
+            value = _rfc3339(values[field]) if field == "last_reported" and version == "3.0" else values[field]
+            status_entry[spelled] = value
+        status.append(status_entry)
+    return {"station_information.json": {"stations": information}, "station_status.json": {"stations": status}}
+
+
+def _vehicle_files(rows: list[dict[str, Any]], version: str) -> dict[str, Any]:
+    vehicles: list[dict[str, Any]] = []
+    for values in rows:
+        entry: dict[str, Any] = {_VEHICLE_ID[version]: values["vehicle_id"]}
+        for field in _VEHICLE_FIELDS:
+            if values.get(field) is None:
+                continue
+            entry[field] = _rfc3339(values[field]) if field == "last_reported" and version == "3.0" else values[field]
+        vehicles.append(entry)
+    return {_VEHICLE_FILE[version]: {_VEHICLE_KEY[version]: vehicles}}
+
+
+def serialize_gbfs(
+    shape: str,
     rows: list[dict[str, Any]],
     column_map: dict[str, str],
     system_info: dict[str, str],
@@ -140,13 +229,15 @@ def serialize_gbfs_stations(
     origin: str,
     feed_timestamp: int,
 ) -> dict[str, Any]:
-    """The four files of a docked GBFS system, or a SerializationError naming why not."""
+    """One shape's GBFS file set, or a SerializationError naming why not."""
+    if shape not in SHAPES:
+        raise SerializationError(f"shape {shape!r} is not one this serializer writes")
     if version not in SUPPORTED_VERSIONS:
         raise SerializationError(f"version {version!r} is not one this serializer writes")
-    missing = sorted(REQUIRED_FIELDS["stations"] - set(column_map))
+    missing = sorted(REQUIRED_FIELDS[shape] - set(column_map))
     if missing:
         raise SerializationError(f"column_map is missing required field(s): {', '.join(missing)}")
-    unknown = sorted(set(column_map) - SUPPORTED_FIELDS["stations"])
+    unknown = sorted(set(column_map) - SUPPORTED_FIELDS[shape])
     if unknown:
         raise SerializationError(f"column_map names field(s) this serializer does not write: {', '.join(unknown)}")
     problems = check_system_info(version, system_info)
@@ -156,38 +247,8 @@ def serialize_gbfs_stations(
     _check_posix(feed_timestamp, "feed_timestamp", -1)
 
     language = system_info["language"]
-    information: list[dict[str, Any]] = []
-    status: list[dict[str, Any]] = []
-    seen_ids: set[str] = set()
-    for index, row in enumerate(rows):
-        values = {field: _value(row, column, field, index) for field, column in column_map.items()}
-        for field in sorted(REQUIRED_FIELDS["stations"]):
-            if values.get(field) is None:
-                raise SerializationError(f"row {index}: required field {field} is blank")
-        station_id = str(values["station_id"])
-        if station_id in seen_ids:
-            raise SerializationError(f"row {index}: duplicate station_id {station_id!r}")
-        seen_ids.add(station_id)
-
-        info_entry: dict[str, Any] = {"station_id": station_id}
-        for field in _INFORMATION_FIELDS:
-            if values.get(field) is None:
-                continue
-            info_entry[field] = _localized(values[field], language, version) if field == "name" else values[field]
-        information.append(info_entry)
-
-        status_entry: dict[str, Any] = {"station_id": station_id}
-        for field in _STATUS_FIELDS:
-            if values.get(field) is None:
-                continue
-            spelled = field
-            if field == "num_vehicles_available" and version == "2.3":
-                spelled = "num_bikes_available"
-            value = values[field]
-            if field == "last_reported" and version == "3.0":
-                value = _rfc3339(value)
-            status_entry[spelled] = value
-        status.append(status_entry)
+    values = _row_values(shape, rows, column_map)
+    data = _station_files(values, language, version) if shape == "stations" else _vehicle_files(values, version)
 
     stamp: Any = _rfc3339(feed_timestamp) if version == "3.0" else feed_timestamp
     system: dict[str, Any] = {
@@ -202,18 +263,29 @@ def serialize_gbfs_stations(
     else:
         system["language"] = language
 
-    def wrap(data: dict[str, Any]) -> dict[str, Any]:
-        return {"last_updated": stamp, "ttl": 0, "version": version, "data": data}
+    def wrap(payload: dict[str, Any]) -> dict[str, Any]:
+        return {"last_updated": stamp, "ttl": 0, "version": version, "data": payload}
 
     feeds = [
         {"name": name.removesuffix(".json"), "url": f"{origin}/api/public/feeds/{slug}/{name}"}
-        for name in MEMBER_FILES
+        for name in member_files(shape, version)
     ]
-    discovery_data: dict[str, Any] = {"feeds": feeds} if version == "3.0" else {language: {"feeds": feeds}}
+    discovery: dict[str, Any] = {"feeds": feeds} if version == "3.0" else {language: {"feeds": feeds}}
 
-    return {
-        "gbfs.json": wrap(discovery_data),
-        "system_information.json": wrap(system),
-        "station_information.json": wrap({"stations": information}),
-        "station_status.json": wrap({"stations": status}),
-    }
+    files: dict[str, Any] = {"gbfs.json": wrap(discovery), _SYSTEM_FILE: wrap(system)}
+    for name, payload in data.items():
+        files[name] = wrap(payload)
+    return files
+
+
+def serialize_gbfs_stations(
+    rows: list[dict[str, Any]],
+    column_map: dict[str, str],
+    system_info: dict[str, str],
+    version: str,
+    slug: str,
+    origin: str,
+    feed_timestamp: int,
+) -> dict[str, Any]:
+    """The four files of a docked GBFS system, or a SerializationError naming why not."""
+    return serialize_gbfs("stations", rows, column_map, system_info, version, slug, origin, feed_timestamp)

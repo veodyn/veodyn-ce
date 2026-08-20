@@ -52,11 +52,13 @@ __all__ = [
 
 _GBFS_STANDARD = "gbfs"
 
-# The one entity each standard can publish in a community build. A pack widens
-# the binding vocabulary, and an entity this engine cannot serialize is a failed
+# The entities each standard can publish in a community build. A pack widens the
+# binding vocabulary, and an entity this engine cannot serialize is a failed
 # attempt rather than an exception.
-_SUPPORTED_ENTITY = "vehicle_positions"
-_SUPPORTED_ENTITIES: dict[str, str] = {"gtfs-rt": _SUPPORTED_ENTITY, _GBFS_STANDARD: "stations"}
+_SUPPORTED_ENTITIES: dict[str, frozenset[str]] = {
+    "gtfs-rt": frozenset({"vehicle_positions"}),
+    _GBFS_STANDARD: frozenset({"stations", "vehicles"}),
+}
 
 # The partial unique index behind the served pointer. Matched by name because
 # only this one collision is an ordinary outcome; any other integrity error on
@@ -183,7 +185,7 @@ def run_attempt(
     supported = _SUPPORTED_ENTITIES.get(feed.standard)
     if supported is None:
         return _record(db, feed, query_result_id, "failed", f"standard {feed.standard!r} is not supported yet")
-    if feed.entity != supported:
+    if feed.entity not in supported:
         return _record(db, feed, query_result_id, "failed", f"entity {feed.entity!r} is not supported yet")
 
     # Two rows, two questions. `served` is the row a publish must clear, whatever

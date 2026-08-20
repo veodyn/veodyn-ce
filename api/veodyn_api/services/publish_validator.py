@@ -17,7 +17,7 @@ from typing import Any
 import httpx
 
 from veodyn_api.models.published_feed import PublishedFeed
-from veodyn_api.services.gbfs_serializer import serialize_gbfs_stations
+from veodyn_api.services.gbfs_serializer import serialize_gbfs
 from veodyn_api.services.gbfs_validation import validate_gbfs_files
 from veodyn_api.services.gtfs_rt_serializer import SerializationError
 from veodyn_api.services.publish_engine import GbfsPublisher, Validate
@@ -55,6 +55,9 @@ def build_gbfs_publisher(settings: Settings) -> GbfsPublisher:
     An unset origin is a `SerializationError` rather than a validator failure:
     the discovery document embeds that origin in every member url, so what is
     wrong is the artifact this deployment can build, not the verdict on it.
+
+    The binding's entity is the file set's shape, and the serializer refuses one
+    it does not write rather than falling back to the docked shape.
     """
     origin = settings.feed_public_origin.rstrip("/")
 
@@ -67,7 +70,8 @@ def build_gbfs_publisher(settings: Settings) -> GbfsPublisher:
         if feed.system_info is None:
             # ck_published_feed_system_info_matches_standard rules this out.
             raise SerializationError("this gbfs binding carries no system information")
-        return serialize_gbfs_stations(
+        return serialize_gbfs(
+            feed.entity,
             rows,
             feed.column_map,
             feed.system_info,

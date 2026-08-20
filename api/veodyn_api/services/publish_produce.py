@@ -39,7 +39,9 @@ class GbfsPublisher:
     """
 
     serialize: Callable[[list[dict[str, Any]], PublishedFeed, int], dict[str, Any]]
-    validate: Callable[[dict[str, Any], str], ValidationOutcome]
+    # (files, version, shape): the shape decides which member files the
+    # validator requires of the set.
+    validate: Callable[[dict[str, Any], str, str], ValidationOutcome]
 
 
 class Refused(Exception):
@@ -100,7 +102,7 @@ def produce_gbfs(
         raise Refused("the gbfs serializer produced no files")
 
     try:
-        outcome = gbfs.validate(feed_files, feed.version)
+        outcome = gbfs.validate(feed_files, feed.version, feed.entity)
     except ValidatorUnavailable as exc:
         raise Refused(str(exc)) from exc
     return outcome, None, feed_files

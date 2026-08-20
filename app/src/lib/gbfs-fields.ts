@@ -1,4 +1,4 @@
-// The GBFS stations vocabulary, mirroring REQUIRED_FIELDS / SUPPORTED_FIELDS in
+// The GBFS vocabulary per shape, mirroring REQUIRED_FIELDS / SUPPORTED_FIELDS in
 // api/veodyn_api/services/gbfs_serializer.py; api/tests/gbfs_field_vocabulary.json
 // is the ratchet that fails the API suite if the two drift.
 //
@@ -25,6 +25,18 @@ export const GBFS_STATION_FIELDS: GtfsField[] = [
   { name: 'address', required: false },
 ]
 
+// The free-floating shape. `vehicle_type_id` is absent because no
+// vehicle_types.json is published for it to name.
+export const GBFS_VEHICLE_FIELDS: GtfsField[] = [
+  { name: 'vehicle_id', required: true },
+  { name: 'lat', required: true },
+  { name: 'lon', required: true },
+  { name: 'is_reserved', required: true },
+  { name: 'is_disabled', required: true },
+  { name: 'last_reported', required: true },
+  { name: 'current_range_meters', required: false },
+]
+
 /**
  * What the System section asks for, per version, in render order. These are the
  * INPUT keys the binding stores: 3.0 takes one `language` here and the
@@ -35,8 +47,10 @@ export const SYSTEM_INFO_FIELDS: Record<string, string[]> = {
   '3.0': ['system_id', 'language', 'name', 'timezone', 'opening_hours', 'feed_contact_email'],
 }
 
-export function fieldsFor(standard: FeedStandard): GtfsField[] {
-  return standard === 'gbfs' ? GBFS_STATION_FIELDS : GTFS_FIELDS
+/** The vocabulary a binding maps against, which under gbfs is the shape's. */
+export function fieldsFor(standard: FeedStandard, entity?: string): GtfsField[] {
+  if (standard !== 'gbfs') return GTFS_FIELDS
+  return entity === 'vehicles' ? GBFS_VEHICLE_FIELDS : GBFS_STATION_FIELDS
 }
 
 /** The system fields a version requires, defaulting to the narrower 2.3 set. */

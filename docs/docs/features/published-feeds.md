@@ -88,7 +88,7 @@ A public slug is claimed across the whole instance rather than within your org, 
 
 Standard is a choice of two, `gtfs-rt` and `gbfs`. Version follows from it. GTFS-Realtime has one version, `2.0`, and it appears as a plain fact instead of a dropdown with one entry, since a control with a single choice invites you to click it and find out what else is in there. GBFS has two, `2.3` and `3.0`, so it gets a picker.
 
-Entity is a fact or a picker, depending on what this deployment registered. A community build registers one, `vehicle_positions`, and shows it. An [enterprise](/editions) build whose pack registers more gets a picker over the real list. The form asks the running service what it holds instead of inferring it from a values file, and if that lookup is slow or fails it falls back to the single fact rather than showing an empty picker.
+Entity is a fact or a picker, depending on what this deployment registered. A community build registers one entity under GTFS-Realtime, `vehicle_positions`, and shows it as a fact; under GBFS it registers two shapes, `stations` for a docked system and `vehicles` for a free-floating one, so that gets a picker. An [enterprise](/editions) build whose pack registers more widens the list. The form asks the running service what it holds instead of inferring it from a values file, and if that lookup is slow or fails it falls back to the single fact rather than showing an empty picker.
 
 ### Mapping
 
@@ -109,6 +109,8 @@ A static GTFS reference, meaning the scheduled feed this realtime feed extends, 
 
 #### GBFS
 
+The shape picked above decides the vocabulary. For `stations`:
+
 | Field | Required |
 |---|---|
 | `station_id`, `name`, `lat`, `lon` | Yes |
@@ -116,6 +118,16 @@ A static GTFS reference, meaning the scheduled feed this realtime feed extends, 
 | `num_docks_available`, `capacity`, `address` | No |
 
 The mapped fields are split into `station_information` and `station_status` automatically, so you map them once as one list.
+
+For `vehicles`:
+
+| Field | Required |
+|---|---|
+| `vehicle_id`, `lat`, `lon` | Yes |
+| `is_reserved`, `is_disabled`, `last_reported` | Yes |
+| `current_range_meters` | No |
+
+A vehicles feed publishes the discovery document, `system_information.json` and the version's own status file: `free_bike_status.json` on 2.3, `vehicle_status.json` on 3.0. No station file is written for it, and no `vehicle_types.json` either, so `vehicle_type_id` is not a field you can map yet.
 
 #### System
 
@@ -162,7 +174,7 @@ This is serving state, not mapping state. The page will not tell you the binding
 
 A public feed shows its full address with a copy button, and says that anyone can read it without a credential once an attempt has published.
 
-A GBFS feed's address answers with the discovery document (`gbfs.json`); the member files it names sit underneath it, at `/api/public/feeds/<slug>/station_status.json` and its siblings.
+A GBFS feed's address answers with the discovery document (`gbfs.json`); the member files it names sit underneath it, at `/api/public/feeds/<slug>/station_status.json` and its siblings, or the free-floating equivalents for a `vehicles` feed.
 
 A private feed shows no address at all, and says why: reaching one takes an issued token, and the token model (issuance, rotation, revocation) has not been built. Printing a URL that refuses everything would only send someone hunting for a credential that does not exist.
 

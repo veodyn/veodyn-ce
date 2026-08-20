@@ -23,11 +23,12 @@ const CAPABILITIES_KEY = ['published-feeds', 'capabilities']
 const feedKey = (slug: string) => ['published-feeds', slug]
 const attemptsKey = (slug: string) => ['published-feeds', slug, 'attempts']
 
-// Community's own registry, exactly as services/published_feed_registry.py seeds it: one
-// entity per standard, and each standard's own supported versions. What a real
-// fixture-mode session returns when there is no backend to ask. Mock mode is
-// what pnpm test:e2e runs on, so the entity must show as a fact, not an empty
-// picker, while the gbfs version list is genuinely two.
+// Community's own registry, exactly as services/published_feed_registry.py seeds it:
+// one gtfs-rt entity, both gbfs shapes, and each standard's own supported
+// versions. What a real fixture-mode session returns when there is no backend to
+// ask. Mock mode is what pnpm test:e2e runs on, so gtfs-rt must show its entity
+// as a fact rather than an empty picker, while gbfs genuinely offers a choice of
+// shape and of version.
 //
 // `timezones` is the one field a fixture cannot mirror: the real answer is the
 // 597-name enum the API reads out of the validator's schema, so this carries a
@@ -37,7 +38,7 @@ const MOCK_CAPABILITIES: FeedCapabilities = {
     {
       standard: 'gbfs',
       versions: ['2.3', '3.0'],
-      entities: ['stations'],
+      entities: ['stations', 'vehicles'],
       timezones: ['America/Los_Angeles', 'America/New_York', 'Europe/Berlin', 'Europe/London', 'UTC'],
     },
     { standard: 'gtfs-rt', versions: ['2.0'], entities: ['vehicle_positions'], timezones: [] },
