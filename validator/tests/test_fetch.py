@@ -1,6 +1,6 @@
-"""Unit tests for `fetch_and_prepare`. Network is mocked with respx; nothing
-here makes a real HTTP call, and `prepare_feed` is faked so no real archive is
-parsed.
+"""Unit tests for `fetch_and_prepare` and `download`. Network is mocked with
+respx; nothing here makes a real HTTP call, and `prepare_feed` is faked so no
+real archive is parsed.
 """
 
 from __future__ import annotations
@@ -14,9 +14,10 @@ import respx
 from gtfs_rt_validator.api import Mode, StaticLoadError
 
 from validator_service import fetch
-from validator_service.fetch import StaticFetchError, fetch_and_prepare
+from validator_service.fetch import StaticFetchError, download, fetch_and_prepare
 
 URL = "https://example.org/gtfs.zip"
+MAX_BYTES = 10_000_000
 
 
 @respx.mock
@@ -35,7 +36,7 @@ def test_fetch_and_prepare_downloads_then_calls_prepare_feed(monkeypatch: pytest
 
     monkeypatch.setattr(fetch, "prepare_feed", fake_prepare_feed)
 
-    result = fetch_and_prepare(URL, timeout=5.0)
+    result = fetch_and_prepare(URL, timeout=5.0, max_bytes=MAX_BYTES)
 
     assert result == "prepared-feed"
     assert captured["mode"] is Mode.MODERN
@@ -50,7 +51,7 @@ def test_fetch_failure_raises_static_fetch_error() -> None:
     respx.get(URL).mock(side_effect=httpx.ConnectError("connection refused"))
 
     with pytest.raises(StaticFetchError):
-        fetch_and_prepare(URL, timeout=5.0)
+        fetch_and_prepare(URL, timeout=5.0, max_bytes=MAX_BYTES)
 
 
 @respx.mock
@@ -60,7 +61,7 @@ def test_http_error_status_raises_static_fetch_error() -> None:
     respx.get(URL).mock(return_value=httpx.Response(404))
 
     with pytest.raises(StaticFetchError):
-        fetch_and_prepare(URL, timeout=5.0)
+        fetch_and_prepare(URL, timeout=5.0, max_bytes=MAX_BYTES)
 
 
 @respx.mock
@@ -76,4 +77,33 @@ def test_unloadable_archive_raises_static_fetch_error(monkeypatch: pytest.Monkey
     monkeypatch.setattr(fetch, "prepare_feed", fake_prepare_feed)
 
     with pytest.raises(StaticFetchError):
-        fetch_and_prepare(URL, timeout=5.0)
+        fetch_and_prepare(URL, timeout=5.0, max_bytes=MAX_BYTES)
+
+
+def test_malformed_url_raises_static_fetch_error(tmp_path: Path) -> None:
+    """`httpx.InvalidURL` (raised while parsing a URL like `http://[::1`) is
+    not part of the `httpx.HTTPError` hierarchy, so it must be caught
+    explicitly or it escapes as an unhandled 500 at the router."""
+    with pytest.raises(StaticFetchError):
+        download("http://[::1", tmp_path / "gtfs.zip", timeout=5.0, max_bytes=MAX_BYTES)
+
+
+@respx.mock
+def test_download_stops_once_max_bytes_is_exceeded(tmp_path: Path) -> None:
+    """A response larger than `max_bytes` must raise `StaticFetchError`,
+    checked with a running counter rather than trusted from Content-Length
+    (which respx does not even set here)."""
+    respx.get(URL).mock(return_value=httpx.Response(200, content=b"x" * 100))
+
+    with pytest.raises(StaticFetchError):
+        download(URL, tmp_path / "gtfs.zip", timeout=5.0, max_bytes=10)
+
+
+@respx.mock
+def test_download_within_max_bytes_succeeds(tmp_path: Path) -> None:
+    respx.get(URL).mock(return_value=httpx.Response(200, content=b"pretend-zip-bytes"))
+    destination = tmp_path / "gtfs.zip"
+
+    download(URL, destination, timeout=5.0, max_bytes=MAX_BYTES)
+
+    assert destination.read_bytes() == b"pretend-zip-bytes"

@@ -28,3 +28,17 @@ class Settings(BaseSettings):
 
     #: Seconds to wait for the static GTFS archive to download.
     static_fetch_timeout_seconds: float = 60.0
+
+    #: Maximum compressed bytes for a static archive, upload or download,
+    #: enforced by a running counter rather than a possibly-absent or lying
+    #: Content-Length header. 200 MB is comfortably above any real agency's
+    #: zipped schedule (the MBTA-sized reference archive elsewhere in this
+    #: README is 18 MB) while still bounding memory and disk per request.
+    static_archive_max_compressed_bytes: int = 200_000_000
+
+    #: Maximum bytes a static archive's zip central directory may declare as
+    #: uncompressed, checked before validation runs. Rejects a zip bomb: a
+    #: small compressed file whose central directory promises far more data
+    #: than any real schedule would contain. A few GB is generous headroom
+    #: over any real agency's uncompressed static feed.
+    static_archive_max_uncompressed_bytes: int = 4_000_000_000

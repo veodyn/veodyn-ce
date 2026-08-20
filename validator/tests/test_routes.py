@@ -37,8 +37,10 @@ class _FakeCache:
         return "prepared-feed"
 
 
-def _client(cache: _FakeCache) -> TestClient:
-    app = create_app(Settings(cache_size=1, cache_ttl_seconds=60.0))
+def _client(cache: _FakeCache, *, max_compressed_bytes: int = 200_000_000) -> TestClient:
+    app = create_app(
+        Settings(cache_size=1, cache_ttl_seconds=60.0, static_archive_max_compressed_bytes=max_compressed_bytes)
+    )
     app.dependency_overrides[get_cache] = lambda: cache
     return TestClient(app)
 
@@ -175,6 +177,22 @@ def test_static_fetch_error_returns_502() -> None:
 
     assert response.status_code == 502
     assert response.json()["error"] == "could not fetch archive"
+
+
+def test_oversized_request_body_returns_413() -> None:
+    """`MaxBodySizeMiddleware` is app-wide: `/validate`'s own realtime upload
+    has the same unbounded-read exposure `/validate-static` did, since it
+    reads `feed` fully with `feed.read()` and has no per-route cap of its
+    own."""
+    client = _client(_FakeCache(), max_compressed_bytes=10)
+
+    response = client.post(
+        "/validate",
+        data={"gtfs": GTFS_URL},
+        files={"feed": ("feed.pb", b"x" * 100_000, "application/octet-stream")},
+    )
+
+    assert response.status_code == 413
 
 
 def test_feed_decode_error_returns_400(monkeypatch: pytest.MonkeyPatch) -> None:

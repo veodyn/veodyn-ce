@@ -16,6 +16,9 @@ dependencies = [
     # api.py surface, so an unpinned bump could move code this service depends on
     # without anything here noticing at install time.
     "gtfs-rt-validator==0.3.0",
+    # Pinned exactly, same reason: the static endpoint calls gtfs_validator.pipeline
+    # directly, which is real but sits outside the package's declared __all__.
+    "gtfs-validator==0.1.2",
 ]
 
 [dependency-groups]
@@ -51,6 +54,11 @@ strict = true
 # for this project) keeps everything ELSE in this tree checked.
 [[tool.mypy.overrides]]
 module = ["gtfs_rt_validator.*"]
+ignore_missing_imports = true
+
+# Same reason, same fix: gtfs_validator ships no py.typed marker either.
+[[tool.mypy.overrides]]
+module = ["gtfs_validator.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

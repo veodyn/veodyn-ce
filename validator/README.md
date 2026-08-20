@@ -1,11 +1,12 @@
 # validator-service
 
-An HTTP wrapper around the `gtfs-rt-validator` PyPI package (0.3.0, pinned
-exactly), so the sidecar can validate a GTFS-Realtime feed over the network
-instead of holding a prepared archive (~584 MB, per feed) in every `veodyn-api`
-replica. The HTTP contract below is the specification;
-`api/veodyn_api/services/published_feed_validator.py` is the client written
-against exactly this.
+An HTTP wrapper around two PyPI packages, both pinned exactly:
+`gtfs-rt-validator` (0.3.0) for realtime feeds and `gtfs-validator` (0.1.2) for
+static GTFS archives. It exists so the sidecar can validate either kind of
+feed over the network instead of holding a prepared archive (~584 MB, per
+feed) in every `veodyn-api` replica. The HTTP contract below is the
+specification; `api/veodyn_api/services/published_feed_validator.py` is the
+client written against exactly the `/validate` half of it.
 
 ## The HTTP contract
 
@@ -65,6 +66,101 @@ addition per notice:
   the request itself. See `validator_service/fetch.py`'s `StaticFetchError`.
 - **503**: a prepare for that `gtfs` URL is already in flight for another
   request. See "Concurrency" below for why this is a 503 rather than a queue.
+
+**`POST /validate-static`**, multipart, validates a GTFS static archive with
+`gtfs_validator.pipeline.run_validation` rather than fetching one purely as
+`/validate`'s reference. Exactly one of:
+
+- `archive`: the GTFS zip, uploaded directly.
+- form field `gtfs`: a URL to download the zip from, fetched through the same
+  `validator_service/fetch.py` machinery `/validate` uses for its static
+  reference (the same timeout setting, the same `StaticFetchError` handling).
+
+Both present is **400**. Both absent is also **400**, and an empty upload
+counts as absent for this check: `UploadFile.size` is known before the
+handler runs (starlette's multipart parser sets it), so an empty `archive`
+alongside a real `gtfs` URL uses the URL rather than tripping the both-inputs
+error. An empty `archive` with no `gtfs` at all is still its own 400
+("archive must not be empty").
+
+**200** returns:
+
+```json
+{
+  "report": { "summary": { "...": "..." }, "notices": [{ "...": "..." }] },
+  "systemErrors": { "notices": [{ "...": "..." }] }
+}
+```
+
+`report` is exactly what the package's own CLI writes to `report.json`
+(summary plus notices, including `validationTimeSeconds` and
+`memoryUsageRecords` on a successful run: this service builds and populates a
+`summary.Register` the same way `cli.py` does); `systemErrors` is exactly what
+it writes to `system_errors.json`. Both come straight from the package's own
+`report.build_report`, `report.build_system_errors` and `summary.build_summary`
+so this service is not reimplementing their shape.
+
+A notice's context can carry a raw `Decimal` (a `DECIMAL`/`CURRENCY_AMOUNT`
+field out of bounds reports the value itself, scale and all, per the
+package's own `typing_checks.check_number`). The response is serialized with
+the package's own `report.dumps_json`, not `fastapi.responses.JSONResponse`'s
+stdlib `json.dumps`, which cannot encode a `Decimal` at all and would 500
+instead of returning the report.
+
+- **An archive that will not open at all is still a 200.** The package's own
+  `pipeline.run_validation` does not raise for this: it records the failure in
+  `system_errors` and returns `(None, False)`, the same as a feed that opened
+  but failed a table midway. Since the package treats "never opened" and
+  "opened but a table failed" as the same kind of outcome (processed, with a
+  failure recorded, not a request error), this service does too, and answers
+  200 either way with the failure visible in `systemErrors`. Only the request
+  shape itself (both/neither input, an empty upload with no URL, a resource
+  bound exceeded) is a 400 or 502; see "Resource bounds" below.
+- **502** if the `gtfs` URL could not be fetched, including a malformed URL
+  (`httpx.InvalidURL`, caught alongside `httpx.HTTPError`) or a download that
+  exceeded the compressed-size limit. Same interpretation as `/validate`'s
+  502: reaching or trusting the archive is this service's problem, not the
+  caller's request shape.
+
+### Resource bounds
+
+Both input paths are capped, since either hands this service bytes from
+outside its control:
+
+- **The whole request body is capped before either route's own parsing runs**
+  (`VALIDATOR_STATIC_ARCHIVE_MAX_COMPRESSED_BYTES` plus a fixed 64 KB of
+  multipart slack). FastAPI's multipart parser spools an upload to a
+  `SpooledTemporaryFile` while resolving `archive`/`feed` into an
+  `UploadFile`, entirely before a route handler (and so a handler-level
+  check) ever runs, so a per-route check alone cannot bound how much lands on
+  disk. `validator_service/body_size_limit.py`'s `MaxBodySizeMiddleware`,
+  installed app-wide in `main.py`, counts bytes off the raw ASGI `receive`
+  callable as they arrive and answers **413** once the cap is exceeded,
+  before the multipart parser reads them at all. It covers `/validate` too:
+  that route reads its own realtime `feed` upload fully with no bound of its
+  own, so one middleware fixes both.
+- **Compressed size** (same setting) is enforced a second time, per input
+  path, as defense in depth and as the source of the specific error each path
+  reports: an oversized **upload** is a **400** (the caller's own bytes, a
+  request problem), enforced by `archive_limits.write_capped`, which streams
+  from the `UploadFile`'s underlying file with a running byte counter,
+  off the event loop (inside the threadpooled call); an oversized
+  **download** is a **502** (grouped with the other ways fetching the `gtfs`
+  URL can fail, per the choice above), enforced by `fetch.download`'s own
+  counter while streaming.
+- **Uncompressed size** (`VALIDATOR_STATIC_ARCHIVE_MAX_UNCOMPRESSED_BYTES`,
+  default 4 GB) is checked against the zip's own central directory, once the
+  archive is on disk regardless of origin, before validation runs. This is
+  the zip-bomb case a compressed-byte counter cannot catch: a small
+  compressed file can still declare an enormous uncompressed total. Exceeding
+  it is a **400**. A file that is not a valid zip at all, or one whose
+  central directory `zipfile` itself cannot parse (an invalid-UTF-8 filename
+  under the archive's own UTF-8 flag raises `UnicodeDecodeError`, not
+  `BadZipFile`), is left to `run_validation`'s own system-error handling
+  above, not rejected here: this precheck must never produce a failure mode
+  the package itself would not.
+
+See `validator_service/archive_limits.py` and `validator_service/body_size_limit.py`.
 
 **`GET /health`** returns 200 while the process is up.
 
@@ -157,13 +253,26 @@ package was actually installed, re-confirmed against the current pin
   this surface out from under the service without anything here noticing at
   install time.
 
+## Static validation
+
+`gtfs_validator.pipeline.run_validation` has no equivalent to `PreparedFeed`:
+each `/validate-static` request downloads or reads its archive, opens it,
+walks every table and runs the rule set fresh. There is no cache for it,
+unlike the realtime endpoint's static reference. `validator_service/static_validation.py`
+wraps the call, building the same `report`/`summary`/`systemErrors` shapes
+`cli.py` writes to disk, including a `summary.Register` populated the same way
+(`register.register("validate")` after the pipeline returns, matching `cli.py`
+exactly), without any of the CLI's argument parsing or file output.
+
 ## Configuration
 
 Environment variables, prefixed `VALIDATOR_`. See `.env.example` for the full
 list with reasoning; in summary: `VALIDATOR_PORT` (bind port),
 `VALIDATOR_CACHE_SIZE`, `VALIDATOR_CACHE_TTL_SECONDS`,
-`VALIDATOR_STATIC_FETCH_TIMEOUT_SECONDS`. No secrets: this service
-authenticates nobody.
+`VALIDATOR_STATIC_FETCH_TIMEOUT_SECONDS`,
+`VALIDATOR_STATIC_ARCHIVE_MAX_COMPRESSED_BYTES`,
+`VALIDATOR_STATIC_ARCHIVE_MAX_UNCOMPRESSED_BYTES` (see "Resource bounds"
+above). No secrets: this service authenticates nobody.
 
 ## Development
 
@@ -177,14 +286,18 @@ uv run pytest
 ```
 
 Tests fake the package boundary for the HTTP layer (`tests/test_routes.py`,
-`tests/test_cache.py`, `tests/test_fetch.py`: no real `prepare_feed`, no
-network, no 48 second wait) and exercise the real package for the wiring that
-actually matters (`tests/test_validation_wiring.py`): a real `PreparedFeed`
-built from an empty, hand-constructed static context
-(`gtfs_rt_validator.static.context.StaticContext.build` is a pure function
-over already-parsed rows, so this costs microseconds) and real, decodable
-GTFS-Realtime bytes built with the package's own fixture-building
-`proto.encode.encode` helper. See `tests/fixtures.py`.
+`tests/test_static_routes.py`, `tests/test_static_routes_limits.py`,
+`tests/test_cache.py`, `tests/test_fetch.py`, `tests/test_archive_limits.py`,
+`tests/test_body_size_limit.py`: no real `prepare_feed`, no real pipeline run,
+no network, no 48 second wait)
+and exercise the real package for the wiring that actually matters
+(`tests/test_validation_wiring.py` for realtime, `tests/test_static_validation.py`
+for static): a real `PreparedFeed` built from an empty, hand-constructed static
+context (`gtfs_rt_validator.static.context.StaticContext.build` is a pure
+function over already-parsed rows, so this costs microseconds), real,
+decodable GTFS-Realtime bytes built with the package's own fixture-building
+`proto.encode.encode` helper, and a tiny real GTFS zip built in memory for the
+static pipeline. See `tests/fixtures.py`.
 
 ## How this is deployed
 
