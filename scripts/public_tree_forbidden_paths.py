@@ -242,6 +242,21 @@ FORBIDDEN_PATHS = (
         "diff a repository against itself.",
     ),
     (
+        "scripts/carry-to-ce.py",
+        "Carries commits from this tree to the community one. It has a direction, and only "
+        "this side is its source; there it would push that repository into itself.",
+    ),
+    (
+        "scripts/test_carry_to_ce.py",
+        "Tests for carry-to-ce.py, forbidden above. A test whose subject is absent collects "
+        "nothing and passes, which is worse than not being there.",
+    ),
+    (
+        "scripts/hooks/",
+        "Git hooks for this side of the split. The pre-push one calls check-tree-parity and "
+        "carry-to-ce, neither of which exists there.",
+    ),
+    (
         "scripts/dev-stack.sh",
         "Brings the local stack up as one edition or the other. Forbidden for the same reason "
         "as dev-assemble.sh above: it names the enterprise pack's checkout, its overlay "
