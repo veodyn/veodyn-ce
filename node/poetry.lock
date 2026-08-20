@@ -1736,6 +1736,21 @@ google-auth = ">=1.12.0"
 google-auth-oauthlib = ">=0.4.1"
 
 [[package]]
+name = "gtfs-realtime-bindings"
+version = "2.2.0"
+description = "Python classes generated from the GTFS-realtime protocol buffer specification."
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "gtfs_realtime_bindings-2.2.0-py3-none-any.whl", hash = "sha256:4f222a962bcb8715d9305cc08e7f7662cc70e7479f377e2694439a50724bc676"},
+    {file = "gtfs_realtime_bindings-2.2.0.tar.gz", hash = "sha256:1e184075ff6aae1f8e8c91ae28eb946af5e5b656b743a41a7bca37818784886b"},
+]
+
+[package.dependencies]
+protobuf = "*"
+
+[[package]]
 name = "gunicorn"
 version = "22.0.0"
 description = "WSGI HTTP Server for UNIX"
@@ -3274,7 +3289,7 @@ version = "6.33.5"
 description = ""
 optional = false
 python-versions = ">=3.9"
-groups = ["all_ds"]
+groups = ["main", "all_ds"]
 files = [
     {file = "protobuf-6.33.5-cp310-abi3-win32.whl", hash = "sha256:d71b040839446bac0f4d162e758bea99c8251161dae9d0983a3b88dee345153b"},
     {file = "protobuf-6.33.5-cp310-abi3-win_amd64.whl", hash = "sha256:3093804752167bcab3998bec9f1048baae6e29505adaf1afd14a37bddede533c"},
@@ -5556,4 +5571,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<3.14"
-content-hash = "3315094fd76b8dbcd027dde6b0ab431c153814de7a8deb616913fa26169300ed"
+content-hash = "e60729d9e3b6958f6e20de3506703b6a556da713b53106fdddb98e1ab05f85ad"

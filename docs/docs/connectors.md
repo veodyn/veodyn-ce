@@ -14,7 +14,7 @@ data source is created (see [Data Sources](/admin/data-sources)).
 
 | Connector | Type string | Reads | Configuration |
 |---|---|---|---|
-| GTFS-Realtime | `gtfs_realtime` | Vehicle positions from a GTFS-Realtime websocket feed | Feed URL (required); optional route id to display-name map (JSON); default sample window in seconds |
+| GTFS-Realtime | `gtfs_realtime` | Vehicle positions from a GTFS-Realtime feed, either a websocket JSON stream or an HTTP protobuf snapshot | Feed URL, `ws(s)://` for the websocket form or `http(s)://` for the protobuf form (required); optional route id to display-name map (JSON); default sample window in seconds (websocket feeds only) |
 | GBFS Bikeshare | `gbfs` | Station information and status from a GBFS discovery document | Discovery URL (`gbfs.json`, required); feed language (default `en`) |
 | Waze Traffic Alerts | `waze` | Alerts and irregularities from a Waze partner feed | Feed URL (required; the partner token and coverage polygon are embedded in it, so there is no shared default) |
 | GO511 Traffic | `go511` | Traffic incidents, roadwork, park-and-ride lots, cameras and mainline route speeds for the LA region | API base URL (default provided); API key (required, secret) |

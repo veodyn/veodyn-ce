@@ -1,44 +1,16 @@
 import json
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from redash.query_runner.gtfs_realtime import GtfsRealtime, parse_vehicle_message
-
-MSG_A = {
-    "id": "1150-1161",
-    "vehicle": {
-        "position": {"latitude": 10.05, "longitude": 20.24, "bearing": 90.0, "speed": 12.3},
-        "trip": {"routeId": "10"},
-        "timestamp": 1752940000,
-    },
-}
-MSG_A_NEWER = {
-    "id": "1150-1161",
-    "vehicle": {
-        "position": {"latitude": 10.06, "longitude": 20.25, "bearing": 92.0, "speed": 15.0},
-        "trip": {"routeId": "10"},
-        "timestamp": 1752940060,
-    },
-}
-MSG_B = {
-    "id": "2200-1",
-    "vehicle": {
-        "position": {"latitude": 9.98, "longitude": 20.35, "bearing": 180.0, "speed": 9.9},
-        "trip": {"routeId": "20"},
-        "timestamp": 1752940030,
-    },
-}
-
-SAMPLE_VEHICLE_MESSAGE_ROUTE_42 = {
-    "id": "9000-1",
-    "vehicle": {
-        "position": {"latitude": 10.0, "longitude": 20.0, "bearing": 45.0, "speed": 10.0},
-        "trip": {"routeId": "42", "directionId": 1},
-        "timestamp": 1752940000,
-    },
-}
-
-ROUTE_LABELS = {"10": "Blue Line", "20": "Green Line"}
+from tests.query_runner.gtfs_realtime_fixtures import (
+    MSG_A,
+    MSG_A_NEWER,
+    MSG_B,
+    ROUTE_LABELS,
+    SAMPLE_VEHICLE_MESSAGE_ROUTE_42,
+    fake_ws,
+)
 
 
 def test_route_labels_come_from_configuration():
@@ -67,24 +39,6 @@ class TestParseVehicleMessage(TestCase):
 
     def test_unknown_route_code_kept_verbatim(self):
         self.assertEqual(parse_vehicle_message(SAMPLE_VEHICLE_MESSAGE_ROUTE_42, {})["line"], "42")
-
-
-def fake_ws(messages):
-    """Context manager whose recv() yields messages then times out."""
-    ws = MagicMock()
-    iterator = iter(messages)
-
-    def recv(timeout=None):
-        try:
-            return next(iterator)
-        except StopIteration:
-            raise TimeoutError()
-
-    ws.recv.side_effect = recv
-    manager = MagicMock()
-    manager.__enter__.return_value = ws
-    manager.__exit__.return_value = False
-    return manager
 
 
 class TestGtfsRealtime(TestCase):
@@ -117,9 +71,7 @@ class TestGtfsRealtime(TestCase):
 
     def test_feed_url_routes_param(self):
         with patch("redash.query_runner.gtfs_realtime.ws_connect", return_value=fake_ws([])) as connect:
-            data, error = self.runner.run_query(
-                '{"resource": "vehicle_positions", "params": {"routes": "42"}}', None
-            )
+            data, error = self.runner.run_query('{"resource": "vehicle_positions", "params": {"routes": "42"}}', None)
 
         self.assertIsNone(error)
         self.assertEqual(data, {"columns": [], "rows": []})
@@ -131,6 +83,15 @@ class TestGtfsRealtime(TestCase):
 
         self.assertIsNone(data)
         self.assertIn("connection refused", error)
+
+
+class TestWsDependencyMissing(TestCase):
+    def test_ws_fetch_without_websockets_raises_a_clear_error(self):
+        runner = GtfsRealtime({"feed_url": "wss://feed.example.org/ws/vehicle_positions/{routes}"})
+        with patch("redash.query_runner.gtfs_realtime.ws_available", False):
+            data, error = runner.run_query('{"resource": "vehicle_positions"}', None)
+        self.assertIsNone(data)
+        self.assertIn("websockets", error)
 
 
 class TestSchemaBrowser(TestCase):
