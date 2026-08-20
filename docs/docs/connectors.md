@@ -17,11 +17,13 @@ data source is created (see [Data Sources](/admin/data-sources)).
 | GTFS-Realtime | `gtfs_realtime` | Vehicle positions from a GTFS-Realtime websocket feed | Feed URL (required); optional route id to display-name map (JSON); default sample window in seconds |
 | GBFS Bikeshare | `gbfs` | Station information and status from a GBFS discovery document | Discovery URL (`gbfs.json`, required); feed language (default `en`) |
 | Waze Traffic Alerts | `waze` | Alerts and irregularities from a Waze partner feed | Feed URL (required; the partner token and coverage polygon are embedded in it, so there is no shared default) |
+| GO511 Traffic | `go511` | Traffic incidents, roadwork, park-and-ride lots, cameras and mainline route speeds for the LA region | API base URL (default provided); API key (required, secret) |
 | AirNow Air Quality | `airnow` | Current AQI observations by coordinate | Observation API URL (default provided); API key (required, secret) |
 | OpenWeatherMap | `openweathermap` | Current weather by coordinate | API URL (default provided); App ID / API key (required, secret) |
 | TrafficLand Cameras | `trafficland` | Camera video feeds | API base URL (default provided); API key (required, secret); system name (required) |
 | Geotab Fleet | `geotab` | Fleet device status and inventory | Server (default provided); database, username and password (all required, password stored as secret); default results limit |
 | MetroCloudAlliance Transit | `metrocloudalliance` | Transit predictions, stops, carriers and vehicle locations | API base URL (default provided); API key (required, secret) |
+| SoCalTransport | `socaltransport` | Scheduled arrival and departure times by transit node (Metrolink and Amtrak regional rail, plus buses) | Base URL (default provided); the transit node id is a query parameter, not configuration |
 | NTCIP 1203 DMS | `ntcip_dms` | Dynamic message sign identity, status and current message, polled over SNMP | SNMP community string (required, secret); SNMP version (`2c` default, or `1`); device list (JSON, required); per-device timeout (default 2s); max devices polled (default 50) |
 | TMDD Center-to-Center | `tmdd` | Active traffic events, and dynamic message sign inventory and status, from a traffic management center over TMDD v3.03d C2C SOAP | C2C SOAP endpoint URL (required); organization id (required); user id and password (optional, but only as a pair, password stored as secret); TMDD version (`3.03d`, the only one implemented); SOAPAction header value (empty by default); message type id and version (both default `1`); TLS verification (on by default) and an optional CA bundle path; max response size (default 10 MB); max records (default 10000) |
 | Static GeoJSON | `static_geojson` | Layers (rail lines, bus routes, service areas, or other named feature sets) from a local GeoJSON directory | Layer directory path (required) |
@@ -32,6 +34,11 @@ source credential is (see [Data Sources: Notes for operators](/admin/data-source
 Latitude/longitude, route ids and similar per-request values are query
 parameters, not connector configuration, so one configured connector serves
 every query against it rather than one location or route being baked in.
+
+One column needs a step before mapping: Waze `alerts` returns `location` as a
+JSON string of the form `{"x": ..., "y": ...}`, where `x` is the longitude and
+`y` the latitude. Extract the two values in the query before pointing a map
+visualization at them; the raw column will not plot as-is.
 
 ## NTCIP 1203 DMS: a worked configuration example
 
