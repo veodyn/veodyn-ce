@@ -6,16 +6,16 @@ description: "The two things that vary independently: scale (node or hub) and ed
 
 # Editions
 
-Two things vary, and they vary independently.
+Two things vary independently, scale and edition.
 
-- **Scale** is how much the deployment covers. A **node** is a complete Veodyn
-  instance scoped to one agency. A **hub** runs everything a node runs over its
+- Scale is how much the deployment covers. A node is a complete Veodyn
+  instance scoped to one agency. A hub runs everything a node runs over its
   own data, and adds a federation layer that aggregates across the nodes
   registered with it.
-- **Edition** is which code is in the image. **Community** is the analyst
+- Edition is which code is in the image. Community is the analyst
   substrate: connect data, normalize it, store it, query it, visualize it,
   arrange it on dashboards, search it, catalog it, and reach all of it through
-  the API and MCP. **Enterprise** adds the management and operations layer: the
+  the API and MCP. Enterprise adds the management and operations layer, the
   surfaces an organization uses to watch numbers, govern who can see what, and
   answer to someone for the result.
 
@@ -26,18 +26,18 @@ Crossing them gives four cells, three of which you can buy:
 | **Node** | Free and open source, under the AGPL. [`veodyn/veodyn-ce`](https://github.com/veodyn/veodyn-ce), in full | Commercial. One agency, plus the management layer |
 | **Hub** | Not offered | Commercial, self-operated or operated for you |
 
-There is no community hub. Federation is the whole of what a hub adds, and it
-is the commercial part of the product.
+There is no community hub, because federation is the whole of what a hub adds
+and that is the commercial part of the product.
 
 ## What each capability needs
 
 Everything in the Community column is here, under the
 [GNU Affero General Public License, version 3](https://www.gnu.org/licenses/agpl-3.0.html).
-Nothing in it is time limited, seat limited, or gated behind a key. Run an
-unmodified community build and the license asks nothing of you beyond saying
-where the source is; modify it and offer that to users over a network, and your
-modified source goes to them too. The enterprise pack is not covered by it and
-is licensed commercially.
+Nothing in it is time limited, seat limited, or gated behind a key. If you run
+an unmodified community build, the license asks nothing of you beyond saying
+where the source is. If you modify it and offer that to users over a network,
+your modified source goes to them too. The enterprise pack is not covered by it
+and is licensed commercially.
 
 | Area | Capability | Community | Enterprise |
 |---|---|:---:|:---:|
@@ -86,11 +86,11 @@ this repository, and this documentation describes a node throughout. See
 
 ## How the split is delivered
 
-There is **no license key and no entitlement runtime** anywhere in Veodyn, and
-no greyed-out control advertising something you cannot use. The enterprise
+There is no license key and no entitlement runtime anywhere in Veodyn, and no
+greyed-out control advertising something you cannot use. The enterprise
 features are a separate package, overlaid onto the source tree and installed
-into the image before a private image is built. A community image simply does
-not contain them:
+into the image before a private image is built. A community image does not
+contain them:
 
 - the enterprise HTTP routes are not registered, so they answer 404 rather than
   403;
@@ -103,9 +103,8 @@ not contain them:
 Where a community surface would have shown an enterprise concept, it shows
 nothing rather than an empty shell. A [domain page](/features/data-catalog#domain-pages)
 in a community build renders its datasets and its dashboards and draws no
-counter row at all, because a counter row reading zero would be a claim that
-the concept exists here and has no members, which is a different and untrue
-statement.
+counter row at all, because a counter row reading zero would claim that the
+concept exists here and has no members, which is not true.
 
 ## Which one am I running?
 
@@ -123,5 +122,5 @@ inspection, so that count can under-report a feature that is in fact registered.
 
 ## Getting the enterprise edition
 
-Entitlement is which registry you can pull images from. Talk to whoever sold you
-the deployment, or to the maintainers.
+Entitlement comes down to which registry you can pull images from. Talk to
+whoever sold you the deployment, or to the maintainers.

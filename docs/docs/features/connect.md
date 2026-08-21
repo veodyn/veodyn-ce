@@ -8,11 +8,11 @@ description: "Reaching Veodyn data from your own tools: the data API surface and
 
 The **Connect** section of the sidebar documents, inside the product, how to reach your instance's data from outside it.
 
-Its third page goes the other way, serving your data out in a standard other people's software already speaks: see [Published Feeds](/features/published-feeds).
+Its third page goes the other way and serves your data out, in a standard other people's software already reads: see [Published Feeds](/features/published-feeds).
 
 ## APIs
 
-**Connect → APIs** is three cards, each carrying **your instance's real values** rather than examples to edit. The page reads its own address, so the copy button beside each block gives you something that works as pasted.
+**Connect → APIs** is three cards, and each carries your instance's real values rather than examples you have to edit. The page reads its own address, so the copy button beside each block gives you something that works as pasted.
 
 | Card | Holds |
 |---|---|
@@ -22,9 +22,9 @@ Its third page goes the other way, serving your data out in a standard other peo
 
 ![The APIs page: the query result endpoints with copyable examples](/img/screenshots/connect-apis.png)
 
-Requests authenticate with **your personal API key**, sent as an `Authorization` header. The key is on your [profile page](/features/settings#your-profile), and it reaches only the data your own account can, so an API call is not a way around the permissions you have in the interface.
+Requests authenticate with your personal API key, sent as an `Authorization` header. The key is on your [profile page](/features/settings#your-profile), and it reaches only the data your own account can, so an API call cannot get around the permissions you have in the interface.
 
-The page is also explicit about what does *not* travel: backend credentials never leave the server. The browser only ever calls same-origin routes under `/api`, which forward to the backends using the instance's server-side keys.
+The page is also explicit about what does not travel. Backend credentials never leave the server: the browser only ever calls same-origin routes under `/api`, which forward to the backends using the instance's server-side keys.
 
 When the instance configures a help URL, a **Documentation** button links to the operator's own docs.
 
@@ -37,6 +37,6 @@ When the instance configures a help URL, a **Documentation** button links to the
 
 ![The MCP page: the server URL and the client configuration snippet](/img/screenshots/connect-mcp.png)
 
-**The endpoint is read-only.** It lists and runs saved queries and reads dashboards. It cannot create, edit or delete anything, so connecting a client is not a way to let an assistant change your instance.
+The endpoint is read-only. It lists and runs saved queries and reads dashboards, and it cannot create, edit or delete anything, so connecting a client does not let an assistant change your instance.
 
 Because the credential is your own API key, an MCP client can only see what you can see. The page says as much beside the config block: the key carries your permissions, so treat it like a password.

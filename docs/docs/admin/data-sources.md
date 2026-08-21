@@ -12,7 +12,7 @@ description: "Connecting warehouses and APIs: adding a data source, testing the 
 
 :::caution An empty page is not proof the instance has no sources
 
-This list has no separate error state. A request that fails, or has not returned yet, produces *No data sources yet. Add one so queries have something to run against.* Since that sentence tells you to add one, it is easy to act on before noticing it may simply be wrong. Reload before believing it, particularly if you are not an administrator.
+This list has no separate error state. A request that fails, or has not returned yet, produces *No data sources yet. Add one so queries have something to run against.* Because that sentence tells you to add one, it is easy to act on before noticing it may be wrong, so reload before believing it, particularly if you are not an administrator.
 
 A source's own page does distinguish the cases, saying *Unable to load this data source. It may have been deleted, or the request was refused.*
 
@@ -20,7 +20,7 @@ A source's own page does distinguish the cases, saying *Unable to load this data
 
 ## Adding a data source
 
-**New Data Source** opens a searchable type picker: PostgreSQL, MySQL, ClickHouse, BigQuery, Redshift, SQLite, MongoDB, URL (JSON), and the other types the backend enables, including the transportation API runners on instances that ship them. Choosing a type reveals the fields that type needs, so the form is only ever as long as the connection requires.
+**New Data Source** opens a searchable type picker: PostgreSQL, MySQL, ClickHouse, BigQuery, Redshift, SQLite, MongoDB, URL (JSON), and the other types the backend enables, including the transportation API runners on instances that ship them. Choosing a type reveals the fields that type needs, so the form is only as long as the connection requires.
 
 A source's own page carries its **Name**, its type-specific connection fields, and three actions:
 
@@ -42,6 +42,6 @@ Connecting a source does not expose it to anyone by itself. Access is granted by
 
 ## Notes for operators
 
-- Data-source configurations are stored encrypted in the query service's database, keyed by `REDASH_SECRET_KEY`; changing that key strands existing configurations. Keep it stable and backed up.
+- Data-source configurations are stored encrypted in the query service's database, keyed by `REDASH_SECRET_KEY`, and changing that key strands existing configurations, so keep it stable and backed up.
 - **Historical capture** (feeding the [data catalog](/features/data-catalog)'s warehouse) is a per-source opt-in in the source's configuration form, available on every source type: one checkbox enables capture of scheduled runs, a second extends it to manual runs. See [Configuration](/configuration#query-service) for the ClickHouse variables that switch the mechanism on.
 - The available type list is controlled with the `REDASH_ENABLED_QUERY_RUNNERS` / `REDASH_ADDITIONAL_QUERY_RUNNERS` settings.

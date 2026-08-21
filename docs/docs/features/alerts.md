@@ -23,17 +23,17 @@ An alert watches a condition on a query's result and notifies people when it tri
 
 ## The alert list
 
-One list, no tabs. Each row carries the alert's **name**, the **query** it watches, its **state**, who **created** it, and when it **last triggered** ("Never" until it has). Every column sorts.
+There are no tabs here, just one list. Each row carries the alert's **name**, the **query** it watches, its **state**, who **created** it, and when it **last triggered** ("Never" until it has). Every column sorts.
 
 ![The alert list with states and KPI-managed badges](/img/screenshots/alerts-list.png)
 
 A **KPI badge** beside a name marks an alert managed by a [KPI](/features/kpis) rather than created by hand. Those are created for you when you arm a KPI's breach threshold, so their **Created by** reads as the service rather than a person.
 
-Search covers **alert name, query name, owner and state** together, so `triggered` lists everything currently firing without needing a status filter.
+Search covers alert name, query name, owner and state together, so typing `triggered` lists everything currently firing without needing a status filter.
 
 :::caution An empty list is not proof there are no alerts
 
-This page has no separate error state. If the alert service cannot be reached, or while the list is still loading, the page reads **No alerts configured**, which is indistinguishable from an instance that genuinely watches nothing. Reload before concluding that nothing is armed.
+This page has no separate error state. If the alert service cannot be reached, or while the list is still loading, the page reads **No alerts configured**, which is indistinguishable from an instance that genuinely watches nothing. Reload before you conclude that nothing is armed.
 
 :::
 
@@ -47,7 +47,7 @@ An alert's page shows its state with a plain-language explanation, and the facts
 
 **KPI-managed alerts** are read-only: their condition follows the breached threshold on the owning KPI, and the page says so, offering "Edit the KPI" instead. Recipients remain yours to change.
 
-The editor refuses rather than guesses when it cannot tell which kind it is dealing with. If the KPI list has not loaded, it will not open the form at all, explaining that whether a KPI manages this alert is unknown and that a managed alert would be refused on save. That is a deliberate choice: opening the form and failing at the end would waste the edit.
+When the editor cannot tell which kind it is dealing with, it refuses rather than guesses. If the KPI list has not loaded, it will not open the form at all, explaining that whether a KPI manages this alert is unknown and that a managed alert would be refused on save. Opening the form and failing at the end would waste the edit.
 
 An alert id that does not exist says **Alert not found**.
 
@@ -73,7 +73,7 @@ Adding one asks for its type first, because the fields a destination needs follo
 ![A destination page: its type and the delivery settings that type needs](/img/screenshots/destination-detail.png)
 
 
-Once a destination exists it becomes available for users to subscribe alerts to, which is the step that turns a triggered alert into a notification someone receives.
+Once a destination exists it becomes available for users to subscribe alerts to. That subscription is the step that turns a triggered alert into a notification someone actually receives.
 
 :::caution An empty page is not proof there are no destinations
 

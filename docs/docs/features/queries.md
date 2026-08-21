@@ -10,7 +10,7 @@ Queries are saved SQL (or, for API-backed sources, JSON descriptors) you can run
 
 ## The query list
 
-**Library → Queries** is the whole library, four ways.
+**Library → Queries** shows the whole library across four tabs.
 
 Header buttons: **New Query**, and **Create with AI** when [AI](/features/ai) is enabled. With AI off the second button is absent rather than disabled, so the header holds one button and **New Query** keeps the position you reach for either way.
 
@@ -25,17 +25,17 @@ Header buttons: **New Query**, and **Create with AI** when [AI](/features/ai) is
 | **Favorites** | The ones you starred, not archived |
 | **Archive** | Everything archived, by anyone |
 
-The tabs are real links (`/queries?tab=my`), not client-side state. A tab is bookmarkable, the back button steps between tabs, and reloading keeps the one you were on.
+The tabs are real links (`/queries?tab=my`) rather than client-side state, so a tab is bookmarkable, the back button steps between tabs, and reloading keeps the one you were on.
 
 If the [drafts feature](#drafts) is on, a draft is listed for its author and for nobody else, so All Queries is "everything shared, plus my own drafts" rather than literally everything.
 
 ### Searching and counting
 
-One text field, labelled **Search queries**, matching a query's name and its description, case-insensitively. Beside it a live count reads "20 queries", and it updates as you type so the list never shrinks silently.
+There is one text field, labelled **Search queries**, and it matches a query's name and its description, case-insensitively. Beside it a live count reads "20 queries", updating as you type so the list never shrinks silently.
 
-Search narrows **All Queries** only. On My Queries, Favorites and Archive the field accepts what you type and the list does not change, so treat those three as complete lists you sort and page rather than search.
+Search narrows **All Queries** only. On My Queries, Favorites and Archive the field accepts what you type and the list does not change, so those three are complete lists you sort and page rather than search.
 
-Search runs on the server, so it reaches the whole library rather than the rows already on screen. The rest of the tabs are read in full, up to 2,000 rows. Past that the list stops and says so above the table, and asks you to search rather than letting the last page look like the end of the library.
+Search runs on the server, so it reaches the whole library rather than the rows already on screen. The rest of the tabs are read in full, up to 2,000 rows. Past that the list stops and says so above the table, and asks you to search, rather than letting the last page look like the end of the library.
 
 ### The columns
 
@@ -49,9 +49,9 @@ Search runs on the server, so it reaches the whole library rather than the rows 
 | **Runtime** | Last run's duration in seconds, or `-` if it never ran | yes |
 | (kebab) | The row's actions menu | no |
 
-Sorting runs over the whole library and paging happens after it, so "sort by runtime" means the slowest query in the instance rises to the top, not the slowest of the 25 rows in front of you. Rows with nothing in the sorted column sort last in **both** directions: missing is not the same as smallest, and a descending sort should not bury exactly the rows you are looking for.
+Sorting runs over the whole library and paging happens after it, so "sort by runtime" means the slowest query in the instance rises to the top, not the slowest of the 25 rows in front of you. Rows with nothing in the sorted column sort last in both directions, since a missing value is not a small one and a descending sort should not bury exactly the rows you are looking for.
 
-Lists break at 25 rows. A shorter list shows no paginator at all. Changing tab or search returns you to page 1, since that is a different list; re-sorting the same list keeps your page.
+Lists break at 25 rows, and a shorter list shows no paginator at all. Changing tab or search returns you to page 1, since that is a different list; re-sorting the same list keeps your page.
 
 ### Clicking a row
 
@@ -59,14 +59,14 @@ The whole row opens the query, by mouse or by Enter or Space from the keyboard. 
 
 ### The row menu
 
-One control per row, holding whatever you may do to that row.
+Each row has one menu control, holding whatever you may do to that row.
 
 | Tab | Action |
 |---|---|
 | Archive | **Restore**, which returns the query to the library and asks nothing first |
 | Every other tab | **Archive**, which is destructive and asks first |
 
-You see the menu only if you may act: the owner of the query, or an admin. Anyone else gets no kebab at all, rather than a menu holding one greyed-out item with no explanation. Being granted edit access to a query through its [permissions list](#the-query-actions-menu) is not enough, because the backend guards archiving on ownership alone.
+You see the menu only if you may act: the owner of the query, or an admin. Everyone else gets no kebab at all, rather than a menu holding one greyed-out item with no explanation. Being granted edit access to a query through its [permissions list](#the-query-actions-menu) is not enough, because the backend guards archiving on ownership alone.
 
 ### Archiving asks first, and it should
 
@@ -74,27 +74,27 @@ You see the menu only if you may act: the owner of the query, or an admin. Anyon
 
 > Its alerts, its refresh schedule and any dashboard widgets built on it will be removed, and those do not come back. The query itself can be restored from the Archive tab.
 
-That is the actual behaviour, not a caution. Archiving a query deletes every alert on it, clears its refresh schedule, and deletes every dashboard widget built on any of its visualizations. **Restore** brings back only the query. A restored query looks entirely intact and has quietly stopped running, which tends to surface a week later as a stale number on a dashboard.
+That wording describes what actually happens. Archiving a query deletes every alert on it, clears its refresh schedule, and deletes every dashboard widget built on any of its visualizations, and **Restore** brings back only the query. A restored query looks entirely intact while it has quietly stopped running, which tends to surface a week later as a stale number on a dashboard.
 
-Either outcome is reported in a toast. A refusal names the reason: you must own the query, or be an admin.
+Either outcome is reported in a toast, and a refusal names the reason: you must own the query, or be an admin.
 
 ### When the list is empty
 
-An empty list, and a search that matched nothing, both read **No queries found**. A fresh instance therefore looks the same as a bad search, so check whether the search box still holds a term before concluding there is nothing here.
+An empty list, and a search that matched nothing, both read **No queries found**. A fresh instance therefore looks the same as a bad search, so it is worth checking whether the search box still holds a term before you conclude there is nothing here.
 
 ### Drafts
 
-Off by default. With the `query_drafts` feature switched on, saving a query does not yet share it: the query is listed for its author and is invisible to everyone else until they use **Share with the team** from the [query's own actions menu](#the-query-actions-menu). With the switch off there is no draft step, saving a query shares it, and the word "draft" never appears in the product.
+Off by default. With the `query_drafts` feature switched on, saving a query does not yet share it: the query is listed for its author and is invisible to everyone else until they use **Share with the team** from the [query's own actions menu](#the-query-actions-menu). With the switch off there is no draft step, saving a query shares it, and the word "draft" does not appear anywhere in the product.
 
 ## Reading a query
 
-This is where a reader lands: the query's results, not its SQL.
+Opening a query lands a reader on its results rather than its SQL.
 
-The **title is editable in place**, click it and type. Beside it sit the star, and a **Draft** badge when the [drafts feature](#drafts) is on and the query has not been shared yet. Tags below are editable by anyone who can edit the query, and read-only chips for everyone else.
+The title is editable in place: click it and type. Beside it sit the star, and a **Draft** badge when the [drafts feature](#drafts) is on and the query has not been shared yet. Tags below are editable by anyone who can edit the query, and read-only chips for everyone else.
 
 ### The two ages, and why there are two
 
-The header states them separately, and the distinction matters:
+The header states them separately:
 
 | Label | Means |
 |---|---|
@@ -102,17 +102,17 @@ The header states them separately, and the distinction matters:
 | **Query edited** | When the query itself was last changed |
 | **Runtime** | How long the last run took, when it has run |
 
-A single "Updated" time on a page whose body is a results table reads as the age of those rows, and it is not. Setting a refresh schedule changes no data at all, yet it would flip that one timestamp to "just now" while every value on screen stayed identical. **Last result** is also the wording [Schedules](/features/schedules) uses for the same field, so the two screens report the same number for the same query.
+A single "Updated" time on a page whose body is a results table would read as the age of those rows, which it isn't. Setting a refresh schedule changes no data at all, yet it would flip that one timestamp to "just now" while every value on screen stayed identical. **Last result** is also the wording [Schedules](/features/schedules) uses for the same field, so the two screens report the same number for the same query.
 
 ### Running it again
 
 **Refresh** re-runs the query and reports either way, so a run that finishes in milliseconds still tells you it happened rather than looking like a dead button. **Edit Source** opens the [editor](#the-sql-editor). The overflow menu holds everything else, listed under [the query actions menu](#the-query-actions-menu).
 
-If the query takes parameters, a bar sits above the results. Values are staged, not live: type into it and the bar reports how many changes are not yet applied, and **Refresh is unavailable until you apply them**. A run started with edits pending would use the values you can see you replaced and say nothing about it, so it is blocked instead.
+If the query takes parameters, a bar sits above the results. Values there are staged rather than live: type into the bar and it reports how many changes are not yet applied, and **Refresh** is unavailable until you apply them. A run started with edits pending would use the values you can see you replaced and say nothing about it, so it is blocked instead.
 
-Once applied, those values stick for later refreshes on this page. Relative presets like *Last 7 days* resolve when the query runs rather than when you picked them, so a preset means the seven days before this run, not before your click.
+Once applied, those values stick for later refreshes on this page. Relative presets like *Last 7 days* resolve when the query runs rather than when you picked them, so a preset means the seven days before this run, not the seven days before your click.
 
-Below all this are the query's **visualization tabs**: one per saved visualization, a **+** to add another, and per-tab edit and delete. A query that has never run offers a run control in the empty results panel, so you are not hunting for the header button. See [Visualizations](/features/visualizations).
+Below all this are the query's **visualization tabs**: one per saved visualization, a **+** to add another, and per-tab edit and delete. A query that has never run offers a run control in the empty results panel, so you don't have to hunt for the header button. See [Visualizations](/features/visualizations).
 
 A query id that does not exist says **Query not found**.
 
@@ -134,9 +134,9 @@ The editor (also used by **New Query**) is a full authoring surface:
 
 Three controls sit above the editor, and each has a rule worth knowing.
 
-**Run** sends what is in the editor, not what is saved, which is what makes the editor useful for trying something before committing to it.
+**Run** sends what is in the editor rather than what is saved, which is what makes the editor useful for trying something out before committing to it.
 
-**Save is unavailable until the buffer differs from what is stored**, and carries an asterisk while it does, so `Save *` means there is something to write and a plain `Save` means the stored query already matches. That asterisk is the dirty indicator; there is no separate one.
+**Save** is unavailable until the buffer differs from what is stored, and carries an asterisk while it does, so `Save *` means there is something to write and a plain `Save` means the stored query already matches. That asterisk is the only dirty indicator the editor has.
 
 **LIMIT 1000** is on by default and appends a row cap to what you run. Untick it when a query needs the whole result, remembering that the pane below then has to render it.
 
@@ -155,15 +155,15 @@ Unsaved changes are marked with a dirty indicator next to the name.
 
 **New Query** opens the same editor with nothing in it, against your default data source. The schema browser lists that source's tables with a column count each, and changing the source changes the tree.
 
-**Save is unavailable until there is something to save.** Saving creates the query and moves you to its own URL, so the address changing from `/queries/new` to `/queries/<id>/source` is how you know the query now exists. Until then nothing has been written.
+**Save** is unavailable until there is something to save. Saving creates the query and moves you to its own URL, so the address changing from `/queries/new` to `/queries/<id>/source` is how you know the query now exists. Until then nothing has been written.
 
-Parameter definitions are saved with the SQL that declares them, never separately. A query whose text mentions a parameter it has no definition for is one the backend refuses to run, so the two always move together.
+Parameter definitions are saved with the SQL that declares them, never separately. The backend refuses to run a query whose text mentions a parameter it has no definition for, so the two always move together.
 
-With the [drafts feature](#drafts) off, saving also shares the query with the team, because a query nobody else can find is not a state the product offers. With drafts on, saving leaves it yours until you share it.
+With the [drafts feature](#drafts) off, saving also shares the query with the team, since without drafts there is no unshared state for it to sit in. With drafts on, saving leaves it yours until you share it.
 
 ### Why the AI bar is sometimes greyed out
 
-The bar has to know which table you mean before it will generate anything, so on a blank editor it starts switched off. **Read the grey line underneath it, not the text inside it.** The hint below gives the actual reason; the placeholder in the box says only *SQL generation is off for this data source*, whatever the reason turns out to be.
+The bar has to know which table you mean before it will generate anything, so on a blank editor it starts switched off. The grey hint line underneath the bar gives the actual reason; the placeholder inside the box says only *SQL generation is off for this data source*, whatever the reason turns out to be.
 
 | The hint says | What it means |
 |---|---|
@@ -174,7 +174,7 @@ The bar has to know which table you mean before it will generate anything, so on
 
 Only the last two are genuinely about the data source. The first is what you meet on every new query, and it clears the moment you name a table.
 
-The editor below is fully usable throughout. The AI bar is an accelerator, not the way in.
+The editor below stays fully usable in every one of these states, with or without the AI bar.
 
 ### Parameters
 
@@ -192,7 +192,7 @@ When AI is enabled, the editor gains mode tabs: **Visual** and **SQL Editor**. T
 - **Visualization**: pick how to show it from thumbnail tiles.
 - **Run**, **Save**, or **Open in SQL Editor** to continue by hand.
 
-Anything the builder cannot express (a cross-dataset join, a dataset with no column metadata) is stated plainly with a pointer to the SQL editor.
+Anything the builder cannot express (a cross-dataset join, a dataset with no column metadata) is stated plainly, with a pointer to the SQL editor.
 
 ## The query actions menu
 
@@ -213,7 +213,7 @@ Scheduled runs and their punctuality are visible org-wide under [Schedules](/fea
 
 ### The API Key dialog
 
-The dialog hands out three copyable fields, not one:
+The dialog hands out three copyable fields:
 
 | Field | What it is |
 |---|---|
@@ -221,9 +221,9 @@ The dialog hands out three copyable fields, not one:
 | Results in JSON format | The complete URL, key included |
 | Results in CSV format | The same, as CSV |
 
-The two URLs are there because assembling one by hand is where the path shape and the parameter name go wrong, and the address most people would build by guessing did not work. Both are built on this app's own origin, the only address a consumer outside the deployment can reach.
+The two URLs are there because assembling one by hand is where the path shape and the parameter name go wrong, and the address most people would build by guessing did not work. Both are built on this app's own origin, which is the only address a consumer outside the deployment can reach.
 
-Either one returns the query's latest results to anyone holding the key, with no sign-in. Paste it into a browser, `curl`, or a spreadsheet importer. Treat it as a credential; [Sharing & Embeds](/features/sharing) covers how it sits beside the other tokenized surfaces.
+Either one returns the query's latest results to anyone holding the key, with no sign-in, so it works pasted into a browser, `curl`, or a spreadsheet importer. Treat it as a credential; [Sharing & Embeds](/features/sharing) covers how it sits beside the other tokenized surfaces.
 
 **Regenerate** takes two clicks, since rotating the key breaks every URL already built from it and there is no undo.
 
@@ -237,7 +237,7 @@ The key goes to the query's owner and to administrators. A member with permissio
 
 ## Query snippets
 
-Reusable SQL fragments, shared across the org. Off by default: with the `query_snippets` flag off, **Library → Query Snippets** is absent from the sidebar and the URL itself returns 404, rather than showing a page that cannot do anything.
+Snippets are reusable SQL fragments, shared across the org, and they are off by default. With the `query_snippets` flag off, **Library → Query Snippets** is absent from the sidebar and the URL itself returns 404, rather than showing a page that cannot do anything.
 
 With it on, the list shows every snippet by **Trigger**, **Description** and **Snippet**, searchable by trigger or description. **New Snippet** asks for those same three, of which the trigger and the body are required, and the row menu offers **Delete**.
 
@@ -247,7 +247,7 @@ Through the **Snippets** panel in the editor's left sidebar, below the schema br
 
 :::caution The page's own description is misleading
 
-The Query Snippets page describes snippets as "expanded by typing their trigger in the editor". **Typing a trigger does nothing here.** That text is inherited from the query service's own legacy UI, whose behaviour this product replaced with the click-to-insert panel above. The editor's autocomplete offers table and column names from the schema, not snippet triggers.
+The Query Snippets page describes snippets as "expanded by typing their trigger in the editor", but typing a trigger does nothing here. That text is inherited from the query service's own legacy UI, whose behaviour this product replaced with the click-to-insert panel above. The editor's autocomplete offers table and column names from the schema, not snippet triggers.
 
 :::
 

@@ -18,7 +18,7 @@ A KPI is a named metric with a target, thresholds, an owner, and a cadence. Veod
 
 ## The KPI list
 
-One list, no tabs. Each row shows a star, the name, a **Status** badge, the current **Value**, a **Data** badge, the **Owner** and the [**Domain**](/features/data-catalog#what-a-domain-is), which reads *Uncategorized* when the KPI has none. Everything but the star and the Data badge sorts.
+The list has no tabs. Each row shows a star, the name, a **Status** badge, the current **Value**, a **Data** badge, the **Owner** and the [**Domain**](/features/data-catalog#what-a-domain-is), which reads *Uncategorized* when the KPI has none. Everything but the star and the Data badge sorts.
 
 A bell beside a name means a breach alert is armed on that KPI.
 
@@ -26,18 +26,18 @@ A bell beside a name means a breach alert is armed on that KPI.
 
 ### Two columns that answer different questions
 
-**Status** and **Data** sit next to each other on purpose, and reading only one of them is how a dead feed goes unnoticed.
+**Status** and **Data** sit next to each other because they answer different questions, and reading only one of them is how a dead feed goes unnoticed.
 
 | Column | Answers |
 |---|---|
 | **Status** | Is this number good? On track, At risk, or Breached against the KPI's own thresholds |
 | **Data** | Is there a number at all? How old the data underneath it is |
 
-A KPI on a frozen feed keeps recomputing on schedule and keeps reporting **On track**, because the last value it managed to read is still within its thresholds. Only the Data column shows that nothing new has arrived. That combination, On track beside a stale badge, is the one worth stopping at.
+A KPI on a frozen feed keeps recomputing on schedule and keeps reporting **On track**, because the last value it managed to read is still within its thresholds. Only the Data column shows that nothing new has arrived, so On track beside a stale badge is the combination worth stopping at.
 
 ### Finding one
 
-The search box matches **name, owner and domain** at once, so typing `rail` finds both a KPI named "Rail feed capture rate" and every KPI in the rail domain, whatever it is called.
+The search box matches name, owner and domain at once, so typing `rail` finds both a KPI named "Rail feed capture rate" and every KPI in the rail domain, whatever it is called.
 
 The row menu holds **Delete**, for the KPI's owner or an admin, and appears only for them.
 
@@ -61,7 +61,7 @@ Three different situations, three different messages: *Unable to load KPIs. The 
 
 ### What a KPI can measure
 
-A KPI used to mean one thing: a saved query, and which of its columns holds the number. It can now also measure a [capture](/features/captures) or a published feed directly, which saves writing a query whose only job is to count how well one of them is behaving.
+A KPI can measure a saved query, naming which of its columns holds the number. It can also measure a [capture](/features/captures) or a published feed directly, which saves writing a query whose only job is to count how well one of them is behaving.
 
 **Source type** on the form picks between them, and the two fields beside it change with it. A saved query asks for a query and a value column; the other two ask for a source and a measure.
 
@@ -100,7 +100,7 @@ A KPI measuring a source that later disappears keeps its history rather than bei
 
 ### You do not type the current value
 
-The Current value area explains itself: *Measured, not entered. The first reading arrives on the next scheduled evaluation, usually within a minute.* A KPI's value is whatever its query returns on the next tick, so there is nothing to fill in. Asking an author to type one would be asking them to state a measurement they have not taken.
+The Current value area explains itself: *Measured, not entered. The first reading arrives on the next scheduled evaluation, usually within a minute.* A KPI's value is whatever its query returns on the next tick, so there is nothing to fill in. A typed value would be a measurement that was never taken.
 
 ### The thresholds have to be in order
 
@@ -139,7 +139,7 @@ Three panels: the current value, its history, and its definition.
 
 The **scorecard** leads with the value and its unit, the change since the previous reading, and a status badge. Directly beneath it, outside the card, sits the age of the **underlying data**.
 
-Those two are deliberately separate, and it is the same distinction the [list's Status and Data columns](#two-columns-that-answer-different-questions) make. The card's own timestamp describes the *evaluation*, and a KPI on a dead feed goes on evaluating punctually forever. The line below it describes the *data* that evaluation read.
+Those two are separate for the same reason the [list's Status and Data columns](#two-columns-that-answer-different-questions) are. The card's own timestamp describes the *evaluation*, and a KPI on a dead feed goes on evaluating punctually forever, while the line below it describes the *data* that evaluation read.
 
 The **History** chart draws the value over time with the target line and the at-risk and breached bands behind it, so a number drifting toward a threshold is visible before it crosses.
 
@@ -154,7 +154,7 @@ The **History** chart draws the value over time with the target line and the at-
 | **Notifies** | Where a breach goes, for example *you by email* |
 | **Last evaluated** | When the metric last ran |
 
-**Source query** at the bottom opens the query that computes the number. That button is the fastest way to answer "where does this figure actually come from", and worth reaching for before concluding a KPI disagrees with something else on screen.
+**Source query** at the bottom opens the query that computes the number, which is the quickest way to answer where a figure comes from before you conclude that a KPI disagrees with something else on screen.
 
 ### Acting on it
 
@@ -176,7 +176,7 @@ If you change the **source query** or the **value column**, the KPI's stored rea
 
 :::
 
-**Only the KPI's owner or an admin can save changes.** The Edit button is offered more widely than that, so if you do not own a KPI you may get as far as the form and be refused at the last step.
+Only the KPI's owner or an admin can save changes. The Edit button is offered more widely than that, so if you do not own a KPI you may get as far as the form and be refused at the last step.
 
 ## How evaluation works
 

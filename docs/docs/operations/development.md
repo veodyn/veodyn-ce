@@ -32,7 +32,7 @@ pnpm test:e2e     # Playwright against mock mode, port 3100
 
 Useful facts:
 
-- **Mock mode is a first-class backend**: the suite, the Playwright baseline, and demos run on bundled fixture packs (`NEXT_PUBLIC_DEMO_PACK`: `neutral` or `la`).
+- Mock mode is a first-class backend: the suite, the Playwright baseline, and demos run on bundled fixture packs (`NEXT_PUBLIC_DEMO_PACK`: `neutral` or `la`).
 - Backends are server-only; new integrations get a route handler under `src/app/api/*`, never a browser fetch.
 - Server env reads go through the validated boundary in `src/lib/env.ts`, and every variable is documented in `.env.local.example`.
 - The instance config schema lives in `src/lib/config-schema.ts`; visualization plugins in `src/lib/visualizations/` and `src/plugins/`.
@@ -47,7 +47,7 @@ uv run ruff check . && uv run ruff format .
 uv run mypy veodyn_api
 ```
 
-The OpenAPI schema is **committed** (`openapi.json`) and CI diffs it against what the service generates. After changing any response model:
+The OpenAPI schema is committed (`openapi.json`) and CI diffs it against what the service generates. After changing any response model:
 
 ```bash
 cd app && pnpm gen:api-types
@@ -70,7 +70,7 @@ It keeps its own formatting rather than this repository's: Black at 119 columns 
 
 Both app test jobs fail on more than tests, so run the full local gate before pushing:
 
-- **Frontend**: `pnpm lint` (a single warning fails), `tsc --noEmit`, then the suite. A green suite alone is not a green build.
+- **Frontend**: `pnpm lint` (a single warning fails), `tsc --noEmit`, then the suite. A green suite on its own does not mean a green build.
 - **Sidecar**: `ruff check`, `ruff format --check`, `mypy`, `pytest`, and the `openapi.json` diff.
 
 ## Documentation

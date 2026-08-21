@@ -6,32 +6,32 @@ description: "Turning freshness from something a source claims about itself into
 
 # Prove your captures are current
 
-Every dashboard in the building is downstream of a handful of captures, and the
-question that gets asked in the room is always the same one: is this number
-current, or has something been quietly dead since Thursday. This is how you make
-that answerable without opening a query.
+Most dashboards are downstream of a handful of captures, and the recurring
+question about any of them is whether the number is current or whether the
+source stopped delivering days ago. The Captures board answers that without
+opening a query.
 
 A capture is a saved query that writes its results into the historical
-warehouse. [Build a history you can trend](/use-cases/history-capture) is how one
-comes into existence; this page is about reading the board of them afterwards.
+warehouse. [Build a history you can trend](/use-cases/history-capture) covers
+creating one; this page covers reading the board of them afterwards.
 
 ## What has to be true
 
-A capture can only be judged late if something has said how often it is
-expected. Until then, the most the product can do is repeat the catalog's own
-blanket freshness check, and a green status on that basis is a cutoff applied to
-everything rather than a verdict about this capture.
+The product can only call a capture late if it knows how often data is
+expected. Without a declared cadence it falls back to the catalog's blanket
+freshness check, so a green status there is one cutoff applied to every
+dataset and says nothing about this capture in particular.
 
-So the work here is small and mostly one-time: declare a cadence for every
-capture that matters, and then treat the board as the thing you look at first.
+The work is small and mostly one-time: declare a cadence for every capture that
+matters.
 
 ## Before you start
 
-Nothing but an account. Setting a cadence expectation is open to any signed-in
-member, since it changes neither what data is exposed nor who can reach it. That
-is the opposite of [publishing a
-feed](/features/published-feeds#publishing-is-administered), which is admin-only
-because it changes both.
+You need an account, and nothing else. Setting a cadence expectation is open to
+any signed-in member, because it changes neither what data is exposed nor who
+can reach it. [Publishing a
+feed](/features/published-feeds#publishing-is-administered) changes both, which
+is why that one is admin-only.
 
 ## The steps
 
@@ -46,119 +46,107 @@ page tells you how that status was reached.
 | A status marked *as reported*, with *None declared, so age is not checked* in the Cadence column | The catalog's blanket stale-after window, with no per-capture multiplier. Nothing specific to this capture has been checked |
 
 A derived status has two possible cadences behind it, and the column says which:
-an expectation somebody declared, marked *expected*, or failing that the capture
-query's own refresh schedule. Either one is enough for the product to reach a
-verdict. Neither one, and it cannot.
+an expectation someone declared, marked *expected*, or failing that the capture
+query's own refresh schedule. With neither, the row falls back to *as reported*.
 
-The rule it applies is worth knowing before you set anything: Stale once the
-last arrival is past twice the cadence, Down past ten times it, and never better
-than the verdict the catalog already reached. A capture the catalog already calls
-stale shows Stale straight away, whatever the multiple would have said.
+The rule is: Stale once the last arrival is past twice the cadence, Down past
+ten times it, and never better than the verdict the catalog already reached. A
+capture the catalog already calls stale shows Stale straight away, whatever the
+multiple would have said.
 
 ![Captures: per-capture status, last received, cadence, and datasets](/img/screenshots/captures.png)
 
 ### 2. Declare a cadence on every capture you would act on
 
 The Cadence column carries the control. Set the interval to what the source
-actually delivers, not to what you wish it did: an interval tighter than reality
-turns the board into a wall of red that people learn to ignore, which costs you
-the one real alert when it comes. Remember the multiples, too. A cadence of five
-minutes reads Stale at ten and Down at fifty.
+actually delivers. An interval tighter than reality leaves the board
+permanently red and people stop reading it. Keep the multiples in mind as well:
+a cadence of five minutes reads Stale at ten and Down at fifty.
 
-Work down the list in the order the rows matter to you. A capture nothing depends
-on can stay undeclared, and the board will say so honestly.
+Work down the list in the order the rows matter to you. A capture with nothing
+depending on it can stay undeclared; it will keep showing *as reported*.
 
 ### 3. Know what breaks when one goes silent
 
 The **Datasets** column names the [catalog datasets](/features/data-catalog)
-each capture populates, each a link. That is the blast radius in community terms:
-these tables stop moving.
+each capture populates, each one a link. Those are the tables that stop moving
+when the capture goes silent.
 
 On an [enterprise](/editions) build there is a **Metrics affected** column beside
 it, tracing those datasets on to the KPIs computed from them. A community build
-registers no metrics feature, so the column is not on the page at all. That is
-worth knowing before you go looking for it: an absent column is the honest
-rendering, where a column reading *None* on every row would be a claim that
-nothing depends on any of these captures.
+registers no metrics feature, so the column is not rendered at all rather than
+reading *None* on every row.
 
 ### 4. Check the schedules, not just the captures
 
-Data can be arriving perfectly while the query that reads it stopped running.
-**Monitor → Schedules** (`/schedules`) lists every query with a refresh interval
-set, how often it runs, and whether it is keeping up: *On time*, *Late* or
-*Expired*. An expired schedule shows as Expired rather than dropping off the
-list, which is the state that otherwise disappears silently.
+Data can be arriving on time while the query that reads it has stopped running,
+so check **Monitor → Schedules** (`/schedules`) as well. It lists every query
+with a refresh interval set, how often it runs, and whether it is keeping up:
+*On time*, *Late* or *Expired*. An expired schedule stays on the list marked
+Expired instead of dropping off it.
 
-The two pages overlap without either containing the other. Captures keeps a
-dataset it has captured before whatever its query's schedule looks like now, so
-a capture whose query lost its interval stays there and vanishes from Schedules.
-A scheduled query that writes nowhere in the warehouse is the reverse: on
-Schedules, never on Captures.
+The two pages overlap, and neither is a subset of the other. Captures keeps a
+dataset it has captured before, whatever its query's schedule looks like now, so
+a capture whose query lost its interval stays on Captures and disappears from
+Schedules. A scheduled query that writes nowhere in the warehouse appears on
+Schedules and never on Captures.
 
 **Last result** on Schedules means when the rows were last fetched, not when the
 query was last edited. It is the same field, with the same wording, on the
 query's own page.
 
-The list reads up to 2,000 queries across 20 pages of 100. Past that it says so
-in a line above the table instead of quietly dropping the rest, which matters on
-an instance large enough that the query you are hunting for might be past the
-cap.
+The list reads up to 2,000 queries across 20 pages of 100. Past that, a line
+above the table says so, so on an instance that large the query you are looking
+for may not be on the list at all.
 
 :::caution Archiving a query silently stops it
 
 Archiving deletes every alert on the query, clears its refresh schedule, and
 deletes every dashboard widget built on its visualizations. **Restore** brings
-back only the query. A restored query looks entirely intact and has quietly
-stopped running, which usually surfaces a week later as a stale number on a
-dashboard.
+back only the query. A restored query looks intact but has no refresh schedule,
+so it is no longer running.
 
 :::
 
 ### 5. Tie it to what you publish
 
-If you [publish a feed](/use-cases/publish-gtfs-realtime) of your own, freshness
-has a second half. Under `block`, a published feed goes on serving its last good
-artifact indefinitely, so an upstream that died is invisible at the published
-address. Under `last known good` the address stops answering once the artifact
-passes its cap, which is loud but only tells the consumer, not you.
+If you [publish a feed](/use-cases/publish-gtfs-realtime) of your own, there is
+a second freshness question. Under `block`, a published feed goes on serving its
+last good artifact indefinitely, so a dead upstream is invisible at the
+published address. Under `last known good` the address stops answering once the
+artifact passes its cap. The consumer sees that; you do not get told.
 
-This page is not automatically where you find that out, and it is worth being
-exact about why. Publishing reads the bound query's newest cached result and
-writes nothing to the warehouse, while this board lists warehouse datasets. So a
-published feed's source query appears here only if its data source has
-[capture](/use-cases/history-capture) switched on and has captured at least once.
-Where it does not, the two surfaces that do answer are
+Captures does not necessarily show it either. Publishing reads the bound query's
+newest cached result and writes nothing to the warehouse, while this board lists
+warehouse datasets. So a published feed's source query appears here only if its
+data source has [capture](/use-cases/history-capture) switched on and has
+captured at least once. Otherwise the two surfaces that answer are
 [Schedules](/features/schedules), which says whether the bound query is still
-running to its interval, and the feed's own publish history, where a run
-producing nothing new is what a stalled upstream looks like from the publish
-side.
+running to its interval, and the feed's own publish history, where a stalled
+upstream shows up as a run that produced nothing new.
 
-Switching capture on for the bound query's source is the way to put a published
-feed on this board deliberately, and it is worth doing for the feeds you would be
-called about.
+To get a published feed onto this board, switch capture on for the bound query's
+data source.
 
-A private feed is quieter still. A consumer whose token has been revoked or has
+Private feeds tell the consumer even less. A token that has been revoked or has
 expired gets the same 404 an unknown slug gets, not a 503, so from outside there
 is no way to tell a dead credential from a feed that was never there. Only a
-token that has already resolved ever reaches the staleness answer. Whoever is
-reading a private feed of yours needs a name and a person to write to, because
-the endpoint will not tell them anything.
+token that has already resolved ever reaches the staleness answer. Give anyone
+reading a private feed of yours a contact to write to, since the endpoint will
+not tell them what went wrong.
 
-Either way, the published feed's page tells you what was served, and it cannot
-tell you whether the data behind it is still arriving. That second question is
-this board's, once the capture exists for it to answer from, and Schedules' until
-then.
+In both cases the published feed's page tells you what was served, but not
+whether the data behind it is still arriving. That question belongs to this
+board once a capture exists for it, and to Schedules until then.
 
 ## How you know it worked
 
-Open Captures and count the rows still marked *as reported*. If the answer is
-zero for every capture anyone would act on, the board is now a check rather than
-a summary of claims.
+Open Captures and count the rows still marked *as reported*. Every capture
+anyone would act on should have a derived status instead.
 
 ## What this does not do
 
-It does not page anyone. The [alerts](/features/alerts) surface is
-[enterprise](/editions), and Captures is a board you look at, not a notification
-you receive. Deeper admin-only views of the same machinery, worker queues,
-outdated queries and backend status, live under [System
-Administration](/admin/system).
+Captures does not notify anyone. It is a board you open, and the
+[alerts](/features/alerts) surface is [enterprise](/editions). Deeper admin-only
+views of the same machinery, worker queues, outdated queries and backend status,
+live under [System Administration](/admin/system).

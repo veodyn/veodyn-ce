@@ -18,11 +18,11 @@ It reads top to bottom as identity, then access, then what you own:
 - **Groups**: the groups you belong to, read-only here. Admins manage membership under [Team](/admin/users).
 - **Your queries**, and the other objects you own.
 
-Groups sit directly under Security rather than at the foot of the page, because what your account may reach belongs beside the key and the password rather than below a list of your work.
+Groups sit directly under Security rather than at the foot of the page, so what your account may reach sits beside the key and the password.
 
 ### Your API key
 
-Shown **masked**, with controls to reveal it, copy it, and regenerate it behind a confirmation. It is your own key, so there is no permission question about regenerating, only whether you mean to.
+The key is shown masked, with controls to reveal it, copy it, and regenerate it behind a confirmation. It is your own key, so nobody has to grant you permission to rotate it.
 
 It authenticates [MCP clients](/features/connect#mcp) and [programmatic API access](/features/connect#apis) as you, and reaches exactly what your account can. Regenerate it if it ever leaks: anything using the old key stops working immediately.
 
@@ -32,6 +32,6 @@ Signed out, it says there is no profile to show. If the account cannot be read, 
 
 ## Theme
 
-The **Theme** menu in the sidebar footer switches between Light, Dark, and System. A handful of surfaces force their own theme by design: print views are always light, and the [enterprise](/editions) presentation and wall modes are always dark.
+The **Theme** menu in the sidebar footer switches between Light, Dark, and System. A handful of surfaces force their own theme regardless: print views are always light, and the [enterprise](/editions) presentation and wall modes are always dark.
 
 Organization-wide settings (authentication methods, feature flags, date formats) are an admin surface: see [System Administration](/admin/system#settings).

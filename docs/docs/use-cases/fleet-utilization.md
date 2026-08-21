@@ -10,8 +10,8 @@ Telematics answers where the fleet is and whether it is moving. That supports a
 narrow, useful set of questions: how many vehicles were in service at 7am, which
 ones did not move all week, how utilization looks against the pull-out plan.
 
-It does not support maintenance analytics, and the gap between those two things
-is the first thing to be clear about.
+It does not support maintenance analytics. The last section of this page lists
+what that rules out.
 
 ## What has to be true
 
@@ -22,18 +22,18 @@ The [Geotab connector](/connectors) exposes two resources:
 | `device_status_info` | `device` (a JSON object with an id), `latitude`, `longitude`, `bearing`, `speed`, `isDriving`, `dateTime` |
 | `devices` | Device objects with id, name, serial number, VIN and the rest of the inventory |
 
-That is the surface. There is no engine fault, no odometer, no fuel, no diagnostic
-code, and no maintenance record in it. If your question is about failures or
-service intervals, it belongs to your maintenance system or to Geotab's own
-tooling, and no query here will reach it.
+Those two are the whole surface: no engine fault, no odometer, no fuel, no
+diagnostic code, no maintenance record. Questions about failures or service
+intervals belong to your maintenance system or to Geotab's own tooling, and no
+query here reaches them.
 
-What `device_status_info` gives you is a snapshot: the fleet as it stands right
-now. Every utilization measure below is built on
+`device_status_info` returns a snapshot of the fleet as it stands right now.
+Every utilization measure below is built on
 [captured](/use-cases/history-capture) snapshots, and its resolution is the
-interval between them. Capture them on a schedule, because a uniform time axis is
-what the arithmetic in step 3 assumes. Manual runs can be captured too, and they
-land in the same table at whatever moments somebody pressed the button, which
-turns "vehicles in service at 7am" into an average over an uneven sample.
+interval between them. Capture them on a schedule, since the arithmetic in step
+3 assumes a uniform time axis. Manual runs are captured too, and they land in
+the same table at whatever moments someone pressed the button, which turns
+"vehicles in service at 7am" into an average over an uneven sample.
 
 ## Before you start
 
@@ -49,9 +49,8 @@ turns "vehicles in service at 7am" into an average over an uneven sample.
 
 **Admin → Data Sources**, type Geotab. Then set **Historical capture (scheduled
 runs → warehouse)** on the same form, and a retention that matches how far back
-anyone will actually look. That checkbox is on every source type rather than
-being anything to do with Geotab; what makes it the right call here is that the
-connector answers only with now.
+anyone will actually look. That checkbox appears on every source type; it
+matters here because the connector only ever returns the current state.
 
 ### 2. Two queries, scheduled
 
@@ -68,8 +67,8 @@ And the inventory, daily, because it changes when a vehicle is added:
 ```
 
 `device` arrives as a JSON object rather than a bare id, so extract it once in a
-`results` query and join the two together there. Doing it once, in a query
-everything else reads, keeps the JSON handling out of every downstream board.
+`results` query and join the two together there. Every downstream board then
+reads that query instead of handling the JSON itself.
 
 ### 3. Compute utilization from the snapshots
 
@@ -86,8 +85,7 @@ GROUP BY hour
 ORDER BY hour
 ```
 
-Vehicles that have not moved in a week, which is the query that pays for the
-whole exercise:
+Vehicles that have not moved in a week:
 
 ```sql
 SELECT device_id,
@@ -100,23 +98,23 @@ HAVING last_driving < now() - INTERVAL 7 DAY
 ORDER BY last_driving
 ```
 
-A vehicle absent from the snapshot entirely is a different case from one present
+A vehicle absent from the snapshot is a different case from one that is present
 and stationary, and the two need different handling. `reporting` in the first
-query is the count that answers "how many devices told us anything", and a drop
-in it is a telematics problem rather than a service one.
+query counts how many devices told you anything, so a drop in it points at
+telematics rather than at service.
 
 ### 4. Build the board
 
 - A line chart of `pct_driving` by hour, with the pull-out plan as a reference
   line if you have it as a table.
 - A counter of vehicles reporting now, against fleet size from `devices`.
-- The stationary-vehicles table from above, which is the one somebody acts on.
+- The stationary-vehicles table from above.
 - Map (Markers) of the current fleet, coloured by `isDriving`.
 
-Markers answer "where is everything". They do not answer "which garage is
-carrying the idle vehicles", and that second question is a join rather than a
-new data source. With your garage or district boundaries in a `static_geojson`
-layer, a `results` query assigns each vehicle to one:
+Markers show where everything is. Working out which garage is carrying the idle
+vehicles takes a join rather than another data source. With your garage or
+district boundaries in a `static_geojson` layer, a `results` query assigns each
+vehicle to one:
 
 ```sql
 SELECT b.name AS district, b.geometry AS boundary, count(*) AS idle
@@ -133,9 +131,9 @@ more detail, including what it costs.
 
 ## How you know it worked
 
-Count vehicles on the yard at a known moment and compare. The number that will
-be wrong first is fleet size, because `devices` includes everything registered,
-including units that were sold, and nothing in the telematics data says so.
+Count vehicles on the yard at a known moment and compare. Fleet size is usually
+the first number to come out wrong, because `devices` includes everything
+registered, sold units included, and nothing in the telematics data marks them.
 
 ## What this does not do
 
@@ -146,6 +144,6 @@ including units that were sold, and nothing in the telematics data says so.
 | Is it due for service | Your EAM or maintenance scheduling system |
 | Was it in revenue service | CAD or scheduling. `isDriving` means moving, and deadhead moves too |
 
-That last row matters most. Telematics utilization is not revenue service, and
-labelling a chart "revenue hours" from this data would put a number on a board
-under a name it does not have.
+The last row is the one that causes trouble. Telematics utilization is not
+revenue service, so a chart built from this data should not be labelled
+"revenue hours".

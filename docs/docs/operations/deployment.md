@@ -8,11 +8,11 @@ description: "Production installation on Kubernetes: images, Helm charts, depend
 
 The reference deployment runs on Kubernetes with Helm. Each service ships a Dockerfile and the charts live in `helm/charts/`, each with an example values file beside it.
 
-What is **not** in this repository is any particular deployment: the per-environment values, the provisioning scripts, the cluster credentials and the pipeline that pushes releases are specific to whoever is running it, and are configured wherever that deployment lives. The repository's CI builds and tests images; it does not deploy. Nothing in the charts requires any particular CI either, so a pipeline of your own (or a laptop with `helm` and `kubectl`) can drive them.
+This repository does not contain any particular deployment: the per-environment values, the provisioning scripts, the cluster credentials and the pipeline that pushes releases are specific to whoever is running it, and are configured wherever that deployment lives. The repository's CI builds and tests images; it does not deploy. Nothing in the charts requires any particular CI either, so a pipeline of your own (or a laptop with `helm` and `kubectl`) can drive them.
 
 ## What gets deployed
 
-Four charts, of which three are always installed. The frontend and veodyn-api charts accept any release name. The query service chart does not: three of its worker templates (`adhocworker-`, `genericworker-` and `scheduledworker-deployment.yaml`) hardcode `http://flow-redash` in their health-check probe, and no value overrides that URL. Name the query service release something else and its workers probe a service that does not exist. So either install it as `flow`, or turn those probes off with `adhocWorker.disableHealthChecks` / `genericWorker.disableHealthChecks` / `scheduledWorker.disableHealthChecks`, which is what the example values do.
+Four charts, of which three are always installed. The frontend and veodyn-api charts accept any release name; the query service chart does not, because three of its worker templates (`adhocworker-`, `genericworker-` and `scheduledworker-deployment.yaml`) hardcode `http://flow-redash` in their health-check probe and no value overrides that URL. Name the query service release something else and its workers probe a service that does not exist. Either install it as `flow`, or turn those probes off with `adhocWorker.disableHealthChecks` / `genericWorker.disableHealthChecks` / `scheduledWorker.disableHealthChecks`, which is what the example values do.
 
 Release names also decide the Service names other releases have to reach: `flow-redash` for the query service, `veodyn-api-api` for the API. Those are the hosts the example values files point at, so the guide and the examples work together as written. The `-redash` suffix in that Service name comes from the chart's own templates and is not something the release name controls.
 
@@ -23,7 +23,7 @@ Release names also decide the Service names other releases have to reach: `flow-
 | `flow` | `helm/charts/flow/contrib-helm-chart` | `helm/charts/flow/values.example.yaml` | Query service: server, scheduler, ad-hoc worker, scheduled worker, generic worker |
 | optional | `helm/charts/veodyn-validator` | `values.example.yaml` | The [feed validator](/features/published-feeds#the-validator) (port 8000), needed only to publish feeds |
 
-The validator is the one a deployment can leave out, and leaving it out is a real choice rather than an oversight: an instance that publishes no feeds needs no validator, and one that does publishes nothing until the service exists. Its Service name is the release name exactly, with no suffix, and that is what `VEODYN_FEED_VALIDATOR_URL` on the sidecar has to point at.
+The validator is the one chart a deployment can leave out: an instance that publishes no feeds needs no validator, and one that does publishes nothing until the service exists. Its Service name is the release name exactly, with no suffix, and that is what `VEODYN_FEED_VALIDATOR_URL` on the sidecar has to point at.
 
 There is no veodyn-api worker release here. The veodyn-api chart can still
 install one, from the same generic deployment template, but the only recurring
@@ -59,7 +59,7 @@ Frontend build-time arguments matter: `NEXT_PUBLIC_REDASH_URL` (real-backend mod
 
 ## Values layout and secrets
 
-Environment variables for a pod live in an `app.env` map, with one convention worth knowing: a value written as `secret:KEY_NAME` is rendered as a reference into a shared Kubernetes Secret rather than as a literal. The Secret's name is `app.SharedSecretName`, and `KEY_NAME` is the key inside it. Anything not carrying that prefix is a plain literal in the pod spec, so this is the line between what belongs in a values file and what does not.
+Environment variables for a pod live in an `app.env` map, with one convention worth knowing: a value written as `secret:KEY_NAME` is rendered as a reference into a shared Kubernetes Secret rather than as a literal. The Secret's name is `app.SharedSecretName`, and `KEY_NAME` is the key inside it. Anything not carrying that prefix is a plain literal in the pod spec.
 
 You create that Secret yourself, by whatever means you already manage secrets; the charts only read it. The query service chart reads `app.SharedSecretName` for its own env maps in exactly the same way, and carries a second mechanism alongside it: `redash.existingSecret` names the Secret holding the query service's five internal keys, which must all exist (empty values are fine for the ones you do not use). One Kubernetes Secret can serve both.
 
@@ -80,7 +80,7 @@ Set both `app.runEnterpriseMigrations: true` on the migrating release **and**
 `VEODYN_EXTRA_MODULES: veodyn_enterprise.registration` on every release of that
 deployment. The two are a pair: routers without the chain means every enterprise
 request hits a table that was never created, and the chain without the routers
-means four tables nothing serves. The migration Job **refuses to render** if the
+means four tables nothing serves. The migration Job refuses to render if the
 migrating release sets one and not the other, so this is a `helm template`
 failure rather than a deployment that comes up green and does not work.
 
@@ -95,14 +95,14 @@ accepted as "the key is there".
 
 The pre-upgrade hook runs the pack's `migrate preflight` before either chain. On
 a new database, and on one that has already been through this, it prints a line
-and carries on. On a database that was migrated **before** the community and
+and carries on. On a database that was migrated before the community and
 enterprise chains were split, it exits non-zero and stops the deploy.
 
 That database has all seven product tables and only `alembic_version`, so the
 enterprise chain believes it has never run: left to itself it starts at `0001`
 and fails creating `kpi`. Nothing is damaged when that happens, because Postgres
-rolls the whole revision back, but the deploy is blocked either way. The
-preflight makes it blocked with a diagnosis instead of a traceback.
+rolls the whole revision back, but the deploy is blocked either way, and the
+preflight at least blocks it with a diagnosis rather than a traceback.
 
 Clearing it is one command, once in the life of the deployment, run against that
 database from an image carrying the pack:
@@ -113,7 +113,8 @@ python -m veodyn_enterprise.migrate stamp head
 
 Then deploy again. The chart does not run that for you: a stamp is only correct
 when the enterprise tables are already the shape the chain's head would have
-left them, and a hook can see that they exist but not that they are. The pack's
+left them, and a hook can check that the tables exist but not that their shape
+matches. The pack's
 `docs/migration-runbook.md` is the long form, including how to tell this case
 apart from a community deployment merely taking the pack for the first time,
 where the stamp would be the wrong thing to do.
@@ -134,7 +135,7 @@ Because each backend is publicly routable, anything that must always run on a re
 
 ## Security headers
 
-The frontend sends its own security headers. The charts and the ingress do not: nothing in the Helm templates or in any per-environment values file adds a `configuration-snippet` or an `add_header` for these, so no ingress annotation is quietly covering the same ground, and adding one would give the same concern two authorities.
+The frontend sends its own security headers. The charts and the ingress do not: nothing in the Helm templates or in any per-environment values file adds a `configuration-snippet` or an `add_header` for these, so no ingress annotation is quietly covering the same ground, and adding one would leave two places setting the same headers.
 
 Sent on every response:
 
@@ -150,7 +151,7 @@ The Content-Security-Policy is built per request, nonce-based with `strict-dynam
 Two of its choices look loose and should not be tightened by reflex:
 
 - `style-src` keeps `unsafe-inline`. React and Next both write inline style attributes, and there is no nonce path for those, so removing it ships a policy that breaks the app instead of protecting it.
-- `img-src` allows `https:` wholesale. Two features render an image URL nobody can know in advance: a result cell renders one the query author wrote, and an avatar renders whatever a user set. Restricting it to `self` blanks both. Plain `http` is still refused, and blocking script injection is `script-src`'s job.
+- `img-src` allows `https:` wholesale. Two features render an image URL that cannot be known in advance: a result cell renders one the query author wrote, and an avatar renders whatever a user set. Restricting it to `self` blanks both. Plain `http` is still refused, and blocking script injection is `script-src`'s job.
 
 Framing is expressed only as `frame-ancestors`, with no `X-Frame-Options`. That header cannot say "deny everywhere except the embed routes", and two mechanisms disagreeing about framing is worse than one. `/login`, `/invite` and `/reset` are reachable without a session but are not embeddable, since a framed sign-in form is the clickjacking case.
 
@@ -162,11 +163,11 @@ It fails visibly: the basemap does not render, and the browser console names the
 
 :::
 
-Check a policy change against a production build, never the dev server. Development keeps `unsafe-eval` and allows websockets, so a dev run proves nothing about what production will permit.
+Check a policy change against a production build rather than the dev server: development keeps `unsafe-eval` and allows websockets, so a dev run proves nothing about what production will permit.
 
 ## First-deploy checklist
 
-The order is the point. Every credential has to exist before the release that reads it is installed, and for veodyn-api that is stricter than it sounds: its migration Job is a pre-install hook, so a missing key stalls the install itself rather than one pod.
+The order matters here. Every credential has to exist before the release that reads it is installed, and for veodyn-api that is stricter than it sounds: its migration Job is a pre-install hook, so a missing key stalls the install itself rather than one pod.
 
 1. **Provision the datastores**: PostgreSQL, Redis, ClickHouse. Set a real password on each, and keep the ClickHouse password in sync between the datastore itself and the query service's capture settings.
 2. **Create the image-pull Secret** in the namespace: a `kubernetes.io/dockerconfigjson` Secret holding credentials for the registry you push to. Every chart names one (`registrySecretName` in the frontend and veodyn-api values, `imagePullSecrets` in the query service values) and every pod template emits it unconditionally, so without it each workload fails image authentication before it ever runs.
@@ -174,7 +175,7 @@ The order is the point. Every credential has to exist before the release that re
 4. **Deploy the query service** from `helm/charts/flow/contrib-helm-chart`. Its install hook creates the schema. Open it once and create the admin user and organization.
 5. **Add both query service API keys to the shared Secret**: the admin account's key as `REDASH_INTERNAL_API_KEY` for the frontend, and a service account's key as `VEODYN_REDASH_SERVICE_API_KEY` for veodyn-api. Both releases in the next step require them, and veodyn-api's pre-install migration Job injects the second one, so installing before this step leaves that Job in `CreateContainerConfigError` and the release never finishes installing.
 
-   **"Non-admin" is not the bar for the service account.** The builtin default group in the query service also grants `create_dashboard`, `edit_dashboard`, `edit_query`, `schedule_query`, `list_alerts`, `list_users` and `view_source`, none of which veodyn-api ever uses, so a leaked key from that group could rewrite dashboards and enumerate your users. Put the account in a dedicated group holding exactly `create_query`, `execute_query`, `list_dashboards`, `list_data_sources` and `view_query`, which is what the local Compose stack seeds (`compose/seed-redash.py`) and what its `compose/verify-seed.py` asserts.
+   "Non-admin" is not the bar for the service account. The builtin default group in the query service also grants `create_dashboard`, `edit_dashboard`, `edit_query`, `schedule_query`, `list_alerts`, `list_users` and `view_source`, none of which veodyn-api ever uses, so a leaked key from that group could rewrite dashboards and enumerate your users. Put the account in a dedicated group holding exactly `create_query`, `execute_query`, `list_dashboards`, `list_data_sources` and `view_query`, which is what the local Compose stack seeds (`compose/seed-redash.py`) and what its `compose/verify-seed.py` asserts.
 
    Data source access is separate from group permissions: it is a `data_source_groups` row, and the query service attaches a new data source to the **default** group only. An account outside that group therefore starts with access to nothing and query execution answers 403. Attach the dedicated group to each data source, and set `REDASH_ADDITIONAL_DATA_SOURCE_GROUPS` to that group's name so data sources created later are attached at creation instead of depending on someone remembering the groups UI.
 6. **Deploy the frontend and the veodyn-api releases.**

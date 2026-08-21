@@ -6,26 +6,25 @@ description: "What a node is, how its five surfaces map onto three services, and
 
 # Architecture
 
-A **node** is a complete Veodyn instance scoped to one agency. It runs on
+A node is a complete Veodyn instance scoped to one agency. It runs on
 infrastructure that agency controls, it is the system of record for that
-agency's transportation data, and it works standing alone. This page describes a
-node.
+agency's transportation data, and it works standing alone.
 
 Internally a node is three services plus three datastores, and one rule shapes
-how they connect: **the browser only ever talks to the frontend.** Every backend
+how they connect: the browser only ever talks to the frontend. Every backend
 call goes through a same-origin proxy route on the Next.js server, authenticated
 with the user's own session, so backend URLs and credentials never reach the
 client.
 
-This page describes the community edition, which is the whole of this
-repository. The [enterprise edition](/editions) adds code to two of these three
-services and changes none of the connections below.
+What follows describes a node in the community edition, which is the whole of
+this repository. The [enterprise edition](/editions) adds code to two of these
+three services and changes none of the connections below.
 
 ## The five surfaces
 
-A node is sold as five surfaces. They are a description of what it does, not of
-how it is packaged, so each one is delivered by a different slice of the three
-services below. This table is the map between the two vocabularies:
+A node is sold as five surfaces, which describe what it does rather than how it
+is packaged, so each one is delivered by a different slice of the three services
+below. The table maps between the two vocabularies:
 
 | Surface | Delivered by |
 |---|---|
@@ -37,15 +36,14 @@ services below. This table is the map between the two vocabularies:
 
 ## Nodes and hubs
 
-A **hub** runs the same five surfaces over its own data, and adds a federation
+A hub runs the same five surfaces over its own data, and adds a federation
 layer on top: it registers member nodes, aggregates across them, and pushes
 selected data back down. The default direction is node to hub; nodes never talk
 to each other directly.
 
 Federation is what a hub is for, and it is the commercial part of the product.
-**None of it is in this repository**, so nothing on this documentation site
-describes it. A node is complete without it: an agency running one standing
-alone is not running a degraded version of anything.
+None of it is in this repository, so nothing on this documentation site
+describes it. A node is complete without it.
 
 ## The services
 
@@ -65,8 +63,8 @@ flowchart LR
 ```
 
 The same edges in full, with the credential each one carries, which is the part
-the diagram cannot show. The first row is the invariant the rest of the design
-follows from: there is no second row starting at the browser.
+the diagram cannot show. The browser appears once, in the first row, and
+nowhere else.
 
 | From | To | Carrying |
 |---|---|---|
@@ -92,9 +90,9 @@ A Next.js App Router application. It renders every screen, and its server side h
 | `/api/catalog`, `/api/domains/*`, `/api/tags`, `/api/captures*`, `/api/favorites*` | api | The caller's identity is forwarded and resolved against the query service |
 | `/api/ai/*` | The AI provider | A shared bearer key; the user's cookie is stripped before the call leaves |
 
-The `/api/node/*` prefix is a path, not a description of what is behind it: it
-addresses the query service, and it keeps that spelling because changing a
-deployed route is a breaking change for anything already calling it.
+The `/api/node/*` prefix addresses the query service. It keeps that spelling
+because changing a deployed route is a breaking change for anything already
+calling it.
 
 If a backend for a surface is not configured, that surface answers 503 and the app falls back to demo fixtures rather than breaking.
 
@@ -110,11 +108,11 @@ The service ships a legacy web UI of its own that still exists and works, but Ve
 
 ### api (sidecar)
 
-A FastAPI service owning everything the query service's data model does not: the **data catalog** (a read-only view over ClickHouse), **domain pages**, **tags**, **favorites**, **feed health and expectations**, and the **AI provider**.
+A FastAPI service owning everything the query service's data model does not: the data catalog (a read-only view over ClickHouse), domain pages, tags, favorites, feed health and expectations, and the AI provider.
 
-It stores no users. Every request's identity is resolved by forwarding the caller's credential to the query service, so permissions stay in one place. It has its own PostgreSQL database. Where there is no caller to borrow a credential from, arming a feed alert or assembling AI grounding, it acts as a dedicated **service account**.
+It stores no users. Every request's identity is resolved by forwarding the caller's credential to the query service, so permissions stay in one place. It has its own PostgreSQL database. Where there is no caller to borrow a credential from, arming a feed alert or assembling AI grounding, it acts as a dedicated service account.
 
-**A community deployment runs no sidecar worker.** The only recurring job the
+A community deployment runs no sidecar worker. The only recurring job the
 sidecar has ever had evaluates KPIs, which are enterprise, so the whole worker
 package ships with the [enterprise pack](/editions). There is no `api-worker`
 service in the local Compose stack and no worker release in the Helm chart; a
@@ -123,8 +121,8 @@ deployment that installs the pack adds both back.
 Adding the pack registers extra HTTP routers, extra object kinds in the
 tag/favorite registry, extra domain-page counter providers, and a second Alembic
 chain with its own version table. The seam is one environment variable,
-`VEODYN_EXTRA_MODULES`, read at startup; nothing else in this service knows the
-pack exists.
+`VEODYN_EXTRA_MODULES`, read at startup. Nothing else in this service refers to
+the pack.
 
 ### ClickHouse (historical warehouse)
 
@@ -132,10 +130,10 @@ Written by the query service's capture layer (scheduled results, opt-in per data
 
 ## Identity and permissions
 
-- **One identity system: the query service.** Users, groups, and data-source access live there. The frontend logs in against it, the sidecar resolves identities against it.
-- **Per-user enforcement everywhere.** Because query reads ride the user's own session, a user can never read a result their groups do not allow, no matter which service asked.
-- **The AI path is the exception**, by design: AI grounding runs as the service account, so a suggestion can name (but never show) a query the reader cannot open. Result reads still go through the query service under the reader's own credential.
-- **Admin routes are double-gated**: the internal admin key is only used after the caller's own session proves the admin permission.
+- There is one identity system, the query service. Users, groups, and data-source access live there. The frontend logs in against it, and the sidecar resolves identities against it.
+- Enforcement is per user everywhere. Because query reads ride the user's own session, a user can never read a result their groups do not allow, no matter which service asked.
+- The AI path is the exception. AI grounding runs as the service account, so a suggestion can name (but never show) a query the reader cannot open. Result reads still go through the query service under the reader's own credential.
+- Admin routes are double-gated: the internal admin key is only used after the caller's own session proves the admin permission.
 
 ## Public surfaces
 
@@ -156,7 +154,7 @@ Each service also has its own ingress in production, so anything that must alway
 | `ci/` | CI pipeline manifests |
 | `docs/` | This documentation site, plus internal engineering notes |
 
-The `node/` directory holds one service, not a whole node. It predates the
-current naming and is left alone deliberately: the path is referenced by the
-build, the charts and the packs that overlay onto this tree, so renaming it is a
-coordinated change rather than a cosmetic one.
+The `node/` directory holds one service rather than a whole node, and the name
+predates the current vocabulary. It stays as it is because the path is
+referenced by the build, the charts and the packs that overlay onto this tree,
+so renaming it would be a coordinated change across all of them.

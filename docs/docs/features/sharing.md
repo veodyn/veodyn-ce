@@ -6,7 +6,7 @@ description: "Everything reachable without signing in: public dashboards, embedd
 
 # Sharing & Embeds
 
-A handful of surfaces are reachable without an account. Each one is an unlisted token URL and every link can be revoked at its source.
+A handful of surfaces are reachable without an account. Each one is an unlisted token URL, and every link can be revoked at its source.
 
 ## The public surfaces
 
@@ -16,7 +16,7 @@ A handful of surfaces are reachable without an account. Each one is an unlisted 
 | Public visualization | `/embed/public/<token>` | One visualization and its latest result, sized for an iframe | Community |
 | Public report | `/reports/public/<token>` | The frozen, approved snapshot (never later edits), with `noindex` | [Enterprise](/editions) |
 
-Tokens are lookup keys, not secrets embedded in the page: every refusal renders a neutral page that does not echo the token, so a screenshot of a failure cannot leak a working link.
+Tokens work as lookup keys rather than as secrets embedded in the page: every refusal renders a neutral page that does not echo the token, so a screenshot of a failure cannot leak a working link.
 
 ### One answer for every refusal (enterprise) {#one-answer-for-every-refusal}
 
@@ -35,19 +35,19 @@ A public report link that does not resolve shows exactly this, whatever the reas
 
 The same page appears for an unknown token, a revoked one, a report pulled back to draft, one that was never published or never snapshotted, and an upstream failure. The browser tab reads only *Shared report*, so neither the page nor its title reveals which report was behind the link, or whether one ever was.
 
-That uniformity is the point. A recipient who is refused learns nothing about your instance, and someone probing tokens cannot tell a wrong guess from a revoked link.
+Because the answer is uniform, a recipient who is refused learns nothing about your instance, and someone probing tokens cannot tell a wrong guess from a revoked link.
 
 These pages need no sign-in, run no queries, and render the frozen snapshot alone, which is why a revoked link fails cleanly rather than through an error page.
 
 ### What each public surface actually shows
 
-A **public dashboard** drops the sidebar and every app control, leaving the dashboard's title and its widget grid. Each widget keeps its data age, a **Refresh** and an **Expand** control, and tables keep their own search and row count, so a recipient can work with the data without an account.
+A public dashboard drops the sidebar and every app control, leaving the dashboard's title and its widget grid. Each widget keeps its data age, a **Refresh** and an **Expand** control, and tables keep their own search and row count, so a recipient can work with the data without an account.
 
-A **public visualization** is stripped further still: one visualization, its data, and nothing else. No links, no buttons, and a browser tab reading only *Shared visualization*, so neither the page nor its title names the query behind it. That is what makes it safe to drop into someone else's page in an iframe.
+A public visualization is stripped further still: one visualization, its data, and nothing else. There are no links and no buttons, and the browser tab reads only *Shared visualization*, so neither the page nor its title names the query behind it. That is what makes it safe to drop into someone else's page in an iframe.
 
 :::note Widgets on a public dashboard link to queries you cannot open
 
-Each widget on a public dashboard also carries an **Open query** control pointing into the authenticated application. If you are reading a shared dashboard without an account, that control leads to a sign-in page rather than the query. The other controls work; this one is not meant for you.
+Each widget on a public dashboard also carries an **Open query** control pointing into the authenticated application. If you are reading a shared dashboard without an account, that control leads to a sign-in page rather than the query, while the rest of the widget's controls work normally.
 
 :::
 
@@ -61,20 +61,20 @@ Older snippets still appended the author's email address as an `api_key` paramet
 
 ## The share dialog
 
-**Share** on a dashboard opens a dialog with a single **Public Access** switch and the sentence that matters: *anyone with the link can view this dashboard.*
+**Share** on a dashboard opens a dialog with a single **Public Access** switch and one sentence: *anyone with the link can view this dashboard.*
 
-Opening the dialog does nothing. The switch is what mints or revokes, so you can look without publishing.
+Opening the dialog does nothing on its own. The switch is what mints or revokes, so you can look without publishing.
 
 While sharing is off, an **expiry** field lets you decide how long the link should last, and says that leaving it empty produces one that stays open until sharing is turned off. Once a link exists the field is gone, because the expiry was fixed when the link was minted and a field that silently changed nothing would be worse than no field. To change it, revoke and mint again.
 
-With sharing on, the dialog shows the **Public URL** with a copy control, and one warning worth heeding: parameters with text values are disabled in the shared version, so a dashboard that relies on a text parameter will not behave for a recipient the way it does for you.
+With sharing on, the dialog shows the **Public URL** with a copy control, plus a warning: parameters with text values are disabled in the shared version, so a dashboard that relies on a text parameter will not behave for a recipient the way it does for you.
 
 ### When the switch is unavailable
 
-Two different reasons, each stated in its own words rather than sharing one vague sentence:
+There are two reasons, and each is stated in its own words rather than through one vague sentence:
 
-- **You may not publish.** *An administrator can grant publish_dashboard to your group.* The backend enforces the same rule on the mint, so being told no here is the same no you would get anyway.
-- **There is no connected backend**, in which case a link would resolve to an empty page.
+- You may not publish. *An administrator can grant publish_dashboard to your group.* The backend enforces the same rule on the mint, so the refusal here matches what a mint attempt would return.
+- There is no connected backend, in which case a link would resolve to an empty page.
 
 ## How links are minted
 

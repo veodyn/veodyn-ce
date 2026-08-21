@@ -10,9 +10,9 @@ A Veodyn instance is branded and feature-flagged through one YAML file, `veodyn.
 
 Rules worth knowing before editing:
 
-- **The file is validated strictly.** An unknown or misspelled key fails startup with the offending path named, rather than being silently ignored.
-- **Any key can be overridden by an environment variable**, using `VEODYN_` plus `__` as the nesting separator: `VEODYN_BRAND__NAME=Meridian`, `VEODYN_AI__ENABLED=true`.
-- **Secrets never go in the YAML.** Keys like the AI bearer come from the environment only.
+- The file is validated strictly. An unknown or misspelled key fails startup with the offending path named, rather than being silently ignored.
+- Any key can be overridden by an environment variable, using `VEODYN_` plus `__` as the nesting separator: `VEODYN_BRAND__NAME=Meridian`, `VEODYN_AI__ENABLED=true`.
+- Secrets never go in the YAML. Keys like the AI bearer come from the environment only.
 - The file's location can be overridden with `VEODYN_CONFIG_PATH`.
 
 ## Brand and theme
@@ -31,8 +31,8 @@ theme:
 ```
 
 - `brand.name` appears in the sidebar mark, the browser title, the sign-in card, the Home greeting, and the API/MCP page copy.
-- `brand.logo` replaces the bundled Veodyn mark. A renamed tenant with no logo gets its name alone, never Veodyn's mark next to someone else's name.
-- `brand.help_url` adds a **Help** row to the sidebar footer and **Documentation** buttons to the Connect pages. Without it, neither exists.
+- `brand.logo` replaces the bundled Veodyn mark. A renamed tenant with no logo gets its name on its own; Veodyn's mark is not shown beside another name.
+- `brand.help_url` adds a **Help** row to the sidebar footer and **Documentation** buttons to the Connect pages, and without it neither appears.
 - `theme.accent` drives buttons, links, focus rings, and active navigation. `theme.chart_palette` supplies the color slots every chart draws with and the per-series color picker offers. A palette that fails the bundled accessibility validation warns at boot but still ships.
 
 ## Domains
@@ -46,9 +46,9 @@ domains:
 
 Each domain becomes a sidebar row and a domain page at `/data/<key>` collecting that domain's datasets and dashboards. Icons resolve from a small transportation set (bus, car, train, ship, plane, globe, wind, activity), with a folder as the fallback. On an [enterprise](/editions) build the domain page also carries a counter row, and the domain picker in the KPI form reads this same list, offering only "uncategorized" when none is configured.
 
-**This list is the registry, and it is the only one.** A domain exists on an instance if and only if it is named here: `/data/<key>` refuses any other key with **Domain not found**, so a typo in a key is a page that never resolves rather than a page that quietly appears. Leaving the list out, or setting it to `[]`, is a supported configuration and means the instance has no domains at all: no sidebar rows, no domain pages, and no domain filter beside the catalog search box.
+This list is the registry, and the only one. A domain exists on an instance if and only if it is named here: `/data/<key>` refuses any other key with **Domain not found**, so a typo in a key gives a page that never resolves instead of one that quietly appears. Leaving the list out, or setting it to `[]`, is a supported configuration and means the instance has no domains at all: no sidebar rows, no domain pages, and no domain filter beside the catalog search box.
 
-**Declaring a key here does not put anything in it.** The list decides which domains exist; a `domain:<key>` tag on a query or dashboard decides what belongs to each one. A newly declared domain is an empty page until content is tagged, and removing a key from this list hides the page without untagging anything, so restoring the key brings its members back. See [how a domain gets its members](/features/data-catalog#how-a-domain-gets-its-members).
+Declaring a key here does not put anything in it. The list decides which domains exist; a `domain:<key>` tag on a query or dashboard decides what belongs to each one. A newly declared domain is an empty page until content is tagged, and removing a key from this list hides the page without untagging anything, so restoring the key brings its members back. See [how a domain gets its members](/features/data-catalog#how-a-domain-gets-its-members).
 
 ## Feature flags
 
@@ -58,8 +58,8 @@ features:
   query_drafts: true     # default false
 ```
 
-- **Query Snippets**: reusable SQL fragments expanded by a trigger word in the editor. Off means the route 404s and the nav row is absent, not greyed out.
-- **Query drafts**: with it on, a saved query stays private (with a Draft badge) until its author picks "Share with the team". This governs the query list, not access: anyone who can reach the data source can still open a draft from its link. Off (the default), the word "draft" appears nowhere.
+- **Query Snippets**: reusable SQL fragments expanded by a trigger word in the editor. With it off, the route 404s and the nav row is absent rather than greyed out.
+- **Query drafts**: with it on, a saved query stays private (with a Draft badge) until its author picks "Share with the team". This governs the query list rather than access, so anyone who can reach the data source can still open a draft from its link. Off (the default), the word "draft" appears nowhere.
 
 ## AI
 
@@ -102,7 +102,7 @@ visualizations:
   # audience: { SANKEY: internal }
 ```
 
-`enabled` limits which visualization types an analyst can **create**: only these appear in the type selector and the Visual builder. Omit the section to offer everything the build registers. It never hides a visualization that already exists: a widget saved with a type you later drop still renders. An unknown name is logged once and ignored, so rolling back an image degrades the UI instead of stopping the app.
+`enabled` limits which visualization types an analyst can create: only these appear in the type selector and the Visual builder. Omit the section to offer everything the build registers. It never hides a visualization that already exists, so a widget saved with a type you later drop still renders. An unknown name is logged once and ignored, which means rolling back an image degrades the UI instead of stopping the app.
 
 Custom visualization plugins are compiled into the image and enabled at build time with `NEXT_PUBLIC_VEODYN_PLUGINS` (comma-separated package names); a runtime env var cannot add plugins to an image built without them. **Admin → Plugins** shows what actually registered. See [Visualization Plugins](/operations/plugins) for how the mechanism works and how to author one.
 
@@ -140,7 +140,7 @@ All prefixed `VEODYN_`:
 
 ### Query service
 
-The base configuration applies (`REDASH_DATABASE_URL`, `REDASH_REDIS_URL`, mail settings, enabled query runners). These variables keep their `REDASH_` prefix: it is the deployed contract the backend reads, and renaming it would be a migration of every secret and env file rather than a documentation change. Additions on top of the base set:
+The base configuration applies (`REDASH_DATABASE_URL`, `REDASH_REDIS_URL`, mail settings, enabled query runners). These variables keep their `REDASH_` prefix, which is the deployed contract the backend reads; renaming it would mean migrating every secret and env file. Additions on top of the base set:
 
 | Variable | Purpose |
 |---|---|

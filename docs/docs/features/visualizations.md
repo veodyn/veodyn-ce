@@ -30,15 +30,15 @@ Every query can carry any number of saved visualizations, shown as tabs on the q
 | **Word Cloud** | Term frequency | Words column, optional frequency column, count and length limits |
 | **KPI history** | A KPI's value over time with its bands | Time/value columns, target, unit, direction, at-risk and breached bands. It draws from a [KPI](/features/kpis), so it has nothing to show without that [enterprise](/editions) feature |
 
-Rather than rendering an empty box, each type validates its own configuration and explains specific problems: a chart whose mapped column no longer exists, or a choropleth with no matching property selected, tells you exactly what to fix.
+Each type validates its own configuration rather than rendering an empty box, and names the specific problem: a chart whose mapped column no longer exists, or a choropleth with no matching property selected, says what to fix.
 
 ### Adding one
 
 The **+** beside a query's visualization tabs opens **New Visualization**: pick a type, configure it against the query's current result, and **Save** adds a tab. **Cancel** leaves the query as it was.
 
-The type list is built from what this instance actually offers, so it is the authoritative answer to "what can I make here". It is the 15 core types above, plus any [plugin types](#extending-and-restricting-the-set) whose audience includes you.
+The type list is built from what this instance actually offers, so it answers what you can make here. It holds the 15 core types above, plus any [plugin types](#extending-and-restricting-the-set) whose audience includes you.
 
-A type can be installed and working yet absent from this list. The reference tenant, for example, ships five plugin visualizations but offers four, because one is marked internal. If a type you expect is missing, **Admin → Plugins** says whether it is installed and who it is offered to, which is the difference between "not available here" and "not available to you".
+A type can be installed and working yet absent from this list. The reference tenant, for example, ships five plugin visualizations but offers four, because one is marked internal. If a type you expect is missing, **Admin → Plugins** says whether it is installed and who it is offered to, which separates "not available here" from "not available to you".
 
 ## The chart editor
 

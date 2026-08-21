@@ -8,7 +8,7 @@ description: "Run Veodyn locally: the whole stack in one Docker Compose command,
 
 This guide brings up a local Veodyn stack for evaluation or development.
 
-Most people want [the one command](#2-the-whole-stack-in-one-command). The
+Most people want [the one command](#2-the-whole-stack-in-one-command); the
 sections after it bring the same three services up one at a time, which is what
 you want when you are developing one of them and running the others from your
 own machine rather than from a container.
@@ -43,11 +43,10 @@ needs. Nothing has to be prepared on the host first, and no credential is
 committed to the repository.
 
 It brings up the community edition, which is what this repository builds. There
-is no sidecar worker in it, and its absence is the correct shape rather than an
-omission: see [Editions](/editions).
+is no sidecar worker in it; see [Editions](/editions) for why.
 
 Most services declare a healthcheck and everything downstream waits on them, so
-an `up` that returns is a running stack rather than a started one.
+`up` does not return until the stack is actually running.
 
 Sign in as the seeded admin, `admin@example.com` unless you set
 `VEODYN_ADMIN_EMAIL`. Its password is generated on first boot and printed once,
@@ -70,12 +69,12 @@ To prove the stack works from nothing, `./compose/smoke-test.sh` tears the
 volumes down, rebuilds, waits on every healthcheck, and signs the admin in
 through the frontend's own login route.
 
-The rest of this page is the service-at-a-time path. Skip it unless you are
-working on one of the services.
+The rest of this page covers the service-at-a-time path, which you can skip
+unless you are working on one of the services.
 
 ## 3. Frontend only, in mock mode
 
-The frontend runs entirely on bundled demo fixtures when `NEXT_PUBLIC_REDASH_URL` is unset. No backend, no database.
+When `NEXT_PUBLIC_REDASH_URL` is unset, the frontend runs entirely on bundled demo fixtures, with no backend and no database.
 
 ```bash
 cd app
@@ -86,7 +85,7 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) and sign in with the prefilled mock account (`admin@example.com` / `mock`). The sign-in card lists the other mock accounts, and the sidebar footer gets an "Acting as" switcher so one browser can play several roles (useful for seeing which controls an admin gets and a member does not).
 
-Mock mode is a demo, not a database: writes do not survive a reload, and nothing is fetched from a real backend.
+Mock mode is a demo rather than a database: writes don't survive a reload, and nothing is fetched from a real backend.
 
 ## 4. The query service on its own
 
@@ -126,7 +125,7 @@ Restart `pnpm dev` and sign in with the credentials you just created. Queries, d
 
 Without the sidecar the frontend keeps the data catalog, tags and feed health on fixtures. To make them real:
 
-First create a **service account** in the query service for the sidecar. It acts as that account where a request has no caller to borrow a credential from, so give it its own group holding exactly `create_query`, `execute_query`, `list_dashboards`, `list_data_sources` and `view_query`, and attach that group to your data sources. Not the builtin default group: it also grants dashboard editing and `list_users`, which the sidecar never uses. This is what the root Compose stack seeds for you; see [Deployment](/operations/deployment) step 5 for why. Copy the account's API key from its profile.
+First create a **service account** in the query service for the sidecar. It acts as that account where a request has no caller to borrow a credential from, so give it its own group holding exactly `create_query`, `execute_query`, `list_dashboards`, `list_data_sources` and `view_query`, and attach that group to your data sources. Don't use the builtin default group, which also grants dashboard editing and `list_users`, neither of which the sidecar uses. This is what the root Compose stack seeds for you; see [Deployment](/operations/deployment) step 5 for why. Copy the account's API key from its profile.
 
 The sidecar keeps its own database. The root Compose stack creates it for
 you; on this path you create it yourself, on the Postgres that the query service's stack

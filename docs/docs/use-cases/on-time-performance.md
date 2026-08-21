@@ -51,14 +51,13 @@ ORDER BY day, route_id
 ```
 
 Substitute the id you copied above for that table name. The trailing number is
-the query's own id and yours will differ, so `q_trip_updates_37` is the shape of
-the name rather than the name: capture builds every table as `q_<slug>_<query
-id>`, and there is no such thing as one without the number on the end.
+the query's own id and yours will differ, so treat `q_trip_updates_37` as an
+example rather than a literal name. Capture builds every table as
+`q_<slug>_<query id>`, and the number is always on the end.
 
 `on_time` is `NULL` for a skipped stop, a canceled trip, or a stop_time_update
-the feed carries no delay for. ClickHouse's `avg()` drops `NULL` values rather
-than counting them, so those rows fall out of the percentage instead of counting
-as late.
+the feed carries no delay for. ClickHouse's `avg()` skips `NULL` values, so
+those rows fall out of the percentage rather than counting as late.
 
 ## Step 4: put it on a dashboard
 
@@ -72,8 +71,7 @@ join needs that step in between; it carries no name columns of its own.
 ## Honest limits
 
 OTP computed this way reflects the delays the agency's own feed reports at
-each stop, nothing more. It is only as accurate as the AVL system generating
-that feed: a feed that publishes sparse or unreliable delay data produces a
-sparse or unreliable OTP%. And a feed that carries no trip updates at all,
-only vehicle positions, cannot produce OTP: there is nothing here to compute
-against.
+each stop. It is only as accurate as the AVL system generating that feed, so
+a feed that publishes sparse or unreliable delay data produces a sparse or
+unreliable OTP%. A feed that carries no trip updates at all, only vehicle
+positions, cannot produce OTP, because there is nothing to compute against.

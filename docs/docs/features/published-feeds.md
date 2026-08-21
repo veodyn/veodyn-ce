@@ -6,9 +6,9 @@ description: "Re-publishing a query's results as a standard GTFS-Realtime or GBF
 
 # Published Feeds
 
-The other pages in this section are about getting data out of the instance in whatever shape your own tools want. This one goes the other way. It takes a saved query's results and serves them in a format other people's software already speaks, so a rider app or a downstream agency can consume them without knowing anything about Veodyn.
+The other pages in this section are about getting data out of the instance in whatever shape your own tools want. This page covers the opposite case: taking a saved query's results and serving them in a format other people's software already speaks, so a rider app or a downstream agency can consume them without knowing anything about Veodyn.
 
-Today the formats are GTFS-Realtime 2.0 and GBFS (2.3 and 3.0). A published feed says that one query, mapped one particular way, is the source of one feed at one address.
+Today the formats are GTFS-Realtime 2.0 and GBFS (2.3 and 3.0). A published feed binds one query, mapped one particular way, to one feed at one address.
 
 It lives at **Connect → Published Feeds** in the sidebar (`/connect/feeds`).
 
@@ -16,13 +16,13 @@ It lives at **Connect → Published Feeds** in the sidebar (`/connect/feeds`).
 
 Any signed-in member can read the list. Creating, editing, deleting and publishing take an administrator, and the API enforces that on its own with a 403, whatever the interface shows.
 
-A non-admin does not get those controls greyed out. They are gone, and one sentence sits where they would have been:
+A non-admin does not get those controls greyed out. They are absent, with one sentence where they would have been:
 
 > Publishing is administered. An administrator declares what this instance serves.
 
-A disabled button implies a permission you might get by asking, and a control that has simply vanished looks like a page that failed to load. The sentence is there to make the absence legible.
+A disabled button implies a permission you might get by asking, and a control that has simply vanished looks like a page that failed to load, so the sentence is there to explain the absence.
 
-The permission line falls here because a published feed is an anonymous read surface over query results, so creating one changes both what data is exposed and who can reach it. Setting a [cadence expectation](/features/captures) on the Captures board is open to any member, since it changes neither.
+Publishing is restricted this far because a published feed is an anonymous read surface over query results, so creating one changes both what data is exposed and who can reach it. Setting a [cadence expectation](/features/captures) on the Captures board is open to any member, since it changes neither.
 
 ## The list
 
@@ -37,7 +37,7 @@ Four columns, and clicking a row opens that feed's page.
 | Access | Public or Private |
 | Revision | Which revision of the binding is current |
 
-The Address column carries the source query's name as well as the slug, the same way Captures prints a capture over the connection it reads. A slug tells you what the feed is called; the second line tells you where its data comes from, without a click.
+The Address column carries the source query's name as well as the slug, the same way Captures prints a capture over the connection it reads, so both what the feed is called and where its data comes from are readable without a click.
 
 Search matches the slug, the query name and the visibility.
 
@@ -57,9 +57,9 @@ Switching to a different query clears the column mapping. A field mapped against
 
 #### Normalizing before you publish
 
-An ingested feed is not always a publishable one. Values that a source system writes without complaint can still be outside what the standard allows, and a publish attempt refuses them rather than passing them on: a station whose `last_reported` sits below the earliest timestamp GBFS accepts blocks the whole attempt, and the reason names the row.
+An ingested feed is not always publishable. Values that a source system writes without complaint can still be outside what the standard allows, and a publish attempt refuses them rather than passing them on: a station whose `last_reported` sits below the earliest timestamp GBFS accepts blocks the whole attempt, and the reason names the row.
 
-The fix is a query, not a setting. Add a data source of type `results`, which runs SQL over the cached results of other queries, point it at the connector read you already have, and bind the feed to that instead:
+The fix is a query rather than a setting. Add a data source of type `results`, which runs SQL over the cached results of other queries, point it at the connector read you already have, and bind the feed to that instead:
 
 ```sql
 SELECT station_id, name, lat, lon, num_bikes_available, last_reported
@@ -67,13 +67,13 @@ FROM cached_query_7
 WHERE last_reported >= 1450155600
 ```
 
-The same seam handles the rest of it: dropping stations that are out of service, joining a name table the upstream feed omits, converting a unit, or combining two systems into one published feed. Whatever the query returns is what the mapping reads, so a feed is only ever as clean as the query behind it.
+The same seam handles the rest of it: dropping stations that are out of service, joining a name table the upstream feed omits, converting a unit, or combining two systems into one published feed. Whatever the query returns is what the mapping reads.
 
 ### Address
 
-The slug is the feed's address and half its identity: `vehicles-live`, not a number. It takes lowercase letters, digits and hyphens, has to start with a letter or a digit, and runs to 64 characters.
+The slug is the feed's address, so it reads as `vehicles-live` rather than as a number. It takes lowercase letters, digits and hyphens, has to start with a letter or a digit, and runs to 64 characters.
 
-One name is refused outright. `capabilities` is a real endpoint on the same collection, so a feed slugged that would sit at an address the API already answers on.
+One name is refused outright: `capabilities` is a real endpoint on the same collection, so a feed slugged that way would sit at an address the API already answers on.
 
 Visibility is two options:
 
@@ -82,13 +82,13 @@ Visibility is two options:
 | Private | Only a consumer holding a token issued for this feed |
 | Public | Anyone with the URL, no credential needed |
 
-Signed-in members of the org see the binding, its publish history and whether it is serving. That is not the same as reading the feed. The bytes only ever come out of the address below, and for a private feed that address answers a token and nothing else. Issuing tokens is an [enterprise](/editions) feature, so on a community build a private feed serves nobody.
+Signed-in members of the org see the binding, its publish history and whether it is serving, which is not the same as reading the feed. The bytes only ever come out of the address below, and for a private feed that address answers a token and nothing else. Issuing tokens is an [enterprise](/editions) feature, so on a community build a private feed serves nobody.
 
-A public slug is claimed across the whole instance rather than within your org, because a public feed's address has no org segment in it. Taking one another tenant already holds is refused with a 409, and the refusal does not say who holds it, since that would turn the message into a cross-tenant directory. Pick another slug, or keep the feed private.
+A public slug is claimed across the whole instance rather than within your org, because a public feed's address has no org segment in it. Taking one another tenant already holds is refused with a 409, and the refusal does not say who holds it, since that would turn the message into a cross-tenant directory. You can pick another slug, or keep the feed private.
 
 ### Shape
 
-Standard is a choice of two, `gtfs-rt` and `gbfs`. Version follows from it. GTFS-Realtime has one version, `2.0`, and it appears as a plain fact instead of a dropdown with one entry, since a control with a single choice invites you to click it and find out what else is in there. GBFS has two, `2.3` and `3.0`, so it gets a picker.
+Standard is a choice of two, `gtfs-rt` and `gbfs`, and version follows from it. GTFS-Realtime has one version, `2.0`, and it appears as a plain fact instead of a dropdown with one entry, since a control with a single choice invites a click to find out what else is in there. GBFS has two, `2.3` and `3.0`, so it gets a picker.
 
 Entity is a fact or a picker, depending on what this deployment registered. A community build registers one entity under GTFS-Realtime, `vehicle_positions`, and shows it as a fact; under GBFS it registers two shapes, `stations` for a docked system and `vehicles` for a free-floating one, so that gets a picker. An [enterprise](/editions) build whose pack registers more widens the list. The form asks the running service what it holds instead of inferring it from a values file, and if that lookup is slow or fails it falls back to the single fact rather than showing an empty picker.
 
@@ -98,7 +98,7 @@ The column map puts each field the chosen standard needs against a column of the
 
 Missing required fields are named when you submit, and the list updates as you map them instead of freezing on whatever was missing the first time.
 
-A query that has never run has no columns to offer. The table says so, instead of showing a column of dropdowns whose only selectable value is *Not mapped*. You can still save a mapping in that state, and the page tells you the catch: nothing has checked it.
+A query that has never run has no columns to offer. The table says so, instead of showing a column of dropdowns whose only selectable value is *Not mapped*. You can still save a mapping in that state, and the page says that nothing has checked it.
 
 #### GTFS-Realtime
 
@@ -137,16 +137,16 @@ A GBFS system also declares facts no query returns: a system id, a language, a d
 
 ### On failure
 
-Two modes, and at serving time their names read backwards from what you might expect:
+There are two modes, and at serving time their names work out the opposite way round:
 
 - **Block** refuses to publish a bad read. The feed keeps serving the last artifact that passed, with its original timestamp, for as long as that takes. Age alone never stops it.
 - **Last known good** does the same, plus a required maximum age. Once the artifact is older than that, the address stops answering.
 
-So the tolerant-sounding option is the one that can take a feed dark, because whoever picks it also has to say how stale is too stale. The age field only appears in that mode, since the API refuses a cap on `block` and requires one on `last_good`.
+Last known good is therefore the mode that can take a feed dark, since choosing it means also stating how stale is too stale. The age field only appears in that mode, since the API refuses a cap on `block` and requires one on `last_good`.
 
 ### What is checked when you save
 
-The binding is validated before anything is written, so a refused save leaves the stored binding and whatever is currently being served untouched. The query has to exist and be readable, and the column map has to name columns its results actually have. A map that cannot produce the feed comes back with every problem named at once, while the person who wrote it is still looking at it.
+The binding is validated before anything is written, so a refused save leaves the stored binding and whatever is currently being served untouched. The query has to exist and be readable, and the column map has to name columns its results actually have. A map that cannot produce the feed comes back with every problem named at once.
 
 A GBFS feed is validated as a whole system against the version's JSON Schemas before anything is served; a finding blocks the publish, and GBFS findings are always blocking, so a GBFS feed publishes clean or not at all.
 
@@ -158,7 +158,7 @@ A GBFS feed is validated as a whole system against the version's JSON Schemas be
 
 ### Serving status
 
-One word in the header for whether anything is being served right now.
+The header carries one word for whether anything is being served right now.
 
 | Status | Means |
 |---|---|
@@ -168,9 +168,9 @@ One word in the header for whether anything is being served right now.
 | Failed | The attempt never reached a verdict |
 | Never published | No attempt has been recorded |
 
-Not serving is not a failure. That attempt produced bytes, they passed, and they were served; then something retired the binding underneath them. Labelling it *Failed* would put one decision on screen as another, three lines above a history that says *Published* about the same row.
+Not serving does not mean the attempt failed. It produced bytes, they passed, and they were served, and then something retired the binding underneath them. Labelling it *Failed* would put one decision on screen as another, three lines above a history that says *Published* about the same row.
 
-This is serving state, not mapping state. The page will not tell you the binding is valid on a read, because the check that would establish that only runs on a write.
+These statuses describe serving state rather than mapping state. The page will not tell you the binding is valid on a read, because the check that would establish that only runs on a write.
 
 ### Address
 
@@ -178,7 +178,7 @@ A public feed shows its full address with a copy button, and says that anyone ca
 
 A GBFS feed's address answers with the discovery document (`gbfs.json`); the member files it names sit underneath it, at `/api/public/feeds/<slug>/station_status.json` and its siblings, or the free-floating equivalents for a `vehicles` feed.
 
-A private feed shows no address at all, and says why: reaching one takes an issued token, and issuing tokens ships with the enterprise pack. Printing a URL that turns every anonymous reader away would only send someone hunting for a credential this build cannot mint.
+A private feed shows no address at all, and says why: reaching one takes an issued token, and issuing tokens ships with the enterprise pack. Printing a URL that turns every anonymous reader away would only send readers hunting for a credential this build cannot mint.
 
 :::note Where the token panel comes from
 
@@ -197,14 +197,14 @@ Every attempt the instance has recorded, newest first, with its decision, the bi
 What appears under an attempt depends on the kind of answer it was:
 
 - A blocked attempt lists the validator's findings, grouped by rule. The attempt's own reason is only a count ("2 conformance error(s)"), so the findings are the real explanation.
-- A failed attempt has no findings, because nothing reached a verdict. Its one reason sentence is all there is.
-- A published attempt lists findings too, where it has any, under *Warnings the feed published with*. A feed that published is not a feed with nothing to say about itself, and dropping the warnings at the point of success is how a slow drift out of conformance stays invisible until it turns into an error.
+- A failed attempt has no findings, because nothing reached a verdict, so its one reason sentence is all there is.
+- A published attempt lists findings too, where it has any, under *Warnings the feed published with*. Dropping the warnings at the point of success is how a slow drift out of conformance stays invisible until it turns into an error.
 
 Findings group by rule, with the individual locators behind a disclosure, since one broken rule arriving as forty rows reads like forty problems.
 
 :::note "showing 2 of 12 occurrences"
 
-The validator caps how many occurrences it exports per rule while reporting the true total separately. Where the two differ, the disclosure says so. Printing the number of rows on screen as if it were the total would tell you two vehicles are broken when twelve are, which is worse than vague because it looks exact.
+The validator caps how many occurrences it exports per rule while reporting the true total separately, and where the two differ the disclosure says so. Printing the number of rows on screen as if it were the total would tell you two vehicles are broken when twelve are.
 
 :::
 
@@ -249,8 +249,8 @@ Staleness is the one exception, and only under last known good. Once the artifac
 
 Two details matter if you are consuming one:
 
-- `Retry-After` is the feed's own age cap, not a prediction. The endpoint cannot know when the next publish will land. The cap is the only interval anyone has stated about this feed's tolerable staleness, so it is the one real number available.
-- Age is measured from the artifact's own header timestamp, not from when the attempt was recorded. The header is what the served bytes tell a consumer the data's time is. Measuring our own pipeline instead would call a fresh publish of hours-old rows current.
+- `Retry-After` is the feed's own age cap rather than a prediction, since the endpoint cannot know when the next publish will land. The cap is the only interval anyone has stated about this feed's tolerable staleness.
+- Age is measured from the artifact's own header timestamp, not from when the attempt was recorded. The header is what the served bytes tell a consumer the data's time is, and measuring the pipeline instead would call a fresh publish of hours-old rows current.
 
 Under block there is no staleness branch at all. Block governs whether a bad read gets published, and the engine settled that before those bytes ever became current.
 
@@ -258,14 +258,14 @@ Under block there is no staleness branch at all. Block governs whether a bad rea
 
 A private feed is read at that same address, with a token its owner issued. Two transports, accepted equally:
 
-- `GET /api/public/feeds/<slug>?token=<token>`. Reach for this one first: plenty of feed pollers are a URL field and nothing else, with nowhere to put a header. A token in a URL can be recorded by proxies along the way, which is what rotation is for; this service redacts it from its own access log.
+- `GET /api/public/feeds/<slug>?token=<token>`. This is the one to try first, since plenty of feed pollers are a URL field and nothing else, with nowhere to put a header. A token in a URL can be recorded by proxies along the way, which is what rotation is for; this service redacts it from its own access log.
 - `Authorization: Bearer <token>` on the same request. Only that scheme is read as a token.
 
 Presenting the same token both ways serves normally. Presenting two different ones is refused instead of arbitrated, because picking a winner would leave a consumer reading on through a token they believed they had revoked. A public feed serves whether or not a token comes with it, so a client that attaches one everywhere is never turned away for it.
 
 A GBFS discovery document carries no token. The member-file URLs inside it are the plain addresses, and the consumer appends its own token to each of those requests exactly as it did to the discovery request.
 
-A wrong token, a revoked one and an expired one all answer the 404 an unknown slug gets. One answer for the three of them, so nobody holding a dead token can learn from the reply that the feed is still there. The stale 503 is only ever reached after a token has resolved, which keeps it from disclosing a feed to a caller the feed is closed to.
+A wrong token, a revoked one and an expired one all answer the 404 an unknown slug gets, so the reply tells the holder of a dead token nothing about whether the feed is still there. The stale 503 is only ever reached after a token has resolved, which keeps it from disclosing a feed to a caller the feed is closed to.
 
 Issuing these tokens is an [enterprise](/editions) feature. A community build registers nothing that resolves a token, so a private feed there serves nobody and a presented token changes nothing.
 
@@ -273,15 +273,15 @@ Issuing these tokens is an [enterprise](/editions) feature. A community build re
 
 ### The validator
 
-Conformance rules are not written here. They come from [`gtfs-rt-validator`](https://github.com/veodyn/gtfs-rt-validator), our own Python package, and `validator/` in the repository is a small HTTP wrapper around it that the sidecar calls over the network.
+Conformance rules are not written here. They come from [`gtfs-rt-validator`](https://github.com/veodyn/gtfs-rt-validator), the project's own Python package, and `validator/` in the repository is a small HTTP wrapper around it that the sidecar calls over the network.
 
-It runs as its own service for one reason. The validator loads the agency's static GTFS archive to check against, which costs roughly 48 seconds and holds about 584 MB per feed. In-process, every API replica would carry its own copy and pay that on a cold call. One service holding one prepared archive answers in about half a second, and that is what makes validation possible inside a publish request at all.
+It runs as its own service because the validator loads the agency's static GTFS archive to check against, which costs roughly 48 seconds and holds about 584 MB per feed. In-process, every API replica would carry its own copy and pay that on a cold call. One service holding one prepared archive answers in about half a second, which is what makes validation possible inside a publish request.
 
 :::caution A deployment with no validator configured publishes nothing
 
 `VEODYN_FEED_VALIDATOR_URL` names the service. Leave it unset and every publish attempt fails closed, recorded as a `failed` attempt.
 
-This is the intended behaviour and not a misconfiguration to work around: an empty finding list from a validator that never answered looks exactly like a clean feed. See [Configuration](/configuration#sidecar-api).
+Failing closed is what the service is meant to do here, rather than a misconfiguration to work around: an empty finding list from a validator that never answered looks exactly like a clean feed. See [Configuration](/configuration#sidecar-api).
 
 :::
 
@@ -311,6 +311,6 @@ Downgrades fail closed rather than reinterpreting anything. A feed bound to an e
 
 Serialization always runs before validation. Hand the validator bytes built from a column mapped to the wrong thing and it answers with whatever conformance rule that happens to trip: a trip id that does not exist, a position outside the agency's bounding box. The operator then goes looking in the schedule for a fault that lives in the binding.
 
-Building the bytes first means a mapping defect gets named as a mapping defect, and a verdict only ever describes bytes that exist.
+Building the bytes first means a mapping defect gets named as one, and a verdict only ever describes bytes that exist.
 
-Only a clean verdict moves the pointer. On any other decision the address carries on serving the last artifact that passed.
+Only a clean verdict moves the pointer, and on any other decision the address carries on serving the last artifact that passed.

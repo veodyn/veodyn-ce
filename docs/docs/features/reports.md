@@ -16,15 +16,15 @@ page is reachable on one, including the public report link.
 
 Reports are board-facing documents: prose and data blocks composed into a single page whose numbers can be frozen, reviewed, approved, and published to a public link or a PDF. They live in **Library → Reports**.
 
-What separates a report from a dashboard is time: a dashboard always shows now, while a published report shows what was approved. Once a report is published, the public link and the PDF keep serving the approved version even while the author drafts changes.
+A dashboard always shows now, while a published report shows what was approved. Once a report is published, the public link and the PDF keep serving the approved version even while the author drafts changes.
 
 ![A report's read view: its state, its tags, and the rendered document with prose, a chart and a KPI block](/img/screenshots/report-view.png)
 
 ## The report list
 
-One list, no tabs. Each row shows a star, the name, owner, [domain](/features/data-catalog#what-a-domain-is), a **State** badge, and **Data as of**. Every column but the star sorts, and the list breaks at 25 rows.
+Reports come as one list with no tabs. Each row shows a star, the name, owner, [domain](/features/data-catalog#what-a-domain-is), a **State** badge, and **Data as of**. Every column but the star sorts, and the list breaks at 25 rows.
 
-**State** is the report's position in the [review workflow](#review-and-publishing): Draft, In review, Published or Unpublished. Only **Published** is drawn filled, so on a long list the live ones are the rows that stand out and everything else stays a quiet outline.
+**State** is the report's position in the [review workflow](#review-and-publishing): Draft, In review, Published or Unpublished. Only **Published** is drawn filled, so the live reports are the rows that stand out on a long list.
 
 ![The report list: title, state, owner, domain and when each was last updated](/img/screenshots/reports-list.png)
 
@@ -40,11 +40,11 @@ Header buttons: **New Report**, and **Create with AI** when [AI](/features/ai) i
 
 ### When the list is empty
 
-*Unable to load reports...* when the service cannot be reached, *No reports yet.* on an instance with none, and *No report matches that search* when your search excluded them all. Three situations, three sentences.
+Each situation gets its own sentence: *Unable to load reports...* when the service cannot be reached, *No reports yet.* on an instance with none, and *No report matches that search* when your search excluded them all.
 
 ## Creating a report
 
-**New Report** asks for three things and nothing else, because everything that makes a report a report is added afterwards in the editor.
+**New Report** asks for three things, since the rest of the document is built afterwards in the editor.
 
 | Field | |
 |---|---|
@@ -54,7 +54,7 @@ Header buttons: **New Report**, and **Create with AI** when [AI](/features/ai) i
 
 ![The New report form: title, owner and the Domain select](/img/screenshots/report-new.png)
 
-The card states the contract up front: *A report opens as a draft. Nothing is frozen until you snapshot it.* **Create report** stays unavailable until the title and owner are filled, and a failed create leaves you on the form with the reason rather than sending you to an editor for a report that was never stored.
+The card says up front that *A report opens as a draft. Nothing is frozen until you snapshot it.* **Create report** stays unavailable until the title and owner are filled, and a failed create leaves you on the form with the reason rather than sending you to an editor for a report that was never stored.
 
 The report's URL is derived from its title, so *Quarterly Service Review* becomes `/reports/quarterly-service-review`. If that address is taken the id gains a numeric suffix, and you land on whichever id was actually stored.
 
@@ -88,7 +88,7 @@ Where the report has been approved and the approved version cannot be retrieved,
 
 :::note A report in review can still be deleted
 
-The edit lock covers editing, not removal. **Delete** stays available in the overflow menu throughout review, because the backend does not consult the lock either. If you want a report to survive its review, the lock is not what protects it.
+The edit lock covers editing, not removal. **Delete** stays available in the overflow menu throughout review, because the backend does not consult the lock either. Being in review is therefore no protection against a report being deleted.
 
 :::
 
@@ -114,13 +114,13 @@ Rows are reordered by drag or arrows, and each has Duplicate and Delete. Saving 
 
 ### The editor in each state
 
-Opening the editor on a report that is **in review** does not show an editor at all. It shows **Editing locked**, telling you to *reject it back to draft to make changes*, with the document read-only beneath and a **View** button back to the report. There is no way to edit around the lock.
+Opening the editor on a report that is **in review** shows **Editing locked** instead of an editor, telling you to *reject it back to draft to make changes*, with the document read-only beneath and a **View** button back to the report. There is no way to edit around the lock.
 
 A **published** report stays editable, and the editor says plainly what that does and does not affect:
 
 > **Published version is frozen.** The public link and the PDF keep serving the approved version. Changes here stay private until this report is reviewed and approved again.
 
-That is the part worth internalising: editing a published report is safe. Nobody reading the public link sees your work in progress, and nothing you type reaches them until the report goes back through review.
+So editing a published report is safe. Readers of the public link do not see your work in progress, and nothing you type reaches them until the report goes back through review.
 
 ## Snapshots
 
@@ -146,7 +146,7 @@ A report can re-freeze itself on a schedule: **Refresh: Off / Hourly / Daily** i
 
 **Download PDF** opens a chrome-free print view with a single **Print / Save as PDF** button, which is the browser's own print dialog rather than a server-rendered file. It opens the dialog for you on arrival; adding `?autoPrint=false` to the URL suppresses that if you would rather look first.
 
-**What it prints is frozen, and which frozen version depends on the report's history:**
+What it prints is always frozen, and which frozen version depends on the report's history:
 
 | The report | Prints |
 |---|---|
@@ -155,7 +155,7 @@ A report can re-freeze itself on a schedule: **Refresh: Off / Hourly / Daily** i
 | Has no snapshot | Nothing. *Finalize this report before downloading a PDF.* |
 | Was approved, but that record is gone | Nothing. *The approved version of this report is no longer available, so there is nothing to print.* |
 
-Unpublishing a report or revoking its link takes the public link away without un-approving anything, so neither is a reason for the PDF to fall back to the live document. It refuses instead.
+Unpublishing a report or revoking its link takes the public link away without un-approving anything, so neither is a reason for the PDF to fall back to the live document, and it does not.
 
 Because this page has no app chrome, every refusal carries a **Back to the report** button rather than leaving you with only the browser's back button.
 

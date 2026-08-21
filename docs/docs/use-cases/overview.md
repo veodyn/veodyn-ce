@@ -8,12 +8,13 @@ description: "Goal-first guides: publishing a feed a consumer will accept, meeti
 # Use cases
 
 The rest of this documentation is organized by surface: here is the query
-editor, here is the feed page, here is what each field does. These guides go the
-other way. Each one takes a single goal an agency actually has, and walks it from
-the data you already hold to the thing somebody else can read.
+editor, here is the feed page, here is what each field does. These guides are
+organized by goal instead. Each one takes a single goal an agency has and walks
+it from the data you already hold to something a reader outside your team can
+use.
 
-Eighteen guides sit here, in five groups. Nearly all of them are written to the
-same five parts, in the same order:
+There are eighteen guides here, in five groups. Nearly all of them are written
+to the same five parts, in the same order:
 
 | Part | What it holds |
 |---|---|
@@ -21,16 +22,16 @@ same five parts, in the same order:
 | Before you start | What must already exist. Usually a query that has run at least once, and a credential |
 | The steps | The path, in order, naming the page each one happens on |
 | How you know it worked | The check that settles it, run from outside the instance wherever one exists |
-| What takes it off the air | The failure modes, so the first one you hit is one you have already read about |
+| What takes it off the air | The failure modes, written down before you run into one |
 
-The short ones collapse that to steps and honest limits, which is the same
-contract with nothing in the middle worth a heading of its own.
+The short ones collapse that to steps and honest limits, leaving out the middle
+sections where they would have nothing to say.
 
 The guides come in two kinds. Some drive a product feature end to end, and every
 step is a page in this documentation. Others are recipes over data that is
-yours: the product's part is the ingest, the schedule, the query and the board,
-and the numbers' credibility comes from your own systems. Each guide says which
-it is, and what it will not do for you.
+yours, where the product handles the ingest, the schedule, the query and the
+board, and the credibility of the numbers rests on your own systems. Each guide
+says which kind it is, and what it will not do for you.
 
 Unless a step says otherwise, everything described is in the community edition.
 Steps that need the [enterprise edition](/editions) say so where they appear,
@@ -79,7 +80,7 @@ publishing them is enterprise.
 | Guide | What you end up with |
 |---|---|
 | [Ask your data from an AI client](/use-cases/ask-your-data-mcp) | Claude Desktop or an IDE reading your instance over MCP, read-only, scoped to your own permissions |
-| [Publish an open-data page](/use-cases/open-data-page) | A dashboard the public reads without an account, and an embed that survives being pasted into somebody else's site |
+| [Publish an open-data page](/use-cases/open-data-page) | A dashboard the public reads without an account, and an embed that survives being pasted into another site |
 | [Distribute a feed to a named partner](/use-cases/feed-to-a-partner) | One consumer reading a private feed on a credential you issued them and can revoke on its own |
 
 ## What these guides do not do
@@ -87,5 +88,5 @@ publishing them is enterprise.
 They do not author your schedules, your fares or your service, and they do not
 count passengers. Veodyn moves, normalizes, stores, draws and republishes data
 that some other system is the source of. Where a guide's real answer is "fix it
-upstream", it says so instead of routing you through a workaround that hides the
-defect one layer down.
+upstream", it says so rather than routing you through a workaround that hides
+the defect one layer down.

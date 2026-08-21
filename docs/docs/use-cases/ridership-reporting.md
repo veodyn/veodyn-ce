@@ -12,15 +12,15 @@ maximum service, by mode and type of service. Most agencies produce those
 numbers once a month, by hand, out of three or four systems, and then produce
 them again for the board in a different shape.
 
-This assembles them once, from the systems of record, into a board anyone can
-open and a table you can read your filing off.
+The setup below produces them once, from the systems of record, into a single
+board and a table you can read the filing off.
 
 :::caution Veodyn does not count passengers
 
 Every number here comes from a system that counts: your APC, farebox, dispatch
-or scheduling system. Nothing in this product produces a ridership figure, and a
-number arriving here wrong arrives on the board wrong. What this adds is one
-place, one definition per measure, and a check.
+or scheduling system. Nothing in this product produces a ridership figure, so a
+number that arrives wrong will appear on the board wrong. What the pack adds is
+one place to keep them, one definition per measure, and a reconciliation step.
 
 Note also that FTA must approve an agency's automatic passenger counters before
 their data may be used for NTD reporting, and that approval is about the
@@ -32,9 +32,9 @@ manual](https://www.transit.dot.gov/ntd) for your reporter type.
 
 ## What has to be true
 
-Each measure has exactly one system of record, and you can name it without
-hedging. If two systems both produce VRM and they disagree, that disagreement is
-the actual project, and putting both on a dashboard will not settle it.
+Each measure needs exactly one system of record, and you have to be able to say
+which one it is. If two systems both produce VRM and they disagree, sorting
+that out is the real work; putting both on a dashboard will not settle it.
 
 | Measure | Usually comes from |
 |---|---|
@@ -43,14 +43,15 @@ the actual project, and putting both on a dashboard will not settle it.
 | VRH, vehicle revenue hours | Scheduling or CAD, revenue service only |
 | VOMS, vehicles operated in maximum service | Dispatch, at the peak |
 
-Revenue service is where most reconciliation errors live. Deadhead miles are not
-revenue miles, and a mileage figure that comes off the odometer includes them.
+Most reconciliation errors turn out to involve revenue service. Deadhead miles
+do not count as revenue miles, and a mileage figure taken off the odometer
+includes them.
 
 ## Before you start
 
 - A [data source](/admin/data-sources) for each system of record.
-- Your mode and type-of-service coding, as the agency files it. Not as a
-  vendor's schema happens to spell it.
+- Your mode and type-of-service coding as the agency files it, which can differ
+  from how a vendor's schema spells it.
 - Last year's filed numbers, for step 4.
 
 ## The steps
@@ -58,7 +59,8 @@ revenue miles, and a mileage figure that comes off the odometer includes them.
 ### 1. Write one query per measure, not one query per report
 
 Each measure gets a query returning the same shape: month, mode, type of
-service, value. That is what makes them composable later.
+service, value. Keeping that shape identical is what lets you compose them in
+step 2.
 
 ```sql
 SELECT
@@ -78,8 +80,8 @@ year without a second query.
 
 Name each query for the measure and the source, `UPT from APC daily totals`, and
 put the definition in the query description: what is included, what is excluded,
-which flag decides revenue service. That description is the only place anyone
-will find out that shuttles were dropped.
+which flag decides revenue service. If shuttles were left out, the description
+is where a reader finds that out.
 
 ### 2. Combine them into one table
 
@@ -98,36 +100,36 @@ LEFT JOIN cached_query_33 AS h ON h.month = u.month AND h.mode = u.mode AND h.to
 ORDER BY u.month DESC, u.mode
 ```
 
-The `LEFT JOIN` matters. An inner join silently drops a month where one system
-was late, and a missing row is exactly what you want to see.
+Use a `LEFT JOIN` here. An inner join silently drops a month where one system
+was late, and a missing row is something you want to be able to see.
 
 ### 3. Build the board
 
 - Counters for the current month's UPT, VRM, VRH, each with the prior year's
   same month as the comparison.
 - A line chart of UPT by month, one series per mode.
-- A pivot table, month against mode, value UPT. This is the shape most people
-  want to copy out of.
-- The combined table from step 2, which is what you read the filing off.
+- A pivot table, month against mode, value UPT. Most people copy their numbers
+  out of this one.
+- The combined table from step 2, which the filing is read off.
 - A choropleth, if the board asks where the service went as well as how much of
   it there was. [Build a service equity board](/use-cases/service-equity)
-  assigns stops to your own tract or district boundaries; a by-mode pack is the
-  obvious thing to shade those regions with.
+  assigns stops to your own tract or district boundaries, and the by-mode pack
+  gives you a value to shade those regions with.
 
-Schedule the queries monthly, a few days after your data is closed, not on the
-first. A dashboard that refreshes into a half-closed month teaches people to
-distrust it.
+Schedule the queries monthly, a few days after your data is closed rather than
+on the first. A refresh that lands in a half-closed month shows incomplete
+numbers.
 
 ### 4. Reconcile before anyone relies on it
 
-Run the pack against a period you have already filed and compare, line by line.
-Differences are not failures, they are definitions surfacing, and each one has a
-cause worth writing down: deadhead in the mileage, a mode coded differently in
-the vendor's schema, a manual adjustment made in a spreadsheet that nothing else
-knows about.
+Run the pack against a period you have already filed and compare it line by
+line. Most differences come from definitions rather than from a broken query,
+and each one has a cause worth writing down: deadhead in the mileage, a mode
+coded differently in the vendor's schema, or a manual adjustment made in a
+spreadsheet that nothing else knows about.
 
-Two of those are fixable in the query. The third is a process to move, and the
-board is now the place to have that argument.
+The first two are fixable in the query. A spreadsheet adjustment has to be
+changed in the process itself, which the board at least makes visible.
 
 ### 5. Keep the evidence
 
@@ -136,31 +138,30 @@ If any query here reads a table with a retention policy, or a
 filed report can expire. Export the month's table when you file, and keep it
 where your filings are kept.
 
-There is a second way to pin them, and it is worth knowing about even if you
-still export. Historical capture is offered on every source type, the SQL
-databases your systems of record live in included, so a monthly capture of the
-measure queries themselves leaves the filed month's supporting rows sitting in
-the warehouse under a `captured_at` you can point at. Give that capture a
-retention of `0` if it is doing evidence duty. A TTL on the table that holds a
-filing's backup is the one place retention actively costs you something.
+Historical capture gives you a second copy, and it is worth setting up even if
+you also export. It is offered on every source type, including the SQL
+databases your systems of record live in, so a monthly capture of the measure
+queries leaves the filed month's supporting rows in the warehouse under a
+`captured_at` you can point at. Set that capture's retention to `0` if it is
+holding evidence, since a TTL would eventually delete the rows behind the
+filing.
 
 ## How you know it worked
 
 The pack reproduces a filed month to the row, or every difference has a named
-cause. Nothing else counts as verification, and doing it once at the start is
-worth more than every check afterwards.
+cause. Do this once, before anything is published off the pack.
 
 ## What this does not do
 
-It does not file anything. There is no NTD submission here: no upload, no
-transmission, no form. The pack produces the numbers and the evidence for them,
-and a person still enters them where they are entered.
+It does not file anything. There is no NTD submission step here, and no upload
+or form. The pack produces the numbers and the evidence behind them; someone
+still has to enter them into the reporting system.
 
 It also covers only the half of an NTD report that comes from counting.
 Route, trip and service-day figures come off your published schedule instead,
-and are their own guide: [Derive NTD service data from your GTFS
+and have their own guide: [Derive NTD service data from your GTFS
 archive](/use-cases/ntd-service-data).
 
-It also does not certify your counting equipment, or perform the validation
-programs that certification involves. That work happens on the vehicle and in
-the sampling plan, upstream of everything on this page.
+It does not certify your counting equipment or run the validation programs that
+certification involves. That work happens on the vehicle and in the sampling
+plan, before any of it reaches this page.

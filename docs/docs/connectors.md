@@ -33,8 +33,9 @@ Fields marked "secret" are stored encrypted, the same way any other data
 source credential is (see [Data Sources: Notes for operators](/admin/data-sources#notes-for-operators)).
 
 Latitude/longitude, route ids and similar per-request values are query
-parameters, not connector configuration, so one configured connector serves
-every query against it rather than one location or route being baked in.
+parameters rather than connector configuration, so one configured connector
+serves every query against it instead of having a single location or route
+baked in.
 
 One column needs a step before mapping: Waze `alerts` returns `location` as a
 JSON string of the form `{"x": ..., "y": ...}`, where `x` is the longitude and
@@ -57,8 +58,8 @@ stop_schedule_relationship, timestamp, on_time. `on_time` is `None` for a
 skipped stop, a canceled trip, or a stop the feed carries no delay for, and
 those rows are excluded from any average rather than counted late. The
 default window, no more than 1 minute early and no more than 5 minutes late,
-is the common transit-industry convention, not a mandate: set
-`early_seconds` and `late_seconds` to match an agency's own standard.
+follows the common transit-industry convention; set `early_seconds` and
+`late_seconds` to match an agency's own standard where it differs.
 
 `service_alerts` (`{"resource": "service_alerts"}`) returns one row per
 alert: alert_id, cause, effect, severity_level, header, description, url,
@@ -73,9 +74,9 @@ carries the SpatiaLite functions: `ST_Within`, `ST_Intersects`, `ST_Distance`,
 `MakePoint`, `GeomFromGeoJSON` and the rest of that set. That is how a boundary
 layer read from one connector gets joined to points read from another.
 
-Geometry travels as text, not as a geometry type. Static GeoJSON returns each
-feature's geometry as a GeoJSON string, so `GeomFromGeoJSON` is what turns that
-column into something a predicate can read. Where the point side already has
+Geometry travels as text rather than as a geometry type: Static GeoJSON returns
+each feature's geometry as a GeoJSON string, so `GeomFromGeoJSON` is what turns
+that column into something a predicate can read. Where the point side already has
 latitude and longitude as separate numeric columns, `MakePoint` builds the
 point from them, longitude first. Where it does not, extract them in the query
 first: Waze `alerts` packs both into a JSON `location` string, as described
@@ -88,15 +89,15 @@ FROM cached_query_12 b JOIN cached_query_34 s
 GROUP BY b.name
 ```
 
-There is no spatial index behind this. The join tests every point against every
-polygon, so the work is the product of the two row counts: a query that answers
-instantly over a few hundred stops can crawl over a hundred thousand. The lever
-is the query itself. Put a `LIMIT` on the point side while you are still
+There is no spatial index behind this join. Every point is tested against every
+polygon, so the work is the product of the two row counts, and a query that
+answers instantly over a few hundred stops can crawl over a hundred thousand.
+Both fixes are in the query: put a `LIMIT` on the point side while you are still
 drafting, and filter on an ordinary property column first (a route id, an
 agency, a latitude and longitude range) so the predicate only ever runs over
 rows that could plausibly match.
 
-Where the library is absent the data source still works and plain SQL over
+If the library is absent, the data source still works and plain SQL over
 query results is unaffected. The query service logs one warning naming the
 library it tried, and a query calling `ST_*` fails with SQLite's own "no such
 function" error. Operators install it (`libsqlite3-mod-spatialite` on Debian
@@ -114,8 +115,8 @@ show in one cell, so a full example is worth spelling out.
 Configuring a data source of this type means filling in:
 
 - **SNMP Community String**: the read community configured on the signs
-  themselves (a typical default is `public`, but any deployment worth
-  polling has changed it). SNMP v1 and v2c send this string in clear text,
+  themselves (a typical default is `public`, though it is usually
+  changed). SNMP v1 and v2c send this string in clear text,
   so only point this connector at a network path you control, never across
   the open internet.
 - **SNMP Version**: `2c` unless the signs only answer to `1`.
@@ -156,7 +157,7 @@ pattern the other transportation connectors use:
 `params.devices` polls every configured device (subject to the max-devices
 cap above). Every row carries a `poll_status` of `healthy`, `error` or
 `skipped`, so a single unreachable sign in a fleet of fifty does not fail
-the whole query, it shows up as one row saying so.
+the whole query; it appears as one row saying so.
 
 ## TMDD Center-to-Center: a worked configuration example
 
@@ -164,8 +165,8 @@ This connector polls a traffic management center over the TMDD v3.03d
 Center-to-Center SOAP interface and reads three things: active traffic events,
 dynamic message sign inventory, and dynamic message sign status. Everything it
 sends is a request message. The standard's control and command operations are
-deliberately not implemented, so a data source of this type cannot change
-anything at the center.
+not implemented, so a data source of this type cannot change anything at the
+center.
 
 Configuring one means filling in:
 
@@ -192,7 +193,7 @@ Configuring one means filling in:
   still arriving rather than measured after it has all been read, so an
   oversized answer is abandoned mid-stream instead of after the memory has
   gone.
-- **Max Records**: default 10000. It is not a row limit. See below.
+- **Max Records**: default 10000. This is not a row limit; see below.
 
 A query against this data source is a JSON resource selector, the same pattern
 the other transportation connectors use:
@@ -213,8 +214,8 @@ updated-since filter, and the one element that looks like it might
 silently returning the wrong rows.
 
 The practical consequence is worth planning for: a large events feed is
-transferred in full every time, however small a `limit` you ask for. These two
-params narrow what you read, not what the center sends.
+transferred in full every time, however small a `limit` you ask for, because
+these two params narrow what you read rather than what the center sends.
 
 `since` is not available for `dms_inventory`, which decodes to no timestamp
 column at all. Passing it there fails the query and says so, rather than being
@@ -234,9 +235,9 @@ narrow by time.
 `limit` truncates on purpose: ask for 100 rows and you get at most 100.
 **Max Records** is the opposite control. It caps how many records the center's
 response is allowed to decode to, and exceeding it is an error naming the
-count, not a shortened table. That is the whole point of it: a partial answer
-should never be mistaken for the complete one. When you hit it, either raise
-the cap or narrow the query.
+count rather than a shortened table, so a partial answer cannot be mistaken
+for the complete one. When you hit it, either raise the cap or narrow the
+query.
 
 The cap is checked before `since` and `limit` are applied, so setting a `limit`
 cannot let an unexpectedly huge response through unremarked.
@@ -266,8 +267,8 @@ the schema lets each of them arrive either as a bounded integer or as a string
 token. Whichever form the center sends is the form that lands in the column.
 The connector does not translate between the two.
 
-That is deliberate, not an omission. 88 of the 207 named simple types in the
-published `TMDD.xsd` are integer-or-string unions, and the schema asserts no
+The reason is that there is no mapping to apply. 88 of the 207 named simple
+types in the published `TMDD.xsd` are integer-or-string unions, and the schema asserts no
 mapping between the two arms anywhere. A matching count invites the assumption
 that the first integer means the first string, and one type in the same bundle
 disproves it: `Time-reference-code` is a union of 4 integers against 5
@@ -275,9 +276,9 @@ strings, so for that type no positional mapping exists to guess at. Any
 connector that translated would be inventing a mapping, and would be provably
 wrong somewhere.
 
-What the connector does enforce is membership. A value in neither arm is
-refused, with an error naming both, rather than passed into a column the
-center's own schema would reject. If you want one representation in a report,
+The connector does enforce membership: a value in neither arm is refused, with
+an error naming both, rather than passed into a column the center's own schema
+would reject. If you want one representation in a report,
 map it in the query or the visualization, where the mapping your center
 actually uses is a decision you can see and change.
 
