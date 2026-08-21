@@ -56,7 +56,11 @@ OPEN_DECISION_BUCKETS = (
         "its brand, its agency, its help URL. For a white-label product that is a defensible "
         "choice and replacing them with invented values costs the examples their realism, but "
         "it is a decision somebody has to make on purpose rather than one a scrub makes by "
-        "accident. Owner: the developer, at the cutover.",
+        "accident. One slice of this count is not that question: the connector table on the "
+        "connectors page names the public data services the shipping connectors talk to, which "
+        "is the closed public-connectors disclosure below reached through documentation, and it "
+        "grew when the table caught up with the enabled runner list it had been missing. "
+        "Owner: the developer, at the cutover.",
     ),
     (
         (BY_PREFIX, "ci/"),
@@ -103,8 +107,8 @@ OPEN_DECISION_BUCKETS = (
         "Phase 1A moved these deliberately INTO the public connector set; three of them carry "
         "live production data-source rows resolving through TYPE_RENAMES in "
         "node/redash/query_runner/legacy_types.py, so renaming is a data migration and not a "
-        "scrub; and the published connector list at docs/docs/connectors.md names one of these "
-        "services outright as a connector this product supports, which is the same disclosure by "
+        "scrub; and the published connector list at docs/docs/connectors.md names these "
+        "services outright as connectors this product supports, which is the same disclosure by "
         "a shorter route. An earlier version of that third reason cited the connector curation "
         "note instead, which has since left this tree; the argument did not depend on it. "
         "This is not an exemption and must not become one. Nothing here "

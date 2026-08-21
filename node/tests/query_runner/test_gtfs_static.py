@@ -73,8 +73,8 @@ class TestTableRead(TestCase):
         )
         self.assertEqual(column_types(data)["stop_lat"], "float")
         self.assertEqual(column_types(data)["stop_lon"], "float")
-        self.assertEqual(data["rows"][0]["stop_lat"], 34.0562)
-        self.assertEqual(data["rows"][0]["stop_lon"], -118.2365)
+        self.assertEqual(data["rows"][0]["stop_lat"], 45.1234)
+        self.assertEqual(data["rows"][0]["stop_lon"], -93.4567)
         self.assertEqual(len(data["rows"]), 2)
 
     def test_a_numeric_column_that_is_not_an_id_is_typed_and_converted(self):
@@ -114,7 +114,7 @@ class TestProjection(TestCase):
         data, error, _get = run_query('{"table": "stops", "columns": ["stop_lat", "stop_id"]}')
         self.assertIsNone(error)
         self.assertEqual([column["name"] for column in data["columns"]], ["stop_lat", "stop_id"])
-        self.assertEqual(data["rows"][0], {"stop_lat": 34.0562, "stop_id": "S1"})
+        self.assertEqual(data["rows"][0], {"stop_lat": 45.1234, "stop_id": "S1"})
 
     def test_an_unknown_column_names_it_and_the_available_ones(self):
         data, error, _get = run_query('{"table": "stops", "columns": ["stop_id", "platform"]}')

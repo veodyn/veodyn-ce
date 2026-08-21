@@ -75,6 +75,18 @@ describe('AddToDashboardDialog failure reporting', () => {
           updated_at: '2026-01-01T00:00:00Z',
         })
       ),
+      // create() follows the create with an un-draft update; serve it so the
+      // widget attempt carries the real dashboard id rather than the
+      // catch-all's {}.
+      http.post(`/api/node/dashboards/${NEW_DASHBOARD_ID}`, async ({ request }) =>
+        HttpResponse.json({
+          id: NEW_DASHBOARD_ID,
+          name: 'Q3 metrics',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+          ...((await request.json()) as Record<string, unknown>),
+        })
+      ),
       http.post('/api/node/widgets', () =>
         HttpResponse.json({ message: 'Widget rejected' }, { status: 500 })
       )
