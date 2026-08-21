@@ -16,7 +16,10 @@ const ADHOC_TABLE: MockVisualization[] = [
 ]
 
 // Negative so it cannot collide with a saved visualization's id, the way 0 is
-// already spoken for by the ad hoc table above.
+// already spoken for by the ad hoc table above. isSavedVisualization in
+// viz-choices.ts is the read side of this convention: the tab strip offers no
+// edit, publish or delete on a non-positive id, because there is no row behind
+// it for those requests to reach.
 const ADHOC_CHART_ID = -1
 
 /**
@@ -62,6 +65,8 @@ interface QueryEditorResultsProps {
    */
   adhocViz?: AdhocViz | null
   queryId?: number
+  /** Whether the owning query may be published. See VisualizationTabs. */
+  isQuerySafe?: boolean
 }
 
 export function QueryEditorResults({
@@ -71,6 +76,7 @@ export function QueryEditorResults({
   visualizations,
   adhocViz = null,
   queryId,
+  isQuerySafe = false,
 }: QueryEditorResultsProps) {
   const tabs =
     adhocViz != null ? adhocVisualizations(adhocViz) : (visualizations ?? ADHOC_TABLE)
@@ -104,6 +110,7 @@ export function QueryEditorResults({
           visualizations={tabs}
           queryResult={result}
           queryId={queryId}
+          isQuerySafe={isQuerySafe}
         />
       )}
     </div>

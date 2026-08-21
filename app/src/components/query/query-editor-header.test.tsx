@@ -30,7 +30,6 @@ function renderHeader(existingQuery: MockQuery | null = null, queryId?: number) 
       isDirty={false}
       onOpenSchedule={noop}
       onOpenApiKey={noop}
-      onOpenEmbed={noop}
       onOpenAddToDashboard={noop}
       onOpenPermissions={noop}
     />

@@ -96,10 +96,10 @@ class TestAddHistoricalCaptureFields(TestCase):
 class TestReExportSurfaceSurvivesTheModuleSplit(TestCase):
     """
     redash.query_runner used to be one file; it is now several, re-exported
-    through __init__.py. veodyn-pack-riits is the only pack that imports
-    from redash.query_runner directly, and these four names (the redash-
-    specific request/tunnel helpers a connector might need) are the ones
-    worth guaranteeing here on top of what the rest of this file already
+    through __init__.py. The private connector pack is the only distribution
+    that imports from redash.query_runner directly, and these four names (the
+    redash-specific request/tunnel helpers a connector might need) are the
+    ones worth guaranteeing here on top of what the rest of this file already
     covers.
     """
 

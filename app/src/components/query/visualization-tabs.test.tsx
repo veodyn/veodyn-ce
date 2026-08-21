@@ -183,6 +183,38 @@ describe('VisualizationTabs', () => {
     expect(screen.queryByRole('button', { name: /^Edit / })).not.toBeInTheDocument()
   })
 
+  // An ad hoc run's tabs carry synthetic ids (0 for the table, -1 for the
+  // builder's chart; see adhocVisualizations) with no row behind them, so
+  // every action they could offer — publish included — can only 404. The
+  // queryId is the real saved query's, which is what used to let the controls
+  // through.
+  it('offers no actions on the synthetic tabs of an ad hoc run', async () => {
+    const user = userEvent.setup()
+    const adhocChart = { ...chartViz, id: -1 }
+    const adhocTable = { ...tableViz, id: 0 }
+    renderWithProviders(
+      <VisualizationTabs
+        visualizations={[adhocChart, adhocTable]}
+        queryResult={queryResult}
+        queryId={5}
+        isQuerySafe
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: `Edit ${adhocChart.name}` })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: `Publish ${adhocChart.name}` })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: `More options for ${adhocChart.name}` })
+    ).not.toBeInTheDocument()
+    // Double-click is the other way into the editor, closed for the same reason.
+    await user.dblClick(screen.getByRole('tab', { name: adhocChart.name }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    // Adding stays: it creates a real visualization on the saved query.
+    expect(screen.getByRole('button', { name: 'Add visualization' })).toBeInTheDocument()
+  })
+
   // Deleting a saved visualization has no undo, and its only friction was that
   // the control sat inside a dropdown.
   it('asks before deleting, naming the visualization', async () => {

@@ -135,3 +135,15 @@ export function adhocVizFor(id: string): AdhocViz {
   const choice = resolveVizChoice(id)
   return { type: choice.type, name: choice.label, options: choice.options }
 }
+
+/**
+ * Whether a visualization is a saved row the backend has, as opposed to one of
+ * the synthetic tabs an ad hoc run builds: the table at id 0 and the builder's
+ * chart at -1 (see adhocVisualizations in query-editor-results.tsx, which owns
+ * that convention). Only a saved one can be edited, deleted or published; the
+ * synthetic ids have no row behind them, so any request against them can only
+ * 404.
+ */
+export function isSavedVisualization(viz: { id: number }): boolean {
+  return viz.id > 0
+}

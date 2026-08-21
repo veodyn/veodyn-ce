@@ -43,7 +43,6 @@ function renderMenu(overrides: Partial<MockQuery> = {}) {
       query={{ ...target, can_edit: true, is_safe: true, ...overrides }}
       onOpenSchedule={vi.fn()}
       onOpenApiKey={vi.fn()}
-      onOpenEmbed={vi.fn()}
       onOpenAddToDashboard={vi.fn()}
       onOpenPermissions={vi.fn()}
     />,

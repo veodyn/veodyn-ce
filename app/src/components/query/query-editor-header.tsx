@@ -19,7 +19,6 @@ interface QueryEditorHeaderProps {
   queryId?: number
   onOpenSchedule: () => void
   onOpenApiKey: () => void
-  onOpenEmbed: () => void
   onOpenAddToDashboard: () => void
   onOpenPermissions: () => void
 }
@@ -30,7 +29,6 @@ export function QueryEditorHeader({
   queryId,
   onOpenSchedule,
   onOpenApiKey,
-  onOpenEmbed,
   onOpenAddToDashboard,
   onOpenPermissions,
 }: QueryEditorHeaderProps) {
@@ -97,7 +95,6 @@ export function QueryEditorHeader({
             query={existingQuery}
             onOpenSchedule={onOpenSchedule}
             onOpenApiKey={onOpenApiKey}
-            onOpenEmbed={onOpenEmbed}
             onOpenAddToDashboard={onOpenAddToDashboard}
             onOpenPermissions={onOpenPermissions}
           />

@@ -17,7 +17,6 @@ import { VisualizationTabs } from '@/components/query/visualization-tabs'
 import { ParametersBar } from '@/components/parameters/parameters-bar'
 import { QuerySourceMenu } from '@/components/query/query-source-menu'
 import { ScheduleDialog } from '@/components/query/schedule-dialog'
-import { EmbedDialog } from '@/components/query/embed-dialog'
 import { ApiKeyDialog } from '@/components/query/api-key-dialog'
 import { AddToDashboardDialog } from '@/components/query/add-to-dashboard-dialog'
 import { PermissionsEditorDialog } from '@/components/query/permissions-editor-dialog'
@@ -55,7 +54,6 @@ export default function QueryViewPage({ params }: { params: Promise<{ queryId: s
   const draftsEnabled = useConfig().features.query_drafts
 
   const [scheduleOpen, setScheduleOpen] = useState(false)
-  const [embedOpen, setEmbedOpen] = useState(false)
   const [apiKeyOpen, setApiKeyOpen] = useState(false)
   const [addToDashOpen, setAddToDashOpen] = useState(false)
   const [permissionsOpen, setPermissionsOpen] = useState(false)
@@ -223,7 +221,6 @@ export default function QueryViewPage({ params }: { params: Promise<{ queryId: s
             query={query}
             onOpenSchedule={() => setScheduleOpen(true)}
             onOpenApiKey={() => setApiKeyOpen(true)}
-            onOpenEmbed={() => setEmbedOpen(true)}
             onOpenAddToDashboard={() => setAddToDashOpen(true)}
             onOpenPermissions={() => setPermissionsOpen(true)}
           />
@@ -244,10 +241,14 @@ export default function QueryViewPage({ params }: { params: Promise<{ queryId: s
         />
       )}
 
+      {/* Publishing lives on the tabs themselves (the ScreenShare button on the
+          active tab), so the link that gets minted is for the visualization on
+          screen, not for visualizations[0]. */}
       <VisualizationTabs
         visualizations={query.visualizations}
         queryResult={executeQuery.data ?? queryResult ?? null}
         queryId={id}
+        isQuerySafe={query.is_safe}
         onRun={runQuery}
         isRunning={executeQuery.isPending}
         runDisabled={pendingParamCount > 0}
@@ -259,13 +260,6 @@ export default function QueryViewPage({ params }: { params: Promise<{ queryId: s
         onClose={() => setScheduleOpen(false)}
         schedule={query.schedule as { interval: number | null; time: string | null; day_of_week: string | null; until: string | null } | null}
         onSave={(schedule) => updateQuery.mutate({ id, schedule })}
-      />
-      <EmbedDialog
-        open={embedOpen}
-        onClose={() => setEmbedOpen(false)}
-        visualizationId={query.visualizations[0]?.id ?? 0}
-        isSafe={query.is_safe}
-        shareToken={query.visualizations[0]?.api_key ?? null}
       />
       <ApiKeyDialog
         open={apiKeyOpen}

@@ -30,8 +30,9 @@ from redash.query_runner.connector_validation import parse_object_query
 
 logger = logging.getLogger(__name__)
 
-# GO511's edge answers 403 to requests' default `python-requests/*` User-Agent
-# and 200 to every other, so connectors send an identifying one instead.
+# At least one connector's upstream edge answers 403 to requests' default
+# `python-requests/*` User-Agent and 200 to every other (its own test file
+# carries the specifics), so connectors send an identifying one instead.
 REQUEST_HEADERS = {"User-Agent": "Redash/{} (Veodyn connectors)".format(__version__.split("-")[0])}
 
 

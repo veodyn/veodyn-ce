@@ -1,24 +1,19 @@
 'use client'
 
 import { useState, type CSSProperties } from 'react'
-import { Plus, Pencil, Trash2, MoreVertical } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import type { MockVisualization, MockQueryResult, QueryResultData } from '@/lib/mock-data'
 import { EditVisualizationDialog } from '@/components/visualizations/edit-visualization-dialog'
 import { VisualizationTabPanel } from './visualization-tab-panel'
+import { VisualizationTabActions } from './visualization-tab-actions'
+import { EmbedDialog } from './embed-dialog'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useToast } from '@/components/shared/toast-provider'
 import { useCreateVisualization, useUpdateVisualization, useDeleteVisualization } from '@/hooks/use-visualizations'
-import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/shared/icon-button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { isSavedVisualization } from '@/lib/viz-choices'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CHART_FILL_VAR } from '@/components/visualizations/chart/chart-frame'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 
 // A length, not `100%`. A percentage height resolves against the parent's own,
 // and the chain from this panel down to the frame runs through the error
@@ -35,6 +30,14 @@ interface VisualizationTabsProps {
   visualizations: MockVisualization[]
   queryResult: MockQueryResult | { data: QueryResultData } | null
   queryId?: number
+  /**
+   * Whether the owning query is safe to publish: no text parameters. Read by
+   * the publish dialog, not by this component. Defaults to false because the
+   * failure mode of a wrong `true` is an anonymous link to a parameterized
+   * query, and the failure mode of a wrong `false` is a dialog that explains
+   * itself.
+   */
+  isQuerySafe?: boolean
   /**
    * Runs the query behind these tabs, from the empty state. Optional because
    * the editor never shows that state: it mounts these tabs only once a run
@@ -63,6 +66,7 @@ export function VisualizationTabs({
   visualizations,
   queryResult,
   queryId,
+  isQuerySafe = false,
   onRun,
   isRunning = false,
   runDisabled = false,
@@ -74,6 +78,10 @@ export function VisualizationTabs({
   // Deleting a saved visualization cannot be undone from the UI, and its only
   // friction used to be that the control sat inside a dropdown.
   const [deletingViz, setDeletingViz] = useState<MockVisualization | null>(null)
+  // The tab being published, so the dialog is scoped to the visualization the
+  // person is LOOKING at. The old page-level dialog took visualizations[0],
+  // which published the table when the ticker was on screen.
+  const [publishingViz, setPublishingViz] = useState<MockVisualization | null>(null)
   const toast = useToast()
   const createViz = useCreateVisualization()
   const updateViz = useUpdateVisualization()
@@ -167,59 +175,29 @@ export function VisualizationTabs({
             {visualizations.map((viz) => (
               <div key={viz.id} className="relative flex items-center">
                 {/* Double-click opens the editor, which is where a Redash user
-                    reaches for it first. */}
+                    reaches for it first. Closed for the synthetic tabs of an
+                    ad hoc run, like the action cluster below. */}
                 <TabsTrigger
                   value={String(viz.id)}
                   onDoubleClick={
-                    queryId && viz.type !== 'TABLE' ? () => handleEdit(viz) : undefined
+                    queryId && viz.type !== 'TABLE' && isSavedVisualization(viz)
+                      ? () => handleEdit(viz)
+                      : undefined
                   }
                 >
                   {viz.name}
                 </TabsTrigger>
-                {queryId && effectiveActiveTab === viz.id && viz.type !== 'TABLE' && (
-                  <>
-                    {/* Editing used to live behind the kebab next door, which
-                        reads as generic overflow: "how do I edit this chart?"
-                        is not a question a settings control should provoke. It
-                        gets its own labelled button, and the kebab keeps the
-                        destructive action, whose two clicks are the only thing
-                        standing between a stray click and a deleted
-                        visualization (handleDelete does not confirm). */}
-                    <IconButton
-                      tooltip="Edit visualization"
-                      aria-label={`Edit ${viz.name}`}
-                      variant="ghost"
-                      size="icon-xs"
-                      className="-ml-1"
-                      onClick={() => handleEdit(viz)}
-                    >
-                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                    </IconButton>
-                    <DropdownMenu>
-                      {/* The tooltip wraps the menu trigger rather than
-                          replacing it: the kebab has to stay the element that
-                          opens the menu, so the trigger renders through it. */}
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <DropdownMenuTrigger
-                              aria-label={`More options for ${viz.name}`}
-                              render={<Button variant="ghost" size="icon-xs" />}
-                            />
-                          }
-                        >
-                          <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                        </TooltipTrigger>
-                        <TooltipContent>More options</TooltipContent>
-                      </Tooltip>
-                      <DropdownMenuContent align="start" className="min-w-[120px]">
-                        <DropdownMenuItem onClick={() => setDeletingViz(viz)} variant="destructive">
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </>
+                {/* Only for saved rows: an ad hoc run's tabs carry synthetic
+                    ids (0 and -1) with nothing behind them, so every action
+                    they could offer, publish included, can only 404. */}
+                {queryId && effectiveActiveTab === viz.id && isSavedVisualization(viz) && (
+                  <VisualizationTabActions
+                    viz={viz}
+                    canModify={viz.type !== 'TABLE'}
+                    onEdit={() => handleEdit(viz)}
+                    onPublish={() => setPublishingViz(viz)}
+                    onDelete={() => setDeletingViz(viz)}
+                  />
                 )}
               </div>
             ))}
@@ -271,6 +249,25 @@ export function VisualizationTabs({
           visualization={editingViz}
           data={resultData}
           onSave={handleSave}
+        />
+      )}
+
+      {/* Same mount discipline as the edit dialog above, for the same reason:
+          the publish dialog holds per-open state, so it mounts fresh for the
+          tab being published. The token itself outlives the dialog on the
+          owning query's cache entry, which the share mutations settle; a fresh
+          open reads it back through `publishingViz.api_key`. queryId is
+          guaranteed by the action cluster's own gate, and checked again only
+          for the type. */}
+      {publishingViz && queryId && (
+        <EmbedDialog
+          key={publishingViz.id}
+          open
+          onClose={() => setPublishingViz(null)}
+          visualizationId={publishingViz.id}
+          queryId={queryId}
+          isSafe={isQuerySafe}
+          shareToken={publishingViz.api_key ?? null}
         />
       )}
 

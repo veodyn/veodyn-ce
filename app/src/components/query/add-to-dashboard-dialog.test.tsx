@@ -155,6 +155,21 @@ describe('AddToDashboardDialog', () => {
           updated_at: '2026-01-01T00:00:00Z',
         })
       }),
+      // create() follows the create with an un-draft update (see
+      // dashboards.create.test.ts for that contract). Serve it, or the
+      // catch-all answers {} and the id the widget body needs comes back
+      // undefined. Still no widgets key, like the real update response.
+      http.post(`/api/node/dashboards/${NEW_DASHBOARD_ID}`, async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({
+          id: NEW_DASHBOARD_ID,
+          name: 'Q3 metrics',
+          slug: 'q3-metrics',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+          ...body,
+        })
+      }),
       http.post('/api/node/widgets', async ({ request }) => {
         widgetBody = (await request.json()) as Record<string, unknown>
         return HttpResponse.json({ id: 900, ...widgetBody })

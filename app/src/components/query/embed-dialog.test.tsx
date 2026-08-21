@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import * as vizService from '@/services/redash/visualizations'
 import { mockQueries } from '@/lib/mock-data'
 import { EmbedDialog } from './embed-dialog'
-import { QueryEditorDialogs } from './query-editor-dialogs'
+import { VisualizationTabs } from './visualization-tabs'
 
 // The dialog refuses to mint without a backend, because a token minted in mock
 // mode would resolve to nothing. Real mode is the interesting configuration, so
@@ -28,9 +28,9 @@ afterEach(() => {
 
 describe('EmbedDialog: no token yet', () => {
   it('offers to create a link, with no URL to copy until one exists', () => {
-    renderWithProviders(<EmbedDialog open onClose={() => {}} visualizationId={9} isSafe />)
+    renderWithProviders(<EmbedDialog open onClose={() => {}} queryId={31} visualizationId={9} isSafe />)
 
-    expect(screen.getByRole('button', { name: /create embed link/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /create public link/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/link expires/i)).toHaveValue('')
     expect(screen.queryByLabelText(/public url/i)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /revoke/i })).not.toBeInTheDocument()
@@ -42,10 +42,12 @@ describe('EmbedDialog: no token yet', () => {
       .spyOn(vizService, 'shareVisualization')
       .mockResolvedValue({ public_url: 'https://redash.example/public/x', api_key: 'tok-abc' })
 
-    renderWithProviders(<EmbedDialog open onClose={() => {}} visualizationId={9} isSafe />)
-    await user.click(screen.getByRole('button', { name: /create embed link/i }))
+    renderWithProviders(<EmbedDialog open onClose={() => {}} queryId={31} visualizationId={9} isSafe />)
+    await user.click(screen.getByRole('button', { name: /create public link/i }))
 
-    const url = `${window.location.origin}/embed/public/tok-abc`
+    // The default cadence rides the URL: a published link's audience is a
+    // screen nobody reloads, so the page refreshes itself once a minute.
+    const url = `${window.location.origin}/embed/public/tok-abc?refresh=60`
     expect(await screen.findByDisplayValue(url)).toBeInTheDocument()
     expect(
       screen.getByDisplayValue(
@@ -61,7 +63,7 @@ describe('EmbedDialog: no token yet', () => {
       .spyOn(vizService, 'shareVisualization')
       .mockResolvedValue({ public_url: '', api_key: 'tok-abc' })
 
-    renderWithProviders(<EmbedDialog open onClose={() => {}} visualizationId={9} isSafe />)
+    renderWithProviders(<EmbedDialog open onClose={() => {}} queryId={31} visualizationId={9} isSafe />)
     // fireEvent rather than user.type: a datetime-local input is a segmented
     // control, and typing into it character by character produces intermediate
     // values the browser rejects. The value a real picker commits is what this
@@ -69,7 +71,7 @@ describe('EmbedDialog: no token yet', () => {
     fireEvent.change(screen.getByLabelText(/link expires/i), {
       target: { value: '2026-09-01T10:30' },
     })
-    await user.click(screen.getByRole('button', { name: /create embed link/i }))
+    await user.click(screen.getByRole('button', { name: /create public link/i }))
 
     expect(await screen.findAllByDisplayValue(/embed\/public\/tok-abc/)).toHaveLength(2)
     expect(share).toHaveBeenCalledWith(9, new Date('2026-09-01T10:30').toISOString())
@@ -81,8 +83,8 @@ describe('EmbedDialog: no token yet', () => {
       new Error('Public URLs are disabled for this organization.')
     )
 
-    renderWithProviders(<EmbedDialog open onClose={() => {}} visualizationId={9} isSafe />)
-    await user.click(screen.getByRole('button', { name: /create embed link/i }))
+    renderWithProviders(<EmbedDialog open onClose={() => {}} queryId={31} visualizationId={9} isSafe />)
+    await user.click(screen.getByRole('button', { name: /create public link/i }))
 
     expect(
       await screen.findByText(/public urls are disabled for this organization/i)
@@ -94,7 +96,7 @@ describe('EmbedDialog: no token yet', () => {
 describe('EmbedDialog: a token already exists', () => {
   it('shows the token URL with no credential in it', () => {
     renderWithProviders(
-      <EmbedDialog open onClose={() => {}} visualizationId={9} isSafe shareToken="tok-xyz" />
+      <EmbedDialog open onClose={() => {}} queryId={31} visualizationId={9} isSafe shareToken="tok-xyz" />
     )
 
     const fields = screen.getAllByDisplayValue(/embed\/public\/tok-xyz/) as HTMLInputElement[]
@@ -112,17 +114,51 @@ describe('EmbedDialog: a token already exists', () => {
     // one, it offered Create on every open and each click minted another live
     // token that revoking never reached.
     renderWithProviders(
-      <EmbedDialog open onClose={() => {}} visualizationId={9} isSafe shareToken="tok-xyz" />
+      <EmbedDialog open onClose={() => {}} queryId={31} visualizationId={9} isSafe shareToken="tok-xyz" />
     )
 
-    expect(screen.queryByRole('button', { name: /create embed link/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /create public link/i })).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/link expires/i)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /revoke embed link/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /revoke public link/i })).toBeInTheDocument()
+  })
+
+  it('bakes the chosen refresh cadence into the URL, and Never removes it', async () => {
+    const user = userEvent.setup()
+
+    renderWithProviders(
+      <EmbedDialog open onClose={() => {}} queryId={31} visualizationId={9} isSafe shareToken="tok-xyz" />
+    )
+
+    const base = `${window.location.origin}/embed/public/tok-xyz`
+    expect(screen.getByDisplayValue(`${base}?refresh=60`)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'Every 5 minutes' }))
+    expect(screen.getByDisplayValue(`${base}?refresh=300`)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'Never' }))
+    expect(screen.getByDisplayValue(base)).toBeInTheDocument()
+  })
+
+  it('offers the published page itself, full screen in a new tab', () => {
+    renderWithProviders(
+      <EmbedDialog open onClose={() => {}} queryId={31} visualizationId={9} isSafe shareToken="tok-xyz" />
+    )
+
+    // Base UI's Button stamps role="button" on a rendered anchor (the same
+    // pattern as the query page's "Edit Source" link), so it is queried as one.
+    const link = screen.getByRole('button', { name: /open full screen/i })
+    expect(link).toHaveAttribute(
+      'href',
+      `${window.location.origin}/embed/public/tok-xyz?refresh=60`
+    )
+    expect(link).toHaveAttribute('target', '_blank')
   })
 
   it('associates the width and height fields with their labels', () => {
     renderWithProviders(
-      <EmbedDialog open onClose={() => {}} visualizationId={9} isSafe shareToken="tok-xyz" />
+      <EmbedDialog open onClose={() => {}} queryId={31} visualizationId={9} isSafe shareToken="tok-xyz" />
     )
 
     expect(screen.getByLabelText(/^width$/i)).toHaveValue(720)
@@ -134,11 +170,11 @@ describe('EmbedDialog: a token already exists', () => {
     const unshare = vi.spyOn(vizService, 'unshareVisualization').mockResolvedValue()
 
     renderWithProviders(
-      <EmbedDialog open onClose={() => {}} visualizationId={9} isSafe shareToken="tok-xyz" />
+      <EmbedDialog open onClose={() => {}} queryId={31} visualizationId={9} isSafe shareToken="tok-xyz" />
     )
-    await user.click(screen.getByRole('button', { name: /revoke embed link/i }))
+    await user.click(screen.getByRole('button', { name: /revoke public link/i }))
 
-    expect(await screen.findByRole('button', { name: /create embed link/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /create public link/i })).toBeInTheDocument()
     expect(screen.queryByDisplayValue(/tok-xyz/)).not.toBeInTheDocument()
     expect(unshare).toHaveBeenCalledWith(9)
   })
@@ -148,7 +184,7 @@ describe('EmbedDialog: a token already exists', () => {
     const onClose = vi.fn()
 
     renderWithProviders(
-      <EmbedDialog open onClose={onClose} visualizationId={9} isSafe shareToken="tok-xyz" />
+      <EmbedDialog open onClose={onClose} queryId={31} visualizationId={9} isSafe shareToken="tok-xyz" />
     )
     await user.keyboard('{Escape}')
 
@@ -160,11 +196,11 @@ describe('EmbedDialog: the user cannot publish', () => {
   it('explains why rather than drawing a control that cannot work', () => {
     signIn(['view_query'])
 
-    renderWithProviders(<EmbedDialog open onClose={() => {}} visualizationId={9} isSafe />)
+    renderWithProviders(<EmbedDialog open onClose={() => {}} queryId={31} visualizationId={9} isSafe />)
 
     expect(screen.getByText(/do not have permission to publish/i)).toBeInTheDocument()
     expect(screen.getByText(/publish_visualization/)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /create embed link/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /create public link/i })).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/link expires/i)).not.toBeInTheDocument()
   })
 
@@ -172,7 +208,7 @@ describe('EmbedDialog: the user cannot publish', () => {
     signIn(['view_query'])
 
     renderWithProviders(
-      <EmbedDialog open onClose={() => {}} visualizationId={9} isSafe shareToken="tok-xyz" />
+      <EmbedDialog open onClose={() => {}} queryId={31} visualizationId={9} isSafe shareToken="tok-xyz" />
     )
 
     expect(screen.getAllByDisplayValue(/embed\/public\/tok-xyz/)).toHaveLength(2)
@@ -181,28 +217,29 @@ describe('EmbedDialog: the user cannot publish', () => {
 })
 
 describe('EmbedDialog: the token the query already carries', () => {
-  it('reaches the dialog from the visualization on the query', () => {
+  it('reaches the dialog from the tab being published, not visualizations[0]', async () => {
     // The wiring, not the dialog: Redash sends visualization.api_key to an
-    // admin or the query's owner, and this is the path that carries it in.
+    // admin or the query's owner, and the publish button on the ACTIVE tab is
+    // what carries it in. The page-level dialog this replaces always read
+    // visualizations[0], so publishing the second tab published the wrong one.
+    const user = userEvent.setup()
     const source = mockQueries[0]
-    const query = {
-      ...source,
-      is_safe: true,
-      visualizations: [{ ...source.visualizations[0], api_key: 'tok-from-query' }],
-    }
+    const table = { ...source.visualizations[0], api_key: 'tok-from-query' }
     const share = vi.spyOn(vizService, 'shareVisualization')
 
     renderWithProviders(
-      <QueryEditorDialogs
-        query={query}
-        open="embed"
-        onClose={() => {}}
-        onSaveSchedule={() => {}}
+      <VisualizationTabs
+        visualizations={[table]}
+        queryResult={{ data: { columns: [], rows: [] } }}
+        queryId={source.id}
+        isQuerySafe
       />
     )
 
-    expect(screen.getAllByDisplayValue(/embed\/public\/tok-from-query/)).toHaveLength(2)
-    expect(screen.queryByRole('button', { name: /create embed link/i })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: `Publish ${table.name}` }))
+
+    expect(await screen.findAllByDisplayValue(/embed\/public\/tok-from-query/)).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: /create public link/i })).not.toBeInTheDocument()
     expect(share).not.toHaveBeenCalled()
   })
 })
@@ -210,10 +247,10 @@ describe('EmbedDialog: the token the query already carries', () => {
 describe('EmbedDialog: an unsafe query', () => {
   it('refuses outright and offers nothing to publish', () => {
     renderWithProviders(
-      <EmbedDialog open onClose={() => {}} visualizationId={9} isSafe={false} />
+      <EmbedDialog open onClose={() => {}} queryId={31} visualizationId={9} isSafe={false} />
     )
 
-    expect(screen.getByText(/cannot be embedded for security reasons/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /create embed link/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/cannot be published for security reasons/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /create public link/i })).not.toBeInTheDocument()
   })
 })

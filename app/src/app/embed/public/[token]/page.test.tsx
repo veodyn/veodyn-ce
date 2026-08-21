@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, screen } from '@testing-library/react'
 import { renderWithProviders, resetStores } from '@/test/utils'
+import { PLUGIN_API_VERSION, registerVisualization } from '@/lib/visualizations'
 import PublicEmbedPage from './page'
 
 const TOKEN = 'viz_tok_abc123456789'
@@ -22,14 +23,28 @@ const PAYLOAD = {
   },
 }
 
+// A type that never waits for a result, registered once for this file: what a
+// wall image panel or a backdrop plugin is. The route serves `data: null` for
+// its never-run query, and the page must still draw it.
+const DATALESS_TYPE = 'TEST_EMBED_DATALESS_PANEL'
+registerVisualization({
+  apiVersion: PLUGIN_API_VERSION,
+  type: DATALESS_TYPE,
+  displayName: 'Dataless Panel',
+  icon: () => null,
+  defaultOptions: {},
+  needs: 'none',
+  Renderer: () => <div>Dataless panel content</div>,
+})
+
 // The page reads `params` via React's `use()`, which suspends on mount even for
 // an already-resolved promise, so the render is wrapped in an awaited act() to
 // flush that microtask and the Suspense retry it triggers.
-async function renderPage(token: string) {
+async function renderPage(token: string, search: Record<string, string> = {}) {
   let view: ReturnType<typeof renderWithProviders> | undefined
   await act(async () => {
     view = renderWithProviders(
-      <PublicEmbedPage params={Promise.resolve({ token })} />,
+      <PublicEmbedPage params={Promise.resolve({ token })} searchParams={Promise.resolve(search)} />,
       // An anonymous reader, which is the only kind this page has.
       { authenticated: false }
     )
@@ -67,6 +82,30 @@ describe('PublicEmbedPage', () => {
     expect((fetchSpy.mock.calls[0]?.[1] as RequestInit).credentials).toBe('omit')
   })
 
+  it('renders the same way when the link carries a refresh cadence', async () => {
+    // `?refresh=` only sets the refetch interval; the first paint is identical.
+    // The cadence itself is a react-query refetchInterval, whose timer firing
+    // is react-query's contract, not this page's.
+    respondWith(PAYLOAD)
+
+    await renderPage(TOKEN, { refresh: '60' })
+
+    expect(await screen.findByText('Central Station')).toBeInTheDocument()
+  })
+
+  it('lets a table taller than the viewport scroll instead of clipping it', async () => {
+    // The wrapper is h-dvh; overflow-auto is what keeps a tall TABLE's lower
+    // rows and its pagination reachable. With overflow-hidden they were
+    // clipped with no scrollbar anywhere. Charts fill exactly 100dvh, so no
+    // scrollbar appears for them either way.
+    respondWith(PAYLOAD)
+
+    const view = await renderPage(TOKEN)
+    await screen.findByText('Central Station')
+
+    expect(view.container.querySelector('.h-dvh')).toHaveClass('overflow-auto')
+  })
+
   it('offers an anonymous reader no way to download the rows', async () => {
     respondWith(PAYLOAD)
 
@@ -74,6 +113,29 @@ describe('PublicEmbedPage', () => {
     await screen.findByText('Central Station')
 
     expect(screen.queryByRole('button', { name: /download/i })).not.toBeInTheDocument()
+  })
+
+  it('is a dead link for a result-needing type whose query never ran', async () => {
+    // The route now serves `data: null` rather than 404 for a never-run query,
+    // because whether that is fatal depends on the type. For a TABLE it is:
+    // same panel as a revoked token, exactly as before the change.
+    respondWith({ ...PAYLOAD, data: null })
+
+    await renderPage(TOKEN)
+
+    expect(await screen.findByText(UNAVAILABLE)).toBeInTheDocument()
+  })
+
+  it('draws a needs-none plugin with no result at all', async () => {
+    respondWith({
+      visualization: { type: DATALESS_TYPE, name: 'Lobby panel', description: '', options: {} },
+      data: null,
+    })
+
+    await renderPage(TOKEN)
+
+    expect(await screen.findByText('Dataless panel content')).toBeInTheDocument()
+    expect(screen.queryByText(UNAVAILABLE)).not.toBeInTheDocument()
   })
 
   it.each([
