@@ -151,6 +151,46 @@ def test_a_field_that_is_not_a_column_survives_the_check():
     assert bound == {"keyColumn": "station", "valueColumn": "bikes", "targetField": "iso_a2"}
 
 
+def test_a_geometry_column_survives_when_the_statement_returns_it():
+    # The geometry-column boundary mode: the outlines are a column of the
+    # result, so it is checked like any other column name.
+    boundary = ResultColumn("boundary", "String", "text")
+    bound = bind_options(
+        "CHOROPLETH",
+        "choropleth",
+        {
+            "boundarySource": "column",
+            "keyColumn": "station",
+            "valueColumn": "bikes",
+            "geometryColumn": "boundary",
+        },
+        (STATION, BIKES, boundary),
+    )
+
+    assert bound == {
+        "boundarySource": "column",
+        "keyColumn": "station",
+        "valueColumn": "bikes",
+        "geometryColumn": "boundary",
+    }
+
+
+def test_a_geometry_column_the_statement_lost_is_dropped_by_itself():
+    bound = bind_options(
+        "CHOROPLETH",
+        "choropleth",
+        {
+            "boundarySource": "column",
+            "keyColumn": "station",
+            "valueColumn": "bikes",
+            "geometryColumn": "ghost",
+        },
+        (STATION, BIKES),
+    )
+
+    assert bound == {"boundarySource": "column", "keyColumn": "station", "valueColumn": "bikes"}
+
+
 def test_every_declared_option_naming_a_column_is_checked():
     """The audit above, kept honest as the allowlist grows.
 

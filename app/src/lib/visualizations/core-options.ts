@@ -31,6 +31,15 @@ export const NAMED_COLUMNS = {
   CHOROPLETH: [
     { key: 'keyColumn', label: 'key' },
     { key: 'valueColumn', label: 'value' },
+    // targetField stays out: it names a property of the bundled GeoJSON, not a
+    // result column. geometryColumn is a result column, and read only when the
+    // boundaries come from one, so a value left behind by a switch back to the
+    // bundled map is inert rather than broken.
+    {
+      key: 'geometryColumn',
+      label: 'geometry',
+      appliesTo: (options: Record<string, unknown>) => options.boundarySource === 'column',
+    },
   ],
   COHORT: [
     { key: 'dateColumn', label: 'cohort' },
@@ -140,6 +149,8 @@ export const CORE_PUBLIC_OPTIONS = {
     keyColumn: 'string',
     targetField: 'string',
     valueColumn: 'string',
+    boundarySource: 'string',
+    geometryColumn: 'string',
   },
   PIVOT: {
     rowField: 'string',

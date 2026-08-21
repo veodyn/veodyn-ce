@@ -36,6 +36,40 @@ describe('missingNamedColumns', () => {
   it('reports each bad key separately', () => {
     expect(missingNamedColumns({ latColName: 'a', lonColName: 'b' }, keys, data)).toHaveLength(2)
   })
+
+  // Some option keys are read only in one of a type's modes. Checking one the
+  // renderer will never read reports a problem the analyst cannot act on, and
+  // the value is usually a leftover from a mode they switched away from.
+  describe('a key that only applies in some modes', () => {
+    const gated = [
+      { key: 'valueColumn', label: 'value' },
+      {
+        key: 'geometryColumn',
+        label: 'geometry',
+        appliesTo: (options: Record<string, unknown>) => options.boundarySource === 'column',
+      },
+    ]
+
+    it('checks the gated key when its mode is on', () => {
+      expect(missingNamedColumns({ boundarySource: 'column', geometryColumn: 'ghost' }, gated, data)).toEqual([
+        'The geometry column "ghost" is not in this query result.',
+      ])
+    })
+
+    it('says nothing about the gated key when its mode is off', () => {
+      expect(missingNamedColumns({ geometryColumn: 'ghost' }, gated, data)).toEqual([])
+      expect(missingNamedColumns({ boundarySource: 'map', geometryColumn: 'ghost' }, gated, data)).toEqual([])
+    })
+
+    it('still checks the ungated keys in either mode', () => {
+      expect(missingNamedColumns({ valueColumn: 'ghost' }, gated, data)).toEqual([
+        'The value column "ghost" is not in this query result.',
+      ])
+      expect(missingNamedColumns({ boundarySource: 'column', valueColumn: 'ghost' }, gated, data)).toEqual([
+        'The value column "ghost" is not in this query result.',
+      ])
+    })
+  })
 })
 
 describe('missingMappedColumns', () => {

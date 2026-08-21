@@ -104,6 +104,61 @@ describe('visualization registry', () => {
     expect(choropleth?.validate?.({ keyColumn: 'code', targetField: 'name' }, data)).toEqual([])
   })
 
+  // In geometry-column mode nothing is matched against a map property, so
+  // demanding one would be a problem the analyst cannot act on.
+  it('asks a geometry-column choropleth for its geometry column, not a map property', () => {
+    const data = {
+      columns: [
+        { name: 'district', friendly_name: 'district', type: 'string' },
+        { name: 'geom', friendly_name: 'geom', type: 'string' },
+      ],
+      rows: [{ district: 'North', geom: '{}' }],
+    }
+    const choropleth = getVisualization('CHOROPLETH')
+
+    expect(choropleth?.validate?.({ boundarySource: 'column', keyColumn: 'district' }, data)).toEqual([
+      'No geometry column is selected, so there is nothing to draw. Pick one under "Geometry Column".',
+    ])
+    expect(
+      choropleth?.validate?.({ boundarySource: 'column', keyColumn: 'district', geometryColumn: 'geom' }, data)
+    ).toEqual([])
+  })
+
+  it('names a geometry column the query stopped returning', () => {
+    const data = {
+      columns: [{ name: 'district', friendly_name: 'district', type: 'string' }],
+      rows: [{ district: 'North' }],
+    }
+
+    expect(
+      getVisualization('CHOROPLETH')?.validate?.(
+        { boundarySource: 'column', keyColumn: 'district', geometryColumn: 'ghost' },
+        data
+      )
+    ).toEqual(['The geometry column "ghost" is not in this query result.'])
+  })
+
+  // A choropleth switched back to the bundled map reads nothing from
+  // geometryColumn, so a stale one is not a problem to report above a map that
+  // is drawing correctly.
+  it('says nothing about a stale geometry column in map mode', () => {
+    const data = {
+      columns: [{ name: 'district', friendly_name: 'district', type: 'string' }],
+      rows: [{ district: 'North' }],
+    }
+    const choropleth = getVisualization('CHOROPLETH')
+
+    expect(
+      choropleth?.validate?.({ keyColumn: 'district', targetField: 'name', geometryColumn: 'ghost' }, data)
+    ).toEqual([])
+    expect(
+      choropleth?.validate?.(
+        { boundarySource: 'map', keyColumn: 'district', targetField: 'name', geometryColumn: 'ghost' },
+        data
+      )
+    ).toEqual([])
+  })
+
   describe('getVisualization', () => {
     it('resolves a registered type', () => {
       expect(getVisualization('MAP')?.displayName).toBe('Map (Markers)')

@@ -182,4 +182,43 @@ describe('buildChoroplethModel', () => {
     expect(model.matchedCount).toBe(0)
     expect(model.featureCollection.features).toHaveLength(0)
   })
+
+  // The saved-options guarantee for the geometry-column mode: absent means the
+  // bundled map, so a choropleth authored before that mode existed keeps the
+  // shape it had.
+  it('joins by targetField when boundarySource is absent, even with a geometryColumn set', () => {
+    const model = buildChoroplethModel({ ...options, geometryColumn: 'code' }, data, geojson, colors)
+    expect(model.matchedCount).toBe(2)
+    expect(model.skippedCount).toBe(0)
+    const byKey = Object.fromEntries(
+      model.featureCollection.features.map((f) => [f.properties?.iso_a2, f.properties?.fillColor])
+    )
+    expect(byKey.US).toBe('HIGH')
+    expect(byKey.CA).toBe('LOW')
+    expect(byKey.MX).toBe('NONE')
+  })
+
+  // The tooltip labels a region from __key in both modes, so map mode has to
+  // write one too, taken from the property the join matched on.
+  it('carries the matched map property onto __key', () => {
+    const model = buildChoroplethModel(options, data, geojson, colors)
+    const byKey = Object.fromEntries(
+      model.featureCollection.features.map((f) => [f.properties?.iso_a2, f.properties?.__key])
+    )
+    expect(byKey.US).toBe('US')
+    expect(byKey.MX).toBe('MX')
+  })
+
+  it('leaves __key null when no map property is selected', () => {
+    const model = buildChoroplethModel({ keyColumn: 'code', valueColumn: 'v' }, data, geojson, colors)
+    for (const feature of model.featureCollection.features) {
+      expect(feature.properties?.__key).toBe(null)
+    }
+  })
+
+  it('joins by targetField when boundarySource is the explicit "map"', () => {
+    const model = buildChoroplethModel({ ...options, boundarySource: 'map' }, data, geojson, colors)
+    expect(model.matchedCount).toBe(2)
+    expect(model.featureCollection.features.map((f) => f.properties?.iso_a2)).toEqual(['US', 'CA', 'MX'])
+  })
 })

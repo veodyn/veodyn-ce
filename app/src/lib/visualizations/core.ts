@@ -223,7 +223,15 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     // options behind the analyst's back.
     validate: (options, data) => {
       const problems = missingNamedColumns(options, NAMED_COLUMNS.CHOROPLETH, data)
-      if (!options.targetField) {
+      if (options.boundarySource === 'column') {
+        // Nothing is matched against a map property in this mode, so the
+        // unfinished half is the geometry the regions are drawn from.
+        if (!options.geometryColumn) {
+          problems.push(
+            'No geometry column is selected, so there is nothing to draw. Pick one under "Geometry Column".'
+          )
+        }
+      } else if (!options.targetField) {
         problems.push(
           'No map property is selected, so no region can match. Pick one under "Matched Against".'
         )

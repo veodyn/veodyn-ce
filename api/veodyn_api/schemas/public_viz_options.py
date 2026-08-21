@@ -118,6 +118,10 @@ PUBLIC_VIZ_OPTIONS: dict[str, Fields] = {
         "keyColumn": "string",
         "targetField": "string",
         "valueColumn": "string",
+        # 'map' (the bundled world map, and what an absent value means) or
+        # 'column', where each row carries its own outline in geometryColumn.
+        "boundarySource": "string",
+        "geometryColumn": "string",
     },
     "PIVOT": {
         "rowField": "string",

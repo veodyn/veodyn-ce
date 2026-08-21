@@ -33,7 +33,7 @@ COLUMN_KEYS: dict[str, tuple[str, ...]] = {
     "MAP": ("latColName", "lonColName", "classify"),
     # targetField is deliberately absent: it names a property of the GeoJSON
     # feature, not of the result set, and checking it would drop it always.
-    "CHOROPLETH": ("keyColumn", "valueColumn"),
+    "CHOROPLETH": ("keyColumn", "valueColumn", "geometryColumn"),
     "PIVOT": ("rowField", "colField", "valueField"),
     "FUNNEL": ("stepColumn", "valueColumn"),
     "COHORT": ("dateColumn", "stageColumn", "totalColumn", "valueColumn"),

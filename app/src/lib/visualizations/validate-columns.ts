@@ -30,18 +30,30 @@ function columnNames(data: QueryResultData): Set<string> {
 }
 
 /**
+ * One option key holding a column name. `appliesTo` gates the check on the rest
+ * of the options, for a key only one of a type's modes reads: an option the
+ * renderer will never look at cannot be stale in a way the analyst can fix.
+ */
+export interface NamedColumn {
+  key: string
+  label: string
+  appliesTo?: (options: Record<string, unknown>) => boolean
+}
+
+/**
  * Problems for option keys that each hold a single column name. An unset key is
  * not a problem: unfinished configuration is a different message from a name
  * that does not exist.
  */
 export function missingNamedColumns(
   options: Record<string, unknown>,
-  keys: readonly { key: string; label: string }[],
+  keys: readonly NamedColumn[],
   data: QueryResultData
 ): string[] {
   const names = columnNames(data)
   const problems: string[] = []
-  for (const { key, label } of keys) {
+  for (const { key, label, appliesTo } of keys) {
+    if (appliesTo && !appliesTo(options)) continue
     const value = options[key]
     if (typeof value !== 'string' || value === '') continue
     if (!names.has(value)) {

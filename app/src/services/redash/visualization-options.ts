@@ -166,6 +166,12 @@ export interface RedashChoroplethOptions {
   keyColumn?: string
   targetField?: string
   valueColumn?: string
+  // Where the region outlines come from. Absent means 'map', so a choropleth
+  // saved before this option existed keeps drawing the bundled world map. In
+  // 'column' mode each result row is one region, its outline read from
+  // geometryColumn, and mapType/targetField are unused.
+  boundarySource?: 'map' | 'column'
+  geometryColumn?: string
 }
 
 // Cohort mirrors Redash's "simple" retention-grid shape (cohort key x stage,

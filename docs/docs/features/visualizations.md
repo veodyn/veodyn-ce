@@ -24,7 +24,7 @@ Every query can carry any number of saved visualizations, shown as tabs on the q
 | **Heatmap** | A value grid | Column mapping, aggregation, row sort, value labels (auto-hidden on dense grids) |
 | **Box Plot** | Distribution per category | Category and value columns |
 | **Sankey** | Flows between nodes | Source, target, value columns |
-| **Choropleth** | Values shaded onto regions | Map type, key/value columns, and which map property keys match against |
+| **Choropleth** | Values shaded onto regions | Where the boundaries come from: a bundled world map (plus which map property the key column matches against), or a geometry column in the result, which is how an agency draws its own districts. Then the key and value columns |
 | **Cohort** | Retention over time | Cohort, stage, value, and total columns |
 | **Sunburst** | Hierarchical sequences | Value column |
 | **Word Cloud** | Term frequency | Words column, optional frequency column, count and length limits |
