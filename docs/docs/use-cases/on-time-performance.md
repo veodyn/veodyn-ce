@@ -1,7 +1,7 @@
 ---
 title: "On-time performance"
 description: "Turning an agency's own GTFS-Realtime trip updates into an on-time performance percentage by route and day, using only the query service and the data catalog."
-sidebar_position: 1
+sidebar_position: 15
 ---
 
 # On-time performance
@@ -45,22 +45,27 @@ SELECT
     route_id,
     toDate(timestamp) AS day,
     avg(on_time) * 100 AS otp_pct
-FROM q_trip_updates_capture
+FROM q_trip_updates_37
 GROUP BY route_id, day
 ORDER BY day, route_id
 ```
 
+Substitute the id you copied above for that table name. The trailing number is
+the query's own id and yours will differ, so `q_trip_updates_37` is the shape of
+the name rather than the name: capture builds every table as `q_<slug>_<query
+id>`, and there is no such thing as one without the number on the end.
+
 `on_time` is `NULL` for a skipped stop, a canceled trip, or a stop_time_update
 the feed carries no delay for. ClickHouse's `avg()` drops `NULL` values rather
-than counting them, so those rows fall out of the percentage by design instead
-of counting as late.
+than counting them, so those rows fall out of the percentage instead of counting
+as late.
 
 ## Step 4: put it on a dashboard
 
 Add the query as a widget on a [dashboard](/features/dashboards). If you want
 names alongside the ids, join the Static GTFS connector's `stops` table for
-`stop_name` and its `routes` table for `route_short_name` (see
-[Connectors](/connectors)); those come from the agency's static feed, not
+`stop_name` and its `routes` table for `route_short_name` (see [Query a static
+GTFS archive](/use-cases/static-gtfs-archive)); those come from the agency's static feed, not
 from `trip_updates` itself. `trips` links `trip_id` to `route_id` when a
 join needs that step in between; it carries no name columns of its own.
 

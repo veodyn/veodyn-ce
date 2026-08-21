@@ -86,6 +86,7 @@ const config: Config = {
       {
         redirects: [
           { from: '/features/monitoring', to: '/features/captures' },
+          { from: '/guides/on-time-performance', to: '/use-cases/on-time-performance' },
         ],
       },
     ],
