@@ -43,5 +43,5 @@ Connecting a source does not expose it to anyone by itself. Access is granted by
 ## Notes for operators
 
 - Data-source configurations are stored encrypted in the query service's database, keyed by `REDASH_SECRET_KEY`; changing that key strands existing configurations. Keep it stable and backed up.
-- **Historical capture** (feeding the [data catalog](/features/data-catalog)'s warehouse) is a per-source opt-in on the backend; see [Configuration](/configuration#query-service) for the ClickHouse variables that switch the mechanism on.
+- **Historical capture** (feeding the [data catalog](/features/data-catalog)'s warehouse) is a per-source opt-in in the source's configuration form, available on every source type: one checkbox enables capture of scheduled runs, a second extends it to manual runs. See [Configuration](/configuration#query-service) for the ClickHouse variables that switch the mechanism on.
 - The available type list is controlled with the `REDASH_ENABLED_QUERY_RUNNERS` / `REDASH_ADDITIONAL_QUERY_RUNNERS` settings.

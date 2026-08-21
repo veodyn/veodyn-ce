@@ -33,6 +33,7 @@ EE_TABLES = frozenset(
         "managed_dataset_column",
         "managed_record",
         "published_feed_schedule",
+        "published_feed_token",
     }
 )
 """The enterprise chain's allowlist, restated rather than imported.

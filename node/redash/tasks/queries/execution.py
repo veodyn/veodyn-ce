@@ -1,7 +1,5 @@
 import signal
-import sys
 import time
-from collections import deque
 
 import redis
 from rq import get_current_job
@@ -14,6 +12,10 @@ from redash.historical.tasks import capture_query_result
 from redash.query_runner import InterruptException
 from redash.tasks.alerts import check_alerts_for_query
 from redash.tasks.failure_report import track_failure
+from redash.tasks.queries.execution_helpers import (
+    get_size_iterative,
+    resolve_user,
+)
 from redash.tasks.worker import Job, Queue
 from redash.utils import gen_query_hash, utcnow
 from redash.worker import get_job_logger
@@ -114,7 +116,7 @@ def enqueue_query(query, data_source, user_id, is_api_key=False, scheduled_query
             break
 
         except redis.WatchError:
-            continue
+            continue  # silent-ok: optimistic-lock retry, bounded by try_count above
         finally:
             pipe.reset()
 
@@ -132,46 +134,6 @@ class QueryExecutionError(Exception):
     pass
 
 
-def _resolve_user(user_id, is_api_key, query_id):
-    if user_id is not None:
-        if is_api_key:
-            api_key = user_id
-            if query_id is not None:
-                q = models.Query.get_by_id(query_id)
-            else:
-                q = models.Query.by_api_key(api_key)
-
-            return models.ApiUser(api_key, q.org, q.groups)
-        else:
-            return models.User.get_by_id(user_id)
-    else:
-        return None
-
-
-def _get_size_iterative(dict_obj):
-    """Iteratively finds size of objects in bytes"""
-    seen = set()
-    size = 0
-    objects = deque([dict_obj])
-
-    while objects:
-        current = objects.popleft()
-        if id(current) in seen:
-            continue
-        seen.add(id(current))
-        size += sys.getsizeof(current)
-
-        if isinstance(current, dict):
-            objects.extend(current.keys())
-            objects.extend(current.values())
-        elif hasattr(current, "__dict__"):
-            objects.append(current.__dict__)
-        elif hasattr(current, "__iter__") and not isinstance(current, (str, bytes, bytearray)):
-            objects.extend(current)
-
-    return size
-
-
 class QueryExecutor:
     def __init__(self, query, data_source_id, user_id, is_api_key, metadata, is_scheduled_query):
         self.job = get_current_job()
@@ -180,7 +142,7 @@ class QueryExecutor:
         self.metadata = metadata
         self.data_source = self._load_data_source()
         self.query_id = metadata.get("query_id")
-        self.user = _resolve_user(user_id, is_api_key, metadata.get("query_id"))
+        self.user = resolve_user(user_id, is_api_key, metadata.get("query_id"))
         self.query_model = (
             models.Query.query.get(self.query_id)
             if self.query_id and self.query_id != "adhoc"
@@ -222,7 +184,7 @@ class QueryExecutor:
             "job=execute_query query_hash=%s ds_id=%d data_length=%s error=[%s]",
             self.query_hash,
             self.data_source_id,
-            data and _get_size_iterative(data),
+            data and get_size_iterative(data),
             error,
         )
 
@@ -258,7 +220,10 @@ class QueryExecutor:
             for query_id in updated_query_ids:
                 check_alerts_for_query.delay(query_id, self.metadata)
 
-            if self.is_scheduled_query and self.data_source.options.get("enable_historical_capture"):
+            capture_enabled = self.data_source.options.get("enable_historical_capture")
+            capture_this_run = self.is_scheduled_query or self.data_source.options.get("capture_manual_runs")
+            has_query_id = self.query_id and self.query_id != "adhoc"
+            if capture_enabled and capture_this_run and has_query_id:
                 capture_query_result.delay(query_result.id, self.data_source.id, self.query_id)
 
             self._log_progress("finished")

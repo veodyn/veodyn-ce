@@ -12,8 +12,8 @@ async function load() {
   return import('./route')
 }
 
-function request(headers: Record<string, string> = {}) {
-  return new Request('http://localhost/api/public/feeds/vehicles-live', { headers })
+function request(headers: Record<string, string> = {}, query = '') {
+  return new Request(`http://localhost/api/public/feeds/vehicles-live${query}`, { headers })
 }
 
 // A varint field tag (0x08) followed by a byte above 0x7f (0xff). A .text()
@@ -55,14 +55,18 @@ describe('the public feed proxy', () => {
     expect(Array.from(body)).toEqual(Array.from(PROTOBUF_BYTES))
   })
 
-  it('forwards neither cookie nor authorization even when the request carries both', async () => {
+  it('forwards the reader-presented Authorization header but never their session cookie', async () => {
+    // A feed token may arrive as `Authorization: Bearer <t>`, so the header has
+    // to reach the sidecar that resolves it. The cookie must not: it is the
+    // signed-in author's session, and forwarding it would let their identity
+    // decide what an anonymous reader sees.
     vi.stubEnv('CATALOG_API_URL', 'http://sidecar:8000')
     const fetchMock = vi.fn<typeof fetch>(async () => new Response(PROTOBUF_BYTES, { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     const { GET } = await load()
 
     await GET(
-      request({ cookie: 'session=someone-elses-session', authorization: 'Key someone-elses-key' }),
+      request({ cookie: 'session=someone-elses-session', authorization: 'Bearer feed-token' }),
       { params: Promise.resolve({ slug: 'vehicles-live' }) }
     )
 
@@ -73,7 +77,60 @@ describe('the public feed proxy', () => {
     // assertion would go green on exactly the bug it exists to catch.
     const sent = new Headers(fetchMock.mock.calls[0]?.[1]?.headers)
     expect(sent.get('cookie')).toBeNull()
-    expect(sent.get('authorization')).toBeNull()
+    expect(sent.get('authorization')).toBe('Bearer feed-token')
+  })
+
+  it('sends no Authorization header when the reader presented none', async () => {
+    // An empty header is not the same as an absent one to every upstream, and
+    // the sidecar reads the scheme off whatever arrives.
+    vi.stubEnv('CATALOG_API_URL', 'http://sidecar:8000')
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(PROTOBUF_BYTES, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { GET } = await load()
+
+    await GET(request(), { params: Promise.resolve({ slug: 'vehicles-live' }) })
+
+    expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('authorization')).toBeNull()
+  })
+
+  it('passes the token query parameter through to the sidecar', async () => {
+    // The primary transport: a feed poller is often a URL and nothing else,
+    // with no way to attach a header to it.
+    vi.stubEnv('CATALOG_API_URL', 'http://sidecar:8000')
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(PROTOBUF_BYTES, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { GET } = await load()
+
+    await GET(request({}, '?token=a+b%2Fc'), { params: Promise.resolve({ slug: 'vehicles-live' }) })
+
+    expect(fetchMock.mock.calls[0][0]).toBe('http://sidecar:8000/public/feeds/vehicles-live?token=a%20b%2Fc')
+  })
+
+  it('asks for the bare address when no token was presented', async () => {
+    // A `?token=undefined` reaching the sidecar is a token, and one that opens
+    // nothing: every private feed would answer 404 with the header form too.
+    vi.stubEnv('CATALOG_API_URL', 'http://sidecar:8000')
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(PROTOBUF_BYTES, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { GET } = await load()
+
+    await GET(request(), { params: Promise.resolve({ slug: 'vehicles-live' }) })
+
+    expect(fetchMock.mock.calls[0][0]).toBe('http://sidecar:8000/public/feeds/vehicles-live')
+  })
+
+  it('forwards no other query parameter the caller invents', async () => {
+    // The only one this proxy knows about. Passing the query string through
+    // wholesale would let a caller reach parameters of the sidecar's own that
+    // this route never meant to expose.
+    vi.stubEnv('CATALOG_API_URL', 'http://sidecar:8000')
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(PROTOBUF_BYTES, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { GET } = await load()
+
+    await GET(request({}, '?token=t&limit=9'), { params: Promise.resolve({ slug: 'vehicles-live' }) })
+
+    expect(fetchMock.mock.calls[0][0]).toBe('http://sidecar:8000/public/feeds/vehicles-live?token=t')
   })
 
   it.each([404])(

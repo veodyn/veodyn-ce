@@ -1,14 +1,19 @@
-// The anonymous feed proxy, shared by the discovery route and the member-file
+// The public feed proxy, shared by the discovery route and the member-file
 // route beneath it.
 //
 // Shared rather than copied because the discipline here is the point and two
-// copies drift: no credential forwarded, upstream body never passed through on
-// a refusal, one identical 404 for every cause. Forwarding a signed-in author's
-// cookie would let their identity decide what an anonymous reader sees.
+// copies drift: one identical 404 for every cause, an upstream body never
+// passed through on a refusal, and exactly one credential carried.
+//
+// That credential is a feed token, which a private feed's consumer presents as
+// `?token=` or as `Authorization: Bearer <t>` and which the sidecar resolves.
+// Both transports are carried; the reader's session COOKIE is not, and that
+// rule is unchanged. A cookie names a signed-in person, and their identity must
+// not decide what an anonymous address answers.
 //
 // Do NOT reach for ../../published-feeds/forward.ts beyond sidecarBase(): its
-// forwardedHeaders() attaches the caller's cookie and authorization, and its
-// body handling reads the upstream with .text(), which corrupts protobuf.
+// forwardedHeaders() attaches the caller's cookie, which is the line above, and
+// its body handling reads the upstream with .text(), which corrupts protobuf.
 
 import { NextResponse } from 'next/server'
 import { ErrorIds } from '@/lib/errorIds'
@@ -35,6 +40,29 @@ function servedContentType(upstream: Response): string {
     : GTFS_RT_CONTENT_TYPE
 }
 
+/**
+ * The reader's own headers plus the token header, when they sent one.
+ *
+ * Set only when present. An empty `authorization` is not the same as an absent
+ * one to the sidecar, which reads the scheme off whatever arrives.
+ */
+function feedForwardingHeaders(request: Request): Record<string, string> {
+  const headers = readerForwardingHeaders(request)
+  const authorization = request.headers.get('authorization')
+  if (authorization) headers.authorization = authorization
+  return headers
+}
+
+/**
+ * The one query parameter this proxy carries, re-encoded rather than the
+ * inbound query string passed through: forwarding it wholesale would let a
+ * caller reach parameters of the sidecar's own that this route never exposed.
+ */
+function tokenQuery(request: Request): string {
+  const token = new URL(request.url).searchParams.get('token')
+  return token ? `?token=${encodeURIComponent(token)}` : ''
+}
+
 const NOT_FOUND = {
   error: 'feed not available',
   errorId: ErrorIds.API_NOT_FOUND,
@@ -59,8 +87,8 @@ async function isStaleFeedRefusal(upstream: Response): Promise<boolean> {
 }
 
 /**
- * Forward one anonymous read to the sidecar. `path` is already encoded and is
- * appended to `/public/feeds`.
+ * Forward one read to the sidecar. `path` is already encoded and is appended to
+ * `/public/feeds`.
  */
 export async function forwardFeed(request: Request, path: string): Promise<NextResponse> {
   const base = sidecarBase()
@@ -69,13 +97,14 @@ export async function forwardFeed(request: Request, path: string): Promise<NextR
   }
 
   try {
-    const upstream = await fetch(`${base}/public/feeds/${path}`, {
+    const upstream = await fetch(`${base}/public/feeds/${path}${tokenQuery(request)}`, {
       signal: request.signal,
-      headers: readerForwardingHeaders(request),
+      headers: feedForwardingHeaders(request),
     })
     // routers/public_feeds.py answers the identical 404 for an unknown slug, a
-    // private feed, a never-published one and a member file outside the set, so
-    // no upstream body is passed through here either.
+    // private feed with no token or a wrong one, a never-published feed and a
+    // member file outside the set, so no upstream body is passed through here
+    // either.
     if (upstream.status === 404) return NextResponse.json(NOT_FOUND, { status: 404 })
     // A feed in `last_good` mode past its age cap: kept as a 503 with its
     // Retry-After rather than folded into the 502, because the correct consumer

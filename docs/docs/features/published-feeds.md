@@ -79,8 +79,10 @@ Visibility is two options:
 
 | | Who can read it |
 |---|---|
-| Private | Only signed-in members of the org |
+| Private | Only a consumer holding a token issued for this feed |
 | Public | Anyone with the URL, no credential needed |
+
+Signed-in members of the org see the binding, its publish history and whether it is serving. That is not the same as reading the feed. The bytes only ever come out of the address below, and for a private feed that address answers a token and nothing else. Issuing tokens is an [enterprise](/editions) feature, so on a community build a private feed serves nobody.
 
 A public slug is claimed across the whole instance rather than within your org, because a public feed's address has no org segment in it. Taking one another tenant already holds is refused with a 409, and the refusal does not say who holds it, since that would turn the message into a cross-tenant directory. Pick another slug, or keep the feed private.
 
@@ -176,11 +178,11 @@ A public feed shows its full address with a copy button, and says that anyone ca
 
 A GBFS feed's address answers with the discovery document (`gbfs.json`); the member files it names sit underneath it, at `/api/public/feeds/<slug>/station_status.json` and its siblings, or the free-floating equivalents for a `vehicles` feed.
 
-A private feed shows no address at all, and says why: reaching one takes an issued token, and the token model (issuance, rotation, revocation) has not been built. Printing a URL that refuses everything would only send someone hunting for a credential that does not exist.
+A private feed shows no address at all, and says why: reaching one takes an issued token, and issuing tokens ships with the enterprise pack. Printing a URL that turns every anonymous reader away would only send someone hunting for a credential this build cannot mint.
 
-:::note The token panel is a seam, not a feature
+:::note Where the token panel comes from
 
-The page reserves a slot for a token panel to fill once one exists. Nothing fills it today in either edition, so the sentence above is what every build shows for a private feed.
+The page reserves a slot beneath that sentence for a token panel. A community build has nothing to put in it and renders nothing, the same as any other unfilled slot. An [enterprise](/editions) build fills it with the panel that issues a feed's tokens.
 
 :::
 
@@ -237,11 +239,11 @@ A slug cannot be renamed, since it is half the feed's identity. Publish a new fe
 
 Delete asks for confirmation and says what it means: consumers of that address start getting nothing, a deleted slug looks the same as one that never existed, and there is no undo.
 
-## How a consumer reads a public feed
+## How a consumer reads a feed
 
-`GET /api/public/feeds/<slug>` returns raw GTFS-Realtime bytes as `application/x-protobuf`. It is the only route in the sidecar's community surface that takes no credential, on the grounds that most software speaking this format will never hold one.
+`GET /api/public/feeds/<slug>` returns raw GTFS-Realtime bytes as `application/x-protobuf`. For a public feed it is the only route in the sidecar's community surface that takes no credential at all, on the grounds that most software speaking this format will never hold one.
 
-Everything it refuses answers the same 404, with the same body. An unknown slug, a slug naming a private feed, and a slug that has never published a clean attempt are indistinguishable from outside. Telling them apart would rebuild the probing oracle that a single 404 exists to close, letting a caller work out which slugs are taken, or merely dark, one guess at a time.
+Everything it refuses answers the same 404, with the same body. An unknown slug, a slug naming a private feed the caller cannot open, and a slug that has never published a clean attempt are indistinguishable from outside. Telling them apart would rebuild the probing oracle that a single 404 exists to close, letting a caller work out which slugs are taken, or merely dark, one guess at a time.
 
 Staleness is the one exception, and only under last known good. Once the artifact is older than the configured cap, the endpoint answers 503 with a `Retry-After` carrying that cap instead of serving stale bytes.
 
@@ -251,6 +253,21 @@ Two details matter if you are consuming one:
 - Age is measured from the artifact's own header timestamp, not from when the attempt was recorded. The header is what the served bytes tell a consumer the data's time is. Measuring our own pipeline instead would call a fresh publish of hours-old rows current.
 
 Under block there is no staleness branch at all. Block governs whether a bad read gets published, and the engine settled that before those bytes ever became current.
+
+### Reading a private feed
+
+A private feed is read at that same address, with a token its owner issued. Two transports, accepted equally:
+
+- `GET /api/public/feeds/<slug>?token=<token>`. Reach for this one first: plenty of feed pollers are a URL field and nothing else, with nowhere to put a header.
+- `Authorization: Bearer <token>` on the same request. Only that scheme is read as a token.
+
+Presenting the same token both ways serves normally. Presenting two different ones is refused instead of arbitrated, because picking a winner would leave a consumer reading on through a token they believed they had revoked. A public feed serves whether or not a token comes with it, so a client that attaches one everywhere is never turned away for it.
+
+A GBFS discovery document carries no token. The member-file URLs inside it are the plain addresses, and the consumer appends its own token to each of those requests exactly as it did to the discovery request.
+
+A wrong token, a revoked one and an expired one all answer the 404 an unknown slug gets. One answer for the three of them, so nobody holding a dead token can learn from the reply that the feed is still there. The stale 503 is only ever reached after a token has resolved, which keeps it from disclosing a feed to a caller the feed is closed to.
+
+Issuing these tokens is an [enterprise](/editions) feature. A community build registers nothing that resolves a token, so a private feed there serves nobody and a presented token changes nothing.
 
 ## What community ships, and what it does not
 
@@ -273,6 +290,7 @@ This is the intended behaviour and not a misconfiguration to work around: an emp
 | Declaring, editing and deleting a feed | ● | ● |
 | Publishing on demand, and the attempt history | ● | ● |
 | Serving a public feed anonymously | ● | ● |
+| Issuing a token, and serving a private feed to whoever holds one | | ● |
 | `vehicle_positions` | ● | ● |
 | Further entity types (trip updates, service alerts) | | ● |
 | A worker that publishes on a schedule | | ● |

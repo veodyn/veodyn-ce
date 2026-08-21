@@ -12,8 +12,8 @@ async function load() {
   return import('./route')
 }
 
-function request(headers: Record<string, string> = {}) {
-  return new Request('http://localhost/api/public/feeds/bikes-live/station_status.json', { headers })
+function request(headers: Record<string, string> = {}, query = '') {
+  return new Request(`http://localhost/api/public/feeds/bikes-live/station_status.json${query}`, { headers })
 }
 
 const PARAMS = { params: Promise.resolve({ slug: 'bikes-live', file: 'station_status.json' }) }
@@ -98,17 +98,33 @@ describe('the public gbfs member-file proxy', () => {
     )
   })
 
-  it('forwards neither cookie nor authorization', async () => {
+  it('forwards the presented Authorization header and still no cookie', async () => {
+    // A GBFS consumer reads the discovery document and then polls the files it
+    // names, so a token that opens one address and not the other opens nothing
+    // usable. The cookie rule is unchanged.
     vi.stubEnv('CATALOG_API_URL', 'http://sidecar:8000')
     const fetchMock = vi.fn<typeof fetch>(async () => new Response('{}', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     const { GET } = await load()
 
-    await GET(request({ cookie: 'session=someone-elses', authorization: 'Key someone-elses' }), PARAMS)
+    await GET(request({ cookie: 'session=someone-elses', authorization: 'Bearer feed-token' }), PARAMS)
 
     const sent = new Headers(fetchMock.mock.calls[0][1]?.headers)
     expect(sent.get('cookie')).toBeNull()
-    expect(sent.get('authorization')).toBeNull()
+    expect(sent.get('authorization')).toBe('Bearer feed-token')
+  })
+
+  it('passes the token query parameter through on the member address too', async () => {
+    vi.stubEnv('CATALOG_API_URL', 'http://sidecar:8000')
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { GET } = await load()
+
+    await GET(request({}, '?token=s3cret'), PARAMS)
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      'http://sidecar:8000/public/feeds/bikes-live/station_status.json?token=s3cret'
+    )
   })
 
   it('answers the same 404 body the discovery route does', async () => {

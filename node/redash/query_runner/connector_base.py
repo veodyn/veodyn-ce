@@ -148,16 +148,6 @@ def build_configuration_schema(properties, required=(), secret=(), include_redis
             "title": "Redis URL for PubSub (optional)",
             "default": "",
         }
-    props["enable_historical_capture"] = {
-        "type": "boolean",
-        "title": "Historical capture (scheduled runs → warehouse)",
-        "default": False,
-    }
-    props["historical_retention_days"] = {
-        "type": "number",
-        "title": "Historical retention (days, 0 = keep forever)",
-        "default": 0,
-    }
     for name in required:
         prop = props.get(name)
         if isinstance(prop, dict) and prop.get("type") == "string" and "minLength" not in prop:
