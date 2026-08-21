@@ -50,6 +50,7 @@
   ],
   "retained": [
     "__init__.py",
+    "access_log.py",
     "auth.py",
     "db.py",
     "errors.py",

@@ -258,7 +258,7 @@ Under block there is no staleness branch at all. Block governs whether a bad rea
 
 A private feed is read at that same address, with a token its owner issued. Two transports, accepted equally:
 
-- `GET /api/public/feeds/<slug>?token=<token>`. Reach for this one first: plenty of feed pollers are a URL field and nothing else, with nowhere to put a header.
+- `GET /api/public/feeds/<slug>?token=<token>`. Reach for this one first: plenty of feed pollers are a URL field and nothing else, with nowhere to put a header. A token in a URL can be recorded by proxies along the way, which is what rotation is for; this service redacts it from its own access log.
 - `Authorization: Bearer <token>` on the same request. Only that scheme is read as a token.
 
 Presenting the same token both ways serves normally. Presenting two different ones is refused instead of arbitrated, because picking a winner would leave a consumer reading on through a token they believed they had revoked. A public feed serves whether or not a token comes with it, so a client that attaches one everywhere is never turned away for it.

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from veodyn_api.access_log import install_feed_token_redaction
 from veodyn_api.errors import register_error_handlers
 
 
@@ -10,6 +11,9 @@ class Health(BaseModel):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="veodyn-api", version="0.1.0")
+    # Before any request is served, and here rather than at an entrypoint: this
+    # module is what the image's CMD imports.
+    install_feed_token_redaction()
     register_error_handlers(app)
 
     @app.get("/health", response_model=Health, tags=["meta"])
