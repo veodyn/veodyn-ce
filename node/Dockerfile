@@ -29,6 +29,8 @@ RUN apt-get update && \
   freetds-dev \
   libsasl2-dev \
   unzip \
+  # SpatiaLite, for spatial functions in the Query Results runner
+  libsqlite3-mod-spatialite \
   libsasl2-modules-gssapi-mit && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*

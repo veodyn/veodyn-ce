@@ -431,6 +431,10 @@ FEATURE_EXTENDED_ALERT_OPTIONS = parse_boolean(os.environ.get("REDASH_FEATURE_EX
 # BigQuery
 BIGQUERY_HTTP_TIMEOUT = int(os.environ.get("REDASH_BIGQUERY_HTTP_TIMEOUT", "600"))
 
+# Query Results: name or absolute path of the SpatiaLite extension it loads. The
+# default leaves resolution to the OS loader; set a path when it lives outside it.
+SPATIALITE_LIBRARY_PATH = os.environ.get("REDASH_SPATIALITE_LIBRARY_PATH", "mod_spatialite")
+
 # Allow Parameters in Embeds
 # WARNING: Deprecated!
 # See https://discuss.redash.io/t/support-for-parameters-in-embedded-visualizations/3337 for more details.

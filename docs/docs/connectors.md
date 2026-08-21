@@ -65,6 +65,45 @@ alert: alert_id, cause, effect, severity_level, header, description, url,
 active_from, active_to (`None` when any active period is open-ended),
 informed_route_ids, informed_stop_ids (comma-joined).
 
+## Spatial joins across query results
+
+A data source of type `results` runs SQL over the cached results of other
+queries, and where the host has the SpatiaLite library installed its SQL
+carries the SpatiaLite functions: `ST_Within`, `ST_Intersects`, `ST_Distance`,
+`MakePoint`, `GeomFromGeoJSON` and the rest of that set. That is how a boundary
+layer read from one connector gets joined to points read from another.
+
+Geometry travels as text, not as a geometry type. Static GeoJSON returns each
+feature's geometry as a GeoJSON string, so `GeomFromGeoJSON` is what turns that
+column into something a predicate can read. Where the point side already has
+latitude and longitude as separate numeric columns, `MakePoint` builds the
+point from them, longitude first. Where it does not, extract them in the query
+first: Waze `alerts` packs both into a JSON `location` string, as described
+above.
+
+```sql
+SELECT b.name AS district, COUNT(*) AS stops
+FROM cached_query_12 b JOIN cached_query_34 s
+  ON ST_Within(MakePoint(s.stop_lon, s.stop_lat), GeomFromGeoJSON(b.geometry))
+GROUP BY b.name
+```
+
+There is no spatial index behind this. The join tests every point against every
+polygon, so the work is the product of the two row counts: a query that answers
+instantly over a few hundred stops can crawl over a hundred thousand. The lever
+is the query itself. Put a `LIMIT` on the point side while you are still
+drafting, and filter on an ordinary property column first (a route id, an
+agency, a latitude and longitude range) so the predicate only ever runs over
+rows that could plausibly match.
+
+Where the library is absent the data source still works and plain SQL over
+query results is unaffected. The query service logs one warning naming the
+library it tried, and a query calling `ST_*` fails with SQLite's own "no such
+function" error. Operators install it (`libsqlite3-mod-spatialite` on Debian
+and Ubuntu, `libspatialite` from Homebrew on macOS) and, where it sits outside
+the loader's search path, give the full path in
+`REDASH_SPATIALITE_LIBRARY_PATH`.
+
 ## NTCIP 1203 DMS: a worked configuration example
 
 This connector polls dynamic message signs (highway signs that display

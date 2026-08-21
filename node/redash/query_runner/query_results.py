@@ -6,7 +6,7 @@ import re
 import sqlite3
 from urllib.parse import parse_qs
 
-from redash import models
+from redash import models, settings
 from redash.permissions import has_access, view_only
 from redash.query_runner import (
     TYPE_STRING,
@@ -25,6 +25,10 @@ class PermissionError(Exception):
 
 
 class CreateTableError(Exception):
+    pass
+
+
+class ExtensionLoadingError(Exception):
     pass
 
 
@@ -142,6 +146,34 @@ def create_table(connection, table_name, query_results):
         connection.execute(insert_template, values)
 
 
+def disable_extension_loading(connection):
+    """Turn extension loading back off, discarding the connection if that fails."""
+    try:
+        connection.enable_load_extension(False)
+    except (AttributeError, sqlite3.Error) as exc:
+        connection.close()
+        raise ExtensionLoadingError("Could not disable SQLite extension loading: {}".format(exc))
+
+
+def load_spatialite(connection):
+    """Load SpatiaLite into a SQLite connection. Returns False when it is unavailable."""
+    library = settings.SPATIALITE_LIBRARY_PATH
+    enabled = False
+    loaded = False
+    try:
+        connection.enable_load_extension(True)
+        enabled = True
+        connection.load_extension(library)
+        loaded = True
+    except (AttributeError, sqlite3.Error) as exc:
+        logger.warning("SpatiaLite (%s) not loaded, spatial functions are unavailable: %s", library, exc)
+    finally:
+        # Loading stays enabled for exactly one call, never while user SQL runs.
+        if enabled:
+            disable_extension_loading(connection)
+    return loaded
+
+
 def prepare_parameterized_query(query, query_params):
     for params in query_params:
         table_hash = hashlib.md5(
@@ -167,6 +199,7 @@ class Results(BaseQueryRunner):
 
     def run_query(self, query, user):
         connection = sqlite3.connect(":memory:")
+        load_spatialite(connection)
 
         query_ids = extract_query_ids(query)
 
