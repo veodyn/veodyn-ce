@@ -147,7 +147,7 @@ Datasets, queries and dashboards share one [tagging system](/features/home#searc
 
 The catalog is served by the veodyn-api sidecar over the historical warehouse (ClickHouse), and it is assembled from every registered dataset source instead of from one place.
 
-The warehouse's own registry is one such source, and on a community build it is the only one. An admin opts a data source into historical capture, every scheduled run of its queries lands as rows in the warehouse, and the query service records each capture table there. An [enterprise](/editions) pack registers further sources, which is how a dataset the warehouse never captured can appear in the catalog at all.
+The warehouse's own registry is one such source, and on a community build it is the only one. An admin opts a data source into historical capture (any source type, with manual runs an extra opt-in beside the schedule), every captured run of its queries lands as rows in the warehouse, and the query service records each capture table there. An [enterprise](/editions) pack registers further sources, which is how a dataset the warehouse never captured can appear in the catalog at all.
 
 Whatever a source leaves unsaid, the catalog fills in from ClickHouse's own system tables: the schema, the row count, the coverage span. Nothing is invented beyond that. A dataset with no rows reports no coverage instead of a plausible-looking range, and a source that says nothing about where its rows came from gets an empty description instead of a borrowed sentence about a Redash capture that never happened.
 

@@ -166,6 +166,12 @@ class TestHistoricalCaptureSchemaFields(TestCase):
     Every RIITS runner's admin-UI toggle must match the flag the capture hook
     reads (`data_source.options.get("enable_historical_capture")`).
 
+    The two capture fields are no longer added by build_configuration_schema
+    itself: the central redash.query_runner.add_historical_capture_fields
+    helper adds them to every runner's served schema, so these assertions go
+    through to_dict() (the augmented path) rather than configuration_schema()
+    directly.
+
     RIITSApi itself moved to the veodyn-pack-riits distribution and is no
     longer importable from this fork; its own capture-toggle coverage now
     lives with the runner in that pack.
@@ -189,15 +195,13 @@ class TestHistoricalCaptureSchemaFields(TestCase):
             },
         )
 
-    def test_build_configuration_schema_includes_capture_fields(self):
-        self._assert_has_capture_fields(build_configuration_schema({})["properties"])
-
-    def test_include_redis_false_still_gets_capture_fields(self):
-        self._assert_has_capture_fields(build_configuration_schema({}, include_redis=False)["properties"])
+    def test_build_configuration_schema_no_longer_adds_capture_fields_itself(self):
+        self.assertNotIn("enable_historical_capture", build_configuration_schema({})["properties"])
+        self.assertNotIn("historical_retention_days", build_configuration_schema({})["properties"])
 
     def test_geotab_runner_exposes_capture_toggle(self):
-        self._assert_has_capture_fields(Geotab.configuration_schema()["properties"])
+        self._assert_has_capture_fields(Geotab.to_dict()["configuration_schema"]["properties"])
 
     def test_static_geojson_runner_exposes_capture_toggle(self):
         # This runner calls build_configuration_schema(..., include_redis=False).
-        self._assert_has_capture_fields(StaticGeoJSON.configuration_schema()["properties"])
+        self._assert_has_capture_fields(StaticGeoJSON.to_dict()["configuration_schema"]["properties"])

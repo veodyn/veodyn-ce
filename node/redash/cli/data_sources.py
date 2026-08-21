@@ -114,8 +114,7 @@ def new(name=None, type=None, options=None, organization="default"):
     else:
         validate_data_source_type(type)
 
-    query_runner = query_runners[type]
-    schema = query_runner.configuration_schema()
+    schema = get_configuration_schema_for_query_runner_type(type)
 
     if options is None:
         types = {"string": str, "number": int, "boolean": bool}

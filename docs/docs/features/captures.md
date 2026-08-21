@@ -10,7 +10,7 @@ description: "The board of scheduled queries that write into the warehouse, and 
 It moved to its own page: [Schedules](/features/schedules).
 :::
 
-A capture is a scheduled query that writes its results into the historical warehouse, and this page answers the operational question "is the data current", for everyone rather than only admins. `/captures` lists every capture in the instance and whether it delivered on time. When a chart looks stale, this page says whether the capture behind it kept up. Search by capture name or connection; every column sorts except Datasets and Metrics affected.
+A capture is a saved query that writes its results into the historical warehouse; any data source type can opt in. Scheduled runs are captured once the source opts in, and a second opt-in extends capture to manual runs of saved queries (a manual run of a parameterized query captures whatever parameters it ran with, so it lands in the same table as the scheduled snapshots; unsaved editor runs are never captured). This page answers the operational question "is the data current", for everyone rather than only admins. `/captures` lists every capture in the instance and whether it delivered on time. When a chart looks stale, this page says whether the capture behind it kept up. Search by capture name or connection; every column sorts except Datasets and Metrics affected.
 
 ![Captures: per-capture status, last received, cadence, and datasets](/img/screenshots/captures.png)
 

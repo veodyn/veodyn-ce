@@ -103,7 +103,7 @@ If a backend for a surface is not configured, that surface answers 503 and the a
 The "flow" service, in `node/`: the system of record for queries, query results, schedules, dashboards, visualization widgets, users, groups, and data-source permissions. It also carries:
 
 - **Transportation connectors**: adapters that poll a live transit, traffic, weather or fleet API with JSON endpoint descriptors instead of SQL. See the [connector list](/connectors) for the public set.
-- **Historical capture**: an admin can opt a data source in, and every scheduled result of its queries then lands in ClickHouse, so a warehouse of feed history accumulates on its own.
+- **Historical capture**: an admin can opt any data source in, and every scheduled result of its queries then lands in ClickHouse, so a warehouse of feed history accumulates on its own. A second per-source opt-in extends capture to manual runs.
 - **JSON invite and password-reset endpoints** so the Veodyn frontend can drive account flows without a second web UI.
 
 The service ships a legacy web UI of its own that still exists and works, but Veodyn users never see it; the frontend replaces it completely.

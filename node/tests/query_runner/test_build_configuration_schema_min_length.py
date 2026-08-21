@@ -47,8 +47,8 @@ class TestBuildConfigurationSchemaMinLength(TestCase):
         self.assertNotIn("minLength", schema["properties"]["enabled"])
 
     def test_common_optional_fields_are_untouched(self):
-        # request_timeout, redis_url, historical_retention_days are always
-        # appended by build_configuration_schema and never required.
+        # request_timeout and redis_url are always appended by
+        # build_configuration_schema and never required.
         schema = build_configuration_schema({}, required=[])
         self.assertNotIn("minLength", schema["properties"]["request_timeout"])
         self.assertNotIn("minLength", schema["properties"]["redis_url"])

@@ -52,7 +52,7 @@ python manage.py ds ...             # Data source management
 
 - **`handlers/`**: Flask-RESTful API endpoints (26 handler modules). `handlers/api.py` wires routes. Largest: `handlers/queries.py`.
 
-- **`query_runner/`**: Pluggable data source drivers (57 files, 41 registered in the default list). Base classes in `query_runner/__init__.py`: `BaseQueryRunner`, `BaseSQLQueryRunner`, `BaseHTTPQueryRunner`. Each driver implements `run_query()`, `get_schema()`, and declares `configuration_schema()`. Drivers are auto-discovered via `redash/settings/__init__.py` (`QUERY_RUNNERS` list). Not every file in the directory is registered: the curation that picked the shipping set left the rest in place.
+- **`query_runner/`**: Pluggable data source drivers (57 files, 41 registered in the default list). Base classes (`BaseQueryRunner`, `BaseSQLQueryRunner`, `BaseHTTPQueryRunner`) live in `query_runner/base_runner.py` and `http_base.py`, re-exported through `query_runner/__init__.py`, which stays the import path. Each driver implements `run_query()`, `get_schema()`, and declares `configuration_schema()`. Drivers are auto-discovered via `redash/settings/__init__.py` (`QUERY_RUNNERS` list). Not every file in the directory is registered: the curation that picked the shipping set left the rest in place.
 
 - **`destinations/`**: Alert notification channels (3 files, 2 registered by default). Same plugin pattern as query runners: `BaseDestination` base class, auto-discovered via settings.
 
