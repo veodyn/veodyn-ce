@@ -227,9 +227,12 @@ export async function get(id: number): Promise<MockDashboard | null> {
 }
 
 export async function create(data: { name: string }): Promise<MockDashboard> {
-  return normalizeDashboard(
-    await redashApi.post<RedashDashboard>('dashboards', { name: data.name })
-  )
+  const raw = await redashApi.post<RedashDashboard>('dashboards', { name: data.name })
+  // DashboardListResource.post reads only the name and always creates a draft,
+  // which the list shows to its owner alone, admins included. This client has
+  // no publish control, so un-draft immediately, the same two-step
+  // queries.create uses.
+  return update(raw.id, { is_draft: false })
 }
 
 export async function update(
