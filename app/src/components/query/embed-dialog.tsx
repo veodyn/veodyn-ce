@@ -45,13 +45,20 @@ interface EmbedDialogProps {
   open: boolean
   onClose: () => void
   visualizationId: number
+  /**
+   * The query owning the visualization. A mint or revoke settles onto that
+   * query's cache entry (see settleShareToken in use-visualizations.ts), which
+   * is where the token survives this dialog closing.
+   */
+  queryId: number
   isSafe: boolean
   /**
    * The share token this visualization already carries, from
-   * `visualization.api_key` on the owning query. Redash sends it only to an
-   * admin or the query's owner, so null means either no link exists or the
-   * caller may not read it back. Without it every open offers "Create embed
-   * link" and each click mints a second live token that revoking never reaches.
+   * `visualization.api_key` on the owning query. The backend attaches it only
+   * for an admin or the query's owner, so null means either no link exists or
+   * the caller may not read it back. Without it every open offers "Create
+   * embed link", and each Create resets the terms of the one idempotent token:
+   * a click with the expiry field empty clears the expiry the link had.
    */
   shareToken?: string | null
 }
@@ -67,6 +74,7 @@ export function EmbedDialog({
   open,
   onClose,
   visualizationId,
+  queryId,
   isSafe,
   shareToken = null,
 }: EmbedDialogProps) {
@@ -75,8 +83,9 @@ export function EmbedDialog({
   const [expiry, setExpiry] = useState('')
   const [refresh, setRefresh] = useState<string>(DEFAULT_REFRESH_SECONDS)
   // Null until this dialog mints or revokes something, and authoritative after:
-  // the prop cannot tell us about a token that was created a second ago, and a
-  // revoke has to win over a prop the parent has not refetched yet.
+  // `shareToken` is read off the visualization object captured when the dialog
+  // opened, so within this open it cannot learn about a mint or revoke, however
+  // current the query cache is. The next open reads the settled cache instead.
   const [minted, setMinted] = useState<{ token: string | null } | null>(null)
   const widthId = useId()
   const heightId = useId()
@@ -111,13 +120,16 @@ export function EmbedDialog({
 
   const createLink = () => {
     share.mutate(
-      { vizId: visualizationId, expiresAt: toExpiresAt(expiry) },
+      { vizId: visualizationId, queryId, expiresAt: toExpiresAt(expiry) },
       { onSuccess: (result) => setMinted({ token: result.api_key }) }
     )
   }
 
   const revokeLink = () => {
-    unshare.mutate(visualizationId, { onSuccess: () => setMinted({ token: null }) })
+    unshare.mutate(
+      { vizId: visualizationId, queryId },
+      { onSuccess: () => setMinted({ token: null }) }
+    )
   }
 
   if (!isSafe) {

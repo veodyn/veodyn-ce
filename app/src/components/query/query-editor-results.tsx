@@ -16,7 +16,10 @@ const ADHOC_TABLE: MockVisualization[] = [
 ]
 
 // Negative so it cannot collide with a saved visualization's id, the way 0 is
-// already spoken for by the ad hoc table above.
+// already spoken for by the ad hoc table above. isSavedVisualization in
+// viz-choices.ts is the read side of this convention: the tab strip offers no
+// edit, publish or delete on a non-positive id, because there is no row behind
+// it for those requests to reach.
 const ADHOC_CHART_ID = -1
 
 /**

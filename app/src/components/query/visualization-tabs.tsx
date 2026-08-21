@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useToast } from '@/components/shared/toast-provider'
 import { useCreateVisualization, useUpdateVisualization, useDeleteVisualization } from '@/hooks/use-visualizations'
 import { IconButton } from '@/components/shared/icon-button'
+import { isSavedVisualization } from '@/lib/viz-choices'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CHART_FILL_VAR } from '@/components/visualizations/chart/chart-frame'
 
@@ -174,16 +175,22 @@ export function VisualizationTabs({
             {visualizations.map((viz) => (
               <div key={viz.id} className="relative flex items-center">
                 {/* Double-click opens the editor, which is where a Redash user
-                    reaches for it first. */}
+                    reaches for it first. Closed for the synthetic tabs of an
+                    ad hoc run, like the action cluster below. */}
                 <TabsTrigger
                   value={String(viz.id)}
                   onDoubleClick={
-                    queryId && viz.type !== 'TABLE' ? () => handleEdit(viz) : undefined
+                    queryId && viz.type !== 'TABLE' && isSavedVisualization(viz)
+                      ? () => handleEdit(viz)
+                      : undefined
                   }
                 >
                   {viz.name}
                 </TabsTrigger>
-                {queryId && effectiveActiveTab === viz.id && (
+                {/* Only for saved rows: an ad hoc run's tabs carry synthetic
+                    ids (0 and -1) with nothing behind them, so every action
+                    they could offer, publish included, can only 404. */}
+                {queryId && effectiveActiveTab === viz.id && isSavedVisualization(viz) && (
                   <VisualizationTabActions
                     viz={viz}
                     canModify={viz.type !== 'TABLE'}
@@ -246,14 +253,19 @@ export function VisualizationTabs({
       )}
 
       {/* Same mount discipline as the edit dialog above, for the same reason:
-          the publish dialog holds per-visualization state (the token it
-          minted), so it mounts fresh for the tab being published. */}
-      {publishingViz && (
+          the publish dialog holds per-open state, so it mounts fresh for the
+          tab being published. The token itself outlives the dialog on the
+          owning query's cache entry, which the share mutations settle; a fresh
+          open reads it back through `publishingViz.api_key`. queryId is
+          guaranteed by the action cluster's own gate, and checked again only
+          for the type. */}
+      {publishingViz && queryId && (
         <EmbedDialog
           key={publishingViz.id}
           open
           onClose={() => setPublishingViz(null)}
           visualizationId={publishingViz.id}
+          queryId={queryId}
           isSafe={isQuerySafe}
           shareToken={publishingViz.api_key ?? null}
         />

@@ -93,6 +93,19 @@ describe('PublicEmbedPage', () => {
     expect(await screen.findByText('Central Station')).toBeInTheDocument()
   })
 
+  it('lets a table taller than the viewport scroll instead of clipping it', async () => {
+    // The wrapper is h-dvh; overflow-auto is what keeps a tall TABLE's lower
+    // rows and its pagination reachable. With overflow-hidden they were
+    // clipped with no scrollbar anywhere. Charts fill exactly 100dvh, so no
+    // scrollbar appears for them either way.
+    respondWith(PAYLOAD)
+
+    const view = await renderPage(TOKEN)
+    await screen.findByText('Central Station')
+
+    expect(view.container.querySelector('.h-dvh')).toHaveClass('overflow-auto')
+  })
+
   it('offers an anonymous reader no way to download the rows', async () => {
     respondWith(PAYLOAD)
 

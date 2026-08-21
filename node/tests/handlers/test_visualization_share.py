@@ -292,3 +292,44 @@ class TestPublicVisualizationResource(BaseTestCase):
         self.assertEqual(res.status_code, 404)
         self.assertEqual(event["outcome"], "not_found")
         self.assertIsNone(event["object_id"])
+
+
+class TestQueryReadBackOfShareToken(BaseTestCase):
+    """QueryResource.get attaches each visualization's live share token, and
+    only for a caller who could mint or revoke it (an admin, or the parent
+    query's owner). The embed dialog reads the token back from there; while
+    nothing served it, every open offered Create, and the idempotent re-share
+    cleared whatever expiry the link carried."""
+
+    def test_the_owner_reads_the_token_back(self):
+        vis = self.factory.create_visualization()
+        api_key = self.factory.create_api_key(object=vis)
+        models.db.session.commit()
+
+        res = self.make_request("get", "/api/queries/{}".format(vis.query_rel.id))
+
+        self.assertEqual(res.status_code, 200)
+        serialized = [v for v in res.json["visualizations"] if v["id"] == vis.id]
+        self.assertEqual(serialized[0]["api_key"], api_key.api_key)
+
+    def test_a_viewer_who_is_not_the_owner_gets_no_token(self):
+        vis = self.factory.create_visualization()
+        self.factory.create_api_key(object=vis)
+        other = self.factory.create_user()
+        models.db.session.commit()
+
+        res = self.make_request("get", "/api/queries/{}".format(vis.query_rel.id), user=other)
+
+        self.assertEqual(res.status_code, 200)
+        for serialized in res.json["visualizations"]:
+            self.assertNotIn("api_key", serialized)
+
+    def test_an_unshared_visualization_carries_no_token_even_for_the_owner(self):
+        vis = self.factory.create_visualization()
+        models.db.session.commit()
+
+        res = self.make_request("get", "/api/queries/{}".format(vis.query_rel.id))
+
+        self.assertEqual(res.status_code, 200)
+        for serialized in res.json["visualizations"]:
+            self.assertNotIn("api_key", serialized)

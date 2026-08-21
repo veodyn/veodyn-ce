@@ -5,7 +5,7 @@ import { useMockDataStore } from '@/stores/mock-data-store'
 import { USE_REAL_API } from '@/services/redash/config'
 import * as vizService from '@/services/redash/visualizations'
 import { AppError, ErrorIds } from '@/lib/errorIds'
-import type { MockVisualization } from '@/lib/mock-data'
+import type { MockQuery, MockVisualization } from '@/lib/mock-data'
 
 // Minting an embed link needs a backend that can serve it. Mock mode has none,
 // so the mutation refuses rather than handing back a token that resolves to a
@@ -33,6 +33,32 @@ function requireBackend(action: string): never {
  */
 function invalidateOwningQuery(qc: QueryClient, queryId: number) {
   qc.invalidateQueries({ queryKey: ['queries'] })
+  qc.invalidateQueries({ queryKey: ['query', queryId] })
+}
+
+/**
+ * Record a mint or revoke on the owning query's cache entry.
+ *
+ * That entry is where the token lives between dialog opens: the embed dialog
+ * unmounts on close and discards its own state, and reopening reads
+ * `visualization.api_key` off the query, which the backend attaches for an
+ * admin or the owner (QueryResource.get). While these mutations left the entry
+ * alone, reopening presented a revoked URL as live and a fresh token as
+ * absent, and the second Create cleared the link's expiry on the idempotent
+ * share endpoint. The patch makes the reopened dialog right immediately; the
+ * invalidation makes the next refetch confirm it against the backend.
+ */
+function settleShareToken(qc: QueryClient, queryId: number, vizId: number, token: string | null) {
+  qc.setQueryData<MockQuery>(['query', queryId], (prev) =>
+    prev
+      ? {
+          ...prev,
+          visualizations: prev.visualizations.map((v) =>
+            v.id === vizId ? { ...v, api_key: token ?? undefined } : v
+          ),
+        }
+      : prev
+  )
   qc.invalidateQueries({ queryKey: ['query', queryId] })
 }
 
@@ -133,31 +159,37 @@ export function useUpdateVisualization() {
 /**
  * Mint an embed share token for one visualization.
  *
- * Does not invalidate the owning query: the token comes back in the response
- * and the dialog holds it, because Redash's visualization serializer does not
- * carry it and a refetch would therefore lose it again.
+ * Settles the token onto the owning query's cache entry (see
+ * settleShareToken): the response is the only place the token appears until
+ * the query is refetched, and the dialog holding it unmounts on close.
  */
 export function useShareVisualization() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({
       vizId,
       expiresAt,
     }: {
       vizId: number
+      queryId: number
       expiresAt?: string | null
     }) => {
       if (!USE_REAL_API) requireBackend('Creating an embed link')
       return vizService.shareVisualization(vizId, expiresAt)
     },
+    onSuccess: (result, { queryId, vizId }) =>
+      settleShareToken(qc, queryId, vizId, result.api_key),
   })
 }
 
 export function useUnshareVisualization() {
+  const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (vizId: number) => {
+    mutationFn: async ({ vizId }: { vizId: number; queryId: number }) => {
       if (!USE_REAL_API) requireBackend('Revoking an embed link')
       return vizService.unshareVisualization(vizId)
     },
+    onSuccess: (_result, { queryId, vizId }) => settleShareToken(qc, queryId, vizId, null),
   })
 }
 

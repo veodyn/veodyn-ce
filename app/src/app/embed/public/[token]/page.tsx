@@ -12,8 +12,10 @@
 // second thing to keep in sync.
 //
 // The page fills the viewport. Its audience is a webview on a wall screen as
-// much as an iframe in a document, and a wall has no scrollbar and nobody to
-// drag one; the host iframe or webview is the sizing surface either way.
+// much as an iframe in a document, and the host iframe or webview is the
+// sizing surface either way. Charts size themselves to exactly that surface;
+// a TABLE sizes to its rows instead, so the wrapper scrolls rather than clips
+// (see the wrapper below for what clipping cost).
 import { use } from 'react'
 import type { CSSProperties } from 'react'
 import { Link2Off } from 'lucide-react'
@@ -103,7 +105,11 @@ export default function PublicEmbedPage({
 
   return (
     <div
-      className="h-dvh w-full overflow-hidden bg-background"
+      // overflow-auto, not hidden: a chart fills exactly 100dvh and never
+      // scrolls, but QueryResultTable sizes to its rows, and with the document
+      // scrollbar removed a public TABLE taller than the viewport clipped its
+      // lower rows and its pagination with no way to reach them.
+      className="h-dvh w-full overflow-auto bg-background"
       // Charts size themselves from this variable (see chart-frame.tsx); on a
       // page that is nothing but the visualization, the room they have is the
       // viewport itself.
