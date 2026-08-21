@@ -2428,7 +2428,7 @@
     },
     "/public/feeds/{slug}": {
       "get": {
-        "description": "The current artifact for one public feed, by its standard.",
+        "description": "The current artifact for one feed, by its standard.\n\nPublic with or without a token, private only with one a resolver grants.",
         "operationId": "get_public_feed_public_feeds__slug__get",
         "parameters": [
           {
@@ -2438,6 +2438,24 @@
             "schema": {
               "title": "Slug",
               "type": "string"
+            }
+          },
+          {
+            "description": "A token issued for a private feed. A public feed serves without one.",
+            "in": "query",
+            "name": "token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A token issued for a private feed. A public feed serves without one.",
+              "title": "Token"
             }
           }
         ],
@@ -2477,7 +2495,7 @@
     },
     "/public/feeds/{slug}/{file_name}": {
       "get": {
-        "description": "One member file of a GBFS artifact.\n\nEvery refusal is the same 404 as the discovery route's, whatever caused it:\nan unknown slug, a private feed, nothing published, a gtfs-rt feed with no\nmember files at all, or a name outside the published set. The name is never\nechoed back, so the file set cannot be enumerated either.\n\nThe missing-file 404 comes BEFORE the staleness branch on purpose. The 503\ndoes disclose that the slug names a live public feed, and a name that is not\nin the set must not answer differently for a stale feed than for any other.",
+        "description": "One member file of a GBFS artifact.\n\nEvery refusal is the same 404 as the discovery route's, whatever caused it:\nan unknown slug, a private feed reached without a token a resolver grants,\nnothing published, a gtfs-rt feed with no member files at all, or a name\noutside the published set. The name is never echoed back, so the file set\ncannot be enumerated either.\n\nThe missing-file 404 comes BEFORE the staleness branch on purpose. The 503\ndoes disclose that the slug names a live feed, and a name that is not in the\nset must not answer differently for a stale feed than for any other.",
         "operationId": "get_public_feed_file_public_feeds__slug___file_name__get",
         "parameters": [
           {
@@ -2496,6 +2514,24 @@
             "schema": {
               "title": "File Name",
               "type": "string"
+            }
+          },
+          {
+            "description": "A token issued for a private feed. A public feed serves without one.",
+            "in": "query",
+            "name": "token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A token issued for a private feed. A public feed serves without one.",
+              "title": "Token"
             }
           }
         ],

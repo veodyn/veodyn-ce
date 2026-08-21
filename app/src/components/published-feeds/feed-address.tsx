@@ -50,14 +50,13 @@ export function FeedAddress({ feed }: { feed: PublishedFeed }) {
           </>
         ) : (
           <>
-            {/* No address at all rather than one that refuses. A private feed
-                is reached with an issued token, and the token model
-                (issuance, rotation, revocation) is not built, so there is
-                nothing to hand out yet and printing a URL would send someone
-                looking for one. */}
+            {/* No address at all rather than one that refuses. Nothing here
+                issues a token, so a community build has none to hand out and
+                printing a URL would send someone looking for one. */}
             <p className="text-sm text-muted-foreground">
               This feed is private, so it has no public address. Reaching a private feed takes an
-              issued token, which is not built yet.
+              issued token, and issuing them ships with the enterprise pack. The panel below
+              appears once that pack is installed.
             </p>
             {/* The seam for the enterprise pack's token panel, which is what
                 actually makes the paragraph above obsolete once it exists. A

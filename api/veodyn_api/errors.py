@@ -150,10 +150,12 @@ class ErrorId(StrEnum):
     # holds it.
     PUBLISHED_FEED_PUBLIC_ADDRESS_TAKEN = "VEODYN_PUBLISHED_FEED_PUBLIC_ADDRESS_TAKEN"
     # `last_good` mode, past the cap. Distinct from PUBLIC_FEED_NOT_FOUND
-    # because it is the opposite claim: the feed exists, is public, and has
-    # published: what it does not have is anything fresh enough to serve. It
+    # because it is the opposite claim: the feed resolved for this caller and
+    # has published: what it does not have is anything fresh enough to serve. It
     # rides a 503 rather than a 404 for the same reason, so a consumer can tell
-    # "come back" from "there is nothing here".
+    # "come back" from "there is nothing here". Resolved, not public: a private
+    # feed opened with a token answers this too, which is why the serving route
+    # reaches the staleness branch only AFTER a token has resolved.
     PUBLIC_FEED_TOO_STALE = "VEODYN_PUBLIC_FEED_TOO_STALE"
     # Redash has no single ClickHouse data source, so a query generated against
     # the historical warehouse has nothing to run on. Its own cause rather than

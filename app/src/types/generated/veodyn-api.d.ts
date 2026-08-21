@@ -265,7 +265,9 @@ export interface paths {
         };
         /**
          * Get Public Feed
-         * @description The current artifact for one public feed, by its standard.
+         * @description The current artifact for one feed, by its standard.
+         *
+         *     Public with or without a token, private only with one a resolver grants.
          */
         get: operations["get_public_feed_public_feeds__slug__get"];
         put?: never;
@@ -288,13 +290,14 @@ export interface paths {
          * @description One member file of a GBFS artifact.
          *
          *     Every refusal is the same 404 as the discovery route's, whatever caused it:
-         *     an unknown slug, a private feed, nothing published, a gtfs-rt feed with no
-         *     member files at all, or a name outside the published set. The name is never
-         *     echoed back, so the file set cannot be enumerated either.
+         *     an unknown slug, a private feed reached without a token a resolver grants,
+         *     nothing published, a gtfs-rt feed with no member files at all, or a name
+         *     outside the published set. The name is never echoed back, so the file set
+         *     cannot be enumerated either.
          *
          *     The missing-file 404 comes BEFORE the staleness branch on purpose. The 503
-         *     does disclose that the slug names a live public feed, and a name that is not
-         *     in the set must not answer differently for a stale feed than for any other.
+         *     does disclose that the slug names a live feed, and a name that is not in the
+         *     set must not answer differently for a stale feed than for any other.
          */
         get: operations["get_public_feed_file_public_feeds__slug___file_name__get"];
         put?: never;
@@ -1477,7 +1480,10 @@ export interface operations {
     };
     get_public_feed_public_feeds__slug__get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description A token issued for a private feed. A public feed serves without one. */
+                token?: string | null;
+            };
             header?: never;
             path: {
                 slug: string;
@@ -1509,7 +1515,10 @@ export interface operations {
     };
     get_public_feed_file_public_feeds__slug___file_name__get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description A token issued for a private feed. A public feed serves without one. */
+                token?: string | null;
+            };
             header?: never;
             path: {
                 slug: string;
