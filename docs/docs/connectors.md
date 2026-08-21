@@ -14,7 +14,7 @@ data source is created (see [Data Sources](/admin/data-sources)).
 
 | Connector | Type string | Reads | Configuration |
 |---|---|---|---|
-| GTFS-Realtime | `gtfs_realtime` | Vehicle positions from a GTFS-Realtime feed, either a websocket JSON stream or an HTTP protobuf snapshot | Feed URL, `ws(s)://` for the websocket form or `http(s)://` for the protobuf form (required); optional route id to display-name map (JSON); default sample window in seconds (websocket feeds only) |
+| GTFS-Realtime | `gtfs_realtime` | Vehicle positions from a GTFS-Realtime feed, either a websocket JSON stream or an HTTP protobuf snapshot; over the HTTP protobuf form only, also trip updates (`{"resource": "trip_updates"}`, one row per stop_time_update) and service alerts (`{"resource": "service_alerts"}`, one row per alert) | Feed URL, `ws(s)://` for the websocket form or `http(s)://` for the protobuf form (required); optional route id to display-name map (JSON); default sample window in seconds (websocket feeds only); Trip updates URL and Service alerts URL (both optional, HTTP protobuf: agencies commonly publish the three GTFS-Realtime feeds at distinct URLs) |
 | Static GTFS | `gtfs_static` | Schedule tables (stops, routes, trips, stop_times, calendar) from a GTFS zip archive: `{"resource": "list"}` names the tables it holds, `{"table": "stops"}` returns one, with optional `columns` and `filter` | Archive URL (`http(s)://`, required); max rows per query (default 100000) |
 | GBFS Bikeshare | `gbfs` | Station information and status from a GBFS discovery document | Discovery URL (`gbfs.json`, required); feed language (default `en`) |
 | Waze Traffic Alerts | `waze` | Alerts and irregularities from a Waze partner feed | Feed URL (required; the partner token and coverage polygon are embedded in it, so there is no shared default) |
@@ -40,6 +40,30 @@ One column needs a step before mapping: Waze `alerts` returns `location` as a
 JSON string of the form `{"x": ..., "y": ...}`, where `x` is the longitude and
 `y` the latitude. Extract the two values in the query before pointing a map
 visualization at them; the raw column will not plot as-is.
+
+A query against GTFS-Realtime's `trip_updates` resource:
+
+```json
+{"resource": "trip_updates", "params": {"routes": "1,2", "early_seconds": 60, "late_seconds": 300}}
+```
+
+`params.routes` is optional and substituted into `{routes}` in the URL.
+`params.early_seconds` (default 60) and `params.late_seconds` (default 300)
+define the on-time window: a stop_time_update whose delay falls inside that
+window is on time. Columns: trip_id, route_id, line, direction_id,
+vehicle_id, stop_id, stop_sequence, arrival_delay (seconds), departure_delay
+(seconds), arrival_time, departure_time, trip_schedule_relationship,
+stop_schedule_relationship, timestamp, on_time. `on_time` is `None` for a
+skipped stop, a canceled trip, or a stop the feed carries no delay for, and
+those rows are excluded from any average rather than counted late. The
+default window, no more than 1 minute early and no more than 5 minutes late,
+is the common transit-industry convention, not a mandate: set
+`early_seconds` and `late_seconds` to match an agency's own standard.
+
+`service_alerts` (`{"resource": "service_alerts"}`) returns one row per
+alert: alert_id, cause, effect, severity_level, header, description, url,
+active_from, active_to (`None` when any active period is open-ended),
+informed_route_ids, informed_stop_ids (comma-joined).
 
 ## NTCIP 1203 DMS: a worked configuration example
 

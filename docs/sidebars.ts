@@ -29,6 +29,14 @@ const sidebars: SidebarsConfig = {
       ],
     },
     {
+      type: 'category',
+      label: 'Guides',
+      collapsed: false,
+      items: [
+        'guides/on-time-performance',
+      ],
+    },
+    {
       // Their own category rather than three badges buried in Features, so the
       // line is readable off the navigation. The EE chips repeat that on each
       // row, because a linked-to page is read without its category in view.
