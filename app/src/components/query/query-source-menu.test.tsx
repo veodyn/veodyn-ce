@@ -56,7 +56,6 @@ function renderMenu(overrides: Partial<MockQuery> = {}, queryDrafts = true) {
       query={{ ...target, can_edit: true, is_safe: true, ...overrides }}
       onOpenSchedule={vi.fn()}
       onOpenApiKey={vi.fn()}
-      onOpenEmbed={vi.fn()}
       onOpenAddToDashboard={vi.fn()}
       onOpenPermissions={vi.fn()}
     />,
@@ -78,7 +77,6 @@ describe('QuerySourceMenu', () => {
         query={{ ...target, can_edit: true, is_draft: false, is_safe: true }}
         onOpenSchedule={onOpenSchedule}
         onOpenApiKey={vi.fn()}
-        onOpenEmbed={vi.fn()}
         onOpenAddToDashboard={vi.fn()}
         onOpenPermissions={vi.fn()}
       />,
@@ -96,7 +94,6 @@ describe('QuerySourceMenu', () => {
       'Make it a draft',
       'Schedule',
       'API Key',
-      'Embed',
       'Add to Dashboard',
       'Permissions',
       'Archive',

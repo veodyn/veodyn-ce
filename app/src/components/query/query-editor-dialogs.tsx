@@ -3,8 +3,10 @@
 // Every dialog the query editor's source menu opens. Extracted from
 // query-editor-page.tsx so the page stays a layout: at most one of these is
 // open at a time, so the page tracks a single open-dialog name.
+//
+// Publishing (the embed dialog) is not here: it is scoped to a visualization,
+// not to the query, so VisualizationTabs owns it beside the tab it publishes.
 import { ScheduleDialog } from './schedule-dialog'
-import { EmbedDialog } from './embed-dialog'
 import { ApiKeyDialog } from './api-key-dialog'
 import { AddToDashboardDialog } from './add-to-dashboard-dialog'
 import { PermissionsEditorDialog } from './permissions-editor-dialog'
@@ -12,7 +14,6 @@ import type { MockQuery } from '@/lib/mock-data'
 
 export type QueryEditorDialog =
   | 'schedule'
-  | 'embed'
   | 'apiKey'
   | 'addToDashboard'
   | 'permissions'
@@ -44,13 +45,6 @@ export function QueryEditorDialogs({
         onClose={onClose}
         schedule={query.schedule as QuerySchedule}
         onSave={onSaveSchedule}
-      />
-      <EmbedDialog
-        open={open === 'embed'}
-        onClose={onClose}
-        visualizationId={query.visualizations[0]?.id ?? 0}
-        isSafe={query.is_safe}
-        shareToken={query.visualizations[0]?.api_key ?? null}
       />
       <ApiKeyDialog
         open={open === 'apiKey'}

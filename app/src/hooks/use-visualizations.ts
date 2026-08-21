@@ -168,11 +168,24 @@ export function useUnshareVisualization() {
  * does not become live on the second attempt, and retrying only delays the one
  * message the reader is going to get.
  */
-export function usePublicVisualization(token: string | null) {
+export function usePublicVisualization(
+  token: string | null,
+  opts: {
+    /**
+     * Refetch cadence for a page that stays open unattended (a wall screen's
+     * webview). Null or absent means fetch once, which is what a link pasted
+     * into a chat deserves. The interval re-reads the query's LATEST STORED
+     * result; it never runs the query, so the cadence worth setting is the
+     * query's own schedule, and this only picks up what that schedule wrote.
+     */
+    refetchIntervalMs?: number | null
+  } = {}
+) {
   return useQuery({
     queryKey: ['public-visualization', token],
     enabled: !!token,
     retry: false,
+    refetchInterval: opts.refetchIntervalMs ?? false,
     queryFn: ({ signal }) =>
       token ? vizService.fetchPublicVisualization(token, { signal }) : null,
   })

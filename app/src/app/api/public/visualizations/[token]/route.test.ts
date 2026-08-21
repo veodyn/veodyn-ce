@@ -169,8 +169,6 @@ describe('GET /api/public/visualizations/[token]', () => {
   // stays anchored to the real contract instead of describing a shape nobody
   // serves.
   it.each([
-    ['a query that has never run', { ...UPSTREAM_BODY, query_result: null }],
-    ['no result at all', { ...UPSTREAM_BODY, query_result: undefined }],
     ['a result that is not a table', { ...UPSTREAM_BODY, query_result: { data: {} } }],
     ['no visualization type', { ...UPSTREAM_BODY, type: undefined }],
     ['a bare string', 'gone'],
@@ -181,6 +179,26 @@ describe('GET /api/public/visualizations/[token]', () => {
     const response = await GET(request(), { params: Promise.resolve({ token: 'tok' }) })
 
     expect(response.status).toBe(404)
+  })
+
+  // A never-run query is NOT a dead link: whether the absence of a result is
+  // fatal depends on the visualization type (a `needs: 'none'` wall panel
+  // never waits for one), and the registry that answers that lives in the
+  // client bundle. The route serves the payload with `data: null` and the
+  // page decides. See src/lib/public-visualization.ts.
+  it.each([
+    ['a query that has never run', { ...UPSTREAM_BODY, query_result: null }],
+    ['no result at all', { ...UPSTREAM_BODY, query_result: undefined }],
+  ] as const)('serves the visualization with null data for %s', async (_label, payload) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json(payload))
+    const { GET } = await loadRoute('https://redash.example')
+
+    const response = await GET(request(), { params: Promise.resolve({ token: 'tok' }) })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data).toBeNull()
+    expect(body.visualization.type).toBe(UPSTREAM_BODY.type)
   })
 
   // A refusal is decided on the status, before the body is parsed. An upstream

@@ -19,7 +19,15 @@ export interface PublicVisualizationConfig {
 
 export interface PublicVisualizationPayload {
   visualization: PublicVisualizationConfig
-  data: QueryResultData
+  /**
+   * Null when the owning query has never produced a result. Kept rather than
+   * treated as a miss, because whether that is fatal depends on the TYPE: a
+   * chart with nothing to draw is a dead link, while a `needs: 'none'` plugin
+   * (a wall image panel, a backdrop) never waits for a result at all. The
+   * registry lives in the client bundle, so the page, not this module, asks
+   * `visualizationData` which case it is holding.
+   */
+  data: QueryResultData | null
 }
 
 // `MockVisualization` wants a numeric id and upstream sends none. A local
@@ -52,17 +60,24 @@ export function normalizePublicVisualization(raw: unknown): PublicVisualizationP
   if (!root) return null
 
   const viz = pickVisualization(root)
-  // `query_result` is null whenever the owning query has never run, so a chart
-  // with nothing to draw is a miss rather than an empty picture.
-  const result = pickResultData(root)
-  if (!result) return null
-
-  const columns = result.columns
-  const rows = result.rows
-  if (!Array.isArray(columns) || !Array.isArray(rows)) return null
   // The serializer always sends `type`, so a body without one is not a
   // visualization payload at all.
   if (typeof viz.type !== 'string') return null
+
+  // `query_result` is null whenever the owning query has never run. A result
+  // that is PRESENT but malformed still fails the whole payload: that is a
+  // contract violation, not an empty state.
+  const result = pickResultData(root)
+  let data: QueryResultData | null = null
+  if (result) {
+    const columns = result.columns
+    const rows = result.rows
+    if (!Array.isArray(columns) || !Array.isArray(rows)) return null
+    data = {
+      columns: columns as QueryResultData['columns'],
+      rows: rows as QueryResultData['rows'],
+    }
+  }
 
   return {
     visualization: {
@@ -71,9 +86,6 @@ export function normalizePublicVisualization(raw: unknown): PublicVisualizationP
       description: typeof viz.description === 'string' ? viz.description : '',
       options: asRecord(viz.options) ?? {},
     },
-    data: {
-      columns: columns as QueryResultData['columns'],
-      rows: rows as QueryResultData['rows'],
-    },
+    data,
   }
 }

@@ -163,6 +163,9 @@ export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
     // stored result and the saved visualizations own it again.
     adhocViz: executeQuery.data ? runViz : null,
     queryId,
+    // An unsaved query defaults to unsafe: publishing needs a saved
+    // visualization anyway, and the dialog explains itself when refused.
+    isQuerySafe: existingQuery?.is_safe ?? false,
   }
 
   return (
@@ -180,7 +183,6 @@ export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
         queryId={queryId}
         onOpenSchedule={() => setDialog('schedule')}
         onOpenApiKey={() => setDialog('apiKey')}
-        onOpenEmbed={() => setDialog('embed')}
         onOpenAddToDashboard={() => setDialog('addToDashboard')}
         onOpenPermissions={() => setDialog('permissions')}
       />

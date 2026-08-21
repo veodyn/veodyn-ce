@@ -45,7 +45,6 @@ function renderHeader(existingQuery: MockQuery, queryDrafts = true) {
       isDirty={false}
       onOpenSchedule={noop}
       onOpenApiKey={noop}
-      onOpenEmbed={noop}
       onOpenAddToDashboard={noop}
       onOpenPermissions={noop}
     />,

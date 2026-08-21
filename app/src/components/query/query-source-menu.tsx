@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  MoreHorizontal, GitFork, Archive, Users, PenLine, Clock, Key, Code2,
+  MoreHorizontal, GitFork, Archive, Users, PenLine, Clock, Key,
   LayoutDashboard, Shield,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
@@ -26,7 +26,6 @@ interface QuerySourceMenuProps {
   query: MockQuery
   onOpenSchedule: () => void
   onOpenApiKey: () => void
-  onOpenEmbed: () => void
   onOpenAddToDashboard: () => void
   onOpenPermissions: () => void
 }
@@ -35,7 +34,6 @@ export function QuerySourceMenu({
   query,
   onOpenSchedule,
   onOpenApiKey,
-  onOpenEmbed,
   onOpenAddToDashboard,
   onOpenPermissions,
 }: QuerySourceMenuProps) {
@@ -109,12 +107,15 @@ export function QuerySourceMenu({
     ? { label: 'Make it a draft', icon: PenLine }
     : { label: 'Share with the team', icon: Users }
 
+  // Publishing a visualization is deliberately NOT here. It is a per-tab act
+  // (the ScreenShare button on the active visualization tab), because a menu
+  // this far from the tabs can only publish "the query", and the one time it
+  // did, it published visualizations[0] whatever tab was on screen.
   const menuItems = [
     { label: 'Fork', icon: GitFork, onClick: handleFork, show: true },
     { ...shareItem, onClick: handleToggleDraft, show: canEdit && draftsEnabled },
     { label: 'Schedule', icon: Clock, onClick: onOpenSchedule, show: canEdit },
     { label: 'API Key', icon: Key, onClick: onOpenApiKey, show: canEdit },
-    { label: 'Embed', icon: Code2, onClick: onOpenEmbed, show: query.is_safe },
     { label: 'Add to Dashboard', icon: LayoutDashboard, onClick: onOpenAddToDashboard, show: true },
     { label: 'Permissions', icon: Shield, onClick: onOpenPermissions, show: canEdit },
     {
@@ -130,8 +131,8 @@ export function QuerySourceMenu({
     <>
       <DropdownMenu>
         {/* A lone kebab beside Run and Save says nothing about what it holds
-            (Share, Schedule, Embed, Permissions, Archive), and it is the only
-            way to reach any of them. */}
+            (Share, Schedule, Permissions, Archive), and it is the only way to
+            reach any of them. */}
         <Tooltip>
           <TooltipTrigger
             render={
