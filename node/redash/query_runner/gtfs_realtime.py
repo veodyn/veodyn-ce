@@ -1,20 +1,27 @@
 """
 GTFS-Realtime query runner.
 
-Transit agencies publish vehicle positions as GTFS-Realtime, either as
-JSON-shaped messages over a long-lived WebSocket stream, or as protobuf over
-plain HTTP (the more common publication form). A query runner can't hold a
-websocket stream open, so the websocket path connects, samples messages for a
-few seconds (capped at 30s so RQ workers can't hang), dedupes by vehicle id
-keeping the newest update, and returns the snapshot. The HTTP path fetches one
-protobuf FeedMessage snapshot instead, so sampling does not apply there.
+Transit agencies publish vehicle positions, trip updates and service alerts as
+GTFS-Realtime. Vehicle positions can arrive as JSON-shaped messages over a
+long-lived WebSocket stream, or as protobuf over plain HTTP (the more common
+publication form); trip updates and service alerts are HTTP protobuf only. A
+query runner can't hold a websocket stream open, so the websocket path
+connects, samples messages for a few seconds (capped at 30s so RQ workers
+can't hang), dedupes by vehicle id keeping the newest update, and returns the
+snapshot. The HTTP paths fetch one protobuf FeedMessage snapshot instead, so
+sampling does not apply there.
 
-The feed URL and the optional route id to display name map are both
-connector configuration, so one runner instance can point at any agency's
-GTFS-Realtime feed rather than one hardcoded host.
+Agencies commonly publish vehicle positions, trip updates and alerts at three
+distinct URLs, so each resource has its own optional feed URL configuration
+field; only feed_url (vehicle positions) is required.
+
+trip_updates is the on-time-performance enabler: one row per stop_time_update
+carrying the agency's own arrival/departure delays plus a computed on_time
+flag, so a dashboard can average on_time over a route or a time window.
 """
 
 import json
+import math
 import time
 from urllib.parse import urlsplit
 
@@ -24,6 +31,20 @@ from redash.query_runner import register
 from redash.query_runner.connector_base import (
     BaseResourceRunner,
     build_configuration_schema,
+)
+from redash.query_runner.gtfs_realtime_entities import (
+    build_alert_row,
+    build_trip_update_rows,
+    keep_newest,
+    parse_vehicle_entity,
+    parse_vehicle_message,
+)
+from redash.query_runner.gtfs_realtime_resources import (
+    DEFAULT_EARLY_SECONDS,
+    DEFAULT_LATE_SECONDS,
+    DEFAULT_SAMPLE_SECONDS,
+    MAX_SAMPLE_SECONDS,
+    RESOURCES,
 )
 from redash.query_runner.gtfs_realtime_transport import (
     HTTP_TIMEOUT_SECONDS,
@@ -47,108 +68,24 @@ except ImportError:
     gtfs_realtime_pb2 = None
     pb_available = False
 
-DEFAULT_SAMPLE_SECONDS = 8
-MAX_SAMPLE_SECONDS = 30
 WEBSOCKET_SCHEMES = ("ws", "wss")
 HTTP_SCHEMES = ("http", "https")
 
 
-def parse_vehicle_message(message, route_labels):
-    """Map one GTFS-Realtime JSON vehicle entity to a row, or None without a position."""
-    vehicle_id = message.get("id")
-    vehicle = message.get("vehicle") or {}
-    position = vehicle.get("position") or {}
-    latitude = position.get("latitude")
-    longitude = position.get("longitude")
-    if vehicle_id is None or latitude is None or longitude is None:
-        return None
-
-    trip = vehicle.get("trip") or {}
-    route_id = trip.get("routeId", "")
-    ts = vehicle.get("timestamp")
-
-    row = {
-        "vehicle_id": vehicle_id,
-        "latitude": latitude,
-        "longitude": longitude,
-        "bearing": position.get("bearing"),
-        "speed": position.get("speed"),
-        "direction_id": trip.get("directionId"),
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(int(ts))) if ts else None,
-        "_ts": int(ts) if ts else 0,
-    }
-    row["route_id"] = route_id
-    row["line"] = route_labels.get(route_id, route_id)
-    return row
-
-
-def parse_vehicle_entity(entity, route_labels):
-    """Map one GTFS-Realtime protobuf FeedEntity to a row, or None without a position.
-
-    HasField decides presence, not truthiness: unset optional scalars read as
-    0/0.0, and an explicit timestamp of 0 must not read as absent.
-    """
-    vehicle = entity.vehicle
-    if not vehicle.HasField("position"):
-        return None
-
-    descriptor_id = vehicle.vehicle.id
-    vehicle_id = descriptor_id if descriptor_id else entity.id
-    if not vehicle_id:
-        return None
-
-    position = vehicle.position
-    trip = vehicle.trip
-    route_id = trip.route_id if trip.HasField("route_id") else ""
-    has_ts = vehicle.HasField("timestamp")
-    ts = vehicle.timestamp if has_ts else None
-
-    row = {
-        "vehicle_id": vehicle_id,
-        "latitude": position.latitude,
-        "longitude": position.longitude,
-        "bearing": position.bearing if position.HasField("bearing") else None,
-        "speed": position.speed if position.HasField("speed") else None,
-        "direction_id": trip.direction_id if trip.HasField("direction_id") else None,
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(ts)) if has_ts else None,
-        "_ts": ts if has_ts else 0,
-    }
-    row["route_id"] = route_id
-    row["line"] = route_labels.get(route_id, route_id)
-    return row
-
-
-def _keep_newest(vehicles, parsed):
-    """Insert parsed into vehicles, keeping the newer entry per vehicle_id."""
-    key = str(parsed["vehicle_id"])
-    if key not in vehicles or parsed["_ts"] >= vehicles[key]["_ts"]:
-        vehicles[key] = parsed
+def _parse_threshold_seconds(params, param_name, default):
+    value = params.get(param_name, default)
+    invalid = ValueError(f"trip_updates: '{param_name}' param must be a number >= 0, got {value!r}")
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise invalid
+    if not math.isfinite(value):
+        raise invalid
+    if value < 0:
+        raise invalid
+    return value
 
 
 class GtfsRealtime(BaseResourceRunner):
-    resources = {
-        "vehicle_positions": {
-            "doc_params": [
-                "routes (optional): string - comma separated route ids to subscribe to, "
-                "substituted into {routes} in the feed URL",
-                "sample_seconds (optional): number - websocket feeds only, how long to sample before "
-                f"returning (default {DEFAULT_SAMPLE_SECONDS}, capped at {MAX_SAMPLE_SECONDS}); "
-                "HTTP protobuf feeds are a single snapshot and ignore this",
-            ],
-            "doc_returns": [
-                "vehicle_id: string",
-                "route_id: string",
-                "line: string",
-                "latitude: float",
-                "longitude: float",
-                "bearing: float",
-                "speed: float",
-                "direction_id: integer",
-                "timestamp: string (UTC, from the vehicle feed)",
-            ],
-            "example": '{"resource": "vehicle_positions", "params": {"routes": "1,2"}}',
-        },
-    }
+    resources = RESOURCES
     default_resource = "vehicle_positions"
     noop_query = '{"resource": "vehicle_positions", "params": {"sample_seconds": 3}}'
 
@@ -179,6 +116,22 @@ class GtfsRealtime(BaseResourceRunner):
                         "https://feed.example.org/gtfs-rt/vehicle_positions/{routes}"
                     ),
                 },
+                "trip_updates_url": {
+                    "type": "string",
+                    "title": "Trip updates URL (optional)",
+                    "description": (
+                        "HTTP or HTTPS URL of the agency's GTFS-Realtime TripUpdate protobuf feed. "
+                        "{routes} is substituted with the routes param."
+                    ),
+                },
+                "service_alerts_url": {
+                    "type": "string",
+                    "title": "Service alerts URL (optional)",
+                    "description": (
+                        "HTTP or HTTPS URL of the agency's GTFS-Realtime Alert protobuf feed. "
+                        "{routes} is substituted with the routes param."
+                    ),
+                },
                 "route_labels": {
                     "type": "string",
                     "title": "Route labels (JSON object, optional)",
@@ -200,6 +153,8 @@ class GtfsRealtime(BaseResourceRunner):
     def __init__(self, configuration):
         super().__init__(configuration)
         self.feed_url_template = self.configuration.get("feed_url", "")
+        self.trip_updates_url_template = self.configuration.get("trip_updates_url", "")
+        self.service_alerts_url_template = self.configuration.get("service_alerts_url", "")
         self.sample_seconds = self.configuration.get("sample_seconds", DEFAULT_SAMPLE_SECONDS)
 
         raw_labels = self.configuration.get("route_labels", "") or "{}"
@@ -210,16 +165,44 @@ class GtfsRealtime(BaseResourceRunner):
         if not isinstance(self.route_labels, dict):
             raise ValueError("route_labels must be a JSON object")
 
-    def _fetch(self, resource, params):
+    def _resource_url(self, template, params, resource, field_title):
+        """Resolve a resource's own feed URL, requiring it configured and HTTP-only."""
+        if not template or not template.strip():
+            raise ValueError(f"{resource} requires the {field_title} to be configured on this data source")
         routes = str(params.get("routes", "")).replace(" ", "")
-        url = self.feed_url_template.format(routes=routes)
-        scheme = urlsplit(url).scheme
+        url = template.format(routes=routes)
+        if urlsplit(url).scheme not in HTTP_SCHEMES:
+            raise ValueError(f"{resource} supports HTTP protobuf feeds only")
+        return url
 
-        if scheme in WEBSOCKET_SCHEMES:
-            return self._fetch_ws(url, params)
-        if scheme in HTTP_SCHEMES:
-            return self._fetch_http(url)
-        raise ValueError(f"unsupported GTFS-Realtime feed URL scheme: {scheme!r}")
+    def _fetch(self, resource, params):
+        if resource == "vehicle_positions":
+            routes = str(params.get("routes", "")).replace(" ", "")
+            url = self.feed_url_template.format(routes=routes)
+            scheme = urlsplit(url).scheme
+            if scheme in WEBSOCKET_SCHEMES:
+                return self._fetch_ws(url, params)
+            if scheme in HTTP_SCHEMES:
+                return self._fetch_vehicle_positions_http(url)
+            raise ValueError(f"unsupported GTFS-Realtime feed URL scheme: {scheme!r}")
+
+        if resource == "trip_updates":
+            url = self._resource_url(self.trip_updates_url_template, params, "trip_updates", "Trip updates URL")
+            early_seconds = _parse_threshold_seconds(params, "early_seconds", DEFAULT_EARLY_SECONDS)
+            late_seconds = _parse_threshold_seconds(params, "late_seconds", DEFAULT_LATE_SECONDS)
+            feed = self._fetch_feed_message(url)
+            rows = []
+            for entity in feed.entity:
+                rows.extend(build_trip_update_rows(entity, self.route_labels, early_seconds, late_seconds))
+            return rows, rows
+
+        if resource == "service_alerts":
+            url = self._resource_url(self.service_alerts_url_template, params, "service_alerts", "Service alerts URL")
+            feed = self._fetch_feed_message(url)
+            rows = [row for row in (build_alert_row(entity) for entity in feed.entity) if row is not None]
+            return rows, rows
+
+        raise ValueError(f"Unknown resource {resource!r}")
 
     def _fetch_ws(self, url, params):
         if not ws_available:
@@ -244,12 +227,13 @@ class GtfsRealtime(BaseResourceRunner):
                 parsed = parse_vehicle_message(message, self.route_labels)
                 if parsed is None:
                     continue
-                _keep_newest(vehicles, parsed)
+                keep_newest(vehicles, parsed)
 
         records = [{k: v for k, v in vehicle.items() if k != "_ts"} for vehicle in vehicles.values()]
         return records, records
 
-    def _fetch_http(self, url):
+    def _fetch_feed_message(self, url):
+        """Fetch and parse one protobuf FeedMessage snapshot, shared by every HTTP resource."""
         if not pb_available:
             raise ValueError("gtfs-realtime-bindings is not installed; HTTP protobuf feeds are unavailable")
 
@@ -271,13 +255,16 @@ class GtfsRealtime(BaseResourceRunner):
             raise ValueError(f"could not parse GTFS-Realtime protobuf feed from {safe_url}: {exc}") from exc
         if not feed.IsInitialized():
             raise ValueError(f"GTFS-Realtime protobuf feed from {safe_url} is missing required fields")
+        return feed
 
+    def _fetch_vehicle_positions_http(self, url):
+        feed = self._fetch_feed_message(url)
         vehicles = {}
         for entity in feed.entity:
             parsed = parse_vehicle_entity(entity, self.route_labels)
             if parsed is None:
                 continue
-            _keep_newest(vehicles, parsed)
+            keep_newest(vehicles, parsed)
 
         records = [{k: v for k, v in vehicle.items() if k != "_ts"} for vehicle in vehicles.values()]
         return records, records

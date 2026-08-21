@@ -2,7 +2,8 @@ import json
 from unittest import TestCase
 from unittest.mock import patch
 
-from redash.query_runner.gtfs_realtime import GtfsRealtime, parse_vehicle_message
+from redash.query_runner.gtfs_realtime import GtfsRealtime
+from redash.query_runner.gtfs_realtime_entities import parse_vehicle_message
 from tests.query_runner.gtfs_realtime_fixtures import (
     MSG_A,
     MSG_A_NEWER,

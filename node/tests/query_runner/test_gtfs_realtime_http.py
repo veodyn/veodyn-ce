@@ -4,7 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
-from redash.query_runner.gtfs_realtime import GtfsRealtime, parse_vehicle_entity
+from redash.query_runner.gtfs_realtime import GtfsRealtime
+from redash.query_runner.gtfs_realtime_entities import parse_vehicle_entity
 from redash.query_runner.gtfs_realtime_transport import MAX_FEED_BYTES
 from tests.query_runner.gtfs_realtime_fixtures import (
     ROUTE_LABELS,
