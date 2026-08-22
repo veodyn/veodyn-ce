@@ -243,6 +243,28 @@ Delete asks for confirmation and says what it means: consumers of that address s
 
 `GET /api/public/feeds/<slug>` returns raw GTFS-Realtime bytes as `application/x-protobuf`. For a public feed it is the only route in the sidecar's community surface that takes no credential at all, on the grounds that most software speaking this format will never hold one.
 
+In curl, against the instance's own origin:
+
+```bash
+curl -s https://transit.example.org/api/public/feeds/vehicles-live -o vehicles.pb
+protoc --decode_raw < vehicles.pb   # or any GTFS-Realtime decoder
+```
+
+A GBFS feed answers with its discovery document instead, and the member files it names are plain JSON on the same path:
+
+```bash
+curl -s https://transit.example.org/api/public/feeds/bikes
+curl -s https://transit.example.org/api/public/feeds/bikes/station_status.json
+```
+
+Three answers cover the whole surface:
+
+| Status | When |
+|---|---|
+| 200 | The current artifact, in the binding's format |
+| 404 | Every refusal, with one body |
+| 503, with `Retry-After` | Under last known good only, once the artifact is past its age cap |
+
 Everything it refuses answers the same 404, with the same body. An unknown slug, a slug naming a private feed the caller cannot open, and a slug that has never published a clean attempt are indistinguishable from outside. Telling them apart would rebuild the probing oracle that a single 404 exists to close, letting a caller work out which slugs are taken, or merely dark, one guess at a time.
 
 Staleness is the one exception, and only under last known good. Once the artifact is older than the configured cap, the endpoint answers 503 with a `Retry-After` carrying that cap instead of serving stale bytes.
@@ -260,6 +282,11 @@ A private feed is read at that same address, with a token its owner issued. Two 
 
 - `GET /api/public/feeds/<slug>?token=<token>`. This is the one to try first, since plenty of feed pollers are a URL field and nothing else, with nowhere to put a header. A token in a URL can be recorded by proxies along the way, which is what rotation is for; this service redacts it from its own access log.
 - `Authorization: Bearer <token>` on the same request. Only that scheme is read as a token.
+
+```bash
+curl -s "https://transit.example.org/api/public/feeds/partner-feed?token=<token>"
+curl -s -H "Authorization: Bearer <token>" https://transit.example.org/api/public/feeds/partner-feed
+```
 
 Presenting the same token both ways serves normally. Presenting two different ones is refused instead of arbitrated, because picking a winner would leave a consumer reading on through a token they believed they had revoked. A public feed serves whether or not a token comes with it, so a client that attaches one everywhere is never turned away for it.
 
