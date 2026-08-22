@@ -31,30 +31,67 @@ const sidebars: SidebarsConfig = {
     {
       // Goal-first, where the Features category above is surface-first. One
       // category rather than two: a separate Guides tree put the same kind of
-      // page in two places with nothing stating the difference.
+      // page in two places with nothing stating the difference. The subgroups
+      // are the overview page's own five groups, collapsed, so nineteen pages
+      // read as six rows off the rail and the nav and the overview agree.
       type: 'category',
       label: 'Use cases',
       collapsed: false,
       items: [
         'use-cases/overview',
-        'use-cases/publish-gtfs-realtime',
-        'use-cases/publish-gbfs',
-        'use-cases/static-gtfs-archive',
-        'use-cases/take-back-a-vendor-feed',
-        'use-cases/ridership-reporting',
-        'use-cases/ntd-service-data',
-        'use-cases/demand-response',
-        'use-cases/service-equity',
-        'use-cases/feed-freshness',
-        'use-cases/tmc-events-and-signs',
-        'use-cases/dms-ntcip',
-        'use-cases/incident-and-air-quality',
-        'use-cases/history-capture',
-        'use-cases/on-time-performance',
-        'use-cases/fleet-utilization',
-        'use-cases/ask-your-data-mcp',
-        'use-cases/open-data-page',
-        'use-cases/feed-to-a-partner',
+        {
+          type: 'category',
+          label: 'Publishing a feed',
+          collapsed: true,
+          items: [
+            'use-cases/publish-gtfs-realtime',
+            'use-cases/publish-gbfs',
+            'use-cases/static-gtfs-archive',
+            'use-cases/take-back-a-vendor-feed',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Reporting and evidence',
+          collapsed: true,
+          items: [
+            'use-cases/ridership-reporting',
+            'use-cases/ntd-service-data',
+            'use-cases/demand-response',
+            'use-cases/service-equity',
+            'use-cases/feed-freshness',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Operating pictures',
+          collapsed: true,
+          items: [
+            'use-cases/tmc-events-and-signs',
+            'use-cases/dms-ntcip',
+            'use-cases/incident-and-air-quality',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Analysis over time',
+          collapsed: true,
+          items: [
+            'use-cases/history-capture',
+            'use-cases/on-time-performance',
+            'use-cases/fleet-utilization',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Getting data back out',
+          collapsed: true,
+          items: [
+            'use-cases/ask-your-data-mcp',
+            'use-cases/open-data-page',
+            'use-cases/feed-to-a-partner',
+          ],
+        },
       ],
     },
     {
