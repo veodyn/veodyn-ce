@@ -43,6 +43,7 @@ BASELINE = (
     ("docs/docs/connectors.md", 7, ((9, 1), (11, 2), (12, 2), (13, 2))),
     ("docs/docs/features/data-catalog.md", 1, ((0, 1),)),
     ("docs/docs/getting-started.md", 1, ((6, 1),)),
+    ("docs/docs/use-cases/incident-and-air-quality.md", 2, ((11, 2),)),
     ("node/redash/query_runner/go511.py", 9, ((11, 9),)),
     ("node/redash/query_runner/socaltransport.py", 11, ((9, 1), (13, 10))),
     ("node/redash/query_runner/trafficland.py", 10, ((12, 10),)),

@@ -60,6 +60,11 @@ OPEN_DECISION_BUCKETS = (
         "connectors page names the public data services the shipping connectors talk to, which "
         "is the closed public-connectors disclosure below reached through documentation, and it "
         "grew when the table caught up with the enabled runner list it had been missing. "
+        "The use-cases section added a second reach into that same closed disclosure: the "
+        "incident guide names the region's traveler-information connector beside the "
+        "crowdsourced one, because running the two together is the guide's actual advice, and "
+        "the connectors page already names that service as a shipping connector. A use-case "
+        "page naming a connector the product ships is this slice, not a new tenant reference. "
         "Owner: the developer, at the cutover.",
     ),
     (
