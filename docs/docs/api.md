@@ -119,8 +119,6 @@ account can reach.
 
 ## What is not on this surface
 
-- **KPIs, reports and the data catalog** are sidecar surfaces and are not part
-  of this API.
 - **AI clients** connect over [MCP](/features/connect#mcp) instead, with the
   same personal key, and get a read-only tool surface scoped to saved queries
   and dashboards.
