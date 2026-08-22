@@ -24,6 +24,8 @@ Its third page goes the other way and serves your data out, in a standard other 
 
 Requests authenticate with your personal API key, sent as an `Authorization` header. The key is on your [profile page](/features/settings#your-profile), and it reaches only the data your own account can, so an API call cannot get around the permissions you have in the interface.
 
+The endpoint-by-endpoint reference, including how to run a query with parameters and poll the result, is the [Data API](/api) page.
+
 The page is also explicit about what does not travel. Backend credentials never leave the server: the browser only ever calls same-origin routes under `/api`, which forward to the backends using the instance's server-side keys.
 
 When the instance configures a help URL, a **Documentation** button links to the operator's own docs.

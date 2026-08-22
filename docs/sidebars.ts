@@ -8,6 +8,7 @@ const sidebars: SidebarsConfig = {
     'architecture',
     'configuration',
     'connectors',
+    'api',
     {
       type: 'category',
       label: 'Features',
