@@ -89,6 +89,8 @@ Compute the ratios in the visualization or in a `results` query on top. Keep the
 counts and the percentages in the same table, so a reader can see what each
 percentage was calculated over.
 
+![A query's read view with its results table](/img/screenshots/query-view.png)
+
 ### 3. Add the trip-length comparison
 
 The comparison that matters to a rider is how long the same journey would take

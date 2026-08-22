@@ -210,7 +210,7 @@ test('every documented image is accounted for', () => {
     .concat(DRIVEN_SCREENS)
     .concat(PACK_SCREENS)
 
-  expect(expected.length).toBe(55)
+  expect(expected.length).toBe(56)
   expect(expected.filter((name) => !onDisk.has(name))).toEqual([])
   expect([...onDisk].filter((name) => !expected.includes(name))).toEqual([])
 

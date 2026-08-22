@@ -28,6 +28,9 @@ export const AUTHED_SCREENS: ReadonlyArray<{ name: string; path: string }> = [
   { name: 'query-view', path: '/queries/1' },
   { name: 'query-editor', path: '/queries/1/source' },
   { name: 'query-new', path: '/queries/new' },
+  // 12 is the gallery's choropleth query, so this is the one capture showing a
+  // map visualization at full size rather than as a gallery tile.
+  { name: 'choropleth-view', path: '/queries/12' },
 
   // Dashboards. 5 is the visualization gallery, which is what viz-gallery
   // documents: every chart surface the build draws, on one grid.

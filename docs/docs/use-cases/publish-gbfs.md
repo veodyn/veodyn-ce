@@ -130,6 +130,8 @@ positions](/use-cases/publish-gtfs-realtime).
 findings grouped by rule, with the individual locators behind a disclosure, so
 forty rows from one broken rule do not read as forty separate problems.
 
+![A feed's page: Serving in the header, the public address, the binding, and a publish history holding a published attempt and a blocked one](/img/screenshots/connect-feed-detail.png)
+
 Where a rule reports more occurrences than it exported, the disclosure says
 *showing 2 of 12 occurrences* rather than presenting the visible count as the
 total.

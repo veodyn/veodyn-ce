@@ -52,8 +52,11 @@ anything on the device.
 
 ### 1. Add the data source
 
-**Admin → Data Sources → New Data Source**, type NTCIP 1203 DMS. The device list
-above goes in the **Devices (JSON)** field. The rest:
+**Admin → Data Sources → New Data Source**, type NTCIP 1203 DMS.
+
+![The new data source form: the type picker and the connection fields it implies](/img/screenshots/data-source-new.png)
+
+The device list above goes in the **Devices (JSON)** field. The rest:
 
 | Field | What to set |
 |---|---|

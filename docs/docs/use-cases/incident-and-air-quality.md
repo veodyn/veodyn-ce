@@ -98,6 +98,8 @@ read.
 Give the dashboard a short auto-refresh. Everything on it describes current
 conditions, so a stale number is misleading.
 
+![A dashboard in view mode with charts, a counter, and a text box](/img/screenshots/dashboard-view.png)
+
 ### 4. Accumulate the history you will want later
 
 The board itself is live, but a month later the questions are comparative.

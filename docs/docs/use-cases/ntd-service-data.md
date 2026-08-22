@@ -125,6 +125,8 @@ GROUP BY r.route_id, r.route_short_name
 ORDER BY trips_on_this_pattern DESC
 ```
 
+![The SQL editor: schema browser, AI prompt bar, Monaco editor, and results pane](/img/screenshots/query-editor.png)
+
 Two assumptions in that query are worth spelling out:
 
 - The comparison is `c.monday = 1`, unquoted. The connector types each column

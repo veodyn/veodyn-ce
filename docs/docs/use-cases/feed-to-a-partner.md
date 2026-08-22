@@ -40,6 +40,8 @@ prints its URL with a copy button, a private one prints a sentence saying a
 token is needed. Printing an address that turns every anonymous reader away
 would only send them hunting for a credential the build may not be able to mint.
 
+![A public feed's page: the address with its copy button, the binding, and the publish history. A private feed's page prints a token sentence where the address sits here](/img/screenshots/connect-feed-detail.png)
+
 ## Before you start
 
 - An [administrator account](/features/published-feeds#publishing-is-administered).

@@ -43,7 +43,11 @@ Two details about how it is read matter before you write a query:
 
 ### 1. Add the data source
 
-**Admin → Data Sources → New Data Source**, type Static GTFS. Two fields:
+**Admin → Data Sources → New Data Source**, type Static GTFS.
+
+![The new data source form: the type picker and the connection fields it implies](/img/screenshots/data-source-new.png)
+
+Two fields:
 
 | Field | What to set |
 |---|---|

@@ -51,6 +51,8 @@ and a copyable JSON block for your client's MCP settings. Use the page rather
 than assembling the values by hand; it reads its own address, so what it hands
 you works as pasted.
 
+![The MCP page: the server URL and the client configuration snippet](/img/screenshots/connect-mcp.png)
+
 ### 2. Get your key
 
 **Profile → Security** holds your personal API key, masked, with controls to

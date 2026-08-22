@@ -33,6 +33,8 @@ After the first successful scheduled capture, the captured rows show up as a
 dataset in the [data catalog](/features/data-catalog). The dataset's id is the
 warehouse table name; copy it from the `<id>` part of the dataset page's URL.
 
+![A dataset page: the freshness badge, coverage, row count and sources, above the column schema](/img/screenshots/dataset-detail.png)
+
 **Query this dataset** on that page opens the capture query itself, the
 `{"resource": "trip_updates"}` query against the GTFS-Realtime connector,
 since that is the dataset's sample query. The SQL below runs against the

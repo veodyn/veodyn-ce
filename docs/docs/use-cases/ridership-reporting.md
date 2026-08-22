@@ -105,6 +105,8 @@ was late, and a missing row is something you want to be able to see.
 
 ### 3. Build the board
 
+![A dashboard in view mode with charts, a counter, and a text box](/img/screenshots/dashboard-view.png)
+
 - Counters for the current month's UPT, VRM, VRH, each with the prior year's
   same month as the comparison.
 - A line chart of UPT by month, one series per mode.

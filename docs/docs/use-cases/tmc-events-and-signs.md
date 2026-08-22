@@ -108,6 +108,8 @@ trend is computed from.
 punctuality for every scheduled query in the instance. See
 [Schedules](/features/schedules).
 
+![The Schedules page listing every scheduled query and its punctuality](/img/screenshots/schedules.png)
+
 ### 4. Map the enumerations in the query, not in your head
 
 `severity`, `status` and `direction` on `events`, `direction` on

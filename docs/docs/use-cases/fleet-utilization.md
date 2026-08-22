@@ -52,6 +52,8 @@ runs → warehouse)** on the same form, and a retention that matches how far bac
 anyone will actually look. That checkbox appears on every source type; it
 matters here because the connector only ever returns the current state.
 
+![A data source page: its type, connection settings and the groups that may use it](/img/screenshots/data-source-detail.png)
+
 ### 2. Two queries, scheduled
 
 The status snapshot, on your chosen cadence:

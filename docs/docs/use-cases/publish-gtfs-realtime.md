@@ -90,6 +90,8 @@ publish](/features/published-feeds#normalizing-before-you-publish).
 
 **Connect → Feeds → Publish a feed**, and fill in five parts:
 
+![The Publish a Feed form: source, address, shape, the field-to-column mapping table, and the on-failure modes](/img/screenshots/connect-feed-new.png)
+
 | Part | What to put in it |
 |---|---|
 | **Source** | The saved query from step 2 |

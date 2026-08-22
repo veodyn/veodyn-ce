@@ -151,6 +151,8 @@ row count, and a freshness badge resolved by the same rule the
 [Captures](/features/captures) board uses. Tag the query with `domain:<key>` and
 the dataset joins that domain's page.
 
+![The data catalog: dataset cards with search and a domain filter](/img/screenshots/data-catalog.png)
+
 Check coverage when a trend looks wrong. A chart that starts partway through a
 month usually means capture was only switched on then.
 

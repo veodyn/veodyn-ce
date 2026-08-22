@@ -103,6 +103,8 @@ archive](/use-cases/static-gtfs-archive#check-the-archive-before-you-rely-on-it)
 Keep both addresses live through the overlap. Give every consumer you identified
 the new URL, a date after which the old one stops, and a name to reply to.
 
+![The published feeds list: address over source query, standard, access and revision](/img/screenshots/connect-feeds.png)
+
 The two feeds are independent. The vendor serves theirs, the [publish
 path](/features/published-feeds) serves yours, and neither knows about the
 other. Nothing coordinates them, so watch [Schedules](/features/schedules) and

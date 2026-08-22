@@ -132,6 +132,8 @@ published, who asked for it, and when it expires. An [enterprise](/editions)
 build adds an audit surface with bulk revoke under [Admin → Shared
 Links](/admin/system#shared-links).
 
+![The Shared Links admin page listing every public link](/img/screenshots/admin-shared-links.png)
+
 ## How you know it worked
 
 Open every link in a private window. The dashboard renders, the embed renders

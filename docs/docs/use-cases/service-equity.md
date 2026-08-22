@@ -137,6 +137,8 @@ the dashboard opens.
 
 ### 5. Draw it
 
+![A choropleth on a query's read view. This capture shades the bundled world map; the geometry column mode below draws one region per result row instead](/img/screenshots/choropleth-view.png)
+
 Add a Choropleth visualization and set **Region Boundaries** to *Geometry
 column*. This mode draws one region per result row instead of shading the
 bundled world map. Then:
