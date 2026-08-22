@@ -13,8 +13,9 @@ const config: Config = {
   // parse an explicit heading id: every `{#custom-id}` in docs/ fails with
   // "Could not parse expression with acorn". There are 8 of them across 6
   // files and they are link targets, not decoration, so the failure mode if
-  // they silently stopped resolving is dead cross-page anchors (onBrokenAnchors
-  // is not set to throw). Removing the "(enterprise)" parenthetical beside them
+  // they silently stopped resolving is dead cross-page anchors, which
+  // onBrokenAnchors below turns into a build failure instead of a silent one.
+  // Removing the "(enterprise)" parenthetical beside them
   // was tried and does not help; it is the id syntax itself.
 
   // Origin and path prefix, both overridable, both defaulting to what the
@@ -44,6 +45,9 @@ const config: Config = {
   trailingSlash: true,
 
   onBrokenLinks: 'throw',
+  // Anchors too: a renamed heading otherwise turns every cross-page anchor
+  // pointing at it into a silent dead link.
+  onBrokenAnchors: 'throw',
 
   // Both halves are needed for the architecture diagram: this enables the
   // ```mermaid fence, and '@docusaurus/theme-mermaid' below draws it. Without
@@ -115,7 +119,10 @@ const config: Config = {
     colorMode: {
       respectPrefersColorScheme: true,
     },
-    image: 'img/logo.svg',
+    // The og:image. A raster, because the social crawlers that render link
+    // previews do not rasterize SVG, so pointing this at the logo shipped
+    // links with no preview card at all.
+    image: 'img/veodyn-social-card.png',
     navbar: {
       title: 'Veodyn',
       logo: {

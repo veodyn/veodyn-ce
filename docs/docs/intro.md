@@ -1,7 +1,8 @@
 ---
 slug: /
 sidebar_position: 1
-title: Introduction
+title: Documentation
+sidebar_label: Introduction
 description: "Veodyn is an open-source, self-hostable transportation data platform. A node is a complete instance for one agency: adapters, normalization, a local warehouse, APIs, and visualization."
 ---
 
