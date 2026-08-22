@@ -37,6 +37,12 @@ const config: Config = {
   url: process.env.DOCS_SITE_URL ?? 'https://veodyn.invalid',
   baseUrl: process.env.DOCS_BASE_URL ?? '/docs/',
 
+  // Every host serving this build (Cloudflare in front of docs.veodyn.com,
+  // nginx in the image) resolves a page as a directory index and 308s the
+  // slashless URL onto it, so canonicals, sitemap entries and generated links
+  // must carry the trailing slash or they all point at a redirect.
+  trailingSlash: true,
+
   onBrokenLinks: 'throw',
 
   // Both halves are needed for the architecture diagram: this enables the
