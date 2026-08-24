@@ -94,9 +94,11 @@ export default function NewDataSourcePage() {
               onClick={() => setSelectedType(t.type)}
               className="h-auto w-full rounded-xl p-0 hover:bg-transparent active:translate-y-0 dark:hover:bg-transparent"
             >
-              <Card className="w-full flex-row items-center gap-3 px-4 transition-colors hover:ring-primary/50">
-                <DataSourceLogo type={t.type} className="h-8 w-8 object-contain" fallbackClassName="h-8 w-8 text-primary" />
-                <span className="font-medium">{t.name}</span>
+              {/* Button carries whitespace-nowrap and Card overflow-hidden, so a
+                  name wider than its column was clipped mid-word, no ellipsis. */}
+              <Card className="h-full w-full flex-row items-center gap-3 px-4 transition-colors hover:ring-primary/50">
+                <DataSourceLogo type={t.type} className="h-8 w-8 shrink-0 object-contain" fallbackClassName="h-8 w-8 shrink-0 text-primary" />
+                <span className="line-clamp-2 min-w-0 flex-1 text-left font-medium whitespace-normal wrap-break-word">{t.name}</span>
               </Card>
             </Button>
           ))}

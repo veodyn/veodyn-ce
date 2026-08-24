@@ -64,12 +64,12 @@ export default function DestinationsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {visible.map((d) => (
             <Link key={d.id} href={`/destinations/${d.id}`} className="block">
-              <Card className="flex-row items-center gap-4 px-4 transition-colors hover:ring-primary/50">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Card className="h-full flex-row items-center gap-4 px-4 transition-colors hover:ring-primary/50">
+                <div className="h-10 w-10 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center">
                   <DestinationIcon type={d.type} className="h-5 w-5 text-primary" />
                 </div>
-                <div>
-                  <h3 className={ENTITY_NAME_CLASS}>{d.name}</h3>
+                <div className="min-w-0">
+                  <h3 className={`${ENTITY_NAME_CLASS} wrap-break-word`}>{d.name}</h3>
                   <p className="text-xs text-muted-foreground capitalize">{d.type}</p>
                 </div>
               </Card>

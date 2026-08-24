@@ -81,16 +81,18 @@ export default function DataSourcesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {visible.map((ds) => (
             <Link key={ds.id} href={`/data-sources/${ds.id}`} className="block">
-              <Card className="flex-row items-center gap-4 px-4 transition-colors hover:ring-primary/50">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden">
+              <Card className="h-full flex-row items-center gap-4 px-4 transition-colors hover:ring-primary/50">
+                {/* A name with no spaces in it squeezed the logo tile to zero
+                    width and still ran past the card, which clips it. */}
+                <div className="h-10 w-10 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden">
                   <DataSourceLogo
                     type={ds.type}
                     className="h-7 w-7 object-contain"
                     fallbackClassName="h-5 w-5 text-primary"
                   />
                 </div>
-                <div>
-                  <h3 className={ENTITY_NAME_CLASS}>{ds.name}</h3>
+                <div className="min-w-0">
+                  <h3 className={`${ENTITY_NAME_CLASS} wrap-break-word`}>{ds.name}</h3>
                   <p className="text-xs text-muted-foreground">{typeIcons[ds.type] || ds.type}</p>
                 </div>
               </Card>

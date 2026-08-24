@@ -82,9 +82,11 @@ export default function NewDestinationPage() {
                 onClick={() => selectType(t.type)}
                 className="h-auto w-full rounded-xl p-0 hover:bg-transparent active:translate-y-0 dark:hover:bg-transparent"
               >
-                <Card className="w-full flex-row items-center gap-3 px-4 transition-colors hover:ring-primary/50">
-                  <DestinationIcon type={t.type} className="h-6 w-6 text-primary" />
-                  <span className="font-medium">{t.name}</span>
+                {/* Same clipping the data-source picker had; the enabled list is
+                    server-side, so a type name here is not bounded by this tree. */}
+                <Card className="h-full w-full flex-row items-center gap-3 px-4 transition-colors hover:ring-primary/50">
+                  <DestinationIcon type={t.type} className="h-6 w-6 shrink-0 text-primary" />
+                  <span className="line-clamp-2 min-w-0 flex-1 text-left font-medium whitespace-normal wrap-break-word">{t.name}</span>
                 </Card>
               </Button>
             ))}

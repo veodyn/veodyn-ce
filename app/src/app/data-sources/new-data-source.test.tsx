@@ -57,6 +57,18 @@ describe('the search box on the data source type picker', () => {
 
     expect(await screen.findByRole('heading', { name: 'New PostgreSQL Data Source' })).toBeInTheDocument()
   })
+
+  it('lets a long type name wrap instead of being cut off inside its card', async () => {
+    renderWithProviders(<NewDataSourcePage />)
+
+    const label = await screen.findByText('TMDD Center-to-Center')
+    // Button sets whitespace-nowrap and Card sets overflow-hidden, so without
+    // these the name is clipped mid-word with no ellipsis. jsdom does no
+    // layout, so the classes are what can be asserted here; the widths were
+    // measured in a browser.
+    expect(label.className).toContain('whitespace-normal')
+    expect(label.className).toContain('min-w-0')
+  })
 })
 
 // The NTCIP DMS connector's community field carries a cleartext-transmission
