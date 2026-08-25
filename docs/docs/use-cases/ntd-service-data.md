@@ -1,7 +1,7 @@
 ---
 sidebar_position: 7
 title: Derive NTD service data from your GTFS archive
-description: "Reading the scheduled half of a service report off the archive you already publish: which tables answer which question, checking the archive first, and the line where this stops."
+description: "Reading the scheduled half of a service report off the archive you already publish: which tables answer which question, checking the archive first, and the evidence trail behind each figure."
 ---
 
 # Derive NTD service data from your GTFS archive
@@ -16,17 +16,15 @@ This reads the second half off that archive, so the numbers you report about
 your own service and the numbers a rider's app shows come from the same file
 instead of from a spreadsheet maintained beside it.
 
-:::caution This files nothing, and it is not a compliance product
+:::info What you end up with
 
-There is no NTD submission here. Nothing is uploaded, transmitted or filed.
-What follows produces figures and the evidence behind them, and a person still
-enters them wherever they are entered.
-
-It also does not tell you what your reporter type owes. Requirements differ by
-reporter type and change between report years, and the current [NTD reporting
-policy manual](https://www.transit.dot.gov/ntd) is the only authority on which
-figures are asked for and how each is defined. Read it first, then work out
-which of these tables answers it.
+Routes operated, trips scheduled, each trip's span and stop count, and the days
+every service pattern ran, read straight off the archive you already publish.
+Each figure is a saved query you can rerun in front of a reviewer, with the
+decisions behind it written into the query's description, so every number in
+the report links back to its evidence. The current [NTD reporting policy
+manual](https://www.transit.dot.gov/ntd) defines which figures your reporter
+type owes; these tables are how you answer it.
 
 :::
 
