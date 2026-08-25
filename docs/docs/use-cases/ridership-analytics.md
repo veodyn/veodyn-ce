@@ -8,21 +8,21 @@ description: "What the monthly pack cannot tell you: route trends indexed to 100
 
 [The ridership pack](/use-cases/ridership-reporting) answers what you file:
 four numbers a month, by mode and type of service. This guide asks the
-questions those totals cannot answer. Which routes are growing and which are
-quietly emptying. When in the week your riders actually ride. Where boardings
-sit on the map you are accountable for.
+questions those totals cannot answer: which routes are growing and which are
+emptying, when in the week your riders actually ride, and where boardings sit
+on the map you are accountable for.
 
 Every figure below is arithmetic over counts your APC or farebox system
 produced; what the product adds is the history, the SQL, and the pictures.
 
 ## What has to be true
 
-**The counts need grain.** Monthly totals can only redraw the pack. Trends,
+The counts need grain. Monthly totals can only redraw the pack. Trends,
 heatmaps and maps need rows at the stop, trip or boarding level, each carrying
 a timestamp, a route, and a stop id or coordinates. Whether your counting
 system exports that grain decides how far this guide goes.
 
-**The counts need history in a queryable table.** Two ways to get it, and they
+The counts also need history in a queryable table. Two ways to get it, and they
 are not equivalent:
 
 - If the APC or farebox system keeps its own database, add it as a [data
@@ -32,7 +32,7 @@ are not equivalent:
 - If the source only reports current state, switch on [historical
   capture](/use-cases/history-capture) and let scheduled reads accumulate.
 
-**For the map step**, boundaries as GeoJSON and SpatiaLite on the host, the
+For the map step, boundaries as GeoJSON and SpatiaLite on the host, the
 same requirements as [the service equity
 board](/use-cases/service-equity).
 

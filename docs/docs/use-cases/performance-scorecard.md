@@ -58,8 +58,8 @@ feed](/features/published-feeds) directly, from a fixed list of measures such
 as delivery ratio, seconds since last row, or publish success rate, each with
 its unit and direction filled in. Put one or two of these on the scorecard.
 Service metrics say how the agency performed; these say whether the data
-underneath them is arriving at all, and a scorecard that watches both cannot
-be quietly wrong about the second.
+underneath them is arriving at all, so a good-looking number on a dead feed
+does not go unquestioned.
 
 ### 3. Arm the breach alerts
 
@@ -77,8 +77,8 @@ values reach the scheduled run.
 The list's **Status** and **Data** columns answer different questions: whether
 the number is good, and whether there is a number at all. A KPI on a frozen
 feed keeps evaluating punctually and keeps reporting On track off the last
-value it managed to read, so **On track beside a stale Data badge is the
-combination to stop at**. The KPI's own page adds the history chart with the
+value it managed to read, so On track beside a stale Data badge is the
+combination to stop at. The KPI's own page adds the history chart with the
 target and both bands drawn behind it, so a value drifting toward a threshold
 is visible before it crosses.
 

@@ -14,7 +14,7 @@ moment that was.
 
 A [report](/features/reports) is that document as a product surface. Prose and
 data blocks compose into one page, a snapshot freezes every number and stamps
-when, a second person approves it, and the approved version goes out as a PDF
+when it was taken, a second person approves it, and the approved version goes out as a PDF
 or a public link that keeps serving exactly what was approved, whatever happens
 to the live data afterwards.
 
