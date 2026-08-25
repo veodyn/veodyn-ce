@@ -170,9 +170,7 @@ as they come up later.
 
 It does not count passengers, miles or hours. Those come from systems that
 measure them, and they are covered in [the ridership
-pack](/use-cases/ridership-reporting), including the caution that FTA approval of
-automatic passenger counters is a matter for the equipment and its validation
-programs rather than for how the numbers are later assembled.
+pack](/use-cases/ridership-reporting).
 
 It also does not know your reporter type, your mode coding, or what this year's
 manual asks for. It reads the schedule you published and leaves every question

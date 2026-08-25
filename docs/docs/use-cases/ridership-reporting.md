@@ -15,18 +15,15 @@ them again for the board in a different shape.
 The setup below produces them once, from the systems of record, into a single
 board and a table you can read the filing off.
 
-:::caution Veodyn does not count passengers
+:::info What you end up with
 
-Every number here comes from a system that counts: your APC, farebox, dispatch
-or scheduling system. Nothing in this product produces a ridership figure, so a
-number that arrives wrong will appear on the board wrong. What the pack adds is
-one place to keep them, one definition per measure, and a reconciliation step.
-
-Note also that FTA must approve an agency's automatic passenger counters before
-their data may be used for NTD reporting, and that approval is about the
-counting equipment and its validation, not about how the numbers are later
-assembled. Read the current [NTD reporting policy
-manual](https://www.transit.dot.gov/ntd) for your reporter type.
+UPT, VRM, VRH and VOMS by mode and type of service, drawn once a month from
+the systems that count them (APC, farebox, dispatch, scheduling) into one
+board and one table you read the filing off. Each measure carries one written
+definition and one system of record, and a reconciliation step keeps the board
+and the filing in agreement. The current [NTD reporting policy
+manual](https://www.transit.dot.gov/ntd) defines what your reporter type
+files; this pack is how you assemble it.
 
 :::
 
