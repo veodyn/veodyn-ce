@@ -227,18 +227,9 @@ class GtfsStatic(BaseResourceRunner):
             {
                 "name": "__ Query Examples __",
                 "columns": [
-                    "─────────────────────────────────────",
-                    "List the tables in the archive",
-                    "─────────────────────────────────────",
                     '{"resource": "list"}',
-                    "",
-                    "Every stop",
                     '{"table": "stops"}',
-                    "",
-                    "Stop coordinates only, for a map",
                     '{"table": "stops", "columns": ["stop_id", "stop_name", "stop_lat", "stop_lon"]}',
-                    "",
-                    "Trips on two routes",
                     '{"table": "trips", "filter": {"route_id": ["12", "14"]}}',
                 ],
             },

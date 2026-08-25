@@ -274,13 +274,9 @@ class BaseResourceRunner(RedisPublisherMixin, BaseQueryRunner):
                     }
                 )
             example = meta.get("example", json.dumps({"resource": name}))
-            examples += [
-                "─────────────────────────────────────",
-                f"EXAMPLE: {name}",
-                "─────────────────────────────────────",
-                example,
-                "",
-            ]
+            # The query alone: clicking it in the schema browser inserts a
+            # working starter, and it names its own resource.
+            examples.append(example)
         if examples:
             schema.append({"name": "__ Query Examples __", "columns": examples})
         return schema

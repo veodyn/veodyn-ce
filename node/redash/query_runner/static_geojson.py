@@ -255,21 +255,10 @@ class StaticGeoJSON(BaseResourceRunner):
         layer_ids = list(self.manifest)
         first = layer_ids[0] if layer_ids else "<layer_id>"
         examples = [
-            "─────────────────────────────────────",
-            "List available datasets",
-            "─────────────────────────────────────",
             '{"resource": "list"}',
-            "",
-            "All features of one layer, as rows (for MAP_GEO)",
             f'{{"layers": ["{first}"]}}',
-            "",
-            "Two layers unioned into one map",
             '{"layers": ["<layer_id_1>", "<layer_id_2>"]}',
-            "",
-            "Filter by a property",
             f'{{"layers": ["{first}"], "filter": {{"<property>": ["<value>"]}}}}',
-            "",
-            "Merged FeatureCollection blob",
             f'{{"layers": ["{first}"], "format": "featurecollection"}}',
         ]
         schema.append({"name": "__ Query Examples __", "columns": examples})
