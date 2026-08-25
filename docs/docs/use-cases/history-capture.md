@@ -1,5 +1,5 @@
 ---
-sidebar_position: 14
+sidebar_position: 15
 title: Build a history you can trend
 description: "Connectors answer with now. Historical capture accumulates query results into a warehouse table you can query, which is what every trend, rollup and month-over-month recipe is built on."
 ---

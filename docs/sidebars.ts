@@ -58,6 +58,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'use-cases/ridership-reporting',
             'use-cases/ntd-service-data',
+            'use-cases/operations-report',
             'use-cases/demand-response',
             'use-cases/service-equity',
             'use-cases/feed-freshness',
@@ -81,6 +82,8 @@ const sidebars: SidebarsConfig = {
             'use-cases/history-capture',
             'use-cases/on-time-performance',
             'use-cases/fleet-utilization',
+            'use-cases/ridership-analytics',
+            'use-cases/performance-scorecard',
           ],
         },
         {

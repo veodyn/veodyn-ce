@@ -1,5 +1,5 @@
 ---
-sidebar_position: 16
+sidebar_position: 17
 title: Track fleet utilization from telematics
 description: "What the Geotab connector actually returns, the utilization measures you can build from it, and the maintenance questions it cannot answer."
 ---

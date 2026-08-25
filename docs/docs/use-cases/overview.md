@@ -13,7 +13,7 @@ organized by goal instead. Each one takes a single goal an agency has and walks
 it from the data you already hold to something a reader outside your team can
 use.
 
-There are eighteen guides here, in five groups. Nearly all of them are written
+There are twenty-one guides here, in five groups. Nearly all of them are written
 to the same five parts, in the same order:
 
 | Part | What it holds |
@@ -55,6 +55,7 @@ publishing them is enterprise.
 |---|---|
 | [Assemble a monthly ridership pack](/use-cases/ridership-reporting) | UPT, VRM, VRH and VOMS by mode and type of service, from the systems of record, reconciled against a month you have already filed |
 | [Derive NTD service data from your GTFS archive](/use-cases/ntd-service-data) | Route, trip and service-day counts read off the schedule you already publish, with the archive checked first |
+| [Produce the monthly operations report](/use-cases/operations-report) | The board-facing document with its numbers frozen, reviewed and approved, going out as a PDF or a revocable public link |
 | [Report on demand-response service](/use-cases/demand-response) | Denials, missed trips, untimely pickups and ride length out of the dispatch system, on definitions written down once |
 | [Build a service equity board](/use-cases/service-equity) | Stops and service assigned to your own tract or district boundaries, shaded on a map, on attributes you bring |
 | [Prove your captures are current](/use-cases/feed-freshness) | A declared cadence on every capture, so freshness is a verdict the product reaches rather than a claim the data makes about itself |
@@ -74,6 +75,8 @@ publishing them is enterprise.
 | [Build a history you can trend](/use-cases/history-capture) | Query results accumulating into a warehouse table, which is what every recipe below is built on |
 | [On-time performance](/use-cases/on-time-performance) | OTP% by route and day, computed from the delays your own trip-update feed reports |
 | [Track fleet utilization from telematics](/use-cases/fleet-utilization) | Vehicles in service by hour, and the list of vehicles that have not moved in a week |
+| [Ridership analytics on your captured counts](/use-cases/ridership-analytics) | Route trends indexed to 100, an hour-by-day heatmap, and boardings shaded onto your own districts, tied out against a filed month |
+| [Build an agency performance scorecard](/use-cases/performance-scorecard) | Named metrics with targets, owners and breach alerts, on a board you can present or put on the operations-room wall |
 
 ## Getting data back out
 

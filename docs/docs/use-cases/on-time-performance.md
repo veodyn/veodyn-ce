@@ -1,7 +1,7 @@
 ---
 title: "On-time performance"
 description: "Turning an agency's own GTFS-Realtime trip updates into an on-time performance percentage by route and day, using only the query service and the data catalog."
-sidebar_position: 15
+sidebar_position: 16
 ---
 
 # On-time performance

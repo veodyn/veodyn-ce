@@ -1,5 +1,5 @@
 ---
-sidebar_position: 12
+sidebar_position: 13
 title: Read a DMS fleet over NTCIP 1203
 description: "Polling dynamic message signs over SNMP: the device list, the three resources, why an unreachable sign is a row rather than a failed query, and the network rule that comes with SNMP v1 and v2c."
 ---

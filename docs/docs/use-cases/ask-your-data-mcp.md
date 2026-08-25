@@ -1,5 +1,5 @@
 ---
-sidebar_position: 17
+sidebar_position: 20
 title: Ask your data from an AI client
 description: "Wiring Claude Desktop or an IDE to your instance over MCP: the endpoint, the credential, what the assistant can and cannot reach, and the library work that decides whether it is any use."
 ---

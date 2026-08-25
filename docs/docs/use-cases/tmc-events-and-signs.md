@@ -1,5 +1,5 @@
 ---
-sidebar_position: 11
+sidebar_position: 12
 title: Put a traffic management center on your board
 description: "Reading active events and dynamic message sign status from a TMDD v3.03d center: the connection facts to ask for, the three queries, and the four traps in the standard."
 ---

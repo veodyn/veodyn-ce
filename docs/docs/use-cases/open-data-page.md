@@ -1,5 +1,5 @@
 ---
-sidebar_position: 18
+sidebar_position: 21
 title: Publish an open-data page
 description: "Giving the public a dashboard they can read without an account, an embed that survives being pasted into someone else's site, and the machine-readable half beside it."
 ---

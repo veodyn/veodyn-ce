@@ -1,5 +1,5 @@
 ---
-sidebar_position: 9
+sidebar_position: 10
 title: Build a service equity board
 description: "Assigning stops and service to your own tract or district boundaries with a spatial join, shading the result as a choropleth, and what the join costs."
 ---

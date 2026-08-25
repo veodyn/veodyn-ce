@@ -1,5 +1,5 @@
 ---
-sidebar_position: 10
+sidebar_position: 11
 title: Prove your captures are current
 description: "Turning freshness from something a source claims about itself into a verdict the product reaches: declared cadences, the two ways a status is arrived at, and the schedules behind them."
 ---

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 19
+sidebar_position: 22
 title: Distribute a feed to a named partner
 description: "Serving one feed to one named consumer on a credential you issued: the visibility model, the two transports a token travels over, what a refusal tells them, and how rotation works."
 ---

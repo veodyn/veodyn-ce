@@ -1,5 +1,5 @@
 ---
-sidebar_position: 13
+sidebar_position: 14
 title: Build an incident and air quality picture
 description: "Traffic alerts, air quality and weather on one board: the three connectors, the parameters they take, the history worth accumulating, and the correlation not to claim."
 ---
