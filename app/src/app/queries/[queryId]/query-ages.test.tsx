@@ -19,8 +19,12 @@ vi.mock('next/navigation', () => ({
 }))
 
 const QUERY_ID = 4242
-const EDITED_AT = '2026-07-31T12:00:00Z'
-const RETRIEVED_AT = '2026-07-25T12:00:00Z'
+// Relative to the clock, not calendar dates: fixed dates rotted, and on the
+// day the result age crossed from "days" to "a month" this suite started
+// failing with no change anywhere in the tree.
+const DAY_MS = 24 * 60 * 60 * 1000
+const EDITED_AT = new Date(Date.now() - 4 * DAY_MS).toISOString()
+const RETRIEVED_AT = new Date(Date.now() - 10 * DAY_MS).toISOString()
 
 function seedQuery(overrides: Partial<MockQuery> = {}) {
   const query: MockQuery = {
