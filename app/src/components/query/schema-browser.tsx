@@ -94,9 +94,14 @@ export function SchemaBrowser({ schema, dataSourceId, onInsert }: SchemaBrowserP
                 </span>
               </div>
               <CollapsibleContent className="ml-4">
-                {table.columns.map((col) => (
+                {/* Keyed by position: a connector's "Query Examples" table
+                    lists documentation lines as columns, and a spacer line or
+                    a rule repeats, so the name alone is not unique. Blank
+                    lines are spacing in that listing and draw nothing. */}
+                {table.columns.map((col, index) =>
+                  col.name.trim() === '' ? null : (
                   <Button
-                    key={col.name}
+                    key={`${index}:${col.name}`}
                     variant="ghost"
                     onClick={() => onInsert(col.name)}
                     className="h-auto w-full justify-start gap-1.5 rounded-none px-2 py-1 text-left text-xs font-normal hover:bg-muted/50"
@@ -105,7 +110,8 @@ export function SchemaBrowser({ schema, dataSourceId, onInsert }: SchemaBrowserP
                     <span className="truncate">{col.name}</span>
                     <span className="ml-auto truncate text-muted-foreground">{col.type}</span>
                   </Button>
-                ))}
+                  )
+                )}
               </CollapsibleContent>
             </Collapsible>
           ))}

@@ -86,6 +86,34 @@ describe('SchemaBrowser', () => {
     expect(previewed).toEqual([['table-preview', 1, 'historical.stations']])
   })
 
+  // A connector's schema ends with a "Query Examples" pseudo-table whose
+  // columns are documentation lines: a rule, a heading, the example, a blank
+  // spacer, repeated per resource. Keyed by name, the repeats made React warn
+  // about duplicate keys and the blanks drew empty buttons.
+  it('lists repeated documentation lines once each and draws no blank ones', async () => {
+    const user = userEvent.setup()
+    const examples: SchemaTable = {
+      name: '__ Query Examples __',
+      columns: [
+        { name: '─────', type: '' },
+        { name: 'EXAMPLE: stops', type: '' },
+        { name: '', type: '' },
+        { name: '─────', type: '' },
+        { name: 'EXAMPLE: carriers', type: '' },
+        { name: '', type: '' },
+      ],
+    }
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => {})
+    renderWithProviders(<SchemaBrowser schema={[examples]} dataSourceId={1} onInsert={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { expanded: false, name: /Query Examples/ }))
+    expect(await screen.findAllByText('─────')).toHaveLength(2)
+    expect(screen.getByText('EXAMPLE: carriers')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /EXAMPLE|─────/ })).toHaveLength(4)
+    expect(warn.mock.calls.map((c) => String(c[0]))).not.toContainEqual(expect.stringMatching(/same key/))
+    warn.mockRestore()
+  })
+
   it('expands a table and inserts the names it is clicked on', async () => {
     const user = userEvent.setup()
     const onInsert = renderBrowser()
