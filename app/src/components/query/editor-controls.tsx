@@ -15,6 +15,8 @@ interface EditorControlsProps {
   isDirty: boolean
   autoLimit: boolean
   onAutoLimitChange: (value: boolean) => void
+  /** Hidden for non-SQL data sources: LIMIT is not a thing their query text has. */
+  showAutoLimit: boolean
 }
 
 export function EditorControls({
@@ -26,6 +28,7 @@ export function EditorControls({
   isDirty,
   autoLimit,
   onAutoLimitChange,
+  showAutoLimit,
 }: EditorControlsProps) {
   const autoLimitId = useId()
 
@@ -58,12 +61,14 @@ export function EditorControls({
         Format
       </Button>
       <div className="flex-1" />
-      <div className="flex items-center gap-1.5">
-        <Checkbox id={autoLimitId} checked={autoLimit} onCheckedChange={onAutoLimitChange} />
-        <Label htmlFor={autoLimitId} className="text-xs text-muted-foreground cursor-pointer">
-          LIMIT 1000
-        </Label>
-      </div>
+      {showAutoLimit && (
+        <div className="flex items-center gap-1.5">
+          <Checkbox id={autoLimitId} checked={autoLimit} onCheckedChange={onAutoLimitChange} />
+          <Label htmlFor={autoLimitId} className="text-xs text-muted-foreground cursor-pointer">
+            LIMIT 1000
+          </Label>
+        </div>
+      )}
     </div>
   )
 }

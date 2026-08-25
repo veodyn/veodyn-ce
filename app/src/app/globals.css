@@ -3,6 +3,18 @@
 @import "shadcn/tailwind.css";
 @import "./tokens.css";
 
+/*
+ * Tailwind v4's automatic content detection skips anything a .gitignore (or
+ * .git/info/exclude) hides, which src/plugins/riits/ often is in a local dev
+ * tree that composes a pack by copying it in (see the deploy repo's overlay
+ * workflow in the root CLAUDE.md). Without this, every arbitrary-value class
+ * inside a pack's own source — `gap-x-[1.5em]`, `text-[1.4em]` — silently
+ * generates no CSS rule at all: no build error, no lint failure, just a
+ * layout that reads as "spacing is off" with nothing to grep for. An
+ * explicit @source is scanned regardless of ignore rules.
+ */
+@source "../plugins";
+
 @custom-variant dark (&:is(.dark *));
 
 

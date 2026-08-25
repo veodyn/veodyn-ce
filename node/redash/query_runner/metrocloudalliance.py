@@ -1,14 +1,13 @@
 """
 MetroCloudAlliance (MCA) query runner.
 
-Real-time transit predictions, stop/network search, carriers and vehicle
-locations for whatever transit network the account is provisioned against.
+Real-time transit predictions, scheduled stop times, stop/network search,
+carriers, lines/routes and vehicle locations for whatever transit network the
+account is provisioned against.
 
 The API key must be entered when creating the data source; it is not
 shipped as a default.
 """
-
-import time
 
 import requests
 
@@ -18,13 +17,15 @@ from redash.query_runner.connector_base import (
     build_configuration_schema,
     extract_records,
 )
-from redash.query_runner.connector_validation import require_configured
-from redash.query_runner.metrocloudalliance_departures import (
-    DEPARTURE_COLUMNS,
-    flatten_departures,
-)
+from redash.query_runner.connector_validation import require_configured, require_params
 
 DEFAULT_BASE_URL = "https://api.metrocloudalliance.com/"
+
+# MCA's own transit_mode vocabulary for the lines/routes/patterns resources,
+# quoted from the vendor's OpenAPI description. The realtime resources (stops,
+# predictions, vehiclelocations) only ever report "bus" or "rail" - use these
+# finer values here to split light rail from commuter rail from heavy rail.
+TRANSIT_MODES = "rail, commuter rail, light rail, bus, express bus, rapid bus, local bus, transitway, ferry"
 
 
 class MetroCloudAlliance(BaseResourceRunner):
@@ -40,30 +41,42 @@ class MetroCloudAlliance(BaseResourceRunner):
             ],
             "doc_returns": [
                 "carrier_code: string",
-                "carrier_id: string",
+                "carrier_id: integer",
                 "stop_id: string",
                 "stop_name: string",
+                "uuid: string",
                 "lat: float",
                 "lng: float",
-                "transit_modes: string (JSON)",
-                "routes: string (JSON, routes with predictions.times_minutes)",
+                "dist: integer (meters from search_point; only with search_point)",
+                "prediction_available: boolean",
+                "routes: string (JSON, routes with predictions.times_minutes and predictions.routes[].iline "
+                "- feed iline into the stoptimes resource for the full schedule)",
             ],
             "example": '{"resource": "predictions", "params": {"search_point": "<lat>,<lon>", "search_radius": 500, "carrier_code": "<code>"}}',
         },
-        "departures": {
-            # The predictions endpoint, reshaped: one row per departure rather
-            # than one per stop with the timetable folded into a JSON cell.
-            # What a departure board or a schedules table reads.
-            "path": "v2/realtime/predictions",
+        "stoptimes": {
+            "path": "v2/tripplanner/stoptimes",
             "doc_params": [
-                "stop_id (optional): string - departures from one stop",
-                'search_point (optional): string - "lat,lon"',
-                "search_radius (optional): number - meters around search_point",
-                "carrier_code (optional): string - carrier code, as defined by the account's transit network",
-                "number_of_results (optional): integer - stops, default 100 with search_point",
+                "iline (required): integer - line identifier; read one off a stop's predictions "
+                "resource, at routes[].iline",
+                "location_idx (optional): integer - stop position along the line, default 0",
+                "line_distance (optional): number - feet",
+                "line_name (optional): string",
+                "route_name (optional): string",
+                "date (optional): string",
+                "time (optional): string",
+                "number_of_results (optional): integer - caps entries in the returned list",
             ],
-            "doc_returns": DEPARTURE_COLUMNS,
-            "example": '{"resource": "departures", "params": {"stop_id": "<stop>", "carrier_code": "<code>"}}',
+            "doc_returns": [
+                "location_idx: integer",
+                "on_time: string, off_time: string - board/alight time at this stop",
+                "headsign: string",
+                "start_location_name, end_location_name: string",
+                "start_location_lat, start_location_lng, end_location_lat, end_location_lng: float",
+                "list: string (JSON array of scheduled trips - short_name, board, alight, leaving, "
+                "arriving, hdsgn, day, route, duration)",
+            ],
+            "example": '{"resource": "stoptimes", "params": {"iline": "<iline>"}}',
         },
         "stops": {
             "path": "v2/transitnetwork/stops",
@@ -72,13 +85,83 @@ class MetroCloudAlliance(BaseResourceRunner):
                 'search_point (optional): string - "lat,lon"',
                 "search_radius (optional): number - meters",
                 "carrier_code (optional): string",
+                "leaving all of the above unset returns every stop on the account's network "
+                "(tens of thousands of rows) - scope with carrier_code and/or search_point",
             ],
-            "doc_returns": ["stop objects with id, name, lat, lng, carrier and transit modes"],
+            "doc_returns": [
+                "stop_id: string",
+                "stop_name: string",
+                "uuid: string",
+                "carrier_code: string",
+                "lat: float",
+                "lng: float",
+                "transit_modes: string (BUS or RAIL; MCA does not distinguish light rail from heavy rail "
+                "here - use the lines/routes resource's transit_mode filter for that)",
+                "lines_served: string (JSON; populated only when search_point is used, not on a "
+                "carrier_code-only call)",
+                "address, city, state, zip: string",
+                "dist: integer (meters from search_point; only with search_point)",
+            ],
         },
         "carriers": {
             "path": "v2/transitnetwork/carriers",
             "doc_params": ["carrier_code (optional): string - filter to one carrier"],
-            "doc_returns": ["carrier objects with carrier_code, carrier_id, name"],
+            "doc_returns": [
+                "carrier_code: string",
+                "carrier_id: integer",
+                "carrier_name: string",
+                "carrier_url: string",
+                "carrier_contact: string",
+                "stops_available: boolean",
+                "realtime_vehicle_locations_available: boolean",
+                "realtime_predictions_available: boolean",
+            ],
+        },
+        "lines": {
+            "path": "v2/transitnetwork/lines",
+            "doc_params": [
+                "carrier_code (optional): string",
+                "carrier_id (optional): integer",
+                "line_id (optional): string",
+                "line_code (optional): string",
+                f"transit_mode (optional): string - one of: {TRANSIT_MODES}",
+            ],
+            "doc_returns": [
+                "carrier_name: string",
+                "carrier_code: string",
+                "carrier_id: integer",
+                "line_id: integer",
+                "line_name: string",
+                "line_code: string",
+                "line_color: string",
+            ],
+            "example": '{"resource": "lines", "params": {"carrier_code": "<code>", "transit_mode": "light rail"}}',
+        },
+        "routes": {
+            "path": "v2/transitnetwork/routes",
+            "doc_params": [
+                "carrier_code (optional): string",
+                "carrier_id (optional): integer",
+                "line_id (optional): string",
+                "line_code (optional): string",
+                "route_id (optional): string",
+                "route_code (optional): string",
+                f"transit_mode (optional): string - one of: {TRANSIT_MODES}",
+                "include_geometry (optional): boolean - include route geometry and simple stop info",
+            ],
+            "doc_returns": [
+                "carrier_name: string",
+                "carrier_code: string",
+                "carrier_id: integer",
+                "line_id: integer",
+                "line_name: string",
+                "line_code: string",
+                "line_color: string",
+                "route_id: integer",
+                "route_name: string",
+                "route_code: string",
+            ],
+            "example": '{"resource": "routes", "params": {"carrier_code": "<code>", "transit_mode": "commuter rail"}}',
         },
         "vehiclelocations": {
             "path": "v2/realtime/vehiclelocations",
@@ -100,6 +183,14 @@ class MetroCloudAlliance(BaseResourceRunner):
     }
     default_resource = "carriers"
     noop_query = '{"resource": "carriers"}'
+
+    # Resources whose vendor endpoint 400s on a missing param rather than
+    # treating it as unset - checked in _fetch before the request goes out,
+    # so a missing one fails as "this field is required" instead of a vendor
+    # "Bad Parameter" response.
+    required_resource_params = {
+        "stoptimes": ("iline",),
+    }
 
     @classmethod
     def name(cls):
@@ -147,6 +238,12 @@ class MetroCloudAlliance(BaseResourceRunner):
         return super().run_query(query, user)
 
     def _fetch(self, resource, params):
+        required = self.required_resource_params.get(resource)
+        if required:
+            error = require_params(self.type(), params, *required)
+            if error:
+                raise ValueError(error)
+
         query_params = dict(params)
         query_params["api_key"] = self.api_key
         resp = requests.get(
@@ -161,10 +258,7 @@ class MetroCloudAlliance(BaseResourceRunner):
             detail = raw.get("request_parameters") or raw.get("resource_path") or ""
             raise Exception(f"MCA returned status {raw.get('status')!r} {detail}")
 
-        records = extract_records(raw, ["results"])
-        if resource == "departures":
-            records = flatten_departures(records, now=time.time())
-        return records, raw
+        return extract_records(raw, ["results"]), raw
 
 
 register(MetroCloudAlliance)

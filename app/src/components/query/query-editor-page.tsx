@@ -42,6 +42,13 @@ export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
 
   const [autoLimit, setAutoLimit] = useState(true)
 
+  // Auto LIMIT is a SQL-only convenience: appending "LIMIT 1000" to a
+  // JSON-syntax connector's query (MetroCloudAlliance, GBFS, weather, ...)
+  // does not limit anything, it just becomes a second line the JSON parser
+  // rejects as "Extra data". Gate on the resolved data source's syntax
+  // rather than guessing from the query text.
+  const isSqlDataSource = dataSources?.find((source) => source.id === dataSourceId)?.syntax === 'sql'
+
   // Parameters are authored by writing `{{ name }}` in the buffer, so the list
   // is derived from the SQL rather than edited directly. Values live here too:
   // the ad hoc endpoint refuses a run with a parameter missing, so a buffer
@@ -72,7 +79,7 @@ export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
   const runSql = useCallback(
     (sql: string, viz: AdhocViz | null = null) => {
       let finalQuery = sql
-      if (autoLimit && !sql.toLowerCase().includes('limit')) {
+      if (autoLimit && isSqlDataSource && !sql.toLowerCase().includes('limit')) {
         finalQuery += '\nLIMIT 1000'
       }
       setRunViz(viz)
@@ -83,7 +90,7 @@ export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
         parameters: params.executionValues(),
       })
     },
-    [queryId, dataSourceId, autoLimit, executeQuery, params]
+    [queryId, dataSourceId, autoLimit, isSqlDataSource, executeQuery, params]
   )
 
   const handleExecute = useCallback(() => runSql(queryText), [runSql, queryText])
@@ -244,6 +251,7 @@ export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
               isDirty={isDirty}
               autoLimit={autoLimit}
               onAutoLimitChange={setAutoLimit}
+              showAutoLimit={isSqlDataSource}
             />
           )}
 

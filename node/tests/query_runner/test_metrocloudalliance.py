@@ -59,9 +59,7 @@ class TestMetroCloudAlliance(TestCase):
 
     def test_predictions_path(self):
         payload = {"status": "ok", "results": []}
-        with patch(
-            "redash.query_runner.metrocloudalliance.requests.get", return_value=mock_response(payload)
-        ) as get:
+        with patch("redash.query_runner.metrocloudalliance.requests.get", return_value=mock_response(payload)) as get:
             data, error = self.runner.run_query(
                 '{"resource": "predictions", "params": {"search_point": "40.0,-75.0", "search_radius": 500}}',
                 None,
@@ -94,3 +92,45 @@ class TestMetroCloudAlliance(TestCase):
         self.assertIsNone(data)
         self.assertEqual(error, "metrocloudalliance: 'base_url' is not configured")
         get.assert_not_called()
+
+    def test_stoptimes_requires_iline(self):
+        # MCA 400s on a missing iline; catch it before the request goes out
+        # rather than surface the vendor's "Bad Parameter" response.
+        with patch("redash.query_runner.metrocloudalliance.requests.get") as get:
+            data, error = self.runner.run_query('{"resource": "stoptimes"}', None)
+
+        self.assertIsNone(data)
+        self.assertIn("'iline' param is required", error)
+        get.assert_not_called()
+
+    def test_stoptimes_path(self):
+        payload = {
+            "status": "ok",
+            "results": {
+                "location_idx": 0,
+                "headsign": "NORTH HOLLYWOOD STATION",
+                "list": [{"route": "MT802 W", "leaving": "04:10AM", "arriving": "04:42AM"}],
+            },
+        }
+        with patch("redash.query_runner.metrocloudalliance.requests.get", return_value=mock_response(payload)) as get:
+            data, error = self.runner.run_query('{"resource": "stoptimes", "params": {"iline": 1287}}', None)
+
+        self.assertIsNone(error)
+        self.assertEqual(data["rows"][0]["headsign"], "NORTH HOLLYWOOD STATION")
+        self.assertEqual(get.call_args.args[0], "https://api.metrocloudalliance.com/v2/tripplanner/stoptimes")
+        self.assertEqual(get.call_args.kwargs["params"]["iline"], 1287)
+
+    def test_lines_path(self):
+        payload = {
+            "status": "ok",
+            "results": [{"carrier_code": "MT", "line_id": 2828, "line_name": "K - Metro Rail Line"}],
+        }
+        with patch("redash.query_runner.metrocloudalliance.requests.get", return_value=mock_response(payload)) as get:
+            data, error = self.runner.run_query(
+                '{"resource": "lines", "params": {"carrier_code": "MT", "transit_mode": "light rail"}}', None
+            )
+
+        self.assertIsNone(error)
+        self.assertEqual(data["rows"][0]["line_name"], "K - Metro Rail Line")
+        self.assertEqual(get.call_args.args[0], "https://api.metrocloudalliance.com/v2/transitnetwork/lines")
+        self.assertEqual(get.call_args.kwargs["params"]["transit_mode"], "light rail")

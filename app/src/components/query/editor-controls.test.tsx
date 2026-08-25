@@ -14,6 +14,7 @@ function renderControls(overrides: Partial<React.ComponentProps<typeof EditorCon
     isDirty: false,
     autoLimit: true,
     onAutoLimitChange: vi.fn(),
+    showAutoLimit: true,
     ...overrides,
   }
   renderWithProviders(<EditorControls {...props} />)
@@ -39,5 +40,13 @@ describe('EditorControls', () => {
     await user.click(screen.getByRole('checkbox', { name: /limit 1000/i }))
 
     expect(onAutoLimitChange).toHaveBeenCalledOnce()
+  })
+
+  // JSON-syntax data sources (MetroCloudAlliance, GBFS, ...) have no LIMIT
+  // clause to append, and appending one anyway breaks their query text - see
+  // query-editor-page.tsx's isSqlDataSource gate.
+  it('hides the LIMIT 1000 checkbox for a non-SQL data source', () => {
+    renderControls({ showAutoLimit: false })
+    expect(screen.queryByRole('checkbox', { name: /limit 1000/i })).not.toBeInTheDocument()
   })
 })
