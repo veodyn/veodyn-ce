@@ -16,8 +16,25 @@
 /** Characters a name may follow directly, because a space would break the thing being built. */
 const JOINS_DIRECTLY = new Set(['.', '('])
 
+/**
+ * Whether the clicked text is a whole query rather than a name: the JSON
+ * object a connector's Query Examples lists. One of those is a starter, not a
+ * token, and appending it to a buffer that already holds a query produces two
+ * objects on two lines, which the runner reports as "Extra data: line 2".
+ */
+export function isWholeJsonQuery(token: string): boolean {
+  const text = token.trim()
+  if (!text.startsWith('{')) return false
+  try {
+    return typeof JSON.parse(text) === 'object'
+  } catch {
+    return false
+  }
+}
+
 export function appendSqlToken(buffer: string, token: string): string {
   if (token === '') return buffer
+  if (isWholeJsonQuery(token)) return token
   if (buffer === '') return token
   const last = buffer[buffer.length - 1]
   // Already separated: a newline counts, so a click at the start of a fresh

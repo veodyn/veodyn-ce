@@ -38,6 +38,20 @@ describe('appendSqlToken', () => {
     expect(appendSqlToken('SELECT a,', 'b')).toBe('SELECT a, b')
   })
 
+  // A connector's schema lists its example queries as clickable lines. Each is
+  // a complete JSON object; joined onto the query already in the buffer it
+  // made two objects, and the runner refused the pair as "Extra data: line 2".
+  it('replaces the buffer with a whole JSON query rather than joining it on', () => {
+    expect(appendSqlToken('{"resource": "carriers"}', '{"resource": "departures"}')).toBe(
+      '{"resource": "departures"}'
+    )
+    expect(appendSqlToken('SELECT 1', '{"resource": "list"}')).toBe('{"resource": "list"}')
+  })
+
+  it('still treats a brace that is not a JSON document as a token', () => {
+    expect(appendSqlToken('SELECT', '{not json}')).toBe('SELECT {not json}')
+  })
+
   it('changes nothing when there is nothing to add', () => {
     expect(appendSqlToken('SELECT 1', '')).toBe('SELECT 1')
   })
