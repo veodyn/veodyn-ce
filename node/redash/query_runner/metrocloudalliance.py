@@ -8,6 +8,8 @@ The API key must be entered when creating the data source; it is not
 shipped as a default.
 """
 
+import time
+
 import requests
 
 from redash.query_runner import register
@@ -17,6 +19,10 @@ from redash.query_runner.connector_base import (
     extract_records,
 )
 from redash.query_runner.connector_validation import require_configured
+from redash.query_runner.metrocloudalliance_departures import (
+    DEPARTURE_COLUMNS,
+    flatten_departures,
+)
 
 DEFAULT_BASE_URL = "https://api.metrocloudalliance.com/"
 
@@ -43,6 +49,21 @@ class MetroCloudAlliance(BaseResourceRunner):
                 "routes: string (JSON, routes with predictions.times_minutes)",
             ],
             "example": '{"resource": "predictions", "params": {"search_point": "<lat>,<lon>", "search_radius": 500, "carrier_code": "<code>"}}',
+        },
+        "departures": {
+            # The predictions endpoint, reshaped: one row per departure rather
+            # than one per stop with the timetable folded into a JSON cell.
+            # What a departure board or a schedules table reads.
+            "path": "v2/realtime/predictions",
+            "doc_params": [
+                "stop_id (optional): string - departures from one stop",
+                'search_point (optional): string - "lat,lon"',
+                "search_radius (optional): number - meters around search_point",
+                "carrier_code (optional): string - carrier code, as defined by the account's transit network",
+                "number_of_results (optional): integer - stops, default 100 with search_point",
+            ],
+            "doc_returns": DEPARTURE_COLUMNS,
+            "example": '{"resource": "departures", "params": {"stop_id": "<stop>", "carrier_code": "<code>"}}',
         },
         "stops": {
             "path": "v2/transitnetwork/stops",
@@ -140,7 +161,10 @@ class MetroCloudAlliance(BaseResourceRunner):
             detail = raw.get("request_parameters") or raw.get("resource_path") or ""
             raise Exception(f"MCA returned status {raw.get('status')!r} {detail}")
 
-        return extract_records(raw, ["results"]), raw
+        records = extract_records(raw, ["results"])
+        if resource == "departures":
+            records = flatten_departures(records, now=time.time())
+        return records, raw
 
 
 register(MetroCloudAlliance)

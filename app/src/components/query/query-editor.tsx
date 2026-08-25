@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useCallback, useEffect } from 'react'
+import { useRef, useCallback, useEffect, useState } from 'react'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import { useQuerySnippets } from '@/hooks/use-query-snippets'
 import type { MockQuerySnippet, SchemaTable } from '@/lib/mock-data'
@@ -15,6 +15,23 @@ interface QueryEditorProps {
 
 export function QueryEditor({ value, onChange, onExecute, onSave, schema }: QueryEditorProps) {
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
+
+  // The bundled Monaco is registered with the loader by monaco-setup.ts, which
+  // can only run in a browser, so it is imported here rather than at the top
+  // of this module (client components still render on the server). The
+  // editor mounts only once that has happened: @monaco-editor/react calls
+  // loader.init() in its own mount effect, and an init before config would
+  // fall back to the CDN this exists to avoid.
+  const [monacoReady, setMonacoReady] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    import('./monaco-setup').then(() => {
+      if (!cancelled) setMonacoReady(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Snippets, held in a ref so the completion provider registered at mount can
   // read the current list rather than whatever had loaded by then. The hook is
@@ -151,6 +168,8 @@ export function QueryEditor({ value, onChange, onExecute, onSave, schema }: Quer
     },
     [onExecute, onSave, schema]
   )
+
+  if (!monacoReady) return null
 
   return (
     <Editor

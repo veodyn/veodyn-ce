@@ -72,3 +72,22 @@ export {
   type VisualizationOrigin,
 } from './registry'
 export { missingMappedColumns, missingNamedColumns } from './validate-columns'
+// Date and time formatting, exposed so a plugin that prints a timestamp does
+// not carry a second date library or re-derive the product's patterns. These
+// modules depend on date-fns alone, so the barrel gains no app dependency. A
+// plugin rendering an instant in an explicit zone still has to use Intl, since
+// formatDate renders in the browser's local time by design.
+export {
+  DEFAULT_DATE_FORMAT,
+  DEFAULT_TIME_FORMAT,
+  formatAgeCompact,
+  formatAgeProse,
+  formatCalendarDate,
+  formatDate,
+  formatDateTime,
+  relativeAge,
+  toDateFnsPattern,
+  type AgeUnit,
+  type RelativeAge,
+} from '@/lib/format-datetime'
+export { formatColumnTemplate, type ColumnDisplayAs } from './column-display'

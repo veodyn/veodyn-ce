@@ -23,6 +23,10 @@ export function SchemaBrowser({ schema, dataSourceId, onInsert }: SchemaBrowserP
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
 
   const filteredSchema = schema.filter((table) => {
+    // Some schema endpoints pad the list with separator rows: an empty name,
+    // or a run of box-drawing dashes. They are not tables, and since the row
+    // key is the name, two of them made React warn about duplicate keys.
+    if (!/[\p{L}\p{N}]/u.test(table.name)) return false
     if (!search) return true
     const s = search.toLowerCase()
     return (
