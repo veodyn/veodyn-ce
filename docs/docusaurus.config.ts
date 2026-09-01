@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Veodyn',
-  tagline: 'The data substrate for regional transportation hubs and agencies',
+  tagline: 'The open-source data platform for transportation agencies',
   favicon: 'img/favicon.svg',
 
   // `future.v4` is deliberately NOT set, and turning it on is a breaking change
