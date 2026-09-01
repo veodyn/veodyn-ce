@@ -225,7 +225,7 @@ class MetroCloudAlliance(BaseResourceRunner):
                 "prediction_source_type: string - e.g. Swiftly, MCA Realtime, GTFS-RT Compliant",
                 "vehicle_locations: boolean - source currently delivers vehicle locations",
                 "vehicle_locations_source_type: string",
-                "description: string - e.g. 'LACMTA -Swiftly GTFS-RT'",
+                "description: string - e.g. 'CT -Swiftly GTFS-RT'",
             ],
             "example": '{"resource": "sources"}',
         },

@@ -108,7 +108,7 @@ class TestMetroCloudAlliance(TestCase):
             "status": "ok",
             "results": {
                 "location_idx": 0,
-                "headsign": "NORTH HOLLYWOOD STATION",
+                "headsign": "CENTRAL STATION",
                 "list": [{"route": "MT802 W", "leaving": "04:10AM", "arriving": "04:42AM"}],
             },
         }
@@ -116,14 +116,14 @@ class TestMetroCloudAlliance(TestCase):
             data, error = self.runner.run_query('{"resource": "stoptimes", "params": {"iline": 1287}}', None)
 
         self.assertIsNone(error)
-        self.assertEqual(data["rows"][0]["headsign"], "NORTH HOLLYWOOD STATION")
+        self.assertEqual(data["rows"][0]["headsign"], "CENTRAL STATION")
         self.assertEqual(get.call_args.args[0], "https://api.metrocloudalliance.com/v2/tripplanner/stoptimes")
         self.assertEqual(get.call_args.kwargs["params"]["iline"], 1287)
 
     def test_lines_path(self):
         payload = {
             "status": "ok",
-            "results": [{"carrier_code": "MT", "line_id": 2828, "line_name": "K - Metro Rail Line"}],
+            "results": [{"carrier_code": "MT", "line_id": 2828, "line_name": "K - Light Rail Line"}],
         }
         with patch("redash.query_runner.metrocloudalliance.requests.get", return_value=mock_response(payload)) as get:
             data, error = self.runner.run_query(
@@ -131,7 +131,7 @@ class TestMetroCloudAlliance(TestCase):
             )
 
         self.assertIsNone(error)
-        self.assertEqual(data["rows"][0]["line_name"], "K - Metro Rail Line")
+        self.assertEqual(data["rows"][0]["line_name"], "K - Light Rail Line")
         self.assertEqual(get.call_args.args[0], "https://api.metrocloudalliance.com/v2/transitnetwork/lines")
         self.assertEqual(get.call_args.kwargs["params"]["transit_mode"], "light rail")
 
@@ -145,7 +145,7 @@ class TestMetroCloudAlliance(TestCase):
                     "predictions": False,
                     "prediction_source_type": "",
                     "vehicle_locations": False,
-                    "description": "LACMTA -Swiftly GTFS-RT",
+                    "description": "CT -Swiftly GTFS-RT",
                 }
             ],
         }
@@ -153,7 +153,7 @@ class TestMetroCloudAlliance(TestCase):
             data, error = self.runner.run_query('{"resource": "sources"}', None)
 
         self.assertIsNone(error)
-        self.assertEqual(data["rows"][0]["description"], "LACMTA -Swiftly GTFS-RT")
+        self.assertEqual(data["rows"][0]["description"], "CT -Swiftly GTFS-RT")
         self.assertEqual(get.call_args.args[0], "https://api.metrocloudalliance.com/v2/realtime/sources")
 
     def test_servicealerts_path(self):

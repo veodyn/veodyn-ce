@@ -11,33 +11,33 @@ T0 = 1_787_356_000  # an arbitrary epoch second; only the differences matter
 # a route whose predictions block carries the literal `false` MCA sends for
 # times_minutes when only timestamps are known.
 STOP = {
-    "carrier_code": "MT",
-    "carrier_id": 34,
-    "stop_name": "Arcadia St/Los Angeles St",
-    "stop_id": "8704",
-    "lat": 34.055,
-    "lng": -118.239,
+    "carrier_code": "CT",
+    "carrier_id": 7,
+    "stop_name": "Elm St/Central Ave",
+    "stop_id": "5501",
+    "lat": 10.0551,
+    "lng": 20.2394,
     "dist": 305,
     "prediction_available": True,
     "routes": [
         {
-            "route": "487",
-            "route_id": "487",
-            "sign": "Downtown LA - 5th - Beaudry",
-            "route_name": "Downtown LA - 5th - Beaudry",
+            "route": "12",
+            "route_id": "12",
+            "sign": "Downtown - 5th - Elm",
+            "route_name": "Downtown - 5th - Elm",
             "direction": "W",
-            "pattern_code": "MT487 W",
-            "line_name": "Metro Local and Express",
+            "pattern_code": "CT12 W",
+            "line_name": "Local and Express",
             "schedule": {"times_minutes": "37, 77", "times_ts": [T0 + 37 * 60, T0 + 77 * 60]},
             "predictions": {"times_minutes": False, "times_ts": [T0 + 39 * 60], "rt_provider": "Swiftly"},
         },
         {
-            "route": "910",
-            "route_id": "910",
+            "route": "14",
+            "route_id": "14",
             "sign": None,
-            "route_name": "Harbor Gtwy TC - Downtown LA / J Line",
+            "route_name": "Harbor Terminal - Downtown Express",
             "direction": "S",
-            "pattern_code": "MT910 S",
+            "pattern_code": "CT14 S",
             "schedule": {"times_ts": [T0 + 5 * 60]},
             "predictions": {"times_ts": [T0 + 20 * 60], "rt_provider": "Swiftly"},
         },
@@ -52,15 +52,15 @@ class TestFlattenDepartures(TestCase):
         self.assertEqual(
             [(r["route"], r["is_realtime"], r["departure_at"]) for r in rows],
             [
-                ("910", False, "2026-08-21T23:51:40Z"),
-                ("910", True, "2026-08-22T00:06:40Z"),
-                ("487", True, "2026-08-22T00:25:40Z"),
-                ("487", False, "2026-08-22T01:03:40Z"),
+                ("14", False, "2026-08-21T23:51:40Z"),
+                ("14", True, "2026-08-22T00:06:40Z"),
+                ("12", True, "2026-08-22T00:25:40Z"),
+                ("12", False, "2026-08-22T01:03:40Z"),
             ],
         )
 
     def test_a_prediction_replaces_the_planned_slot_it_matches(self):
-        rows = [r for r in flatten_departures([STOP]) if r["route"] == "487"]
+        rows = [r for r in flatten_departures([STOP]) if r["route"] == "12"]
 
         # 39 min predicted against 37 min planned: one row, realtime, and the
         # planned slot is remembered on it rather than emitted beside it.
@@ -72,22 +72,22 @@ class TestFlattenDepartures(TestCase):
         self.assertEqual(rows[1]["scheduled_at"], rows[1]["departure_at"])
 
     def test_a_prediction_far_from_any_slot_is_its_own_trip(self):
-        rows = [r for r in flatten_departures([STOP]) if r["route"] == "910"]
+        rows = [r for r in flatten_departures([STOP]) if r["route"] == "14"]
 
         # 20 min predicted, 5 min planned: fifteen minutes apart is two buses.
         self.assertEqual([r["is_realtime"] for r in rows], [False, True])
         self.assertIsNone(rows[1]["scheduled_at"])
 
     def test_headsign_falls_back_to_the_route_name(self):
-        rows = [r for r in flatten_departures([STOP]) if r["route"] == "910"]
-        self.assertEqual(rows[0]["headsign"], "Harbor Gtwy TC - Downtown LA / J Line")
+        rows = [r for r in flatten_departures([STOP]) if r["route"] == "14"]
+        self.assertEqual(rows[0]["headsign"], "Harbor Terminal - Downtown Express")
 
     def test_carries_the_stop_onto_every_row(self):
         row = flatten_departures([STOP])[0]
-        self.assertEqual(row["stop_id"], "8704")
-        self.assertEqual(row["stop_name"], "Arcadia St/Los Angeles St")
-        self.assertEqual(row["carrier"], "MT")
-        self.assertEqual(row["pattern_code"], "MT910 S")
+        self.assertEqual(row["stop_id"], "5501")
+        self.assertEqual(row["stop_name"], "Elm St/Central Ave")
+        self.assertEqual(row["carrier"], "CT")
+        self.assertEqual(row["pattern_code"], "CT14 S")
 
     def test_minutes_are_a_fallback_when_timestamps_are_absent(self):
         stop = {"stop_id": "1", "routes": [{"route": "1", "schedule": {"times_minutes": "3, 8"}}]}
@@ -110,12 +110,12 @@ class TestDeparturesResource(TestCase):
         payload = {"status": "ok", "results": [STOP]}
         with patch("redash.query_runner.metrocloudalliance.requests.get", return_value=mock_response(payload)) as get:
             data, error = MetroCloudAlliance({"api_key": "demo"}).run_query(
-                '{"resource": "departures", "params": {"stop_id": "8704", "carrier_code": "MT"}}', None
+                '{"resource": "departures", "params": {"stop_id": "5501", "carrier_code": "CT"}}', None
             )
 
         self.assertIsNone(error)
         self.assertEqual(get.call_args.args[0], "https://api.metrocloudalliance.com/v2/realtime/predictions")
-        self.assertEqual(get.call_args.kwargs["params"]["stop_id"], "8704")
+        self.assertEqual(get.call_args.kwargs["params"]["stop_id"], "5501")
         self.assertEqual(len(data["rows"]), 4)
         names = [c["name"] for c in data["columns"]]
         for expected in ("departure_at", "is_realtime", "scheduled_at", "route", "headsign", "stop_name"):
