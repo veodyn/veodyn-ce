@@ -271,8 +271,8 @@ class TestRegistration(TestCase):
         schema = GtfsStatic.configuration_schema()
         self.assertEqual(schema["required"], ["gtfs_url"])
         self.assertEqual(schema["properties"]["gtfs_url"]["minLength"], 1)
-        self.assertIn("enable_historical_capture", schema["properties"])
         self.assertEqual(schema["properties"]["max_rows"]["default"], 100000)
+        self.assertIn("enable_historical_capture", GtfsStatic.to_dict()["configuration_schema"]["properties"])
 
     def test_the_schema_rejects_a_bad_cap_at_save_time(self):
         # redash/utils/configuration.py validates a data source's configuration
