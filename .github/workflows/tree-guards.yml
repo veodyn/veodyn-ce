@@ -90,6 +90,17 @@ jobs:
       # gone unrun.
       - run: python3 -m unittest discover -s scripts -p "test_check_clean_tree*.py"
 
+  check-comment-ratchet:
+    runs-on: ubuntu-24.04
+    if: github.ref_type == 'branch' || github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python3 scripts/check-comment-ratchet.py
+      - run: python3 -m unittest discover -s scripts -p "test_check_comment_ratchet.py"
+
 # THE ONE DELIBERATE BEHAVIOUR CHANGE IN THIS PORT, and it needs a decision at
 # cutover rather than a silent inheritance.
 #
