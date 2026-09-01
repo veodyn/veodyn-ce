@@ -134,3 +134,56 @@ class TestMetroCloudAlliance(TestCase):
         self.assertEqual(data["rows"][0]["line_name"], "K - Metro Rail Line")
         self.assertEqual(get.call_args.args[0], "https://api.metrocloudalliance.com/v2/transitnetwork/lines")
         self.assertEqual(get.call_args.kwargs["params"]["transit_mode"], "light rail")
+
+    def test_sources_path(self):
+        payload = {
+            "status": "ok",
+            "results": [
+                {
+                    "realtime_source_id": "1",
+                    "carrier_code": "MT",
+                    "predictions": False,
+                    "prediction_source_type": "",
+                    "vehicle_locations": False,
+                    "description": "LACMTA -Swiftly GTFS-RT",
+                }
+            ],
+        }
+        with patch("redash.query_runner.metrocloudalliance.requests.get", return_value=mock_response(payload)) as get:
+            data, error = self.runner.run_query('{"resource": "sources"}', None)
+
+        self.assertIsNone(error)
+        self.assertEqual(data["rows"][0]["description"], "LACMTA -Swiftly GTFS-RT")
+        self.assertEqual(get.call_args.args[0], "https://api.metrocloudalliance.com/v2/realtime/sources")
+
+    def test_servicealerts_path(self):
+        payload = {"status": "ok", "results": []}
+        with patch("redash.query_runner.metrocloudalliance.requests.get", return_value=mock_response(payload)) as get:
+            data, error = self.runner.run_query(
+                '{"resource": "servicealerts", "params": {"status": "active", "carrier_code": "MT"}}', None
+            )
+
+        self.assertIsNone(error)
+        self.assertEqual(data, {"columns": [], "rows": []})
+        self.assertEqual(get.call_args.args[0], "https://api.metrocloudalliance.com/v2/realtime/servicealerts")
+        self.assertEqual(get.call_args.kwargs["params"]["status"], "active")
+
+    def test_reports_requires_type(self):
+        # MCA 405s a reports call without type; catch it before the request
+        # goes out, like stoptimes' iline.
+        with patch("redash.query_runner.metrocloudalliance.requests.get") as get:
+            data, error = self.runner.run_query('{"resource": "reports"}', None)
+
+        self.assertIsNone(data)
+        self.assertIn("'type' param is required", error)
+        get.assert_not_called()
+
+    def test_reports_path(self):
+        payload = {"status": "ok", "results": [{"report": "otp_by_route"}]}
+        with patch("redash.query_runner.metrocloudalliance.requests.get", return_value=mock_response(payload)) as get:
+            data, error = self.runner.run_query('{"resource": "reports", "params": {"type": "list_types"}}', None)
+
+        self.assertIsNone(error)
+        self.assertEqual(data["rows"][0]["report"], "otp_by_route")
+        self.assertEqual(get.call_args.args[0], "https://api.metrocloudalliance.com/v2/reports")
+        self.assertEqual(get.call_args.kwargs["params"]["type"], "list_types")
