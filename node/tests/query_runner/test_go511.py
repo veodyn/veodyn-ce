@@ -49,7 +49,7 @@ class TestGo511(TestCase):
         self.assertEqual(params["version"], "0.0")
 
     def test_sends_a_non_default_user_agent(self):
-        # GO511 answers 403 to requests' own `python-requests/*` User-Agent.
+        # The live edge answers 403 to requests' own `python-requests/*` User-Agent.
         with patch("redash.query_runner.go511.requests.get", return_value=mock_response(SAMPLE_INCIDENTS)) as get:
             self.runner.run_query('{"resource": "incidents"}', None)
 
@@ -58,7 +58,7 @@ class TestGo511(TestCase):
         self.assertTrue(user_agent.startswith("Redash/"))
 
     def test_closures_is_not_offered(self):
-        # api.go511.com/api/closures is a 404: the resource does not exist.
+        # The upstream /api/closures endpoint is a 404: the resource does not exist.
         data, error = self.runner.run_query('{"resource": "closures"}', None)
         self.assertIsNone(data)
         self.assertIn("Unknown resource", error)

@@ -73,8 +73,8 @@ class TestTableRead(TestCase):
         )
         self.assertEqual(column_types(data)["stop_lat"], "float")
         self.assertEqual(column_types(data)["stop_lon"], "float")
-        self.assertEqual(data["rows"][0]["stop_lat"], 45.1234)
-        self.assertEqual(data["rows"][0]["stop_lon"], -93.4567)
+        self.assertEqual(data["rows"][0]["stop_lat"], 10.0562)
+        self.assertEqual(data["rows"][0]["stop_lon"], 20.2365)
         self.assertEqual(len(data["rows"]), 2)
 
     def test_a_numeric_column_that_is_not_an_id_is_typed_and_converted(self):
@@ -114,7 +114,7 @@ class TestProjection(TestCase):
         data, error, _get = run_query('{"table": "stops", "columns": ["stop_lat", "stop_id"]}')
         self.assertIsNone(error)
         self.assertEqual([column["name"] for column in data["columns"]], ["stop_lat", "stop_id"])
-        self.assertEqual(data["rows"][0], {"stop_lat": 45.1234, "stop_id": "S1"})
+        self.assertEqual(data["rows"][0], {"stop_lat": 10.0562, "stop_id": "S1"})
 
     def test_an_unknown_column_names_it_and_the_available_ones(self):
         data, error, _get = run_query('{"table": "stops", "columns": ["stop_id", "platform"]}')
@@ -271,10 +271,8 @@ class TestRegistration(TestCase):
         schema = GtfsStatic.configuration_schema()
         self.assertEqual(schema["required"], ["gtfs_url"])
         self.assertEqual(schema["properties"]["gtfs_url"]["minLength"], 1)
+        self.assertIn("enable_historical_capture", schema["properties"])
         self.assertEqual(schema["properties"]["max_rows"]["default"], 100000)
-        # enable_historical_capture is added by the central helper, not by
-        # this runner's own configuration_schema(), so check the served path.
-        self.assertIn("enable_historical_capture", GtfsStatic.to_dict()["configuration_schema"]["properties"])
 
     def test_the_schema_rejects_a_bad_cap_at_save_time(self):
         # redash/utils/configuration.py validates a data source's configuration

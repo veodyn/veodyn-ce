@@ -17,7 +17,7 @@ from tests.query_runner.gtfs_realtime_fixtures import fake_response
 FEED_URL = "https://transit.example.org/gtfs/feed.zip"
 ZIP_STORED = zipfile.ZIP_STORED
 
-STOPS = "stop_id,stop_name,stop_lat,stop_lon\nS1,Central Station,45.1234,-93.4567\nS2,7th St,45.2345,-93.5678\n"
+STOPS = "stop_id,stop_name,stop_lat,stop_lon\nS1,Central Station,10.0562,20.2365\nS2,7th St,10.0485,20.2587\n"
 ROUTES = "route_id,route_short_name,route_type\n12,Twelve,3\n14,Fourteen,3\n"
 TRIPS = "route_id,service_id,trip_id\n12,WD,t1\n14,WD,t2\n12,SU,t3\n14,SU,t4\n"
 
