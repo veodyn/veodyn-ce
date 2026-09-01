@@ -118,6 +118,17 @@ LOAD_BEARING = (
         "definition; that is what the file is.",
     ),
     (
+        "scripts/comment_baseline.py",
+        "The comment ratchet's per-file counts, and every occurrence here is a PATH rather "
+        "than a value: the six that match are the public connector modules and their tests "
+        "under node/*/query_runner/, whose file names are themselves harvested terms. That "
+        "is the closed public-connectors question below, reached by a file that has to name "
+        "the path it counted or it is recording nothing. A counted row would be the wrong "
+        "mechanism for the same reason it was wrong for test_report_data_source_types: the "
+        "number moves when one of those files gains or loses its last comment, which says "
+        "nothing about identity, and blocking on it would stop a correct cleanup.",
+    ),
+    (
         "app/src/lib/mock-data/packs/neutral/neutral.debranding.test.ts",
         "The neutral pack's own de-branding guard, and the second term source. Its matches "
         "ARE the assertion that the pack is clean. A gate that flagged this file would be "
