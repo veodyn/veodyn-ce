@@ -93,7 +93,7 @@ class TestReadSnapshot(TestCase):
         self.assertEqual(
             snapshot.stop_times_by_trip["t30a"], [(1, "3000001"), (2, "13574"), (3, "19022"), (4, "1166")]
         )
-        self.assertEqual(snapshot.stops["9002"]["stop_name"], "Wilshire / Normandie")
+        self.assertEqual(snapshot.stops["9002"]["stop_name"], "Harbor / Normandie")
 
     def test_a_bad_zip_names_the_url(self):
         with self.assertRaises(ValueError) as raised:

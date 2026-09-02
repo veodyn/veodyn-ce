@@ -65,9 +65,9 @@ def prediction_for(route_number, stop_id="1166", stop_name="1st St/Main St"):
 
 class TestReviewFindings(TestCase):
     def test_a_rail_stop_missing_from_the_map_keeps_rail_cleanup(self):
-        stop = prediction_for("801", "80122", "Willowbrook - Rosa Parks Station - Metro A-Line")
+        stop = prediction_for("801", "80122", "Riverbrook - Park Station - Metro A-Line")
         rows = enrich_departures(flatten_departures([stop]), {"801": mca_route_named("MT801")}, {}, PROFILE, "r", "d")
-        self.assertEqual(rows[0]["public_stop_name"], "Willowbrook - Rosa Parks Station")
+        self.assertEqual(rows[0]["public_stop_name"], "Riverbrook - Park Station")
 
     def test_fallback_provenance_reflects_the_fallback_result(self):
         rows = enrich_departures(flatten_departures([prediction_for("10")]), {}, {}, PROFILE, "r", "d")

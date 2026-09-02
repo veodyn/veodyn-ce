@@ -81,11 +81,11 @@ class TestCutPatterns(TestCase):
         self.assertEqual((rows["1166"].stop_match, rows["1166"].stop_id), ("id", "1166"))
         self.assertEqual(
             (rows["9001"].stop_match, rows["9001"].stop_id, rows["9001"].public_name),
-            ("coordinate", "9101", "Wilshire Blvd/Western Ave"),
+            ("coordinate", "9101", "Harbor Blvd/Western Ave"),
         )
         self.assertEqual(
             (rows["9002"].stop_match, rows["9002"].stop_id, rows["9002"].public_name),
-            ("unmatched", "9002", "Wilshire / Normandie"),
+            ("unmatched", "9002", "Harbor / Normandie"),
         )
 
     def test_a_route_with_no_trips_yields_nothing(self):

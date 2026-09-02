@@ -139,7 +139,7 @@ def mca_stop(stop_id, name, lat, lng, on="", cross="", modes="BUS", direction=""
         "relation_to_cross_street": "Farside" if on else "",
         "transit_modes": modes,
         "prediction_count": predictions,
-        "city": "Los Angeles",
+        "city": "Springfield",
         "accessible": True,
     }
 
@@ -150,11 +150,11 @@ MT_STOPS = [
     mca_stop("13574", "Grand/Pico", 34.0400, -118.2600, "Grand Ave", "Pico Blvd"),
     mca_stop("19022", "Broadway/5th", 34.0480, -118.2510, "Broadway", "5th St"),
     mca_stop("3000001", "Pico \\ Rimpau", 34.0470, -118.3440),
-    mca_stop("9101", "Wilshire Blvd/Western Ave", 34.06010, -118.3000, "Wilshire Blvd", "Western Ave"),
-    mca_stop("9003", "Wilshire Blvd/Vermont Ave", 34.0650, -118.3050, "Wilshire Blvd", "Vermont Ave"),
+    mca_stop("9101", "Harbor Blvd/Western Ave", 34.06010, -118.3000, "Harbor Blvd", "Western Ave"),
+    mca_stop("9003", "Harbor Blvd/Vermont Ave", 34.0650, -118.3050, "Harbor Blvd", "Vermont Ave"),
     mca_stop("80101", "Downtown Long Beach Station", 33.768071, -118.192921, "Pine Ave", "1st Street", modes="RAIL"),
     mca_stop("80102", "Pacific Ave Station", 33.7720, -118.1930, "Pacific Avenue", "4th Street", modes="RAIL"),
-    mca_stop("80122", "Willowbrook - Rosa Parks Station - Metro A-Line", 33.9280, -118.2380, modes="RAIL"),
+    mca_stop("80122", "Riverbrook - Park Station - Metro A-Line", 33.9280, -118.2380, modes="RAIL"),
     mca_stop("7001", "Imperial Hwy & Central Ave (Westbound)", 33.9300, -118.2550),
     mca_stop("7002", "Fullerton Park & Ride Dock 14", 33.8700, -117.9200),
     mca_stop(

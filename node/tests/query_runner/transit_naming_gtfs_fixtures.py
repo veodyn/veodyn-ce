@@ -8,11 +8,11 @@ BUS_ROUTES_TXT = (
     "route_id,route_short_name,route_long_name,route_desc,route_type,route_color,route_text_color\n"
     "94-13201,94,Metro Local Line,DTWN LA - NOHO STA,3,,\n"
     "30-13201,30,Metro Local Line,PICO RIMPAU - DTWN LA,3,,\n"
-    "9-13201,Dodger Stadium Express,,Game days from Union Station,3,,\n"
+    "9-13201,Dodger Stadium Express,,Game days from Central Station,3,,\n"
     "22-13201,South Bay Dodger Stadium Express,,Game days from Harbor Gateway,3,,\n"
     "901-13201,,Metro G Line (Orange) 901,METRO G LINE,3,FC4C02,FFFFFF\n"
     "910-13201,,Metro J Line (Silver) 910/950,METRO J LINE,3,ADB8BF,000000\n"
-    "10-13201,10/48,Metro Local Line,W HOLLYWOOD-DTWN LA,3,,\n"
+    "10-13201,10/48,Metro Local Line,W ELMWOOD-DTWN LA,3,,\n"
     "720-13201,720,Metro Rapid Line,SANTA MONICA - DTWN LA,3,E16710,FFFFFF\n"
 )
 BUS_TRIPS_TXT = (
@@ -54,9 +54,9 @@ BUS_STOPS_TXT = (
     "13574,13574,Grand / Pico,34.0400,-118.2600\n"
     "19022,19022,Broadway / 5th,34.0480,-118.2510\n"
     "3000001,3000001,Pico / Rimpau,34.0470,-118.3440\n"
-    "9001,9001,Wilshire / Western,34.0600,-118.3000\n"
-    "9002,9002,Wilshire / Normandie,34.0700,-118.3100\n"
-    "9003,9003,Wilshire / Vermont,34.0650,-118.3050\n"
+    "9001,9001,Harbor / Western,34.0600,-118.3000\n"
+    "9002,9002,Harbor / Normandie,34.0700,-118.3100\n"
+    "9003,9003,Harbor / Vermont,34.0650,-118.3050\n"
 )
 RAIL_ROUTES_TXT = (
     "route_id,route_short_name,route_long_name,route_desc,route_type,route_color,route_text_color\n"

@@ -100,7 +100,7 @@ class TestProfileValidation(TestCase):
 
     def test_duplicate_yaml_key_is_refused(self):
         error = self.load_variant(
-            "carrier_display_name: Metro", "carrier_display_name: Metro\ncarrier_display_name: LA Metro"
+            "carrier_display_name: Metro", "carrier_display_name: Metro\ncarrier_display_name: City Metro"
         )
         self.assertIn("carrier_display_name", str(error))
 
@@ -195,6 +195,6 @@ class TestLoaderRefusals(TestCase):
 
     def test_duplicate_key_error_names_the_carrier(self):
         error = self.refused(
-            "carrier_display_name: Metro", "carrier_display_name: Metro\ncarrier_display_name: LA Metro"
+            "carrier_display_name: Metro", "carrier_display_name: Metro\ncarrier_display_name: City Metro"
         )
         self.assertEqual((error.carrier, error.field), ("MT", "carrier_display_name"))

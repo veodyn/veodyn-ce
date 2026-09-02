@@ -49,7 +49,7 @@ class TestNameStop(TestCase):
     def test_station_drops_the_trailing_line_reference(self):
         name = name_stop(MT_STOPS_BY_ID["80122"], PROFILE)
         self.assertEqual(
-            (name.public_name, name.stop_kind, name.mode), ("Willowbrook - Rosa Parks Station", "station", "rail")
+            (name.public_name, name.stop_kind, name.mode), ("Riverbrook - Park Station", "station", "rail")
         )
         self.assertEqual(name.public_name_source, provenance.RULE)
 
@@ -144,14 +144,14 @@ def bare_stop(name, modes="BUS", on="", cross=""):
 
 class TestReviewFindings(TestCase):
     def test_station_drops_a_direction_parenthetical_into_direction(self):
-        name = name_stop(bare_stop("Union Station (Northbound)", modes="RAIL"), PROFILE)
+        name = name_stop(bare_stop("Central Station (Northbound)", modes="RAIL"), PROFILE)
         self.assertEqual(
-            (name.public_name, name.direction, name.stop_kind), ("Union Station", "Northbound", "station")
+            (name.public_name, name.direction, name.stop_kind), ("Central Station", "Northbound", "station")
         )
 
     def test_rail_stop_without_the_word_gets_the_configured_suffix(self):
-        name = name_stop(bare_stop("Union", modes="RAIL"), PROFILE)
-        self.assertEqual((name.public_name, name.public_name_source), ("Union Station", provenance.RULE))
+        name = name_stop(bare_stop("Central", modes="RAIL"), PROFILE)
+        self.assertEqual((name.public_name, name.public_name_source), ("Central Station", provenance.RULE))
 
     def test_a_street_pair_beats_a_place_keyword(self):
         name = name_stop(bare_stop("Station Rd/Main St"), PROFILE)
