@@ -76,17 +76,19 @@ def _describe(error, url, safe_url):
     return f"{type(error).__name__}: {str(error).replace(url, safe_url)}"
 
 
-def _download(url, safe_url, max_bytes, fetch):
+def _download(url, safe_url, max_bytes, fetch, validate):
     downloaded = fetch(url, max_bytes)
     if len(downloaded) > max_bytes:
         raise ValueError(f"GTFS archive from {safe_url} exceeds the {max_bytes} byte limit")
     if not zipfile.is_zipfile(io.BytesIO(downloaded)):
         raise ValueError(f"GTFS archive from {safe_url} is not a readable zip")
     check_archive_bounds(zipfile.ZipFile(io.BytesIO(downloaded)), safe_url)
+    if validate is not None:
+        validate(downloaded)
     return downloaded
 
 
-def cached_archive(url, cache_dir, max_age_hours, max_bytes, fetch, now=None):
+def cached_archive(url, cache_dir, max_age_hours, max_bytes, fetch, now=None, validate=None):
     clock = now or time.time
     safe_url = sanitize_feed_url(url)
     os.makedirs(cache_dir, exist_ok=True)
@@ -101,7 +103,7 @@ def cached_archive(url, cache_dir, max_age_hours, max_bytes, fetch, now=None):
             if content is not None and failed_at is not None and clock() - failed_at < RETRY_AFTER_SECONDS:
                 return CachedArchive(content, digest, True, f"gtfs_refresh_failed {safe_url}: retry deferred")
             try:
-                downloaded = _download(url, safe_url, max_bytes, fetch)
+                downloaded = _download(url, safe_url, max_bytes, fetch, validate)
             except Exception as error:
                 with open(failed_path, "w", encoding="utf-8") as handle:
                     handle.write(str(clock()))

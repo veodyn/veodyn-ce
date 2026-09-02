@@ -3,6 +3,7 @@ import io
 from unittest import TestCase
 
 from redash.transit_naming.patterns import (
+    StopIndex,
     cut_patterns,
     distance_feet,
     mca_pattern_membership,
@@ -153,6 +154,24 @@ class TestReviewFindings(TestCase):
             by_pattern.setdefault(r.pattern_id, []).append(r.stop_id)
         self.assertEqual(by_pattern, {"S": ["1166", "13574"], "S-2": ["1166", "13574", "19022"]})
         self.assertEqual({r.pattern_id for r in rows if r.is_canonical}, {"S-2"})
+
+    def test_generated_pattern_ids_never_collide(self):
+        stop_times = {
+            "a": [(1, "1166"), (2, "13574")],
+            "b": [(1, "1166"), (2, "13574"), (3, "19022")],
+            "c": [(1, "13574"), (2, "19022")],
+            "d": [(1, "19022"), (2, "13574")],
+        }
+        trips = [trip("a", "S"), trip("b", "S"), trip("c", "S-2"), trip("d", "S", direction="1")]
+        rows = cut_patterns("MT", "MTR", "R", snapshot_with(trips, stop_times), MT_STOPS_BY_ID, NAMES, PROFILE)
+        ids = {(r.direction, r.pattern_id) for r in rows}
+        self.assertEqual(len({pattern_id for _, pattern_id in ids}), 4)
+
+    def test_coordinate_matching_uses_the_stop_index(self):
+        index = StopIndex(MT_STOPS_BY_ID)
+        self.assertEqual(index.nearest(34.0600, -118.3000, 130.0)["stop_id"], "9101")
+        self.assertIsNone(index.nearest(34.0700, -118.3100, 130.0))
+        self.assertIsNone(index.nearest(0.0, 0.0, 130.0))
 
     def test_equal_length_canonical_tie_does_not_depend_on_trip_order(self):
         forward = [trip("a", "B"), trip("b", "A")]

@@ -155,6 +155,7 @@ class TestCoverageReviewFindings(TestCase):
             [
                 lineage("BU", route_code="BUORA", public_name_source="rule", gtfs_digest=""),
                 lineage("MT", route_code="MT094", public_name_source="gtfs", gtfs_digest="d1"),
+                lineage("OC", route_code="OC001", public_name_source="gtfs", gtfs_digest="d1"),
             ],
         )
         table(
@@ -209,4 +210,6 @@ class TestCoverageReviewFindings(TestCase):
         self.assertEqual(got[("BU", "gtfs", "none")], 1)
         self.assertEqual(got[("MT", "digest_disagreement", "departures")], "d3")
         self.assertEqual(got[("MT", "digest_disagreement", "stops")], "d4")
+        self.assertEqual(got[("OC", "digest_disagreement", "routes")], "d1")
+        self.assertNotIn(("MT", "digest_disagreement", "routes"), got)
         self.assertNotIn(("MT", "gtfs", "none"), got)

@@ -21,29 +21,48 @@ def _coordinates(record, lat_key, lng_key):
         return None
 
 
-def _nearest(gtfs_stop, mca_stops, threshold_feet):
+CELL_DEGREES = 0.01
+
+
+class StopIndex:
+    def __init__(self, mca_stops):
+        self.cells = {}
+        for stop in mca_stops.values():
+            point = _coordinates(stop, "lat", "lng")
+            if point is not None:
+                self.cells.setdefault(self._cell(point), []).append((point, stop))
+
+    @staticmethod
+    def _cell(point):
+        return int(math.floor(point[0] / CELL_DEGREES)), int(math.floor(point[1] / CELL_DEGREES))
+
+    def nearest(self, lat, lng, threshold_feet):
+        row, column = self._cell((lat, lng))
+        best, best_distance = None, threshold_feet
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                for point, stop in self.cells.get((row + dr, column + dc), ()):
+                    distance = distance_feet(lat, lng, point[0], point[1])
+                    if distance <= best_distance:
+                        best, best_distance = stop, distance
+        return best
+
+
+def _nearest(gtfs_stop, index, threshold_feet):
     origin = _coordinates(gtfs_stop, "stop_lat", "stop_lon")
     if origin is None:
         return None
-    best, best_distance = None, threshold_feet
-    for stop in mca_stops.values():
-        target = _coordinates(stop, "lat", "lng")
-        if target is None:
-            continue
-        distance = distance_feet(origin[0], origin[1], target[0], target[1])
-        if distance <= best_distance:
-            best, best_distance = stop, distance
-    return best
+    return index.nearest(origin[0], origin[1], threshold_feet)
 
 
-def _match(gtfs_stop_id, snapshot, mca_stops, public_names, public_sources, threshold_feet, memo):
+def _match(gtfs_stop_id, snapshot, mca_stops, public_names, public_sources, threshold_feet, memo, index):
     if gtfs_stop_id in memo:
         return memo[gtfs_stop_id]
     if gtfs_stop_id in mca_stops:
         found = (gtfs_stop_id, public_names.get(gtfs_stop_id, ""), "id", public_sources.get(gtfs_stop_id, ""))
     else:
         gtfs_stop = snapshot.stops.get(gtfs_stop_id, {})
-        near = _nearest(gtfs_stop, mca_stops, threshold_feet)
+        near = _nearest(gtfs_stop, index, threshold_feet)
         if near is not None:
             near_id = str(near["stop_id"])
             found = (near_id, public_names.get(near_id, ""), "coordinate", public_sources.get(near_id, ""))
@@ -67,12 +86,15 @@ def _sequences(snapshot, gtfs_route_id):
 
 
 def _pattern_ids(sequences):
-    used = {}
+    used = set()
     ids = {}
     for key, label in sorted(sequences.items()):
-        count = used.get((key[0], label), 0) + 1
-        used[(key[0], label)] = count
-        ids[key] = label if count == 1 else f"{label}-{count}"
+        candidate, suffix = label, 2
+        while candidate in used:
+            candidate = f"{label}-{suffix}"
+            suffix += 1
+        used.add(candidate)
+        ids[key] = candidate
     return ids
 
 
@@ -95,11 +117,13 @@ def cut_patterns(
     profile,
     threshold_feet=130.0,
     public_sources=None,
+    stop_index=None,
 ):
     sequences = _sequences(snapshot, gtfs_route_id)
     ids = _pattern_ids(sequences)
     longest = _canonical(sequences)
     sources = public_sources or {}
+    index = stop_index if stop_index is not None else StopIndex(mca_stops)
     memo = {}
     rows = []
     for (direction_id, stops), pattern_id in sorted(ids.items()):
@@ -107,7 +131,7 @@ def cut_patterns(
         canonical = stops == longest[direction_id]
         for sequence, gtfs_stop_id in enumerate(stops):
             stop_id, public_name, match, source = _match(
-                gtfs_stop_id, snapshot, mca_stops, public_names, sources, threshold_feet, memo
+                gtfs_stop_id, snapshot, mca_stops, public_names, sources, threshold_feet, memo, index
             )
             rows.append(
                 PatternStop(

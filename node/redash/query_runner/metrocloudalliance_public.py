@@ -4,6 +4,7 @@ from redash.transit_naming.departures import PUBLIC_DEPARTURE_COLUMNS, enrich_de
 from redash.transit_naming.gtfs_cache import http_fetch
 from redash.transit_naming.gtfs_routes import GtfsResolver
 from redash.transit_naming.patterns import (
+    StopIndex,
     cut_patterns,
     mca_pattern_membership,
     pattern_row,
@@ -165,6 +166,7 @@ def public_route_stops(params, fetch, profiles, archive_fetcher=None):
             names[str(stop["stop_id"])] = named.public_name
             sources[str(stop["stop_id"])] = named.public_name_source
     rows = []
+    index = StopIndex(live)
     for route_code, (route, name, resolved) in _route_names(routes, profile, resolver, with_resolved=True).items():
         if resolved is not None:
             snapshot = resolver.snapshots()[resolved.source_name]
@@ -177,6 +179,7 @@ def public_route_stops(params, fetch, profiles, archive_fetcher=None):
                 names,
                 profile,
                 public_sources=sources,
+                stop_index=index,
             )
         else:
             patterns = []

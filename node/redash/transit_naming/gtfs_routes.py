@@ -113,6 +113,7 @@ class GtfsResolver:
                     self.profile.gtfs_max_download_bytes,
                     self.fetch,
                     now=self.now,
+                    validate=lambda content, name=source.name, url=safe_url: read_snapshot(name, content, url),
                 )
                 if archive.refresh_error:
                     self.refresh_errors.append(archive.refresh_error)

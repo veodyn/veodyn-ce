@@ -69,6 +69,19 @@ class TestReviewFindings(TestCase):
         rows = enrich_departures(flatten_departures([stop]), {"801": mca_route_named("MT801")}, {}, PROFILE, "r", "d")
         self.assertEqual(rows[0]["public_stop_name"], "Willowbrook - Rosa Parks Station")
 
+    def test_fallback_provenance_reflects_the_fallback_result(self):
+        rows = enrich_departures(flatten_departures([prediction_for("10")]), {}, {}, PROFILE, "r", "d")
+        self.assertEqual(
+            (rows[0]["public_route_name"], rows[0]["public_route_name_source"]),
+            ("Metro Local Line 10 (Melrose)", provenance.OVERRIDE),
+        )
+        rows = enrich_departures(
+            flatten_departures([prediction_for("30", "3000001", "Pico \\ Rimpau")]), ROUTES, {}, PROFILE, "r", "d"
+        )
+        self.assertEqual(
+            (rows[0]["public_stop_name"], rows[0]["public_stop_name_source"]), ("Pico/Rimpau", provenance.OVERRIDE)
+        )
+
     def test_a_retired_stop_is_dropped_from_the_board(self):
         retired = {"10270": name_stop(MT_STOPS_BY_ID["10270"], PROFILE)}
         departures = flatten_departures([prediction_for("30", "10270", "Collis Ave/Cudahy St")])

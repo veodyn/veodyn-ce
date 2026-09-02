@@ -5,7 +5,8 @@ WHITESPACE = re.compile(r"\s+")
 
 
 def _title(token):
-    if token.isupper() and len(token) <= 2:
+    core = token.rstrip(".,")
+    if core.isupper() and len(core) <= 2:
         return token
     return token[:1].upper() + token[1:].lower()
 

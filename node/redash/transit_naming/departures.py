@@ -40,14 +40,13 @@ def enrich_departures(rows, route_names, stop_names, profile, revision, digest):
         item = {RENAMED.get(key, key): value for key, value in row.items()}
         raw_route = str(item.get("raw_route") or "")
         route = route_names.get(raw_route)
-        route_source = route.public_name_source if route else provenance.RULE
         if route is None:
             route = _route_from_raw(raw_route, item.get("carrier"), profile)
+        route_source = route.public_name_source
         stop_id = str(item.get("stop_id") or "")
         stop = stop_names.get(stop_id)
         if stop is not None and stop.retired:
             continue
-        stop_source = stop.public_name_source if stop else provenance.RULE
         if stop is None:
             stop = name_stop(
                 {
@@ -58,6 +57,7 @@ def enrich_departures(rows, route_names, stop_names, profile, revision, digest):
                 },
                 profile,
             )
+        stop_source = stop.public_name_source
         headsign = normalize_headsign(item.get("raw_headsign"), profile.headsign)
         short_source = route_source if route_source != provenance.OVERRIDE else (route.brand_source or provenance.RULE)
         item.update(

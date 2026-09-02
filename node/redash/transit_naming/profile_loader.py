@@ -257,7 +257,7 @@ def parse_profile_yaml(text, file):
 def build_profile_set(dirs, extra_files=None):
     files = read_profile_files(dirs, extra_files)
     digest = hashlib.sha256()
-    for path in sorted(files):
+    for path in sorted(files, key=lambda p: (os.path.basename(p), files[p])):
         digest.update(os.path.basename(path).encode("utf-8"))
         digest.update(files[path])
     profiles = {}

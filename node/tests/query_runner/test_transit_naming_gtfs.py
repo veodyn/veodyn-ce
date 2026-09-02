@@ -192,6 +192,30 @@ class TestReviewFindings(TestCase):
         self.assertEqual((got.content, got.stale), (BUS_ZIP, True))
         self.assertIn("members", got.refresh_error)
 
+    def test_a_download_the_parser_rejects_keeps_the_last_good_copy(self):
+        self.warm()
+        twice = build_archive({"routes.txt": "route_id\n1\n", "sub/routes.txt": "route_id\n2\n"})
+        got = cached_archive(
+            BUS_URL,
+            self.cache,
+            24,
+            10000000,
+            archive_fetcher({BUS_URL: twice}),
+            now=lambda: 1000.0 + 25 * 3600,
+            validate=lambda content: read_snapshot("bus", content, "u"),
+        )
+        self.assertEqual((got.content, got.stale), (BUS_ZIP, True))
+        self.assertIn("two members", got.refresh_error)
+
+    def test_a_resolver_survives_a_feed_that_parses_badly_after_a_good_one(self):
+        with tempfile.TemporaryDirectory() as cache:
+            GtfsResolver(metro_profile(with_overrides=False), cache, fetch=metro_archives()).snapshots()
+            broken = build_archive({"routes.txt": "route_id\n1\n", "sub/routes.txt": "route_id\n2\n"})
+            later = archive_fetcher({BUS_URL: broken, RAIL_URL: broken})
+            resolver = GtfsResolver(metro_profile(with_overrides=False), cache, fetch=later, now=lambda: 10**10)
+            self.assertEqual(resolver.resolve("MT094", "94").route_long_name, "Metro Local Line")
+        self.assertEqual(len(resolver.refresh_errors), 2)
+
     def test_a_download_that_is_not_a_zip_with_no_cache_raises(self):
         with self.assertRaises(ValueError):
             cached_archive(BUS_URL, self.cache, 24, 1000000, archive_fetcher({BUS_URL: b"junk"}), now=lambda: 1.0)

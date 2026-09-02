@@ -168,6 +168,20 @@ class TestLoaderRefusals(TestCase):
             second = load_profiles([CORE_PROFILE_DIR, two]).revision
         self.assertEqual(first, second)
 
+    def test_revision_ignores_which_directory_sorts_first(self):
+        burbank = MT_YAML.replace("carrier_code: MT", "carrier_code: BU").replace("MT950:", "BU950:")
+        with tempfile.TemporaryDirectory() as root:
+            first, second = os.path.join(root, "a"), os.path.join(root, "z")
+            os.makedirs(first)
+            os.makedirs(second)
+            write_profile_dir(first, {"MT.yaml": MT_YAML})
+            write_profile_dir(second, {"BU.yaml": burbank})
+            one = load_profiles([CORE_PROFILE_DIR, first, second]).revision
+            os.rename(os.path.join(first, "MT.yaml"), os.path.join(second, "MT.yaml"))
+            os.rename(os.path.join(second, "BU.yaml"), os.path.join(first, "BU.yaml"))
+            other = load_profiles([CORE_PROFILE_DIR, first, second]).revision
+        self.assertEqual(one, other)
+
     def test_duplicate_key_error_names_the_carrier(self):
         error = self.refused(
             "carrier_display_name: Metro", "carrier_display_name: Metro\ncarrier_display_name: LA Metro"

@@ -178,6 +178,7 @@ class TestReviewFindings(TestCase):
         self.assertEqual(
             normalize_headsign("Via St. Louis.", HeadsignRules(title_case=False, expand={})), "Via St. Louis"
         )
+        self.assertEqual(normalize_headsign("LA. AIRPORT VIA LA.", PROFILE.headsign), "LA. Airport Via LA")
 
     def test_named_place_with_a_stripped_direction_is_rule_derived(self):
         name = name_stop(bare_stop("Harbor Transit Center (Northbound)"), PROFILE)

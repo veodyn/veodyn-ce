@@ -35,21 +35,21 @@ UNION ALL
 SELECT carrier, 'departures_stop_source', public_stop_name_source, COUNT(*), normalization_revision, gtfs_digest
 FROM {departures} GROUP BY carrier, public_stop_name_source, normalization_revision, gtfs_digest
 UNION ALL
-SELECT carrier_code, 'digest_disagreement', 'routes', gtfs_digest, normalization_revision, gtfs_digest
-FROM (SELECT DISTINCT carrier_code, normalization_revision, gtfs_digest FROM {routes})
-WHERE gtfs_digest <> '' AND gtfs_digest NOT IN (SELECT DISTINCT gtfs_digest FROM {route_stops} WHERE gtfs_digest <> '')
+SELECT d.carrier_code, 'digest_disagreement', 'routes', d.gtfs_digest, d.normalization_revision, d.gtfs_digest
+FROM (SELECT DISTINCT carrier_code, normalization_revision, gtfs_digest FROM {routes}) d
+WHERE d.gtfs_digest <> '' AND d.gtfs_digest NOT IN (SELECT p.gtfs_digest FROM {route_stops} p WHERE p.carrier_code = d.carrier_code AND p.gtfs_digest <> '')
 UNION ALL
-SELECT carrier_code, 'digest_disagreement', 'route_stops', gtfs_digest, normalization_revision, gtfs_digest
-FROM (SELECT DISTINCT carrier_code, normalization_revision, gtfs_digest FROM {route_stops})
-WHERE gtfs_digest <> '' AND gtfs_digest NOT IN (SELECT DISTINCT gtfs_digest FROM {routes} WHERE gtfs_digest <> '')
+SELECT d.carrier_code, 'digest_disagreement', 'route_stops', d.gtfs_digest, d.normalization_revision, d.gtfs_digest
+FROM (SELECT DISTINCT carrier_code, normalization_revision, gtfs_digest FROM {route_stops}) d
+WHERE d.gtfs_digest <> '' AND d.gtfs_digest NOT IN (SELECT r.gtfs_digest FROM {routes} r WHERE r.carrier_code = d.carrier_code AND r.gtfs_digest <> '')
 UNION ALL
-SELECT carrier_code, 'digest_disagreement', 'stops', gtfs_digest, normalization_revision, gtfs_digest
-FROM (SELECT DISTINCT carrier_code, normalization_revision, gtfs_digest FROM {stops})
-WHERE gtfs_digest <> '' AND gtfs_digest NOT IN (SELECT DISTINCT gtfs_digest FROM {routes} WHERE gtfs_digest <> '')
+SELECT d.carrier_code, 'digest_disagreement', 'stops', d.gtfs_digest, d.normalization_revision, d.gtfs_digest
+FROM (SELECT DISTINCT carrier_code, normalization_revision, gtfs_digest FROM {stops}) d
+WHERE d.gtfs_digest <> '' AND d.gtfs_digest NOT IN (SELECT r.gtfs_digest FROM {routes} r WHERE r.carrier_code = d.carrier_code AND r.gtfs_digest <> '')
 UNION ALL
-SELECT carrier, 'digest_disagreement', 'departures', gtfs_digest, normalization_revision, gtfs_digest
-FROM (SELECT DISTINCT carrier, normalization_revision, gtfs_digest FROM {departures})
-WHERE gtfs_digest <> '' AND gtfs_digest NOT IN (SELECT DISTINCT gtfs_digest FROM {routes} WHERE gtfs_digest <> '')
+SELECT d.carrier, 'digest_disagreement', 'departures', d.gtfs_digest, d.normalization_revision, d.gtfs_digest
+FROM (SELECT DISTINCT carrier, normalization_revision, gtfs_digest FROM {departures}) d
+WHERE d.gtfs_digest <> '' AND d.gtfs_digest NOT IN (SELECT r.gtfs_digest FROM {routes} r WHERE r.carrier_code = d.carrier AND r.gtfs_digest <> '')
 UNION ALL
 SELECT carrier_code, 'gtfs', 'none', COUNT(*), normalization_revision, ''
 FROM {routes} GROUP BY carrier_code, normalization_revision HAVING MAX(gtfs_digest) = ''
