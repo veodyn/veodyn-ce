@@ -1,3 +1,4 @@
+import html
 import re
 
 from redash.transit_naming import provenance
@@ -5,15 +6,16 @@ from redash.transit_naming.snapshot import StopName
 
 WHITESPACE = re.compile(r"\s+")
 DIRECTION_PARENTHETICAL = re.compile(r"\s*\((north|south|east|west)(bound)?\)\s*$", re.IGNORECASE)
-TRAILING_LINE_REFERENCE = re.compile(r"\s*-\s*Metro\s+\w+\s*-?\s*Line\s*$", re.IGNORECASE)
-INTERSECTION_SPLIT = re.compile(r"\s*(?:&|/)\s*")
-NAMED_PLACE = re.compile(r"park\s*&\s*ride|terminal|dock|\bbay\b|transit center|plaza|station", re.IGNORECASE)
+TRAILING_LINE_REFERENCE = re.compile(r"\s*-\s*Metro\s+\w+(?:\s*(?:&|,|/|and)\s*\w+)*\s*-?\s*Lines?\s*$", re.IGNORECASE)
+INTERSECTION_SPLIT = re.compile(r"\s*(?:&|/|\\)\s*")
+STREET_SEPARATOR = re.compile(r"[/\\]")
+NAMED_PLACE = re.compile(r"park\s*(?:&|and)\s*ride|terminal|dock|\bbay\b|transit center|plaza|station", re.IGNORECASE)
 STATION = re.compile(r"\bstation\b", re.IGNORECASE)
 ENDS_WITH_STATION = re.compile(r"\bstation\s*$", re.IGNORECASE)
 
 
 def _tidy(text):
-    return WHITESPACE.sub(" ", (text or "").replace(" ", " ")).strip()
+    return WHITESPACE.sub(" ", html.unescape(text or "").replace(" ", " ")).strip()
 
 
 def _suffix_lookup(rules):
@@ -82,7 +84,8 @@ def _intersection(left, right, rules, direction, mode, retired):
 
 def _from_raw(raw, body, rules, direction, mode, retired):
     parts = INTERSECTION_SPLIT.split(body)
-    if len(parts) == 2 and all(_looks_like_street(part, rules) for part in parts):
+    street_pair = len(parts) == 2 and all(parts)
+    if street_pair and (STREET_SEPARATOR.search(body) or all(_looks_like_street(part, rules) for part in parts)):
         return _intersection(parts[0], parts[1], rules, direction, mode, retired)
     kind = "named_place" if NAMED_PLACE.search(body) or ("&" in body and len(parts) > 1) else "unparsed"
     source = provenance.RULE if body != raw else provenance.PASSTHROUGH
@@ -102,7 +105,7 @@ def name_stop(stop, profile):
         public_name = _station(body, rules)
         source = provenance.RULE if public_name != raw else provenance.PASSTHROUGH
         result = StopName(public_name, "", "", direction, "station", mode, retired, source)
-    elif on_street and cross_street:
+    elif on_street and cross_street and on_street.lower() != cross_street.lower():
         result = _intersection(on_street, cross_street, rules, direction, mode, retired)
     else:
         result = _from_raw(raw, body, rules, direction, mode, retired)

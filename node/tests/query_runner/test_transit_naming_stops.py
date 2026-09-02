@@ -68,10 +68,10 @@ class TestNameStop(TestCase):
         )
 
     def test_unparsed_passes_through_and_an_override_fixes_it(self):
-        name = name_stop(MT_STOPS_BY_ID["3000001"], metro_profile(with_overrides=False))
+        name = name_stop(bare_stop("Hungtington Dr and Golden West Ave W"), metro_profile(with_overrides=False))
         self.assertEqual(
             (name.public_name, name.stop_kind, name.public_name_source),
-            ("Pico \\ Rimpau", "unparsed", provenance.PASSTHROUGH),
+            ("Hungtington Dr and Golden West Ave W", "unparsed", provenance.PASSTHROUGH),
         )
         name = name_stop(MT_STOPS_BY_ID["3000001"], PROFILE)
         self.assertEqual((name.public_name, name.public_name_source), ("Pico/Rimpau", provenance.OVERRIDE))
@@ -186,3 +186,36 @@ class TestReviewFindings(TestCase):
             (name.public_name, name.direction, name.stop_kind, name.public_name_source),
             ("Harbor Transit Center", "Northbound", "named_place", provenance.RULE),
         )
+
+
+class TestLiveDataFindings(TestCase):
+    def test_html_entities_in_parts_are_decoded(self):
+        stop = bare_stop("Florence Ave/Orr & Day Rd", on="Florence Ave", cross="Orr &amp; Day Rd")
+        self.assertEqual(name_stop(stop, PROFILE).public_name, "Florence Av/Orr & Day Rd")
+
+    def test_a_backslash_pair_is_an_intersection(self):
+        name = name_stop(bare_stop("Pico \\ Rimpau"), metro_profile(with_overrides=False))
+        self.assertEqual(
+            (name.public_name, name.stop_kind, name.public_name_source),
+            ("Pico/Rimpau", "intersection", provenance.RULE),
+        )
+
+    def test_identical_parts_fall_back_to_the_raw_name(self):
+        stop = bare_stop(
+            "Harbor Transitway \\ Rosecrans", on="Harbor Frwy & Transit Wy", cross="Harbor Frwy & Transit Wy"
+        )
+        self.assertEqual(name_stop(stop, PROFILE).public_name, "Harbor Transitway/Rosecrans")
+
+    def test_park_and_ride_spelled_out_is_a_named_place(self):
+        stop = bare_stop("Fullerton Park and Ride", on="Fullerton Park & Ride", cross="Fullerton Park & Ride")
+        name = name_stop(stop, PROFILE)
+        self.assertEqual((name.public_name, name.stop_kind), ("Fullerton Park and Ride", "named_place"))
+
+    def test_multi_line_station_references_are_stripped(self):
+        cases = {
+            "7th Street / City Center Station - Metro A & E Lines": "7th Street / City Center Station",
+            "Central Station - Metro B & D Lines": "Central Station",
+            "Riverbrook - Park Station - Metro C-Line": "Riverbrook - Park Station",
+        }
+        for raw, expected in cases.items():
+            self.assertEqual(name_stop(bare_stop(raw, modes="RAIL"), PROFILE).public_name, expected, raw)
