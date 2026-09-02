@@ -1,0 +1,126 @@
+import csv
+import io
+from unittest import TestCase
+
+from redash.transit_naming.patterns import (
+    cut_patterns,
+    distance_feet,
+    mca_pattern_membership,
+    pattern_row,
+)
+from redash.transit_naming.snapshot import GtfsSnapshot
+from tests.query_runner.transit_naming_fixtures import MT_STOPS_BY_ID, metro_profile
+from tests.query_runner.transit_naming_gtfs_fixtures import (
+    BUS_ROUTES_TXT,
+    BUS_STOP_TIMES_TXT,
+    BUS_STOPS_TXT,
+    BUS_TRIPS_TXT,
+)
+
+
+def _rows(text):
+    return list(csv.DictReader(io.StringIO(text)))
+
+
+def build_bus_snapshot():
+    routes = {row["route_id"]: row for row in _rows(BUS_ROUTES_TXT)}
+    trips = tuple(_rows(BUS_TRIPS_TXT))
+    stop_times_by_trip = {}
+    for row in _rows(BUS_STOP_TIMES_TXT):
+        stop_times_by_trip.setdefault(row["trip_id"], []).append((int(row["stop_sequence"]), row["stop_id"]))
+    for entries in stop_times_by_trip.values():
+        entries.sort()
+    stops = {row["stop_id"]: row for row in _rows(BUS_STOPS_TXT)}
+    return GtfsSnapshot("bus", "digest", routes, trips, stop_times_by_trip, stops)
+
+
+SNAPSHOT = build_bus_snapshot()
+NAMES = {stop_id: stop["stop_name"] for stop_id, stop in MT_STOPS_BY_ID.items()}
+PROFILE = metro_profile()
+
+
+def cut(route_code, gtfs_route_id):
+    return cut_patterns("MT", route_code, gtfs_route_id, SNAPSHOT, MT_STOPS_BY_ID, NAMES, PROFILE)
+
+
+class TestDistance(TestCase):
+    def test_a_ten_thousandth_of_a_degree_is_about_36_feet(self):
+        self.assertAlmostEqual(distance_feet(34.0600, -118.3000, 34.0601, -118.3000), 36.4, delta=0.5)
+
+
+class TestCutPatterns(TestCase):
+    def test_one_pattern_per_direction_in_stop_order(self):
+        rows = cut("MT030", "30-13201")
+        east = [r for r in rows if r.direction == "E"]
+        self.assertEqual(
+            [(r.sequence, r.stop_id) for r in east],
+            [(0, "3000001"), (1, "13574"), (2, "19022"), (3, "1166")],
+        )
+        self.assertTrue(all(r.is_canonical for r in rows))
+        self.assertEqual({r.pattern_id for r in east}, {"30_0"})
+        self.assertEqual({r.sequence_source for r in rows}, {"gtfs_stop_times"})
+        self.assertEqual({r.stop_match for r in rows}, {"id"})
+        self.assertEqual(east[0].public_name, "Pico \\ Rimpau")
+
+    def test_per_route_direction_map_wins(self):
+        rows = cut("MT094", "94-13201")
+        self.assertEqual({r.direction for r in rows}, {"N"})
+
+    def test_branch_stops_live_on_their_own_non_canonical_pattern(self):
+        rows = cut("MT720", "720-13201")
+        east = [r for r in rows if r.direction == "E"]
+        canonical = [r for r in east if r.is_canonical]
+        branch = [r for r in east if not r.is_canonical]
+        self.assertEqual([r.stop_id for r in canonical], ["1166", "13574", "9101", "9002"])
+        self.assertEqual([r.stop_id for r in branch], ["1166", "13574", "9003"])
+        self.assertEqual({r.pattern_id for r in branch}, {"720_0x"})
+
+    def test_the_three_stop_match_outcomes(self):
+        rows = {r.gtfs_stop_id: r for r in cut("MT720", "720-13201") if r.direction == "E" and r.is_canonical}
+        self.assertEqual((rows["1166"].stop_match, rows["1166"].stop_id), ("id", "1166"))
+        self.assertEqual(
+            (rows["9001"].stop_match, rows["9001"].stop_id, rows["9001"].public_name),
+            ("coordinate", "9101", "Wilshire Blvd/Western Ave"),
+        )
+        self.assertEqual(
+            (rows["9002"].stop_match, rows["9002"].stop_id, rows["9002"].public_name),
+            ("unmatched", "9002", "Wilshire / Normandie"),
+        )
+
+    def test_a_route_with_no_trips_yields_nothing(self):
+        self.assertEqual(cut("MT009", "9-13201"), [])
+
+    def test_row_columns(self):
+        row = pattern_row(cut("MT030", "30-13201")[0], "rev", "dig")
+        self.assertEqual(
+            list(row),
+            [
+                "carrier_code",
+                "route_code",
+                "direction",
+                "pattern_id",
+                "is_canonical",
+                "sequence",
+                "stop_id",
+                "gtfs_stop_id",
+                "public_name",
+                "stop_match",
+                "sequence_source",
+                "normalization_revision",
+                "gtfs_digest",
+            ],
+        )
+
+
+class TestMcaPatternMembership(TestCase):
+    def test_membership_rows_have_no_sequence(self):
+        stops = [
+            dict(MT_STOPS_BY_ID["1166"], pattern_code="MT030 E"),
+            dict(MT_STOPS_BY_ID["13574"], pattern_code="MT030 E"),
+        ]
+        rows = mca_pattern_membership("MT", "MT030", "MT030 E", stops, NAMES)
+        self.assertEqual(
+            [(r.stop_id, r.sequence, r.direction, r.pattern_id, r.is_canonical) for r in rows],
+            [("1166", None, "E", "MT030 E", True), ("13574", None, "E", "MT030 E", True)],
+        )
+        self.assertEqual({(r.stop_match, r.sequence_source) for r in rows}, {("id", "mca_pattern")})

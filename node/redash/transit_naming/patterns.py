@@ -1,0 +1,125 @@
+import math
+
+from redash.transit_naming.snapshot import PatternStop
+
+EARTH_RADIUS_FEET = 20925646.3
+
+
+def distance_feet(lat1, lng1, lat2, lng2):
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = p2 - p1
+    dl = math.radians(lng2 - lng1)
+    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * EARTH_RADIUS_FEET * math.asin(math.sqrt(h))
+
+
+def _nearest(gtfs_stop, mca_stops, threshold_feet):
+    try:
+        lat, lng = float(gtfs_stop.get("stop_lat")), float(gtfs_stop.get("stop_lon"))
+    except (TypeError, ValueError):
+        return None
+    best, best_distance = None, threshold_feet
+    for stop in mca_stops.values():
+        try:
+            distance = distance_feet(lat, lng, float(stop["lat"]), float(stop["lng"]))
+        except (TypeError, ValueError, KeyError):  # silent-ok
+            continue
+        if distance <= best_distance:
+            best, best_distance = stop, distance
+    return best
+
+
+def _match(gtfs_stop_id, snapshot, mca_stops, public_names, threshold_feet):
+    if gtfs_stop_id in mca_stops:
+        return gtfs_stop_id, public_names.get(gtfs_stop_id, ""), "id"
+    gtfs_stop = snapshot.stops.get(gtfs_stop_id, {})
+    near = _nearest(gtfs_stop, mca_stops, threshold_feet)
+    if near is not None:
+        return str(near["stop_id"]), public_names.get(str(near["stop_id"]), ""), "coordinate"
+    return gtfs_stop_id, gtfs_stop.get("stop_name", ""), "unmatched"
+
+
+def _sequences(snapshot, gtfs_route_id):
+    found = {}
+    for trip in snapshot.trips:
+        if trip.get("route_id") != gtfs_route_id:
+            continue
+        stops = tuple(stop_id for _, stop_id in snapshot.stop_times_by_trip.get(trip["trip_id"], []))
+        if not stops:
+            continue
+        key = (str(trip.get("direction_id", "")), stops)
+        found.setdefault(key, trip.get("shape_id") or trip.get("trip_headsign") or f"{key[0]}-{len(found)}")
+    return found
+
+
+def cut_patterns(
+    carrier_code, route_code, gtfs_route_id, snapshot, mca_stops, public_names, profile, threshold_feet=130.0
+):
+    sequences = _sequences(snapshot, gtfs_route_id)
+    longest = {}
+    for (direction_id, stops), _ in sequences.items():
+        if len(stops) > len(longest.get(direction_id, ())):
+            longest[direction_id] = stops
+    rows = []
+    for (direction_id, stops), pattern_id in sorted(sequences.items(), key=lambda item: (item[0][0], item[1])):
+        letter = profile.direction_letter(route_code, direction_id)
+        canonical = stops == longest[direction_id]
+        for sequence, gtfs_stop_id in enumerate(stops):
+            stop_id, public_name, match = _match(gtfs_stop_id, snapshot, mca_stops, public_names, threshold_feet)
+            rows.append(
+                PatternStop(
+                    carrier_code,
+                    route_code,
+                    letter,
+                    pattern_id,
+                    canonical,
+                    sequence,
+                    stop_id,
+                    gtfs_stop_id,
+                    public_name,
+                    match,
+                    "gtfs_stop_times",
+                )
+            )
+    return rows
+
+
+def mca_pattern_membership(carrier_code, route_code, pattern_code, stops, public_names):
+    direction = pattern_code.split(" ")[-1] if " " in pattern_code else ""
+    rows = []
+    for stop in stops:
+        stop_id = str(stop.get("stop_id"))
+        rows.append(
+            PatternStop(
+                carrier_code,
+                route_code,
+                direction,
+                pattern_code,
+                True,
+                None,
+                stop_id,
+                "",
+                public_names.get(stop_id, stop.get("stop_name", "")),
+                "id",
+                "mca_pattern",
+            )
+        )
+    return rows
+
+
+def pattern_row(p, revision, digest):
+    return {
+        "carrier_code": p.carrier_code,
+        "route_code": p.route_code,
+        "direction": p.direction,
+        "pattern_id": p.pattern_id,
+        "is_canonical": p.is_canonical,
+        "sequence": p.sequence,
+        "stop_id": p.stop_id,
+        "gtfs_stop_id": p.gtfs_stop_id,
+        "public_name": p.public_name,
+        "stop_match": p.stop_match,
+        "sequence_source": p.sequence_source,
+        "normalization_revision": revision,
+        "gtfs_digest": digest,
+    }
