@@ -1,12 +1,10 @@
 'use client'
 
 import { useState, useCallback, type ComponentProps } from 'react'
-import { useRouter } from 'next/navigation'
-import { useQueryById, useCreateQuery, useUpdateQuery } from '@/hooks/use-queries'
+import { useQueryById, useUpdateQuery } from '@/hooks/use-queries'
 import { useExecuteQuery, useQueryResult, useFormatQuery } from '@/hooks/use-query-execution'
 import { useDataSources, useDataSourceSchema } from '@/hooks/use-data-sources'
 import { useAiEnabled } from '@/hooks/use-ai'
-import { useConfig } from '@/components/config/config-provider'
 import { UnsavedChangesGuard } from '@/components/shared/unsaved-changes-guard'
 import type { AdhocViz } from '@/lib/viz-choices'
 import { QueryEditorHeader } from './query-editor-header'
@@ -20,6 +18,7 @@ import { QueryEditorDialogs, type QueryEditorDialog } from './query-editor-dialo
 import { useQueryBuffer } from './use-query-buffer'
 import { useVisualMode } from './use-visual-mode'
 import { useEditorParameters } from './use-editor-parameters'
+import { useSaveSql } from './use-save-sql'
 import { QueryEditorParameterStrip } from './query-editor-parameter-strip'
 
 const EDITOR_CONTAINER_ID = 'query-editor-container'
@@ -29,10 +28,8 @@ interface QueryEditorPageProps {
 }
 
 export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
-  const router = useRouter()
   const { data: existingQuery } = useQueryById(queryId)
   const { data: dataSources } = useDataSources()
-  const createQuery = useCreateQuery()
   const updateQuery = useUpdateQuery()
   const executeQuery = useExecuteQuery()
   const formatQuery = useFormatQuery()
@@ -95,48 +92,13 @@ export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
 
   const handleExecute = useCallback(() => runSql(queryText), [runSql, queryText])
 
-  const draftsEnabled = useConfig().features.query_drafts
-
-  // Saves an explicit SQL string, so the Visual builder can save what it just
-  // composed without waiting for a state round trip, the same way runSql
-  // executes it. PRO passes the buffer, which is what it has always saved.
-  const saveSql = useCallback(
-    async (sql: string) => {
-      // What Save is allowed to say about who can find the query. With the
-      // draft workflow on it says nothing: sending is_draft: false on every
-      // update listed the query org-wide the first time anyone pressed Save and
-      // silently undid "Make it a draft" on the next one, so that state belongs
-      // to the menu action. With it off there IS no menu action, and a query
-      // nobody else can find is not a state the product offers, so Save shares
-      // it. On create that flag is what the service layer turns into the second
-      // request Redash needs, since its create endpoint forces is_draft true
-      // whatever the body says.
-      const share = draftsEnabled ? {} : { is_draft: false }
-      // The parameter definitions ride along with the SQL that declares them.
-      // Saving one without the other leaves a query whose text references a
-      // parameter it has no definition for, which the backend refuses to run.
-      const options = { parameters: params.parameters }
-      if (queryId && existingQuery) {
-        await updateQuery.mutateAsync({
-          id: queryId,
-          query: sql,
-          data_source_id: dataSourceId,
-          options,
-          ...share,
-        })
-        setIsDirty(false)
-      } else {
-        const newQuery = await createQuery.mutateAsync({
-          query: sql,
-          data_source_id: dataSourceId,
-          options,
-          ...share,
-        })
-        router.push(`/queries/${newQuery.id}/source`)
-      }
-    },
-    [queryId, existingQuery, dataSourceId, draftsEnabled, updateQuery, createQuery, router, setIsDirty, params]
-  )
+  const { saveSql, isSaving } = useSaveSql({
+    queryId,
+    existingQuery,
+    dataSourceId,
+    parameters: params.parameters,
+    setIsDirty,
+  })
 
   // Both authoring surfaces hand SQL back to the shared editor buffer. A
   // generated draft is never executed for the analyst: it lands in the editor
@@ -158,7 +120,6 @@ export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
     setQuery(formatted)
   }, [queryText, formatQuery, setQuery])
 
-  const isSaving = updateQuery.isPending || createQuery.isPending
   const currentResult = executeQuery.data ?? existingResult ?? null
 
   const resultsProps: ComponentProps<typeof QueryEditorResults> = {
@@ -170,6 +131,7 @@ export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
     // stored result and the saved visualizations own it again.
     adhocViz: executeQuery.data ? runViz : null,
     queryId,
+    canEdit: !existingQuery || Boolean(existingQuery.can_edit),
     // An unsaved query defaults to unsafe: publishing needs a saved
     // visualization anyway, and the dialog explains itself when refused.
     isQuerySafe: existingQuery?.is_safe ?? false,

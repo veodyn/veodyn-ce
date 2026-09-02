@@ -65,6 +65,7 @@ interface QueryEditorResultsProps {
    */
   adhocViz?: AdhocViz | null
   queryId?: number
+  canEdit?: boolean
   /** Whether the owning query may be published. See VisualizationTabs. */
   isQuerySafe?: boolean
 }
@@ -76,6 +77,7 @@ export function QueryEditorResults({
   visualizations,
   adhocViz = null,
   queryId,
+  canEdit = true,
   isQuerySafe = false,
 }: QueryEditorResultsProps) {
   const tabs =
@@ -110,6 +112,7 @@ export function QueryEditorResults({
           visualizations={tabs}
           queryResult={result}
           queryId={queryId}
+          canEdit={canEdit}
           isQuerySafe={isQuerySafe}
         />
       )}

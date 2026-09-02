@@ -69,3 +69,20 @@ describe('QueryEditorResults on a failed run', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })
+
+describe('QueryEditorResults on a saved query the viewer cannot edit', () => {
+  it('offers no add visualization control', () => {
+    renderWithProviders(
+      <QueryEditorResults
+        isExecuting={false}
+        error={null}
+        result={RESULT}
+        visualizations={[]}
+        queryId={1}
+        canEdit={false}
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: 'Add visualization' })).not.toBeInTheDocument()
+  })
+})
