@@ -120,3 +120,42 @@ class TestProfileValidation(TestCase):
     def test_duplicate_override_key(self):
         error = self.load_variant("x", "x", csv="kind,key,public_name,note\nroute,MT094,A,\nroute,MT094,B,\n")
         self.assertEqual((error.row, error.field), (3, "key"))
+
+
+class TestLoaderRefusals(TestCase):
+    def refused(self, replace_from, replace_to):
+        with tempfile.TemporaryDirectory() as pack:
+            write_profile_dir(pack, {"MT.yaml": MT_YAML.replace(replace_from, replace_to)})
+            with self.assertRaises(ProfileError) as raised:
+                load_profiles([CORE_PROFILE_DIR, pack])
+        return raised.exception
+
+    def test_a_configured_directory_that_does_not_exist_is_an_error(self):
+        with self.assertRaises(ProfileError) as raised:
+            load_profiles([CORE_PROFILE_DIR, "/nonexistent/naming_profiles"])
+        self.assertIn("/nonexistent/naming_profiles", str(raised.exception))
+
+    def test_an_empty_carrier_code_is_refused(self):
+        error = self.refused("carrier_code: MT", 'carrier_code: ""')
+        self.assertEqual(error.field, "carrier_code")
+
+    def test_a_malformed_pattern_is_refused(self):
+        error = self.refused('pattern: "{brand} {route_number}"', 'pattern: "{brand {route_number}"')
+        self.assertEqual(error.field, "route_name.pattern")
+        error = self.refused('pattern: "{brand} {route_number}"', 'pattern: "{Brand} {route_number}"')
+        self.assertEqual(error.field, "route_name.pattern")
+
+    def test_duplicate_gtfs_source_names_are_refused(self):
+        error = self.refused("  - name: rail", "  - name: bus")
+        self.assertEqual(error.field, "gtfs_sources[1].name")
+
+    def test_unknown_keys_inside_records_are_refused(self):
+        error = self.refused("short_name: K, mode: light_rail", "short_nam: K, mode: light_rail")
+        self.assertEqual(error.field, "route_name.route_names.MT807.short_nam")
+        error = self.refused("    join: [route_id_prefix]", "    join: [route_id_prefix]\n    joins: []")
+        self.assertEqual(error.field, "gtfs_sources[1].joins")
+        rapid = '{from: 700, to: 799, brand: "Metro Rapid Line", mode: bus}'
+        error = self.refused(rapid, rapid.replace("mode", "mod"))
+        self.assertEqual(error.field, "route_name.brand_bands[4].mod")
+        error = self.refused('gtfs_route_id: "910-13201", note:', 'gtfs_route_id: "910-13201", notes:')
+        self.assertEqual(error.field, "aliases.MT950.notes")

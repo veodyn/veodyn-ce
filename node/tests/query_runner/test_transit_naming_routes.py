@@ -196,3 +196,28 @@ class TestOverrideAndRow(TestCase):
         )
         self.assertEqual((row["route_code"], row["route_id"], row["line_code"]), ("MT094", 1, "094"))
         self.assertEqual((row["normalization_revision"], row["gtfs_digest"]), ("2026.09.02+abc", "digest-bus"))
+
+
+class TestReviewFindings(TestCase):
+    def setUp(self):
+        self.profile = metro_profile(with_overrides=False)
+
+    def test_alias_provenance_reaches_the_color(self):
+        silver = resolved(
+            "910-13201", "", "Metro J Line (Silver) 910/950", color="ADB8BF", provenance_value=provenance.ALIAS
+        )
+        name = name_route(ROUTES["MT950"], self.profile, silver)
+        self.assertEqual((name.color, name.color_source), ("ADB8BF", provenance.ALIAS))
+
+    def test_side_channel_fills_the_brand_and_its_source(self):
+        narrowed = MT_YAML.replace(
+            "brand_from: [gtfs_route_long_name, brand_bands]", "brand_from: [gtfs_route_long_name]"
+        )
+        profiles = build_profile_set([CORE_PROFILE_DIR], extra_files={"/pack": {"MT.yaml": narrowed}})
+        channel = {"line_name": "Metro Local Line", "line_short_name": "94"}
+        name = name_route(ROUTES["MT094"], profiles.for_carrier("MT"), None, side_channel=channel)
+        self.assertEqual((name.brand, name.brand_source), ("Metro Local Line", provenance.MCA_SIDE_CHANNEL))
+
+    def test_legacy_color_applies_to_any_carrier_letter_line(self):
+        name = name_route(ROUTES["MT801"], self.profile, resolved("801", "", "Foothill A Line", "0", source="rail"))
+        self.assertEqual(name.public_name, "Foothill A Line (Blue)")

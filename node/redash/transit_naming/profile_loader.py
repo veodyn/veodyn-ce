@@ -1,6 +1,7 @@
 import hashlib
 import os
 import re
+import string
 from dataclasses import replace
 
 import yaml
@@ -61,8 +62,11 @@ STOP_NAME_KEYS = {
     "strip_trailing_line_reference",
 }
 HEADSIGN_KEYS = {"title_case", "expand"}
+SOURCE_KEYS = {"name", "url", "join"}
+ALIAS_KEYS = {"source", "gtfs_route_id", "note"}
+BAND_KEYS = {"from", "to", "brand", "mode"}
+ENTRY_KEYS = {"public_name", "short_name", "mode", "color"}
 HEX_COLOR = re.compile(r"^[0-9A-Fa-f]{6}$")
-PLACEHOLDER = re.compile(r"{([a-z_]+)}")
 
 
 class StrictLoader(yaml.SafeLoader):
@@ -95,7 +99,11 @@ def _check_keys(data, allowed, carrier, file, prefix=""):
 
 
 def _check_pattern(pattern, allowed, carrier, file, field):
-    for name in PLACEHOLDER.findall(pattern):
+    try:
+        names = [name for _, name, _, _ in string.Formatter().parse(pattern) if name is not None]
+    except ValueError as error:
+        raise ProfileError(f"malformed pattern {pattern!r}: {error}", carrier, file, field=field) from error
+    for name in names:
         if name not in allowed:
             raise ProfileError(f"unknown placeholder {name!r} in {pattern!r}", carrier, file, field=field)
 
@@ -110,6 +118,7 @@ def _color(value, carrier, file, field):
 def _brand_bands(items, carrier, file):
     bands = []
     for index, band in enumerate(items or []):
+        _check_keys(band, BAND_KEYS, carrier, file, f"route_name.brand_bands[{index}].")
         mode = band.get("mode", "bus")
         if mode not in MODES:
             raise ProfileError(f"unknown mode {mode!r}", carrier, file, field=f"route_name.brand_bands[{index}].mode")
@@ -123,6 +132,7 @@ def _route_names(items, carrier, file):
         prefix = f"route_name.route_names.{route_code}"
         if not isinstance(entry, dict) or not entry.get("public_name"):
             raise ProfileError("route_names entry needs public_name", carrier, file, field=f"{prefix}.public_name")
+        _check_keys(entry, ENTRY_KEYS, carrier, file, f"{prefix}.")
         if entry.get("mode", "") not in MODES:
             raise ProfileError(f"unknown mode {entry.get('mode')!r}", carrier, file, field=f"{prefix}.mode")
         names[str(route_code)] = RouteNameEntry(
@@ -179,6 +189,10 @@ def _headsign_rules(data, carrier, file):
 def _gtfs_sources(items, carrier, file):
     sources = []
     for index, item in enumerate(items or []):
+        _check_keys(item, SOURCE_KEYS, carrier, file, f"gtfs_sources[{index}].")
+        if str(item.get("name")) in {source.name for source in sources}:
+            field = f"gtfs_sources[{index}].name"
+            raise ProfileError(f"duplicate gtfs source name {item.get('name')!r}", carrier, file, field=field)
         join = item.get("join") or []
         for strategy in join:
             if strategy not in JOIN_STRATEGIES:
@@ -192,6 +206,7 @@ def _aliases(data, sources, carrier, file):
     names = {source.name for source in sources}
     aliases = {}
     for route_code, alias in (data or {}).items():
+        _check_keys(alias, ALIAS_KEYS, carrier, file, f"aliases.{route_code}.")
         if alias.get("source") not in names:
             field = f"aliases.{route_code}.source"
             raise ProfileError(
@@ -210,7 +225,9 @@ def parse_profile_yaml(text, file):
         data = yaml.load(text, Loader=StrictLoader) or {}
     except ProfileError as error:
         raise ProfileError(str(error), file=file, field=error.field) from error
-    carrier = str(data.get("carrier_code", ""))
+    carrier = str(data.get("carrier_code") or "").strip()
+    if not carrier:
+        raise ProfileError("carrier_code is required", file=file, field="carrier_code")
     _check_keys(data, TOP_KEYS, carrier, file)
     sources = _gtfs_sources(data.get("gtfs_sources"), carrier, file)
     by_route = data.get("direction_map_by_route") or {}

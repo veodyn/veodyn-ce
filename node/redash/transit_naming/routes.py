@@ -4,7 +4,7 @@ from redash.transit_naming import provenance
 from redash.transit_naming.snapshot import MODE_BY_ROUTE_TYPE, RouteName
 
 RAIL_MODES = ("light_rail", "heavy_rail")
-LETTER_LINE = re.compile(r"^Metro ([A-Z]) Line$")
+LETTER_LINE = re.compile(r"^(?:\S+ )*(?P<letter>[A-Z]) Line$")
 LETTER_IN_NAME = re.compile(r"\b([A-Z]) Line\b")
 
 
@@ -74,14 +74,14 @@ def _letter(name):
 
 def _rail_name(name, rules):
     match = LETTER_LINE.match(name)
-    if match and match.group(1) in rules.legacy_colors:
-        return rules.rail_pattern.format(public_name=name, legacy_color=rules.legacy_colors[match.group(1)])
+    if match and match.group("letter") in rules.legacy_colors:
+        return rules.rail_pattern.format(public_name=name, legacy_color=rules.legacy_colors[match.group("letter")])
     return name
 
 
 def _color(route, profile, resolved, entry):
     if resolved is not None and resolved.route_color:
-        return resolved.route_color, resolved.route_text_color, provenance.GTFS
+        return resolved.route_color, resolved.route_text_color, resolved.provenance
     mca = str(route.get("line_color") or "").strip().lstrip("#")
     if mca:
         return mca.upper(), "", provenance.PASSTHROUGH
@@ -117,9 +117,10 @@ def name_route(route, profile, resolved, side_channel=None):
                 brand=brand, route_number=number, carrier_display_name=profile.carrier_display_name
             )
     elif side_channel and side_channel.get("line_name") and side_channel.get("line_short_name"):
-        public_name = f"{side_channel['line_name']} {side_channel['line_short_name']}"
+        brand = str(side_channel["line_name"])
+        public_name = f"{brand} {side_channel['line_short_name']}"
         short_name = str(side_channel["line_short_name"])
-        source = provenance.MCA_SIDE_CHANNEL
+        source = brand_source = provenance.MCA_SIDE_CHANNEL
     else:
         brand = profile.carrier_display_name
         public_name = rules.pattern.format(

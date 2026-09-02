@@ -24,8 +24,9 @@ def parse_overrides_csv(text, carrier, file):
 def read_profile_files(dirs, extra_files=None):
     files = {}
     for directory in dirs:
-        names = sorted(os.listdir(directory)) if os.path.isdir(directory) else []
-        for name in names:
+        if not os.path.isdir(directory):
+            raise ProfileError(f"profile directory {directory} does not exist", file=directory)
+        for name in sorted(os.listdir(directory)):
             if name.endswith(PROFILE_SUFFIXES):
                 path = os.path.join(directory, name)
                 with open(path, "rb") as handle:
