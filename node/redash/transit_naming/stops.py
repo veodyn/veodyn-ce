@@ -84,10 +84,12 @@ def _intersection(left, right, rules, direction, mode, retired):
 
 def _from_raw(raw, body, rules, direction, mode, retired):
     parts = INTERSECTION_SPLIT.split(body)
-    street_pair = len(parts) == 2 and all(parts)
-    if street_pair and (STREET_SEPARATOR.search(body) or all(_looks_like_street(part, rules) for part in parts)):
+    pair = len(parts) == 2 and all(parts)
+    streets = pair and all(_looks_like_street(part, rules) for part in parts)
+    place = bool(NAMED_PLACE.search(body))
+    if streets or (pair and not place and STREET_SEPARATOR.search(body)):
         return _intersection(parts[0], parts[1], rules, direction, mode, retired)
-    kind = "named_place" if NAMED_PLACE.search(body) or ("&" in body and len(parts) > 1) else "unparsed"
+    kind = "named_place" if place or ("&" in body and len(parts) > 1) else "unparsed"
     source = provenance.RULE if body != raw else provenance.PASSTHROUGH
     return StopName(body, "", "", direction, kind, mode, retired, source)
 

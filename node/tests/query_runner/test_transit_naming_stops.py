@@ -206,6 +206,10 @@ class TestLiveDataFindings(TestCase):
         )
         self.assertEqual(name_stop(stop, PROFILE).public_name, "Harbor Transitway/Rosecrans")
 
+    def test_a_slash_pair_with_a_place_keyword_and_no_streets_is_a_named_place(self):
+        name = name_stop(bare_stop("Airport Terminal/Parking Lot"), PROFILE)
+        self.assertEqual((name.public_name, name.stop_kind), ("Airport Terminal/Parking Lot", "named_place"))
+
     def test_park_and_ride_spelled_out_is_a_named_place(self):
         stop = bare_stop("Fullerton Park and Ride", on="Fullerton Park & Ride", cross="Fullerton Park & Ride")
         name = name_stop(stop, PROFILE)
