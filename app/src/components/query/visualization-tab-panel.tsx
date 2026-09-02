@@ -13,7 +13,7 @@ import { VisualizationErrorBoundary } from '@/components/visualizations/visualiz
 import { VisualizationRenderer } from '@/components/visualizations/visualization-renderer'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { visualizationData } from '@/lib/visualizations'
-import type { RedashTableOptions } from '@/services/redash/types'
+import type { RedashTableColumnOptions, RedashTableOptions } from '@/services/redash/types'
 import { QueryResultTable } from './query-result-table'
 
 export interface VisualizationTabPanelProps {
@@ -30,6 +30,7 @@ export interface VisualizationTabPanelProps {
   runDisabled?: boolean
   /** The saved query behind these rows, for the backend's own xlsx export. */
   queryId?: number
+  onColumnsChange?: (columns: RedashTableColumnOptions[]) => void
 }
 
 export function VisualizationTabPanel({
@@ -39,6 +40,7 @@ export function VisualizationTabPanel({
   onRun,
   runDisabled = false,
   queryId,
+  onColumnsChange,
 }: VisualizationTabPanelProps) {
   const data = visualizationData(viz.type, resultData)
 
@@ -66,7 +68,14 @@ export function VisualizationTabPanel({
 
   if (viz.type === 'TABLE') {
     const { columns } = (viz.options ?? {}) as RedashTableOptions
-    return <QueryResultTable data={data} columns={columns} queryId={queryId} />
+    return (
+      <QueryResultTable
+        data={data}
+        columns={columns}
+        queryId={queryId}
+        onColumnsChange={onColumnsChange}
+      />
+    )
   }
 
   // Dashboards, wall slides and report blocks all wrap the renderer; this

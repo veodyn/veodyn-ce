@@ -6,6 +6,7 @@ import { IconButton } from '@/components/shared/icon-button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { QueryResultColumn } from '@/lib/mock-data'
+import { effectiveColumnConfig, renumberColumnConfig } from '@/lib/table-columns'
 import type { RedashTableColumnOptions, RedashTableOptions } from '@/services/redash/types'
 
 interface TableEditorProps {
@@ -24,21 +25,12 @@ const DISPLAY_AS = [
   { value: 'image', label: 'Image' },
 ] as const
 
-// Builds the effective per-column config, falling back to source-column
-// order/visible defaults for any column not yet present in options.columns.
-function effectiveColumns(options: RedashTableOptions, columns: QueryResultColumn[]): RedashTableColumnOptions[] {
-  const configByName = new Map((options.columns ?? []).map((c) => [c.name, c]))
-  return columns
-    .map((col, i) => configByName.get(col.name) ?? { name: col.name, visible: true, order: i })
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-}
-
 export function TableEditor({ options: rawOptions, columns, onChange }: TableEditorProps) {
   const options = rawOptions as RedashTableOptions
-  const columnConfig = effectiveColumns(options, columns)
+  const columnConfig = effectiveColumnConfig(columns, options.columns)
 
   const save = (next: RedashTableColumnOptions[]) => {
-    onChange({ ...rawOptions, columns: next.map((c, i) => ({ ...c, order: i })) })
+    onChange({ ...rawOptions, columns: renumberColumnConfig(next) })
   }
 
   const patch = (name: string, updates: Partial<RedashTableColumnOptions>) => {

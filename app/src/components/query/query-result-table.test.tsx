@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { mockQueryResults } from '@/lib/mock-data'
 import { buildCurrentUser } from '@/stores/auth-identity'
@@ -102,5 +102,63 @@ describe('QueryResultTable', () => {
     })
 
     expect(screen.queryByRole('button', { name: /download/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('QueryResultTable column drag', () => {
+  const data = {
+    columns: [
+      { name: 'carrier_code', friendly_name: 'carrier_code', type: 'string' },
+      { name: 'stop_id', friendly_name: 'stop_id', type: 'string' },
+      { name: 'uuid', friendly_name: 'uuid', type: 'string' },
+    ],
+    rows: [{ carrier_code: 'MT', stop_id: '1', uuid: 'abc' }],
+  }
+
+  it('saves the new order when one header is dropped on another', () => {
+    const onColumnsChange = vi.fn()
+
+    renderWithProviders(<QueryResultTable data={data} onColumnsChange={onColumnsChange} />)
+
+    const headers = screen.getAllByRole('columnheader')
+    fireEvent.dragStart(headers[2])
+    fireEvent.dragOver(headers[0])
+    fireEvent.drop(headers[0])
+
+    expect(onColumnsChange).toHaveBeenCalledWith([
+      { name: 'uuid', visible: true, order: 0 },
+      { name: 'carrier_code', visible: true, order: 1 },
+      { name: 'stop_id', visible: true, order: 2 },
+    ])
+  })
+
+  it('keeps a hidden column and its settings across a reorder', () => {
+    const onColumnsChange = vi.fn()
+    const columns = [
+      { name: 'carrier_code', order: 0, visible: true },
+      { name: 'stop_id', order: 1, visible: false },
+      { name: 'uuid', order: 2, visible: true, title: 'UUID' },
+    ]
+
+    renderWithProviders(
+      <QueryResultTable data={data} columns={columns} onColumnsChange={onColumnsChange} />
+    )
+
+    const headers = screen.getAllByRole('columnheader')
+    fireEvent.dragStart(headers[1])
+    fireEvent.dragOver(headers[0])
+    fireEvent.drop(headers[0])
+
+    expect(onColumnsChange).toHaveBeenCalledWith([
+      { name: 'uuid', order: 0, visible: true, title: 'UUID' },
+      { name: 'carrier_code', order: 1, visible: true },
+      { name: 'stop_id', order: 2, visible: false },
+    ])
+  })
+
+  it('leaves headers undraggable where the order has nowhere to be saved', () => {
+    renderWithProviders(<QueryResultTable data={data} />)
+
+    expect(screen.getAllByRole('columnheader')[0]).not.toHaveAttribute('draggable', 'true')
   })
 })

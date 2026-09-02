@@ -8,6 +8,8 @@ import { downloadCSV, downloadTSV } from '@/lib/download'
 import { usePolicy } from '@/lib/policy'
 import type { RedashTableColumnOptions } from '@/services/redash/types'
 import { displayColumns } from '@/lib/filters/result-filters'
+import { reorderColumns } from '@/lib/table-columns'
+import { useColumnDrag } from '@/hooks/use-column-drag'
 import { ResultCell } from './result-cell'
 import { Button } from '@/components/ui/button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
@@ -28,6 +30,7 @@ interface QueryResultTableProps {
    * the backend's own xlsx export; an ad hoc result has no URL to point at.
    */
   queryId?: number
+  onColumnsChange?: (columns: RedashTableColumnOptions[]) => void
 }
 
 export function applyColumnConfig(data: QueryResultData, columnConfig?: RedashTableColumnOptions[]): QueryResultData {
@@ -58,8 +61,13 @@ export function QueryResultTable({
   className,
   columns: columnConfig,
   queryId,
+  onColumnsChange,
 }: QueryResultTableProps) {
   const data = useMemo(() => applyColumnConfig(rawData, columnConfig), [rawData, columnConfig])
+  const { dragProps, dragClassName } = useColumnDrag(
+    onColumnsChange &&
+      ((moved, target) => onColumnsChange(reorderColumns(rawData.columns, columnConfig, moved, target)))
+  )
   // Keyed for the cells below, which each draw themselves the way their own
   // column says to. applyColumnConfig above only reshapes the header row.
   const configByName = useMemo(
@@ -179,8 +187,12 @@ export function QueryResultTable({
               {data.columns.map((col) => (
                 <TableHead
                   key={col.name}
+                  {...dragProps(col.name)}
                   onClick={() => handleSort(col.name)}
-                  className="text-left text-xs font-mono font-medium text-muted-foreground px-3 py-2 cursor-pointer hover:text-foreground whitespace-nowrap"
+                  className={cn(
+                    'text-left text-xs font-mono font-medium text-muted-foreground px-3 py-2 cursor-pointer hover:text-foreground whitespace-nowrap',
+                    dragClassName(col.name)
+                  )}
                 >
                   {col.friendly_name}
                   {sortCol === col.name && (sortDir === 'asc' ? ' ↑' : ' ↓')}

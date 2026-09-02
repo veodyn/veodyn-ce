@@ -14,17 +14,8 @@ import { IconButton } from '@/components/shared/icon-button'
 import { isSavedVisualization } from '@/lib/viz-choices'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CHART_FILL_VAR } from '@/components/visualizations/chart/chart-frame'
-
-// A length, not `100%`. A percentage height resolves against the parent's own,
-// and the chain from this panel down to the frame runs through the error
-// boundary and the plugin renderer, neither of which has a definite height, so
-// `100%` collapsed the frame to its padding: 32px, measured. A viewport-
-// relative length has no such dependency and needs nothing from the ancestors.
-//
-// 16rem is the page chrome above the plot (header, metadata row, tab strip) and
-// a little breathing room under it. max() keeps the old computed height as a
-// floor, so a short window is no worse than before this existed.
-const FILL_HEIGHT = 'max(24rem, calc(100vh - 16rem))'
+import { useColumnOrderSave } from '@/hooks/use-column-order-save'
+import { FILL_HEIGHT } from './visualization-fill-height'
 
 interface VisualizationTabsProps {
   visualizations: MockVisualization[]
@@ -88,6 +79,7 @@ export function VisualizationTabs({
   const createViz = useCreateVisualization()
   const updateViz = useUpdateVisualization()
   const deleteViz = useDeleteVisualization()
+  const saveColumnOrder = useColumnOrderSave(queryId)
 
   const resultData = queryResult?.data ?? null
 
@@ -233,6 +225,9 @@ export function VisualizationTabs({
               onRun={onRun}
               runDisabled={runDisabled}
               queryId={queryId}
+              onColumnsChange={
+                queryId && canEdit && isSavedVisualization(viz) ? saveColumnOrder(viz) : undefined
+              }
             />
           </TabsContent>
         ))}
