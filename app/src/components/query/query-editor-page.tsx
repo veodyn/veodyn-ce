@@ -19,6 +19,7 @@ import { useQueryBuffer } from './use-query-buffer'
 import { useVisualMode } from './use-visual-mode'
 import { useEditorParameters } from './use-editor-parameters'
 import { useSaveSql } from './use-save-sql'
+import { useAuthStore } from '@/stores/auth-store'
 import { QueryEditorParameterStrip } from './query-editor-parameter-strip'
 
 const EDITOR_CONTAINER_ID = 'query-editor-container'
@@ -30,6 +31,7 @@ interface QueryEditorPageProps {
 export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
   const { data: existingQuery } = useQueryById(queryId)
   const { data: dataSources } = useDataSources()
+  const currentUser = useAuthStore((s) => s.currentUser)
   const updateQuery = useUpdateQuery()
   const executeQuery = useExecuteQuery()
   const formatQuery = useFormatQuery()
@@ -131,7 +133,7 @@ export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
     // stored result and the saved visualizations own it again.
     adhocViz: executeQuery.data ? runViz : null,
     queryId,
-    canEdit: !existingQuery || Boolean(existingQuery.can_edit),
+    canEdit: !existingQuery || Boolean(existingQuery.can_edit || currentUser?.isAdmin),
     // An unsaved query defaults to unsafe: publishing needs a saved
     // visualization anyway, and the dialog explains itself when refused.
     isQuerySafe: existingQuery?.is_safe ?? false,

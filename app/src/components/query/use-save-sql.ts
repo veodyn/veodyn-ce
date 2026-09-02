@@ -6,7 +6,7 @@ import type { useEditorParameters } from './use-editor-parameters'
 
 interface UseSaveSqlOptions {
   queryId?: number
-  existingQuery: { id: number } | undefined
+  existingQuery: { id: number } | null | undefined
   dataSourceId: number
   parameters: ReturnType<typeof useEditorParameters>['parameters']
   setIsDirty: (dirty: boolean) => void
