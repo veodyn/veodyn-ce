@@ -25,6 +25,10 @@ from redash.query_runner.metrocloudalliance_departures import (
     DEPARTURE_COLUMNS,
     flatten_departures,
 )
+from redash.query_runner.metrocloudalliance_public import (
+    PUBLIC_RESOURCES,
+    run_public_resource,
+)
 
 DEFAULT_BASE_URL = "https://api.metrocloudalliance.com/"
 
@@ -273,6 +277,7 @@ class MetroCloudAlliance(BaseResourceRunner):
             "example": '{"resource": "vehiclelocations", "params": {"transit_mode": "rail", "carrier_code": "<code>"}}',
         },
     }
+    resources.update(PUBLIC_RESOURCES)
     default_resource = "carriers"
     noop_query = '{"resource": "carriers"}'
 
@@ -283,6 +288,10 @@ class MetroCloudAlliance(BaseResourceRunner):
     required_resource_params = {
         "reports": ("type",),
         "stoptimes": ("iline",),
+        "public_routes": ("carrier_code",),
+        "public_stops": ("carrier_code",),
+        "public_route_stops": ("carrier_code",),
+        "public_departures": ("carrier_code",),
     }
 
     @classmethod
@@ -337,6 +346,10 @@ class MetroCloudAlliance(BaseResourceRunner):
             if error:
                 raise ValueError(error)
 
+        if resource in PUBLIC_RESOURCES:
+            records = run_public_resource(resource, params, self._fetch_raw, now=time.time())
+            return records, {"status": "ok", "results": records}
+
         query_params = dict(params)
         query_params["api_key"] = self.api_key
         resp = requests.get(
@@ -355,6 +368,10 @@ class MetroCloudAlliance(BaseResourceRunner):
         if resource == "departures":
             records = flatten_departures(records, now=time.time())
         return records, raw
+
+    def _fetch_raw(self, resource, params):
+        records, _ = self._fetch(resource, params)
+        return records
 
 
 register(MetroCloudAlliance)
