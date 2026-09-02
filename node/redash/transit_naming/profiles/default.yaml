@@ -1,0 +1,19 @@
+carrier_code: default
+carrier_display_name: default
+route_name:
+  pattern: "{brand} Line {route_number}"
+  brand_from: [carrier_display_name]
+direction_map: {"0": N, "1": S}
+pattern_codes: {}
+departures_stop_lookup_max: 50
+stop_name:
+  separator: "/"
+  suffixes: {Boulevard: Bl, Blvd: Bl, Avenue: Av, Ave: Av, Street: St, Drive: Dr, Road: Rd, Highway: Hwy, Place: Pl, Parkway: Pkwy, Freeway: Fwy, Lane: Ln, Court: Ct, Way: Way}
+  keep_whole: [Broadway]
+  station_suffix: " Station"
+  strip_direction_parenthetical: true
+  strip_trailing_line_reference: true
+headsign:
+  title_case: true
+  expand: {"Sta.": Station, Ctr: Center, Dtwn: Downtown, DTLA: Downtown LA, "Trans Ctr": Transit Center}
+time_format: "h:mma"

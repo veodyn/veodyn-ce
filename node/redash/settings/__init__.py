@@ -363,6 +363,9 @@ QUERY_RUNNERS = remove(
     distinct(enabled_query_runners + additional_query_runners),
 )
 
+TRANSIT_NAMING_PROFILE_DIRS = array_from_string(os.environ.get("REDASH_TRANSIT_NAMING_PROFILE_DIRS", ""))
+TRANSIT_NAMING_CACHE_DIR = os.environ.get("REDASH_TRANSIT_NAMING_CACHE_DIR", "/tmp/redash-transit-naming")
+
 dynamic_settings = importlib.import_module(
     os.environ.get("REDASH_DYNAMIC_SETTINGS_MODULE", "redash.settings.dynamic_settings")
 )
