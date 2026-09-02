@@ -134,13 +134,14 @@ def public_routes(params, fetch, profiles, archive_fetcher=None):
     ]
 
 
-def public_stops(params, fetch, profiles):
+def public_stops(params, fetch, profiles, archive_fetcher=None):
     query = {"carrier_code": _carrier(params)}
     if params.get("stop_id"):
         query["stop_id"] = params["stop_id"]
     stops = fetch("stops", query)
     profile = profiles.for_carrier(_carrier(params))
-    return [stop_row(stop, name_stop(stop, profile), profiles.revision, "") for stop in stops]
+    digest = _resolver(profile, False, archive_fetcher).digest
+    return [stop_row(stop, name_stop(stop, profile), profiles.revision, digest) for stop in stops]
 
 
 def public_route_stops(params, fetch, profiles, archive_fetcher=None):
@@ -155,18 +156,27 @@ def public_route_stops(params, fetch, profiles, archive_fetcher=None):
     profile = _profile(profiles, params, routes)
     resolver = _resolver(profile, True, archive_fetcher)
     names = {}
+    sources = {}
     live = {}
     for stop in stops:
         named = name_stop(stop, profile)
         if not named.retired:
             live[str(stop["stop_id"])] = stop
             names[str(stop["stop_id"])] = named.public_name
+            sources[str(stop["stop_id"])] = named.public_name_source
     rows = []
     for route_code, (route, name, resolved) in _route_names(routes, profile, resolver, with_resolved=True).items():
         if resolved is not None:
             snapshot = resolver.snapshots()[resolved.source_name]
             patterns = cut_patterns(
-                profile.carrier_code, route_code, name.gtfs_route_id, snapshot, live, names, profile
+                profile.carrier_code,
+                route_code,
+                name.gtfs_route_id,
+                snapshot,
+                live,
+                names,
+                profile,
+                public_sources=sources,
             )
         else:
             patterns = []
@@ -179,6 +189,7 @@ def public_route_stops(params, fetch, profiles, archive_fetcher=None):
                         pattern_code,
                         [m for m in members if str(m.get("stop_id")) in live],
                         names,
+                        sources,
                     )
                 )
         rows.extend(pattern_row(p, profiles.revision, resolver.digest) for p in patterns)
@@ -225,7 +236,7 @@ def run_public_resource(resource, params, fetch, now=None, archive_fetcher=None)
     if resource == "public_routes":
         return public_routes(params, fetch, profiles, archive_fetcher)
     if resource == "public_stops":
-        return public_stops(params, fetch, profiles)
+        return public_stops(params, fetch, profiles, archive_fetcher)
     if resource == "public_route_stops":
         return public_route_stops(params, fetch, profiles, archive_fetcher)
     if resource == "public_departures":

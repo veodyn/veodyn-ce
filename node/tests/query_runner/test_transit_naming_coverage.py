@@ -168,7 +168,7 @@ class TestCoverageReviewFindings(TestCase):
                     public_name="A/B",
                     public_name_source="rule",
                     retired=0,
-                    gtfs_digest="",
+                    gtfs_digest="d4",
                 )
             ],
         )
@@ -208,4 +208,5 @@ class TestCoverageReviewFindings(TestCase):
         got = {(c, m, d): v for c, m, d, v, _, _ in self.db.execute(self.sql).fetchall()}
         self.assertEqual(got[("BU", "gtfs", "none")], 1)
         self.assertEqual(got[("MT", "digest_disagreement", "departures")], "d3")
+        self.assertEqual(got[("MT", "digest_disagreement", "stops")], "d4")
         self.assertNotIn(("MT", "gtfs", "none"), got)

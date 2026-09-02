@@ -159,3 +159,17 @@ class TestLoaderRefusals(TestCase):
         self.assertEqual(error.field, "route_name.brand_bands[4].mod")
         error = self.refused('gtfs_route_id: "910-13201", note:', 'gtfs_route_id: "910-13201", notes:')
         self.assertEqual(error.field, "aliases.MT950.notes")
+
+    def test_revision_ignores_the_directory_the_files_live_in(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            write_profile_dir(one, {"MT.yaml": MT_YAML})
+            write_profile_dir(two, {"MT.yaml": MT_YAML})
+            first = load_profiles([CORE_PROFILE_DIR, one]).revision
+            second = load_profiles([CORE_PROFILE_DIR, two]).revision
+        self.assertEqual(first, second)
+
+    def test_duplicate_key_error_names_the_carrier(self):
+        error = self.refused(
+            "carrier_display_name: Metro", "carrier_display_name: Metro\ncarrier_display_name: LA Metro"
+        )
+        self.assertEqual((error.carrier, error.field), ("MT", "carrier_display_name"))

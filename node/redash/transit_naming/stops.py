@@ -72,6 +72,9 @@ def _station(body, rules):
 
 
 def _intersection(left, right, rules, direction, mode, retired):
+    left, left_direction = _split_direction(left, rules)
+    right, right_direction = _split_direction(right, rules)
+    direction = direction or left_direction or right_direction
     left, right = normalize_part(left, rules), normalize_part(right, rules)
     public_name = f"{left}{rules.separator}{right}"
     return StopName(public_name, left, right, direction, "intersection", mode, retired, provenance.RULE)
@@ -81,7 +84,7 @@ def _from_raw(raw, body, rules, direction, mode, retired):
     parts = INTERSECTION_SPLIT.split(body)
     if len(parts) == 2 and all(_looks_like_street(part, rules) for part in parts):
         return _intersection(parts[0], parts[1], rules, direction, mode, retired)
-    kind = "named_place" if NAMED_PLACE.search(body) else "unparsed"
+    kind = "named_place" if NAMED_PLACE.search(body) or ("&" in body and len(parts) > 1) else "unparsed"
     source = provenance.RULE if body != raw else provenance.PASSTHROUGH
     return StopName(body, "", "", direction, kind, mode, retired, source)
 

@@ -112,6 +112,14 @@ MT_ROUTES = [
     mca_route("MT807", "807", 8, 9),
     mca_route("MT010", "010", 9, 10),
     mca_route("MT720", "720", 10, 11),
+    mca_route("MT038", "035", 2526, 151),
+    mca_route("MT035", "035", 2526, 798, route_name="DTLA - WASHINGTON/FAIRFAX VIA WASHINGTON BL"),
+    mca_route("MT236", "236", 20, 11),
+    mca_route("MT235", "236", 20, 1119),
+    mca_route("MT242", "242", 2809, 1125),
+    mca_route("MT243", "242", 2809, 1126),
+    mca_route("MT260", "260", 214, 87),
+    mca_route("MT261", "260", 214, 1175),
 ]
 BU_ROUTES = [mca_route("BUORA", "ORA", 5, 900, route_name="", carrier="BU")]
 

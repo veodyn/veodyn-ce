@@ -67,3 +67,4 @@ class PatternStop:
     public_name: str
     stop_match: str
     sequence_source: str
+    public_name_source: str = ""

@@ -185,6 +185,13 @@ class TestReviewFindings(TestCase):
         self.assertEqual((got.content, got.digest, got.stale), (BUS_ZIP, BUS_DIGEST, True))
         self.assertIn("not a readable zip", got.refresh_error)
 
+    def test_a_download_over_the_archive_bounds_keeps_the_last_good_copy(self):
+        self.warm()
+        oversized = archive_fetcher({BUS_URL: build_archive({f"t{i}.txt": "a" for i in range(1001)})})
+        got = cached_archive(BUS_URL, self.cache, 24, 10000000, oversized, now=lambda: 1000.0 + 25 * 3600)
+        self.assertEqual((got.content, got.stale), (BUS_ZIP, True))
+        self.assertIn("members", got.refresh_error)
+
     def test_a_download_that_is_not_a_zip_with_no_cache_raises(self):
         with self.assertRaises(ValueError):
             cached_archive(BUS_URL, self.cache, 24, 1000000, archive_fetcher({BUS_URL: b"junk"}), now=lambda: 1.0)

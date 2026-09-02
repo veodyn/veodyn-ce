@@ -21,11 +21,11 @@ def normalize_headsign(sign, rules):
     lookup = {key.rstrip(".").lower(): value for key, value in rules.expand.items() if " " not in key}
     words = []
     for token in text.split(" "):
-        bare = token.rstrip(".")
-        if bare.lower() in lookup:
-            words.append(lookup[bare.lower()])
+        key = token.rstrip(".").lower()
+        if key in lookup:
+            words.append(lookup[key])
         elif rules.title_case:
-            words.append(_title(bare) if token != "-" else "-")
+            words.append(_title(token) if token != "-" else "-")
         else:
-            words.append(bare)
+            words.append(token)
     return WHITESPACE.sub(" ", " ".join(words)).strip().rstrip(".")

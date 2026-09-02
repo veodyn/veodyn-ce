@@ -69,6 +69,11 @@ class TestReviewFindings(TestCase):
         rows = enrich_departures(flatten_departures([stop]), {"801": mca_route_named("MT801")}, {}, PROFILE, "r", "d")
         self.assertEqual(rows[0]["public_stop_name"], "Willowbrook - Rosa Parks Station")
 
+    def test_a_retired_stop_is_dropped_from_the_board(self):
+        retired = {"10270": name_stop(MT_STOPS_BY_ID["10270"], PROFILE)}
+        departures = flatten_departures([prediction_for("30", "10270", "Collis Ave/Cudahy St")])
+        self.assertEqual(enrich_departures(departures, ROUTES, retired, PROFILE, "r", "d"), [])
+
     def test_short_name_source_is_independent_of_an_override(self):
         rows = enrich_departures(
             flatten_departures([prediction_for("10")]), {"10": mca_route_named("MT010")}, STOPS, PROFILE, "r", "d"

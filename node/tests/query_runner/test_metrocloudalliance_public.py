@@ -199,6 +199,17 @@ class TestReviewFindings(PublicResourceCase):
         self.assertEqual(data["rows"], [])
         self.assertEqual([c["name"] for c in data["columns"]][:3], ["carrier_code", "carrier_id", "carrier_name"])
 
+    def test_public_stops_carry_the_feed_digest(self):
+        query = '{"resource": "public_stops", "params": {"carrier_code": "MT"}}'
+        data, _ = self.run_resource(query, {STOPS: stops_by_params})
+        self.assertEqual(len(data["rows"][0]["gtfs_digest"]), 64)
+
+    def test_pattern_rows_carry_the_stop_name_provenance(self):
+        query = '{"resource": "public_route_stops", "params": {"carrier_code": "MT", "route_code": "MT030"}}'
+        data, _ = self.run_resource(query, {ROUTES: routes_by_params, STOPS: stops_by_params})
+        by_stop = {r["stop_id"]: r["public_name_source"] for r in data["rows"]}
+        self.assertEqual((by_stop["3000001"], by_stop["1166"]), ("override", "rule"))
+
     def test_archive_fetch_carries_the_runner_timeout(self):
         runner = MetroCloudAlliance({"api_key": "demo", "request_timeout": 7})
         self.assertEqual(runner._archive_fetcher().keywords, {"timeout": 7})

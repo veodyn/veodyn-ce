@@ -2,6 +2,7 @@ from unittest import TestCase
 
 from redash.transit_naming import provenance
 from redash.transit_naming.headsigns import normalize_headsign
+from redash.transit_naming.profiles import HeadsignRules
 from redash.transit_naming.stops import name_stop, normalize_part, stop_row
 from tests.query_runner.transit_naming_fixtures import MT_STOPS_BY_ID, metro_profile
 
@@ -163,6 +164,20 @@ class TestReviewFindings(TestCase):
     def test_uppercase_street_suffixes_still_parse(self):
         name = name_stop(bare_stop("MAIN ST/FIRST AVE"), PROFILE)
         self.assertEqual((name.public_name, name.stop_kind), ("MAIN St/FIRST Av", "intersection"))
+
+    def test_structured_parts_drop_a_direction_parenthetical(self):
+        stop = bare_stop("Imperial Hwy/Central Ave (Westbound)", on="Imperial Hwy", cross="Central Ave (Westbound)")
+        name = name_stop(stop, PROFILE)
+        self.assertEqual((name.public_name, name.direction), ("Imperial Hwy/Central Av", "Westbound"))
+
+    def test_ampersand_with_non_street_tokens_is_a_named_place(self):
+        name = name_stop(bare_stop("Museum & Library"), PROFILE)
+        self.assertEqual((name.stop_kind, name.public_name), ("named_place", "Museum & Library"))
+
+    def test_headsign_keeps_internal_periods(self):
+        self.assertEqual(
+            normalize_headsign("Via St. Louis.", HeadsignRules(title_case=False, expand={})), "Via St. Louis"
+        )
 
     def test_named_place_with_a_stripped_direction_is_rule_derived(self):
         name = name_stop(bare_stop("Harbor Transit Center (Northbound)"), PROFILE)

@@ -1,5 +1,6 @@
 import math
 
+from redash.transit_naming import provenance
 from redash.transit_naming.snapshot import PatternStop
 
 EARTH_RADIUS_FEET = 20925646.3
@@ -35,18 +36,19 @@ def _nearest(gtfs_stop, mca_stops, threshold_feet):
     return best
 
 
-def _match(gtfs_stop_id, snapshot, mca_stops, public_names, threshold_feet, memo):
+def _match(gtfs_stop_id, snapshot, mca_stops, public_names, public_sources, threshold_feet, memo):
     if gtfs_stop_id in memo:
         return memo[gtfs_stop_id]
     if gtfs_stop_id in mca_stops:
-        found = (gtfs_stop_id, public_names.get(gtfs_stop_id, ""), "id")
+        found = (gtfs_stop_id, public_names.get(gtfs_stop_id, ""), "id", public_sources.get(gtfs_stop_id, ""))
     else:
         gtfs_stop = snapshot.stops.get(gtfs_stop_id, {})
         near = _nearest(gtfs_stop, mca_stops, threshold_feet)
         if near is not None:
-            found = (str(near["stop_id"]), public_names.get(str(near["stop_id"]), ""), "coordinate")
+            near_id = str(near["stop_id"])
+            found = (near_id, public_names.get(near_id, ""), "coordinate", public_sources.get(near_id, ""))
         else:
-            found = (gtfs_stop_id, gtfs_stop.get("stop_name", ""), "unmatched")
+            found = (gtfs_stop_id, gtfs_stop.get("stop_name", ""), "unmatched", provenance.PASSTHROUGH)
     memo[gtfs_stop_id] = found
     return found
 
@@ -84,18 +86,29 @@ def _canonical(sequences):
 
 
 def cut_patterns(
-    carrier_code, route_code, gtfs_route_id, snapshot, mca_stops, public_names, profile, threshold_feet=130.0
+    carrier_code,
+    route_code,
+    gtfs_route_id,
+    snapshot,
+    mca_stops,
+    public_names,
+    profile,
+    threshold_feet=130.0,
+    public_sources=None,
 ):
     sequences = _sequences(snapshot, gtfs_route_id)
     ids = _pattern_ids(sequences)
     longest = _canonical(sequences)
+    sources = public_sources or {}
     memo = {}
     rows = []
     for (direction_id, stops), pattern_id in sorted(ids.items()):
         letter = profile.direction_letter(route_code, direction_id)
         canonical = stops == longest[direction_id]
         for sequence, gtfs_stop_id in enumerate(stops):
-            stop_id, public_name, match = _match(gtfs_stop_id, snapshot, mca_stops, public_names, threshold_feet, memo)
+            stop_id, public_name, match, source = _match(
+                gtfs_stop_id, snapshot, mca_stops, public_names, sources, threshold_feet, memo
+            )
             rows.append(
                 PatternStop(
                     carrier_code,
@@ -109,13 +122,15 @@ def cut_patterns(
                     public_name,
                     match,
                     "gtfs_stop_times",
+                    source,
                 )
             )
     return rows
 
 
-def mca_pattern_membership(carrier_code, route_code, pattern_code, stops, public_names):
+def mca_pattern_membership(carrier_code, route_code, pattern_code, stops, public_names, public_sources=None):
     direction = pattern_code.split(" ")[-1] if " " in pattern_code else ""
+    sources = public_sources or {}
     rows = []
     for stop in stops:
         stop_id = str(stop.get("stop_id"))
@@ -132,6 +147,7 @@ def mca_pattern_membership(carrier_code, route_code, pattern_code, stops, public
                 public_names.get(stop_id, stop.get("stop_name", "")),
                 "id",
                 "mca_pattern",
+                sources.get(stop_id, ""),
             )
         )
     return rows
@@ -148,6 +164,7 @@ def pattern_row(p, revision, digest):
         "stop_id": p.stop_id,
         "gtfs_stop_id": p.gtfs_stop_id,
         "public_name": p.public_name,
+        "public_name_source": p.public_name_source,
         "stop_match": p.stop_match,
         "sequence_source": p.sequence_source,
         "normalization_revision": revision,

@@ -104,12 +104,21 @@ class TestCutPatterns(TestCase):
                 "stop_id",
                 "gtfs_stop_id",
                 "public_name",
+                "public_name_source",
                 "stop_match",
                 "sequence_source",
                 "normalization_revision",
                 "gtfs_digest",
             ],
         )
+
+    def test_rows_carry_the_stop_name_provenance(self):
+        sources = {"1166": "rule", "13574": "override", "9101": "rule"}
+        rows = cut_patterns(
+            "MT", "MT720", "720-13201", SNAPSHOT, MT_STOPS_BY_ID, NAMES, PROFILE, public_sources=sources
+        )
+        east = {r.gtfs_stop_id: r.public_name_source for r in rows if r.direction == "E" and r.is_canonical}
+        self.assertEqual(east, {"1166": "rule", "13574": "override", "9001": "rule", "9002": "passthrough"})
 
 
 class TestMcaPatternMembership(TestCase):

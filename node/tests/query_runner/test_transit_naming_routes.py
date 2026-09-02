@@ -221,3 +221,36 @@ class TestReviewFindings(TestCase):
     def test_legacy_color_applies_to_any_carrier_letter_line(self):
         name = name_route(ROUTES["MT801"], self.profile, resolved("801", "", "Foothill A Line", "0", source="rail"))
         self.assertEqual(name.public_name, "Foothill A Line (Blue)")
+
+    def test_text_color_alone_still_comes_from_gtfs(self):
+        name = name_route(ROUTES["MT094"], self.profile, resolved("94-13201", "94", "Metro Local Line", text="FFFFFF"))
+        self.assertEqual((name.color, name.text_color, name.color_source), ("", "FFFFFF", provenance.GTFS))
+
+    def test_route_names_entry_applies_without_brand_bands_in_brand_from(self):
+        narrowed = MT_YAML.replace(
+            "brand_from: [gtfs_route_long_name, brand_bands]", "brand_from: [gtfs_route_long_name]"
+        )
+        profiles = build_profile_set([CORE_PROFILE_DIR], extra_files={"/pack": {"MT.yaml": narrowed}})
+        self.assertEqual(
+            name_route(ROUTES["MT009"], profiles.for_carrier("MT"), None).public_name, "Dodger Stadium Express"
+        )
+
+    def test_nonnumeric_gtfs_short_name_becomes_the_short_name(self):
+        name = name_route(ROUTES["MT094"], self.profile, resolved("94-13201", "BlueX", "Metro Local Line"))
+        self.assertEqual((name.public_name, name.short_name), ("Metro Local Line 94", "BlueX"))
+
+    def test_every_duplicated_line_code_pair_names_two_routes(self):
+        pairs = [
+            ("MT038", "MT035"),
+            ("MT236", "MT235"),
+            ("MT242", "MT243"),
+            ("MT260", "MT261"),
+            ("MT009", "MT022"),
+            ("MT910", "MT950"),
+        ]
+        for left, right in pairs:
+            self.assertEqual(ROUTES[left]["line_code"], ROUTES[right]["line_code"])
+            names = (name_route(ROUTES[left], self.profile, None), name_route(ROUTES[right], self.profile, None))
+            self.assertNotEqual(names[0].route_number, names[1].route_number, left)
+        self.assertEqual(name_route(ROUTES["MT038"], self.profile, None).public_name, "Metro Local Line 38")
+        self.assertEqual(name_route(ROUTES["MT261"], self.profile, None).public_name, "Metro Local Line 261")

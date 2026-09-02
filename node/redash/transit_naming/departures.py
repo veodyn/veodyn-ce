@@ -45,6 +45,8 @@ def enrich_departures(rows, route_names, stop_names, profile, revision, digest):
             route = _route_from_raw(raw_route, item.get("carrier"), profile)
         stop_id = str(item.get("stop_id") or "")
         stop = stop_names.get(stop_id)
+        if stop is not None and stop.retired:
+            continue
         stop_source = stop.public_name_source if stop else provenance.RULE
         if stop is None:
             stop = name_stop(

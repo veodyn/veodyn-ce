@@ -10,6 +10,7 @@ import requests
 
 from redash.query_runner.connector_base import REQUEST_HEADERS
 from redash.query_runner.gtfs_realtime_transport import sanitize_feed_url
+from redash.query_runner.gtfs_static_tables import check_archive_bounds
 
 RETRY_AFTER_SECONDS = 600
 
@@ -81,6 +82,7 @@ def _download(url, safe_url, max_bytes, fetch):
         raise ValueError(f"GTFS archive from {safe_url} exceeds the {max_bytes} byte limit")
     if not zipfile.is_zipfile(io.BytesIO(downloaded)):
         raise ValueError(f"GTFS archive from {safe_url} is not a readable zip")
+    check_archive_bounds(zipfile.ZipFile(io.BytesIO(downloaded)), safe_url)
     return downloaded
 
 

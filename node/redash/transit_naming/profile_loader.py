@@ -224,7 +224,9 @@ def parse_profile_yaml(text, file):
     try:
         data = yaml.load(text, Loader=StrictLoader) or {}
     except ProfileError as error:
-        raise ProfileError(str(error), file=file, field=error.field) from error
+        declared = re.search(r"^carrier_code:\s*(\S+)", text, re.MULTILINE)
+        carrier = declared.group(1).strip("\"'") if declared else ""
+        raise ProfileError(str(error), carrier, file, field=error.field) from error
     carrier = str(data.get("carrier_code") or "").strip()
     if not carrier:
         raise ProfileError("carrier_code is required", file=file, field="carrier_code")
@@ -256,7 +258,7 @@ def build_profile_set(dirs, extra_files=None):
     files = read_profile_files(dirs, extra_files)
     digest = hashlib.sha256()
     for path in sorted(files):
-        digest.update(path.encode("utf-8"))
+        digest.update(os.path.basename(path).encode("utf-8"))
         digest.update(files[path])
     profiles = {}
     default = None

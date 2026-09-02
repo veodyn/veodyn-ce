@@ -41,19 +41,25 @@ def _brand(route_code, number, profile, resolved):
     entry = rules.route_names.get(route_code)
     band = _band_for(number, rules.brand_bands)
     for source in rules.brand_from:
-        if source == "gtfs_route_long_name" and resolved is not None:
-            if resolved.route_long_name:
+        if source == "gtfs_route_long_name":
+            if resolved is not None and resolved.route_long_name:
                 return _strip_brand(resolved.route_long_name, rules), resolved.provenance, "pattern", "gtfs"
-            if resolved.route_short_name and not resolved.route_short_name.replace("/", "").isdigit():
+            if resolved is not None and _textual(resolved.route_short_name):
                 return resolved.route_short_name, resolved.provenance, "outright", "gtfs"
-        if source == "brand_bands":
-            if entry is not None:
-                return entry.public_name, provenance.RULE, "outright", "entry"
-            if band is not None:
-                return band.brand, provenance.RULE, "pattern", "band"
+            continue
+        if entry is not None:
+            return entry.public_name, provenance.RULE, "outright", "entry"
+        if source == "brand_bands" and band is not None:
+            return band.brand, provenance.RULE, "pattern", "band"
         if source == "carrier_display_name" and profile.carrier_display_name:
             return profile.carrier_display_name, provenance.RULE, "pattern", "carrier"
+    if entry is not None:
+        return entry.public_name, provenance.RULE, "outright", "entry"
     return "", "", "pattern", ""
+
+
+def _textual(short_name):
+    return bool(short_name) and not short_name.replace("/", "").isdigit()
 
 
 def _mode(route_code, profile, resolved, entry, number):
@@ -80,7 +86,7 @@ def _rail_name(name, rules):
 
 
 def _color(route, profile, resolved, entry):
-    if resolved is not None and resolved.route_color:
+    if resolved is not None and (resolved.route_color or resolved.route_text_color):
         return resolved.route_color, resolved.route_text_color, resolved.provenance
     mca = str(route.get("line_color") or "").strip().lstrip("#")
     if mca:
@@ -116,6 +122,8 @@ def name_route(route, profile, resolved, side_channel=None):
             public_name = rules.pattern.format(
                 brand=brand, route_number=number, carrier_display_name=profile.carrier_display_name
             )
+            if resolved is not None and _textual(resolved.route_short_name) and "/" not in resolved.route_short_name:
+                short_name = resolved.route_short_name
     elif side_channel and side_channel.get("line_name") and side_channel.get("line_short_name"):
         brand = str(side_channel["line_name"])
         public_name = f"{brand} {side_channel['line_short_name']}"
