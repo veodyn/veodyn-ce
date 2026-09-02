@@ -13,17 +13,23 @@ def distance_feet(lat1, lng1, lat2, lng2):
     return 2 * EARTH_RADIUS_FEET * math.asin(math.sqrt(h))
 
 
-def _nearest(gtfs_stop, mca_stops, threshold_feet):
+def _coordinates(record, lat_key, lng_key):
     try:
-        lat, lng = float(gtfs_stop.get("stop_lat")), float(gtfs_stop.get("stop_lon"))
+        return float(record.get(lat_key)), float(record.get(lng_key))
     except (TypeError, ValueError):
+        return None
+
+
+def _nearest(gtfs_stop, mca_stops, threshold_feet):
+    origin = _coordinates(gtfs_stop, "stop_lat", "stop_lon")
+    if origin is None:
         return None
     best, best_distance = None, threshold_feet
     for stop in mca_stops.values():
-        try:
-            distance = distance_feet(lat, lng, float(stop["lat"]), float(stop["lng"]))
-        except (TypeError, ValueError, KeyError):  # silent-ok
+        target = _coordinates(stop, "lat", "lng")
+        if target is None:
             continue
+        distance = distance_feet(origin[0], origin[1], target[0], target[1])
         if distance <= best_distance:
             best, best_distance = stop, distance
     return best
