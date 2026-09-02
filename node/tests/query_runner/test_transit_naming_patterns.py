@@ -173,6 +173,13 @@ class TestReviewFindings(TestCase):
         self.assertIsNone(index.nearest(34.0700, -118.3100, 130.0))
         self.assertIsNone(index.nearest(0.0, 0.0, 130.0))
 
+    def test_index_skips_non_finite_coordinates_and_scales_to_the_threshold(self):
+        stops = dict(MT_STOPS_BY_ID, bad={"stop_id": "bad", "lat": "nan", "lng": "inf"})
+        index = StopIndex(stops)
+        self.assertEqual(index.nearest(34.0600, -118.2750, 10000.0)["stop_id"], "9101")
+        self.assertIsNone(index.nearest(34.0600, -118.2750, 130.0))
+        self.assertIsNone(index.nearest(float("nan"), -118.3000, 130.0))
+
     def test_equal_length_canonical_tie_does_not_depend_on_trip_order(self):
         forward = [trip("a", "B"), trip("b", "A")]
         stop_times = {"a": [(1, "1166"), (2, "13574")], "b": [(1, "13574"), (2, "1166")]}

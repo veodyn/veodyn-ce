@@ -10,6 +10,7 @@ from tests.query_runner.transit_naming_fixtures import metro_profile
 from tests.query_runner.transit_naming_gtfs_fixtures import (
     BUS_MEMBERS,
     BUS_URL,
+    RAIL_MEMBERS,
     RAIL_ROUTES_TXT,
     RAIL_URL,
     archive_fetcher,
@@ -215,6 +216,25 @@ class TestReviewFindings(TestCase):
             resolver = GtfsResolver(metro_profile(with_overrides=False), cache, fetch=later, now=lambda: 10**10)
             self.assertEqual(resolver.resolve("MT094", "94").route_long_name, "Metro Local Line")
         self.assertEqual(len(resolver.refresh_errors), 2)
+
+    def test_a_pattern_resolver_validates_the_pattern_tables_too(self):
+        broken = build_archive(
+            dict(
+                BUS_MEMBERS,
+                **{"stop_times.txt": "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nt30a,,,1166,x\n"},
+            )
+        )
+        with tempfile.TemporaryDirectory() as cache:
+            GtfsResolver(
+                metro_profile(with_overrides=False), cache, fetch=metro_archives(), with_patterns=True
+            ).snapshots()
+            later = archive_fetcher({BUS_URL: broken, RAIL_URL: build_archive(RAIL_MEMBERS)})
+            resolver = GtfsResolver(
+                metro_profile(with_overrides=False), cache, fetch=later, with_patterns=True, now=lambda: 10**10
+            )
+            snapshot = resolver.snapshots()["bus"]
+        self.assertEqual(snapshot.stop_times_by_trip["t30a"][0], (1, "3000001"))
+        self.assertEqual(len(resolver.refresh_errors), 1)
 
     def test_a_download_that_is_not_a_zip_with_no_cache_raises(self):
         with self.assertRaises(ValueError):

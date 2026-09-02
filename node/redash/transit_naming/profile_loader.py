@@ -257,9 +257,11 @@ def parse_profile_yaml(text, file):
 def build_profile_set(dirs, extra_files=None):
     files = read_profile_files(dirs, extra_files)
     digest = hashlib.sha256()
-    for path in sorted(files, key=lambda p: (os.path.basename(p), files[p])):
+    yaml_paths = [path for path in files if path.endswith(".yaml")]
+    for path in sorted(yaml_paths, key=lambda p: (os.path.basename(p), files[p])):
         digest.update(os.path.basename(path).encode("utf-8"))
         digest.update(files[path])
+        digest.update(files.get(path[: -len(".yaml")] + ".csv", b""))
     profiles = {}
     default = None
     for path in sorted(files):

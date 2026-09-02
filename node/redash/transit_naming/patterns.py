@@ -16,12 +16,14 @@ def distance_feet(lat1, lng1, lat2, lng2):
 
 def _coordinates(record, lat_key, lng_key):
     try:
-        return float(record.get(lat_key)), float(record.get(lng_key))
+        point = float(record.get(lat_key)), float(record.get(lng_key))
     except (TypeError, ValueError):
         return None
+    return point if math.isfinite(point[0]) and math.isfinite(point[1]) else None
 
 
 CELL_DEGREES = 0.01
+FEET_PER_CELL = CELL_DEGREES * 364000.0
 
 
 class StopIndex:
@@ -37,10 +39,13 @@ class StopIndex:
         return int(math.floor(point[0] / CELL_DEGREES)), int(math.floor(point[1] / CELL_DEGREES))
 
     def nearest(self, lat, lng, threshold_feet):
+        if not (math.isfinite(lat) and math.isfinite(lng)):
+            return None
         row, column = self._cell((lat, lng))
+        reach = max(1, int(math.ceil(threshold_feet / FEET_PER_CELL)))
         best, best_distance = None, threshold_feet
-        for dr in (-1, 0, 1):
-            for dc in (-1, 0, 1):
+        for dr in range(-reach, reach + 1):
+            for dc in range(-reach, reach + 1):
                 for point, stop in self.cells.get((row + dr, column + dc), ()):
                     distance = distance_feet(lat, lng, point[0], point[1])
                     if distance <= best_distance:

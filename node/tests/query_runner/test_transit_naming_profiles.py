@@ -182,6 +182,17 @@ class TestLoaderRefusals(TestCase):
             other = load_profiles([CORE_PROFILE_DIR, first, second]).revision
         self.assertEqual(one, other)
 
+    def test_revision_changes_when_a_csv_leaves_its_yaml(self):
+        with tempfile.TemporaryDirectory() as root:
+            first, second = os.path.join(root, "a"), os.path.join(root, "z")
+            os.makedirs(first)
+            os.makedirs(second)
+            write_profile_dir(first, {"MT.yaml": MT_YAML, "MT.csv": OVERRIDES})
+            paired = load_profiles([CORE_PROFILE_DIR, first, second]).revision
+            os.rename(os.path.join(first, "MT.csv"), os.path.join(second, "MT.csv"))
+            apart = load_profiles([CORE_PROFILE_DIR, first, second]).revision
+        self.assertNotEqual(paired, apart)
+
     def test_duplicate_key_error_names_the_carrier(self):
         error = self.refused(
             "carrier_display_name: Metro", "carrier_display_name: Metro\ncarrier_display_name: LA Metro"
