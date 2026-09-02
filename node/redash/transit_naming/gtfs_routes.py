@@ -15,13 +15,16 @@ from redash.transit_naming.gtfs_cache import cached_archive, http_fetch
 from redash.transit_naming.snapshot import GtfsSnapshot, ResolvedRoute
 
 ROUTE_FIELDS = ("route_id", "route_short_name", "route_long_name", "route_type", "route_color", "route_text_color")
+TRIP_FIELDS = ("route_id", "trip_id", "direction_id", "shape_id", "trip_headsign")
+STOP_FIELDS = ("stop_id", "stop_name", "stop_lat", "stop_lon")
 
 
-def _rows(archive, members, table, budget):
+def _rows(archive, members, table, budget, fields):
     if table not in members:
-        return []
+        return
     with open_table(archive, members[table], budget) as text:
-        return [dict(row) for row in csv.DictReader(text)]
+        for row in csv.DictReader(text):
+            yield {field: (row.get(field) or "").strip() for field in fields}
 
 
 def read_snapshot(source_name, content, safe_url, with_patterns=False):
@@ -32,20 +35,17 @@ def read_snapshot(source_name, content, safe_url, with_patterns=False):
     check_archive_bounds(archive, safe_url)
     members = table_members(archive)
     budget = DecompressionBudget(safe_url)
-    routes = {
-        row["route_id"]: {field: (row.get(field) or "").strip() for field in ROUTE_FIELDS}
-        for row in _rows(archive, members, "routes", budget)
-    }
+    routes = {row["route_id"]: row for row in _rows(archive, members, "routes", budget, ROUTE_FIELDS)}
     trips = ()
     stop_times = {}
     stops = {}
     if with_patterns:
-        trips = tuple(_rows(archive, members, "trips", budget))
-        for row in _rows(archive, members, "stop_times", budget):
+        trips = tuple(_rows(archive, members, "trips", budget, TRIP_FIELDS))
+        for row in _rows(archive, members, "stop_times", budget, ("trip_id", "stop_sequence", "stop_id")):
             stop_times.setdefault(row["trip_id"], []).append((int(row["stop_sequence"]), row["stop_id"]))
         for sequence in stop_times.values():
             sequence.sort()
-        stops = {row["stop_id"]: row for row in _rows(archive, members, "stops", budget)}
+        stops = {row["stop_id"]: row for row in _rows(archive, members, "stops", budget, STOP_FIELDS)}
     return GtfsSnapshot(source_name, hashlib.sha256(content).hexdigest(), routes, trips, stop_times, stops)
 
 

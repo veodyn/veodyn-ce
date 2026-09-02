@@ -9,27 +9,39 @@ TRAILING_LINE_REFERENCE = re.compile(r"\s*-\s*Metro\s+\w+\s*-?\s*Line\s*$", re.I
 INTERSECTION_SPLIT = re.compile(r"\s*(?:&|/)\s*")
 NAMED_PLACE = re.compile(r"park\s*&\s*ride|terminal|dock|\bbay\b|transit center|plaza|station", re.IGNORECASE)
 STATION = re.compile(r"\bstation\b", re.IGNORECASE)
+ENDS_WITH_STATION = re.compile(r"\bstation\s*$", re.IGNORECASE)
 
 
 def _tidy(text):
     return WHITESPACE.sub(" ", (text or "").replace(" ", " ")).strip()
 
 
+def _suffix_lookup(rules):
+    lookup = {value.lower(): value for value in rules.suffixes.values()}
+    lookup.update({key.lower(): value for key, value in rules.suffixes.items()})
+    return lookup
+
+
 def normalize_part(text, rules):
+    lookup = _suffix_lookup(rules)
+    keep = {word.lower() for word in rules.keep_whole}
     words = []
     for word in _tidy(text).split(" "):
         bare = word.rstrip(".")
-        if bare in rules.keep_whole:
+        if bare.lower() in keep:
             words.append(bare)
             continue
-        replacement = rules.suffixes.get(bare) or rules.suffixes.get(bare.capitalize())
-        words.append(replacement if replacement else bare)
+        words.append(lookup.get(bare.lower()) or bare)
     return " ".join(words)
 
 
 def _looks_like_street(part, rules):
-    last = part.split(" ")[-1].rstrip(".") if part else ""
-    return bool(part) and (last in rules.suffixes or last in rules.suffixes.values() or last in rules.keep_whole)
+    if not part:
+        return False
+    last = part.split(" ")[-1].rstrip(".").lower()
+    lookup = _suffix_lookup(rules)
+    abbreviations = {value.lower() for value in rules.suffixes.values()}
+    return last in lookup or last in abbreviations or last in {word.lower() for word in rules.keep_whole}
 
 
 def _split_direction(raw, rules):
@@ -48,12 +60,30 @@ def _mode(stop):
     return ""
 
 
-def _station(raw, rules):
-    name = raw
-    if rules.strip_trailing_line_reference:
-        name = TRAILING_LINE_REFERENCE.sub("", name)
-    name = STATION.sub("Station", name)
+def _without_line_reference(text, rules):
+    return _tidy(TRAILING_LINE_REFERENCE.sub("", text)) if rules.strip_trailing_line_reference else text
+
+
+def _station(body, rules):
+    name = STATION.sub("Station", _without_line_reference(body, rules))
+    if not STATION.search(name):
+        name = name + rules.station_suffix
     return _tidy(name)
+
+
+def _intersection(left, right, rules, direction, mode, retired):
+    left, right = normalize_part(left, rules), normalize_part(right, rules)
+    public_name = f"{left}{rules.separator}{right}"
+    return StopName(public_name, left, right, direction, "intersection", mode, retired, provenance.RULE)
+
+
+def _from_raw(raw, body, rules, direction, mode, retired):
+    parts = INTERSECTION_SPLIT.split(body)
+    if len(parts) == 2 and all(_looks_like_street(part, rules) for part in parts):
+        return _intersection(parts[0], parts[1], rules, direction, mode, retired)
+    kind = "named_place" if NAMED_PLACE.search(body) else "unparsed"
+    source = provenance.RULE if body != raw else provenance.PASSTHROUGH
+    return StopName(body, "", "", direction, kind, mode, retired, source)
 
 
 def name_stop(stop, profile):
@@ -63,44 +93,16 @@ def name_stop(stop, profile):
     retired = not str(stop.get("transit_modes") or "").strip() and int(stop.get("prediction_count") or 0) == 0
     on_street = _tidy(stop.get("on_street"))
     cross_street = _tidy(stop.get("cross_street"))
-    direction = _tidy(stop.get("street_direction"))
-    if mode == "rail" or STATION.search(raw):
-        public_name = _station(raw, rules)
-        result = StopName(
-            public_name,
-            "",
-            "",
-            direction,
-            "station",
-            mode,
-            retired,
-            provenance.RULE if public_name != raw else provenance.PASSTHROUGH,
-        )
+    body, parsed_direction = _split_direction(raw, rules)
+    direction = _tidy(stop.get("street_direction")) or parsed_direction
+    if mode == "rail" or ENDS_WITH_STATION.search(_without_line_reference(body, rules)):
+        public_name = _station(body, rules)
+        source = provenance.RULE if public_name != raw else provenance.PASSTHROUGH
+        result = StopName(public_name, "", "", direction, "station", mode, retired, source)
     elif on_street and cross_street:
-        left, right = normalize_part(on_street, rules), normalize_part(cross_street, rules)
-        result = StopName(
-            f"{left}{rules.separator}{right}", left, right, direction, "intersection", mode, retired, provenance.RULE
-        )
+        result = _intersection(on_street, cross_street, rules, direction, mode, retired)
     else:
-        body, parsed_direction = _split_direction(raw, rules)
-        direction = direction or parsed_direction
-        parts = INTERSECTION_SPLIT.split(body)
-        if NAMED_PLACE.search(body):
-            result = StopName(body, "", "", direction, "named_place", mode, retired, provenance.PASSTHROUGH)
-        elif len(parts) == 2 and all(_looks_like_street(part, rules) for part in parts):
-            left, right = normalize_part(parts[0], rules), normalize_part(parts[1], rules)
-            result = StopName(
-                f"{left}{rules.separator}{right}",
-                left,
-                right,
-                direction,
-                "intersection",
-                mode,
-                retired,
-                provenance.RULE,
-            )
-        else:
-            result = StopName(raw, "", "", direction, "unparsed", mode, retired, provenance.PASSTHROUGH)
+        result = _from_raw(raw, body, rules, direction, mode, retired)
     override = profile.override_for("stop", stop.get("stop_id"))
     if override is not None and override.public_name:
         result = StopName(

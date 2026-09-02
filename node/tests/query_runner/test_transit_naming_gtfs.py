@@ -163,3 +163,50 @@ class TestGtfsResolver(TestCase):
             resolver.snapshots()
         self.assertEqual(len(resolver.refresh_errors), 2)
         self.assertIn("gtfs_refresh_failed", resolver.refresh_errors[0])
+
+
+class TestReviewFindings(TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.cache = self.dir.name
+
+    def tearDown(self):
+        self.dir.cleanup()
+
+    def warm(self):
+        return cached_archive(
+            BUS_URL, self.cache, 24, 1000000, archive_fetcher({BUS_URL: BUS_ZIP}), now=lambda: 1000.0
+        )
+
+    def test_a_download_that_is_not_a_zip_keeps_the_last_good_copy(self):
+        self.warm()
+        junk = archive_fetcher({BUS_URL: b"not a zip"})
+        got = cached_archive(BUS_URL, self.cache, 24, 1000000, junk, now=lambda: 1000.0 + 25 * 3600)
+        self.assertEqual((got.content, got.digest, got.stale), (BUS_ZIP, BUS_DIGEST, True))
+        self.assertIn("not a readable zip", got.refresh_error)
+
+    def test_a_download_that_is_not_a_zip_with_no_cache_raises(self):
+        with self.assertRaises(ValueError):
+            cached_archive(BUS_URL, self.cache, 24, 1000000, archive_fetcher({BUS_URL: b"junk"}), now=lambda: 1.0)
+
+    def test_errors_never_carry_the_query_string(self):
+        secret_url = BUS_URL + "?token=SECRET"
+        failing = archive_fetcher({secret_url: OSError(f"cannot reach {secret_url}")})
+        with self.assertRaises(ValueError) as raised:
+            cached_archive(secret_url, self.cache, 24, 1000000, failing, now=lambda: 1.0)
+        self.assertNotIn("SECRET", str(raised.exception))
+        self.assertIn(BUS_URL, str(raised.exception))
+
+    def test_a_failed_refresh_backs_off_before_retrying(self):
+        self.warm()
+        failing = archive_fetcher({BUS_URL: OSError("down")})
+        first = cached_archive(BUS_URL, self.cache, 24, 1000000, failing, now=lambda: 1000.0 + 25 * 3600)
+        second = cached_archive(BUS_URL, self.cache, 24, 1000000, failing, now=lambda: 1000.0 + 25 * 3600 + 60)
+        self.assertEqual((first.stale, second.stale, failing.calls), (True, True, [BUS_URL]))
+        third = cached_archive(BUS_URL, self.cache, 24, 1000000, failing, now=lambda: 1000.0 + 26 * 3600)
+        self.assertEqual((third.stale, failing.calls), (True, [BUS_URL, BUS_URL]))
+
+    def test_pattern_snapshot_keeps_only_the_fields_it_uses(self):
+        snapshot = read_snapshot("bus", BUS_ZIP, "u", with_patterns=True)
+        self.assertEqual(set(snapshot.trips[0]), {"route_id", "trip_id", "direction_id", "shape_id", "trip_headsign"})
+        self.assertEqual(set(snapshot.stops["1166"]), {"stop_id", "stop_name", "stop_lat", "stop_lon"})

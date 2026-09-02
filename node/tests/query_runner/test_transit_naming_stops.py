@@ -127,3 +127,46 @@ class TestNormalizeHeadsign(TestCase):
     def test_empty_and_none(self):
         self.assertEqual(normalize_headsign("", PROFILE.headsign), "")
         self.assertEqual(normalize_headsign(None, PROFILE.headsign), "")
+
+
+def bare_stop(name, modes="BUS", on="", cross=""):
+    return {
+        "stop_id": "x",
+        "stop_name": name,
+        "on_street": on,
+        "cross_street": cross,
+        "street_direction": "",
+        "transit_modes": modes,
+        "prediction_count": 1,
+    }
+
+
+class TestReviewFindings(TestCase):
+    def test_station_drops_a_direction_parenthetical_into_direction(self):
+        name = name_stop(bare_stop("Union Station (Northbound)", modes="RAIL"), PROFILE)
+        self.assertEqual(
+            (name.public_name, name.direction, name.stop_kind), ("Union Station", "Northbound", "station")
+        )
+
+    def test_rail_stop_without_the_word_gets_the_configured_suffix(self):
+        name = name_stop(bare_stop("Union", modes="RAIL"), PROFILE)
+        self.assertEqual((name.public_name, name.public_name_source), ("Union Station", provenance.RULE))
+
+    def test_a_street_pair_beats_a_place_keyword(self):
+        name = name_stop(bare_stop("Station Rd/Main St"), PROFILE)
+        self.assertEqual((name.public_name, name.stop_kind), ("Station Rd/Main St", "intersection"))
+        name = name_stop(bare_stop("Bay St/Main St"), PROFILE)
+        self.assertEqual((name.public_name, name.stop_kind), ("Bay St/Main St", "intersection"))
+        name = name_stop(bare_stop("Station Rd/Main St", on="Station Rd", cross="Main St"), PROFILE)
+        self.assertEqual(name.stop_kind, "intersection")
+
+    def test_uppercase_street_suffixes_still_parse(self):
+        name = name_stop(bare_stop("MAIN ST/FIRST AVE"), PROFILE)
+        self.assertEqual((name.public_name, name.stop_kind), ("MAIN St/FIRST Av", "intersection"))
+
+    def test_named_place_with_a_stripped_direction_is_rule_derived(self):
+        name = name_stop(bare_stop("Harbor Transit Center (Northbound)"), PROFILE)
+        self.assertEqual(
+            (name.public_name, name.direction, name.stop_kind, name.public_name_source),
+            ("Harbor Transit Center", "Northbound", "named_place", provenance.RULE),
+        )
