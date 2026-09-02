@@ -30,6 +30,7 @@ interface VisualizationTabsProps {
   visualizations: MockVisualization[]
   queryResult: MockQueryResult | { data: QueryResultData } | null
   queryId?: number
+  canEdit?: boolean
   /**
    * Whether the owning query is safe to publish: no text parameters. Read by
    * the publish dialog, not by this component. Defaults to false because the
@@ -66,6 +67,7 @@ export function VisualizationTabs({
   visualizations,
   queryResult,
   queryId,
+  canEdit = true,
   isQuerySafe = false,
   onRun,
   isRunning = false,
@@ -180,7 +182,7 @@ export function VisualizationTabs({
                 <TabsTrigger
                   value={String(viz.id)}
                   onDoubleClick={
-                    queryId && isSavedVisualization(viz)
+                    queryId && canEdit && isSavedVisualization(viz)
                       ? () => handleEdit(viz)
                       : undefined
                   }
@@ -193,7 +195,8 @@ export function VisualizationTabs({
                 {queryId && effectiveActiveTab === viz.id && isSavedVisualization(viz) && (
                   <VisualizationTabActions
                     viz={viz}
-                    canModify={isSavedVisualization(viz)}
+                    canModify={canEdit}
+                    canDelete={canEdit && viz.type !== 'TABLE'}
                     onEdit={() => handleEdit(viz)}
                     onPublish={() => setPublishingViz(viz)}
                     onDelete={() => setDeletingViz(viz)}
@@ -202,7 +205,7 @@ export function VisualizationTabs({
               </div>
             ))}
           </TabsList>
-          {queryId && (
+          {queryId && canEdit && (
             <IconButton tooltip="Add visualization" variant="ghost" size="sm" onClick={handleAddNew}>
               <Plus className="h-4 w-4" />
             </IconButton>

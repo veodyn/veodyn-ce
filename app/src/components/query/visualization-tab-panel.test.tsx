@@ -52,4 +52,11 @@ describe('VisualizationTabPanel', () => {
     expect(screen.getByRole('columnheader', { name: 'departure_at' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'gtfs_digest' })).toBeInTheDocument()
   })
+
+  it('survives a table whose options the backend stored as null', () => {
+    const viz = tableViz(null as unknown as MockVisualization['options'])
+    renderWithProviders(<VisualizationTabPanel viz={viz} resultData={resultData} isRunning={false} queryId={85} />)
+
+    expect(screen.getByRole('columnheader', { name: 'gtfs_digest' })).toBeInTheDocument()
+  })
 })

@@ -248,6 +248,7 @@ export default function QueryViewPage({ params }: { params: Promise<{ queryId: s
         visualizations={query.visualizations}
         queryResult={executeQuery.data ?? queryResult ?? null}
         queryId={id}
+        canEdit={canEdit}
         isQuerySafe={query.is_safe}
         onRun={runQuery}
         isRunning={executeQuery.isPending}

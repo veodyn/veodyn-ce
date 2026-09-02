@@ -49,6 +49,29 @@ describe('VisualizationTabs edit control', () => {
     expect(screen.getByRole('button', { name: 'Edit Table View' })).toBeInTheDocument()
   })
 
+  it('never offers delete on a table, and offers it on a chart', () => {
+    const { unmount } = renderWithProviders(
+      <VisualizationTabs visualizations={[tableViz]} queryResult={queryResult} queryId={5} />
+    )
+    expect(screen.queryByRole('button', { name: 'More options for Table View' })).not.toBeInTheDocument()
+    unmount()
+
+    renderWithProviders(
+      <VisualizationTabs visualizations={[chartViz]} queryResult={queryResult} queryId={5} />
+    )
+    expect(screen.getByRole('button', { name: 'More options for Chart View' })).toBeInTheDocument()
+  })
+
+  it('offers no edit, delete or add control to a viewer who cannot edit the query', () => {
+    renderWithProviders(
+      <VisualizationTabs visualizations={[chartViz]} queryResult={queryResult} queryId={5} canEdit={false} />
+    )
+    expect(screen.queryByRole('button', { name: /^Edit / })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^More options/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add visualization' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Publish Chart View' })).toBeInTheDocument()
+  })
+
   it('offers no edit control for an unsaved query', () => {
     renderWithProviders(
       <VisualizationTabs visualizations={[chartViz]} queryResult={queryResult} />

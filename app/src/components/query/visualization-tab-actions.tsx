@@ -17,12 +17,8 @@ import {
 
 interface VisualizationTabActionsProps {
   viz: MockVisualization
-  /**
-   * False for TABLE, the built-in default view: it cannot be edited or
-   * deleted, but it can still be PUBLISHED, which is why this is a prop on
-   * two of the three controls rather than a gate in front of the cluster.
-   */
   canModify: boolean
+  canDelete: boolean
   onEdit: () => void
   onPublish: () => void
   onDelete: () => void
@@ -31,6 +27,7 @@ interface VisualizationTabActionsProps {
 export function VisualizationTabActions({
   viz,
   canModify,
+  canDelete,
   onEdit,
   onPublish,
   onDelete,
@@ -65,7 +62,7 @@ export function VisualizationTabActions({
       >
         <ScreenShare className="h-3.5 w-3.5 text-muted-foreground" />
       </IconButton>
-      {canModify && (
+      {canDelete && (
         <DropdownMenu>
           {/* The tooltip wraps the menu trigger rather than replacing it: the
               kebab has to stay the element that opens the menu, so the trigger

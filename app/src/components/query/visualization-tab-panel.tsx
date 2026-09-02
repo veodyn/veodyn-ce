@@ -65,7 +65,7 @@ export function VisualizationTabPanel({
   }
 
   if (viz.type === 'TABLE') {
-    const { columns } = viz.options as RedashTableOptions
+    const { columns } = (viz.options ?? {}) as RedashTableOptions
     return <QueryResultTable data={data} columns={columns} queryId={queryId} />
   }
 
