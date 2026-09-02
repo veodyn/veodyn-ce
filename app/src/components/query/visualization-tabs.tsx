@@ -180,7 +180,7 @@ export function VisualizationTabs({
                 <TabsTrigger
                   value={String(viz.id)}
                   onDoubleClick={
-                    queryId && viz.type !== 'TABLE' && isSavedVisualization(viz)
+                    queryId && isSavedVisualization(viz)
                       ? () => handleEdit(viz)
                       : undefined
                   }
@@ -193,7 +193,7 @@ export function VisualizationTabs({
                 {queryId && effectiveActiveTab === viz.id && isSavedVisualization(viz) && (
                   <VisualizationTabActions
                     viz={viz}
-                    canModify={viz.type !== 'TABLE'}
+                    canModify={isSavedVisualization(viz)}
                     onEdit={() => handleEdit(viz)}
                     onPublish={() => setPublishingViz(viz)}
                     onDelete={() => setDeletingViz(viz)}

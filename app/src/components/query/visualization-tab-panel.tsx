@@ -13,6 +13,7 @@ import { VisualizationErrorBoundary } from '@/components/visualizations/visualiz
 import { VisualizationRenderer } from '@/components/visualizations/visualization-renderer'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { visualizationData } from '@/lib/visualizations'
+import type { RedashTableOptions } from '@/services/redash/types'
 import { QueryResultTable } from './query-result-table'
 
 export interface VisualizationTabPanelProps {
@@ -63,7 +64,10 @@ export function VisualizationTabPanel({
     )
   }
 
-  if (viz.type === 'TABLE') return <QueryResultTable data={data} queryId={queryId} />
+  if (viz.type === 'TABLE') {
+    const { columns } = viz.options as RedashTableOptions
+    return <QueryResultTable data={data} columns={columns} queryId={queryId} />
+  }
 
   // Dashboards, wall slides and report blocks all wrap the renderer; this
   // surface was the one that did not, and it is the one where a renderer is

@@ -168,21 +168,6 @@ describe('VisualizationTabs', () => {
     expect(screen.getByDisplayValue('Counter View')).toBeInTheDocument()
   })
 
-  // A table has no options to edit, and without a queryId there is nothing to
-  // save against, so neither grows controls.
-  it('offers no edit control for a table or an unsaved query', () => {
-    const { unmount } = renderWithProviders(
-      <VisualizationTabs visualizations={[tableViz]} queryResult={queryResult} queryId={5} />
-    )
-    expect(screen.queryByRole('button', { name: /^Edit / })).not.toBeInTheDocument()
-    unmount()
-
-    renderWithProviders(
-      <VisualizationTabs visualizations={[chartViz]} queryResult={queryResult} />
-    )
-    expect(screen.queryByRole('button', { name: /^Edit / })).not.toBeInTheDocument()
-  })
-
   // An ad hoc run's tabs carry synthetic ids (0 for the table, -1 for the
   // builder's chart; see adhocVisualizations) with no row behind them, so
   // every action they could offer — publish included — can only 404. The
