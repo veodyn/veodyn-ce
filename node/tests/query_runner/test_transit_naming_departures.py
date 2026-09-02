@@ -52,3 +52,28 @@ class TestEnrichDepartures(TestCase):
     def test_column_doc_names_match_the_rows(self):
         names = [c.split(":")[0] for c in PUBLIC_DEPARTURE_COLUMNS]
         self.assertEqual(names, list(self.rows()[0]))
+
+
+def mca_route_named(route_code):
+    return name_route(next(r for r in MT_ROUTES if r["route_code"] == route_code), PROFILE, None)
+
+
+def prediction_for(route_number, stop_id="1166", stop_name="1st St/Main St"):
+    route = dict(PREDICTION_STOP["routes"][0], route=route_number, route_id=route_number)
+    return dict(PREDICTION_STOP, stop_id=stop_id, stop_name=stop_name, routes=[route])
+
+
+class TestReviewFindings(TestCase):
+    def test_a_rail_stop_missing_from_the_map_keeps_rail_cleanup(self):
+        stop = prediction_for("801", "80122", "Willowbrook - Rosa Parks Station - Metro A-Line")
+        rows = enrich_departures(flatten_departures([stop]), {"801": mca_route_named("MT801")}, {}, PROFILE, "r", "d")
+        self.assertEqual(rows[0]["public_stop_name"], "Willowbrook - Rosa Parks Station")
+
+    def test_short_name_source_is_independent_of_an_override(self):
+        rows = enrich_departures(
+            flatten_departures([prediction_for("10")]), {"10": mca_route_named("MT010")}, STOPS, PROFILE, "r", "d"
+        )
+        self.assertEqual(
+            (rows[0]["public_route_name_source"], rows[0]["public_route_short_name_source"]),
+            (provenance.OVERRIDE, provenance.RULE),
+        )

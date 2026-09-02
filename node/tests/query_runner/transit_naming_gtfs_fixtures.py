@@ -102,7 +102,7 @@ def build_archive(members):
 def archive_fetcher(by_url):
     calls = []
 
-    def fetch(url, max_bytes):
+    def fetch(url, max_bytes, timeout=None):
         calls.append(url)
         content = by_url[url]
         if isinstance(content, Exception):

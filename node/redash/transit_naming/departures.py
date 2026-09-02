@@ -5,6 +5,7 @@ from redash.transit_naming.routes import name_route
 from redash.transit_naming.stops import name_stop
 
 RENAMED = {"route": "raw_route", "headsign": "raw_headsign", "stop_name": "raw_stop_name"}
+RAIL_MODES = ("light_rail", "heavy_rail", "commuter_rail")
 
 PUBLIC_DEPARTURE_COLUMNS = [
     (RENAMED[c.split(":")[0]] + ":" + c.split(":", 1)[1]) if c.split(":")[0] in RENAMED else c
@@ -50,12 +51,13 @@ def enrich_departures(rows, route_names, stop_names, profile, revision, digest):
                 {
                     "stop_id": stop_id,
                     "stop_name": item.get("raw_stop_name"),
-                    "transit_modes": "BUS",
+                    "transit_modes": "RAIL" if route.mode in RAIL_MODES else "BUS",
                     "prediction_count": 1,
                 },
                 profile,
             )
         headsign = normalize_headsign(item.get("raw_headsign"), profile.headsign)
+        short_source = route_source if route_source != provenance.OVERRIDE else (route.brand_source or provenance.RULE)
         item.update(
             {
                 "public_route_name": route.public_name,
@@ -63,7 +65,7 @@ def enrich_departures(rows, route_names, stop_names, profile, revision, digest):
                 "public_headsign": headsign,
                 "public_stop_name": stop.public_name,
                 "public_route_name_source": route_source,
-                "public_route_short_name_source": route_source,
+                "public_route_short_name_source": short_source,
                 "public_headsign_source": provenance.RULE
                 if headsign != (item.get("raw_headsign") or "")
                 else provenance.PASSTHROUGH,

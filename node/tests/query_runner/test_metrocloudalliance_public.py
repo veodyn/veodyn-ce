@@ -15,7 +15,18 @@ from tests.query_runner.transit_naming_fixtures import (
     mca_route,
     metro_profiles,
 )
-from tests.query_runner.transit_naming_gtfs_fixtures import metro_archives
+from tests.query_runner.transit_naming_gtfs_fixtures import (
+    BUS_MEMBERS,
+    BUS_URL,
+    RAIL_MEMBERS,
+    RAIL_ROUTES_TXT,
+    RAIL_STOP_TIMES_TXT,
+    RAIL_TRIPS_TXT,
+    RAIL_URL,
+    archive_fetcher,
+    build_archive,
+    metro_archives,
+)
 
 PREDICTIONS = "https://api.metrocloudalliance.com/v2/realtime/predictions"
 ROUTES = "https://api.metrocloudalliance.com/v2/transitnetwork/routes"
@@ -171,3 +182,43 @@ class TestNamingProfiles(PublicResourceCase):
         self.assertEqual(rows["MT"]["overrides"], 2)
         self.assertTrue(rows["MT"]["source_file"].endswith("MT.yaml"))
         self.assertEqual(rows["MT"]["revision"], rows["default"]["revision"])
+
+
+class TestReviewFindings(PublicResourceCase):
+    def test_empty_departures_keep_their_columns(self):
+        query = '{"resource": "public_departures", "params": {"carrier_code": "MT", "stop_id": "1166"}}'
+        data, _ = self.run_resource(query, {PREDICTIONS: [], ROUTES: routes_by_params, STOPS: stops_by_params})
+        names = [c["name"] for c in data["columns"]]
+        self.assertEqual(data["rows"], [])
+        self.assertIn("departure_at", names)
+        self.assertIn("public_route_name", names)
+
+    def test_empty_routes_keep_their_columns(self):
+        query = '{"resource": "public_routes", "params": {"carrier_code": "MT", "route_code": "MT000"}}'
+        data, _ = self.run_resource(query, {ROUTES: routes_by_params})
+        self.assertEqual(data["rows"], [])
+        self.assertEqual([c["name"] for c in data["columns"]][:3], ["carrier_code", "carrier_id", "carrier_name"])
+
+    def test_archive_fetch_carries_the_runner_timeout(self):
+        runner = MetroCloudAlliance({"api_key": "demo", "request_timeout": 7})
+        self.assertEqual(runner._archive_fetcher().keywords, {"timeout": 7})
+
+    def test_patterns_come_from_the_resolved_source(self):
+        rail_members = dict(
+            RAIL_MEMBERS,
+            **{
+                "routes.txt": RAIL_ROUTES_TXT + "910-13201,,Rail J,,3,ADB8BF,000000\n",
+                "trips.txt": RAIL_TRIPS_TXT + "910-13201,WD,r910a,,0,1,910NB\n",
+                "stop_times.txt": RAIL_STOP_TIMES_TXT
+                + "r910a,05:00:00,05:00:00,80101,1\nr910a,05:03:00,05:03:00,80102,2\n",
+            },
+        )
+        fetch = archive_fetcher({BUS_URL: build_archive(BUS_MEMBERS), RAIL_URL: build_archive(rail_members)})
+        aliased = MT_YAML.replace("MT950: {source: bus,", "MT950: {source: rail,")
+        profiles = build_profile_set([CORE_PROFILE_DIR], extra_files={"/pack": {"MT.yaml": aliased}})
+        query = '{"resource": "public_route_stops", "params": {"carrier_code": "MT", "route_code": "MT950"}}'
+        with patch.object(public, "load_profile_set", return_value=profiles), patch.object(
+            public, "archive_fetch", fetch
+        ):
+            data, _ = self.run_resource(query, {ROUTES: routes_by_params, STOPS: stops_by_params})
+        self.assertEqual([r["stop_id"] for r in data["rows"]], ["80101", "80102"])

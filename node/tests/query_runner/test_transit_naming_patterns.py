@@ -124,3 +124,32 @@ class TestMcaPatternMembership(TestCase):
             [("1166", None, "E", "MT030 E", True), ("13574", None, "E", "MT030 E", True)],
         )
         self.assertEqual({(r.stop_match, r.sequence_source) for r in rows}, {("id", "mca_pattern")})
+
+
+def snapshot_with(trips, stop_times):
+    return GtfsSnapshot("bus", "digest", {"R": {}}, tuple(trips), stop_times, {})
+
+
+def trip(trip_id, shape_id, direction="0"):
+    return {"route_id": "R", "trip_id": trip_id, "direction_id": direction, "shape_id": shape_id, "trip_headsign": ""}
+
+
+class TestReviewFindings(TestCase):
+    def test_one_shape_with_two_stop_sequences_gets_distinct_pattern_ids(self):
+        stop_times = {"a": [(1, "1166"), (2, "13574")], "b": [(1, "1166"), (2, "13574"), (3, "19022")]}
+        snapshot = snapshot_with([trip("a", "S"), trip("b", "S")], stop_times)
+        rows = cut_patterns("MT", "MTR", "R", snapshot, MT_STOPS_BY_ID, NAMES, PROFILE)
+        by_pattern = {}
+        for r in rows:
+            by_pattern.setdefault(r.pattern_id, []).append(r.stop_id)
+        self.assertEqual(by_pattern, {"S": ["1166", "13574"], "S-2": ["1166", "13574", "19022"]})
+        self.assertEqual({r.pattern_id for r in rows if r.is_canonical}, {"S-2"})
+
+    def test_equal_length_canonical_tie_does_not_depend_on_trip_order(self):
+        forward = [trip("a", "B"), trip("b", "A")]
+        stop_times = {"a": [(1, "1166"), (2, "13574")], "b": [(1, "13574"), (2, "1166")]}
+        first = cut_patterns("MT", "MTR", "R", snapshot_with(forward, stop_times), MT_STOPS_BY_ID, NAMES, PROFILE)
+        backward = snapshot_with(list(reversed(forward)), stop_times)
+        second = cut_patterns("MT", "MTR", "R", backward, MT_STOPS_BY_ID, NAMES, PROFILE)
+        self.assertEqual({r.pattern_id for r in first if r.is_canonical}, {"B"})
+        self.assertEqual({r.pattern_id for r in second if r.is_canonical}, {"B"})

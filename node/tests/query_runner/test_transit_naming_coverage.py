@@ -140,3 +140,72 @@ class TestCoverageSql(TestCase):
         self.assertEqual(got[("digest_disagreement", "routes")], "d1")
         self.assertEqual(got[("digest_disagreement", "route_stops")], "d2")
         self.assertEqual(got[("departures_route_source", "rule")], 1)
+
+
+def lineage(carrier, **fields):
+    return {"carrier_code": carrier, "normalization_revision": "r1", **fields}
+
+
+class TestCoverageReviewFindings(TestCase):
+    def setUp(self):
+        self.db = sqlite3.connect(":memory:")
+        table(
+            self.db,
+            "query_1",
+            [
+                lineage("BU", route_code="BUORA", public_name_source="rule", gtfs_digest=""),
+                lineage("MT", route_code="MT094", public_name_source="gtfs", gtfs_digest="d1"),
+            ],
+        )
+        table(
+            self.db,
+            "query_2",
+            [
+                lineage(
+                    "MT",
+                    stop_id="1",
+                    stop_kind="intersection",
+                    public_name="A/B",
+                    public_name_source="rule",
+                    retired=0,
+                    gtfs_digest="",
+                )
+            ],
+        )
+        table(
+            self.db,
+            "query_3",
+            [
+                lineage(
+                    "MT",
+                    route_code="MT094",
+                    direction="N",
+                    stop_match="id",
+                    sequence_source="gtfs_stop_times",
+                    gtfs_digest="d1",
+                )
+            ],
+        )
+        table(
+            self.db,
+            "query_4",
+            [
+                {
+                    "carrier": "MT",
+                    "public_route_name_source": "gtfs",
+                    "public_stop_name_source": "rule",
+                    "normalization_revision": "r1",
+                    "gtfs_digest": "d3",
+                }
+            ],
+        )
+        with open(SQL_PATH, encoding="utf-8") as handle:
+            self.sql = handle.read().format(
+                routes="query_1", stops="query_2", route_stops="query_3", departures="query_4"
+            )
+
+    def test_feedless_carrier_and_departures_drift_are_reported(self):
+        got = {(c, m, d): v for c, m, d, v, _, _ in self.db.execute(self.sql).fetchall()}
+        self.assertEqual(got[("BU", "gtfs", "none")], 1)
+        self.assertEqual(got[("MT", "digest_disagreement", "departures")], "d3")
+        self.assertNotIn(("MT", "gtfs", "none"), got)

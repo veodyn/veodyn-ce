@@ -35,14 +35,20 @@ def _nearest(gtfs_stop, mca_stops, threshold_feet):
     return best
 
 
-def _match(gtfs_stop_id, snapshot, mca_stops, public_names, threshold_feet):
+def _match(gtfs_stop_id, snapshot, mca_stops, public_names, threshold_feet, memo):
+    if gtfs_stop_id in memo:
+        return memo[gtfs_stop_id]
     if gtfs_stop_id in mca_stops:
-        return gtfs_stop_id, public_names.get(gtfs_stop_id, ""), "id"
-    gtfs_stop = snapshot.stops.get(gtfs_stop_id, {})
-    near = _nearest(gtfs_stop, mca_stops, threshold_feet)
-    if near is not None:
-        return str(near["stop_id"]), public_names.get(str(near["stop_id"]), ""), "coordinate"
-    return gtfs_stop_id, gtfs_stop.get("stop_name", ""), "unmatched"
+        found = (gtfs_stop_id, public_names.get(gtfs_stop_id, ""), "id")
+    else:
+        gtfs_stop = snapshot.stops.get(gtfs_stop_id, {})
+        near = _nearest(gtfs_stop, mca_stops, threshold_feet)
+        if near is not None:
+            found = (str(near["stop_id"]), public_names.get(str(near["stop_id"]), ""), "coordinate")
+        else:
+            found = (gtfs_stop_id, gtfs_stop.get("stop_name", ""), "unmatched")
+    memo[gtfs_stop_id] = found
+    return found
 
 
 def _sequences(snapshot, gtfs_route_id):
@@ -54,24 +60,42 @@ def _sequences(snapshot, gtfs_route_id):
         if not stops:
             continue
         key = (str(trip.get("direction_id", "")), stops)
-        found.setdefault(key, trip.get("shape_id") or trip.get("trip_headsign") or f"{key[0]}-{len(found)}")
+        found.setdefault(key, trip.get("shape_id") or trip.get("trip_headsign") or key[0])
     return found
+
+
+def _pattern_ids(sequences):
+    used = {}
+    ids = {}
+    for key, label in sorted(sequences.items()):
+        count = used.get((key[0], label), 0) + 1
+        used[(key[0], label)] = count
+        ids[key] = label if count == 1 else f"{label}-{count}"
+    return ids
+
+
+def _canonical(sequences):
+    best = {}
+    for direction_id, stops in sequences:
+        current = best.get(direction_id)
+        if current is None or (len(stops), [s for s in current]) > (len(current), [s for s in stops]):
+            best[direction_id] = stops
+    return best
 
 
 def cut_patterns(
     carrier_code, route_code, gtfs_route_id, snapshot, mca_stops, public_names, profile, threshold_feet=130.0
 ):
     sequences = _sequences(snapshot, gtfs_route_id)
-    longest = {}
-    for (direction_id, stops), _ in sequences.items():
-        if len(stops) > len(longest.get(direction_id, ())):
-            longest[direction_id] = stops
+    ids = _pattern_ids(sequences)
+    longest = _canonical(sequences)
+    memo = {}
     rows = []
-    for (direction_id, stops), pattern_id in sorted(sequences.items(), key=lambda item: (item[0][0], item[1])):
+    for (direction_id, stops), pattern_id in sorted(ids.items()):
         letter = profile.direction_letter(route_code, direction_id)
         canonical = stops == longest[direction_id]
         for sequence, gtfs_stop_id in enumerate(stops):
-            stop_id, public_name, match = _match(gtfs_stop_id, snapshot, mca_stops, public_names, threshold_feet)
+            stop_id, public_name, match = _match(gtfs_stop_id, snapshot, mca_stops, public_names, threshold_feet, memo)
             rows.append(
                 PatternStop(
                     carrier_code,

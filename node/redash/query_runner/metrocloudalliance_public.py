@@ -10,6 +10,7 @@ from redash.transit_naming.patterns import (
 )
 from redash.transit_naming.profile_loader import load_profiles, profile_dirs
 from redash.transit_naming.routes import name_route, parse_route_number, route_row
+from redash.transit_naming.snapshot import PatternStop, RouteName, StopName
 from redash.transit_naming.stops import name_stop, stop_row
 
 archive_fetch = http_fetch
@@ -98,12 +99,23 @@ def _resolver(profile, with_patterns, archive_fetcher=None):
     return GtfsResolver(profile, cache_dir(), fetch=archive_fetcher or archive_fetch, with_patterns=with_patterns)
 
 
-def _route_names(routes, profile, resolver):
+def _route_names(routes, profile, resolver, with_resolved=False):
     named = {}
     for route in routes:
         number = parse_route_number(str(route.get("route_code") or ""), profile.carrier_code)
-        named[route["route_code"]] = (route, name_route(route, profile, resolver.resolve(route["route_code"], number)))
+        resolved = resolver.resolve(route["route_code"], number)
+        name = name_route(route, profile, resolved)
+        named[route["route_code"]] = (route, name, resolved) if with_resolved else (route, name)
     return named
+
+
+PUBLIC_COLUMN_NAMES = {
+    "public_routes": list(route_row({}, RouteName(*[""] * 12), "", "")),
+    "public_stops": list(stop_row({}, StopName("", "", "", "", "", "", False, ""), "", "")),
+    "public_route_stops": list(pattern_row(PatternStop(*[""] * 11), "", "")),
+    "public_departures": [column.split(":")[0] for column in PUBLIC_DEPARTURE_COLUMNS],
+    "naming_profiles": ["carrier_code", "source_file", "is_default", "gtfs_sources", "overrides", "revision"],
+}
 
 
 def public_routes(params, fetch, profiles, archive_fetcher=None):
@@ -150,9 +162,9 @@ def public_route_stops(params, fetch, profiles, archive_fetcher=None):
             live[str(stop["stop_id"])] = stop
             names[str(stop["stop_id"])] = named.public_name
     rows = []
-    for route_code, (route, name) in _route_names(routes, profile, resolver).items():
-        if name.gtfs_route_id:
-            snapshot = next(s for s in resolver.snapshots().values() if name.gtfs_route_id in s.routes)
+    for route_code, (route, name, resolved) in _route_names(routes, profile, resolver, with_resolved=True).items():
+        if resolved is not None:
+            snapshot = resolver.snapshots()[resolved.source_name]
             patterns = cut_patterns(
                 profile.carrier_code, route_code, name.gtfs_route_id, snapshot, live, names, profile
             )

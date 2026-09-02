@@ -42,3 +42,10 @@ UNION ALL
 SELECT carrier_code, 'digest_disagreement', 'route_stops', gtfs_digest, normalization_revision, gtfs_digest
 FROM (SELECT DISTINCT carrier_code, normalization_revision, gtfs_digest FROM {route_stops})
 WHERE gtfs_digest <> '' AND gtfs_digest NOT IN (SELECT DISTINCT gtfs_digest FROM {routes} WHERE gtfs_digest <> '')
+UNION ALL
+SELECT carrier, 'digest_disagreement', 'departures', gtfs_digest, normalization_revision, gtfs_digest
+FROM (SELECT DISTINCT carrier, normalization_revision, gtfs_digest FROM {departures})
+WHERE gtfs_digest <> '' AND gtfs_digest NOT IN (SELECT DISTINCT gtfs_digest FROM {routes} WHERE gtfs_digest <> '')
+UNION ALL
+SELECT carrier_code, 'gtfs', 'none', COUNT(*), normalization_revision, ''
+FROM {routes} GROUP BY carrier_code, normalization_revision HAVING MAX(gtfs_digest) = ''
