@@ -35,7 +35,7 @@ def select_features(features, filters, max_rows):
     selected = []
     truncated = False
     for feature in features:
-        candidate = {"location_id": feature.get("id"), **(feature.get("properties") or {})}
+        candidate = {**(feature.get("properties") or {}), **feature_record(feature)}
         if filters and not matches(candidate, filters, list(candidate)):
             continue
         if len(selected) >= max_rows:

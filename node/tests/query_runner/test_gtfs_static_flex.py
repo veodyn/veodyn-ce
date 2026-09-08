@@ -90,6 +90,21 @@ class TestFlexLocations(TestCase):
         self.assertIsNone(error)
         self.assertEqual([row["location_id"] for row in data["rows"]], ["zone_a"])
 
+    def test_locations_filter_matches_on_the_exposed_columns_too(self):
+        body = build_archive(FLEX_MEMBERS)
+        query = '{"table": "locations", "filter": {"geometry_type": "MultiPolygon"}}'
+        data, error, _get = run_query(query, body=body)
+        self.assertIsNone(error)
+        self.assertEqual([row["location_id"] for row in data["rows"]], ["zone_b"])
+
+        data, error, _get = run_query('{"table": "locations", "filter": {"stop_desc": ""}}', body=body)
+        self.assertIsNone(error)
+        self.assertEqual([row["location_id"] for row in data["rows"]], ["zone_b"])
+
+        data, error, _get = run_query('{"table": "locations", "filter": {"service_hours": "6-22"}}', body=body)
+        self.assertIsNone(error)
+        self.assertEqual([row["location_id"] for row in data["rows"]], ["zone_a"])
+
     def test_locations_featurecollection_is_one_geojson_cell(self):
         query = '{"table": "locations", "format": "featurecollection", "filter": {"stop_name": "Zone A"}}'
         data, error, _get = run_query(query, body=build_archive(FLEX_MEMBERS))
