@@ -39,22 +39,43 @@ def _key_fields(table, base_header, supplement_header):
     return keys
 
 
-def merge_supplement(table, base_header, base_rows, supplement_header, supplement_rows):
-    keys = _key_fields(table, base_header, supplement_header)
-    added_fields = [field for field in supplement_header if field not in base_header and field != DELETE_FIELD]
-    header = list(base_header) + added_fields
-    merged = {tuple(row.get(key) or "" for key in keys): dict(row) for row in base_rows}
-    for row in supplement_rows:
-        key = tuple(row.get(field) or "" for field in keys)
-        delete = (row.get(DELETE_FIELD) or "").strip() == "1"
-        if key in merged:
-            if delete:
-                del merged[key]
+def _key_of(row, keys):
+    return tuple(row.get(key) or "" for key in keys)
+
+
+def _is_delete(row):
+    return (row.get(DELETE_FIELD) or "").strip() == "1"
+
+
+class SupplementIndex:
+    def __init__(self, table, base_header, supplement_header, supplement_rows):
+        self.keys = _key_fields(table, base_header, supplement_header)
+        added = [field for field in supplement_header if field not in base_header and field != DELETE_FIELD]
+        self.header = list(base_header) + added
+        self.patches = {_key_of(row, self.keys): row for row in supplement_rows}
+
+    def merge(self, base_rows):
+        seen = set()
+        for row in base_rows:
+            key = _key_of(row, self.keys)
+            patch = self.patches.get(key)
+            if patch is None:
+                yield row
                 continue
-            for field, value in row.items():
+            seen.add(key)
+            if _is_delete(patch):
+                continue
+            merged = dict(row)
+            for field, value in patch.items():
                 if field != DELETE_FIELD and value != "":
-                    merged[key][field] = value
-        elif not delete:
-            merged[key] = {field: value for field, value in row.items() if field != DELETE_FIELD}
-    rows = [{field: row.get(field) or "" for field in header} for row in merged.values()]
-    return header, rows
+                    merged[field] = value
+            yield merged
+        for key, patch in self.patches.items():
+            if key not in seen and not _is_delete(patch):
+                yield {field: value for field, value in patch.items() if field != DELETE_FIELD}
+
+
+def merge_supplement(table, base_header, base_rows, supplement_header, supplement_rows):
+    index = SupplementIndex(table, base_header, supplement_header, supplement_rows)
+    rows = [{field: row.get(field) or "" for field in index.header} for row in index.merge(base_rows)]
+    return index.header, rows

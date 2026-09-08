@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 LIFTED_PROPS = ("id", "line", "name", "mode", "color")
 
 
-def _bbox(geometry):
+def geometry_bbox(geometry):
     """Compute [minLng, minLat, maxLng, maxLat] for a GeoJSON geometry."""
     coords = geometry.get("coordinates")
     xs, ys = [], []
@@ -169,7 +169,7 @@ class StaticGeoJSON(BaseResourceRunner):
             "geometry_type": geometry.get("type"),
             "geometry": json.dumps(geometry),
             "properties": json.dumps(extra) if extra else "",
-            "bbox": json.dumps(_bbox(geometry)) if geometry else "",
+            "bbox": json.dumps(geometry_bbox(geometry)) if geometry else "",
         }
 
     def run_query(self, query, user):

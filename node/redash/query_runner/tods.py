@@ -1,3 +1,4 @@
+import csv
 import logging
 
 from redash.query_runner import register
@@ -17,13 +18,14 @@ from redash.query_runner.gtfs_static_tables import (
     MAX_ROWS_CEILING,
     DecompressionBudget,
     matches,
+    open_table,
     parse_max_rows,
     table_members,
     typed_result,
 )
 from redash.query_runner.tods_merge import (
     PRIMARY_KEYS,
-    merge_supplement,
+    SupplementIndex,
     read_rows,
     supplement_name,
 )
@@ -74,7 +76,7 @@ class TODS(GtfsStatic):
             include_redis=False,
         )
 
-    def _read_merged(self, tods_archive, tods_members, table, config, max_rows, budget):
+    def _base_table_member(self, table):
         if not self.gtfs_url:
             raise ValueError("A merged read needs the base GTFS archive URL configured on this data source")
         base_archive = self._fetch_archive(sanitize_feed_url(self.gtfs_url), url=self.gtfs_url)
@@ -82,17 +84,31 @@ class TODS(GtfsStatic):
         if table not in base_members:
             available = ", ".join(sorted(base_members)) or "none"
             raise ValueError(f"Unknown base GTFS table {table!r}. Available tables: {available}")
-        header, rows = read_rows(base_archive, base_members[table], budget)
-        supplement = tods_members.get(supplement_name(table))
-        if supplement:
-            supplement_header, supplement_rows = read_rows(tods_archive, supplement, budget)
-            header, rows = merge_supplement(table, header, rows, supplement_header, supplement_rows)
+        return base_archive, base_members[table]
 
-        fields = self._select_fields(table, header, config.get("columns"))
+    def _read_merged(self, tods_archive, tods_members, table, config, max_rows, budget):
+        base_archive, base_member = self._base_table_member(table)
         filters = config.get("filter") or {}
-        selected = [row for row in rows if not filters or matches(row, filters, header)]
-        truncated = len(selected) > max_rows
-        records = [{field: row.get(field) or "" for field in fields} for row in selected[:max_rows]]
+        records = []
+        truncated = False
+        with open_table(base_archive, base_member, budget) as text:
+            reader = csv.DictReader(text)
+            header = list(reader.fieldnames or [])
+            merged = ({field: record.get(field) or "" for field in header} for record in reader)
+            supplement = tods_members.get(supplement_name(table))
+            if supplement:
+                supplement_header, supplement_rows = read_rows(tods_archive, supplement, budget)
+                index = SupplementIndex(table, header, supplement_header, supplement_rows)
+                header, merged = index.header, index.merge(merged)
+            fields = self._select_fields(table, header, config.get("columns"))
+            for row in merged:
+                if filters and not matches(row, filters, header):
+                    continue
+                if len(records) >= max_rows:
+                    truncated = True
+                    break
+                records.append({field: row.get(field) or "" for field in fields})
+
         columns, rows = typed_result(fields, records)
         return columns, rows, truncated
 

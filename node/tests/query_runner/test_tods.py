@@ -8,6 +8,7 @@ from tests.query_runner.gtfs_static_fixtures import (
     ROUTES,
     STOPS,
     TRIPS,
+    BoundedLines,
     build_archive,
     column_types,
 )
@@ -154,6 +155,24 @@ class TestMergedReads(TestCase):
         data, error, _get = run_query('{"table": "calendar", "merged": true}')
         self.assertIsNone(data)
         self.assertIn("Unknown base GTFS table 'calendar'", error)
+
+    def test_a_merged_read_streams_the_base_table_and_stops_at_the_cap(self):
+        lines = [
+            "route_id,service_id,trip_id\n",
+            "12,WD,t1\n",
+            "14,WD,t2\n",
+            "12,SU,t3\n",
+            "14,SU,t4\n",
+            "12,SU,t5\n",
+        ]
+        source = BoundedLines(lines, limit=4)
+        with patch("redash.query_runner.tods.open_table", return_value=source):
+            data, error, _get = run_query('{"table": "trips", "merged": true}', config={"max_rows": 1})
+        self.assertIsNone(error)
+        self.assertEqual([row["trip_id"] for row in data["rows"]], ["t1"])
+        self.assertEqual(data["rows"][0]["block_id"], "b1")
+        self.assertTrue(data["truncated"])
+        self.assertEqual(source.read, 4)
 
     def test_both_archives_are_fetched_with_the_configured_timeout(self):
         _data, _error, get = run_query('{"table": "trips", "merged": true}', config={"request_timeout": 7})

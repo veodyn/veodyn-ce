@@ -9,10 +9,9 @@ from redash.query_runner.connector_base import (
     build_configuration_schema,
     extract_records,
 )
-from redash.query_runner.static_geojson import _bbox as bbox_of
+from redash.query_runner.static_geojson import geometry_bbox
 
 ARRAY_FEEDS = ("service_brands", "vehicle_types", "operating_rules", "calendars", "booking_rules")
-ZONE_ROW_KEYS = ("zone_id", "name")
 
 
 def zone_record(feature):
@@ -25,7 +24,7 @@ def zone_record(feature):
         "geometry_type": geometry.get("type"),
         "geometry": json.dumps(geometry),
         "properties": json.dumps(extra) if extra else "",
-        "bbox": json.dumps(bbox_of(geometry)) if geometry else "",
+        "bbox": json.dumps(geometry_bbox(geometry)) if geometry else "",
     }
 
 

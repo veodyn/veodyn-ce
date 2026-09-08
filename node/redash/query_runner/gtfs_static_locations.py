@@ -2,7 +2,7 @@ import json
 
 from redash.query_runner import TYPE_STRING
 from redash.query_runner.gtfs_static_tables import matches, open_table
-from redash.query_runner.static_geojson import _bbox as bbox_of
+from redash.query_runner.static_geojson import geometry_bbox
 
 LOCATIONS_TABLE = "locations"
 LOCATIONS_MEMBER = "locations.geojson"
@@ -60,7 +60,7 @@ def feature_record(feature):
         "geometry_type": geometry.get("type"),
         "geometry": json.dumps(geometry),
         "properties": json.dumps(extra) if extra else "",
-        "bbox": json.dumps(bbox_of(geometry)) if geometry else "",
+        "bbox": json.dumps(geometry_bbox(geometry)) if geometry else "",
     }
 
 
