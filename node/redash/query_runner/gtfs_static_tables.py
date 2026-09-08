@@ -225,3 +225,11 @@ def coerce(value, column_type):
     except (ValueError, OverflowError):
         return value
     return value
+
+
+def typed_result(fields, records):
+    columns = [{"name": field, "friendly_name": field, "type": column_type_for(field, records)} for field in fields]
+    rows = [
+        {column["name"]: coerce(record[column["name"]], column["type"]) for column in columns} for record in records
+    ]
+    return columns, rows

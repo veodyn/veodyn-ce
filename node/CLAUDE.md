@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-**node**, the query backend: a headless query, dashboard and scheduling API. Flask backend with SQLAlchemy ORM. Background jobs via Redis Queue (RQ). Data sources come from a pluggable query runner system. The default list has 41 entries, 14 of them the transportation connectors. The React client and `viz-lib` visualization library that used to live in this tree were deleted; the product UI is the separate Next.js app in `app/`.
+**node**, the query backend: a headless query, dashboard and scheduling API. Flask backend with SQLAlchemy ORM. Background jobs via Redis Queue (RQ). Data sources come from a pluggable query runner system. The default list has 43 entries, 16 of them the transportation connectors. The React client and `viz-lib` visualization library that used to live in this tree were deleted; the product UI is the separate Next.js app in `app/`.
 
 The inner Python package is named `redash` (`import redash`, `redash.settings`), and the paths below are literal: the name is a deployed contract across module paths, settings and migrations, so it is not renamed. `NOTICE` at the repository root carries the licensing.
 

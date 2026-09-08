@@ -37,17 +37,25 @@ from redash.query_runner.connector_validation import (
     require_configured,
 )
 from redash.query_runner.gtfs_realtime_transport import read_bounded, sanitize_feed_url
+from redash.query_runner.gtfs_static_locations import (
+    LOCATION_COLUMNS,
+    LOCATIONS_TABLE,
+    feature_collection_result,
+    location_rows,
+    locations_member,
+    read_features,
+    select_features,
+)
 from redash.query_runner.gtfs_static_tables import (
     DEFAULT_MAX_ROWS,
     MAX_ROWS_CEILING,
     DecompressionBudget,
     check_archive_bounds,
-    coerce,
-    column_type_for,
     matches,
     open_table,
     parse_max_rows,
     table_members,
+    typed_result,
 )
 
 logger = logging.getLogger(__name__)
@@ -96,9 +104,9 @@ class GtfsStatic(BaseResourceRunner):
             include_redis=False,
         )
 
-    def _fetch_archive(self, safe_url):
+    def _fetch_archive(self, safe_url, url=None):
         try:
-            response = requests.get(self.gtfs_url, timeout=self.timeout, stream=True, headers=REQUEST_HEADERS)
+            response = requests.get(url or self.gtfs_url, timeout=self.timeout, stream=True, headers=REQUEST_HEADERS)
             response.raise_for_status()
             content = read_bounded(response, safe_url)
         except requests.HTTPError as exc:
@@ -123,7 +131,21 @@ class GtfsStatic(BaseResourceRunner):
                 header = next(reader, [])
                 row_count = sum(1 for values in reader if values)
             rows.append({"table": name, "row_count": row_count, "columns": json.dumps(header)})
+        member = locations_member(archive)
+        if member:
+            row_count = len(read_features(archive, member, budget))
+            rows.append({"table": LOCATIONS_TABLE, "row_count": row_count, "columns": json.dumps(LOCATION_COLUMNS)})
         return rows
+
+    def _read_locations(self, archive, member, config, max_rows, budget):
+        fields = self._select_fields(LOCATIONS_TABLE, LOCATION_COLUMNS, config.get("columns"))
+        features = read_features(archive, member, budget)
+        selected, truncated = select_features(features, config.get("filter") or {}, max_rows)
+        if (config.get("format") or "rows").lower() == "featurecollection":
+            columns, rows = feature_collection_result(selected)
+        else:
+            columns, rows = location_rows(selected, fields)
+        return columns, rows, truncated
 
     def _select_fields(self, table, header, projection):
         if not projection:
@@ -152,13 +174,7 @@ class GtfsStatic(BaseResourceRunner):
                     break
                 records.append({field: record.get(field) or "" for field in fields})
 
-        columns = [
-            {"name": field, "friendly_name": field, "type": column_type_for(field, records)} for field in fields
-        ]
-        rows = [
-            {column["name"]: coerce(record[column["name"]], column["type"]) for column in columns}
-            for record in records
-        ]
+        columns, rows = typed_result(fields, records)
         return columns, rows, truncated
 
     def run_query(self, query, user):
@@ -188,18 +204,22 @@ class GtfsStatic(BaseResourceRunner):
             if table is None:
                 columns, rows = to_redash_table(self._list_tables(archive, members, budget))
                 return serialize_result(columns, rows), None
-            if table not in members:
+            geojson_member = locations_member(archive) if table == LOCATIONS_TABLE else None
+            if geojson_member:
+                columns, rows, truncated = self._read_locations(archive, geojson_member, config, max_rows, budget)
+            elif table not in members:
                 available = ", ".join(sorted(members)) or "none"
                 raise ValueError(f"Unknown table {table!r}. Available tables: {available}")
-            columns, rows, truncated = self._read_table(
-                archive,
-                table,
-                members[table],
-                config.get("columns"),
-                config.get("filter") or {},
-                max_rows,
-                budget,
-            )
+            else:
+                columns, rows, truncated = self._read_table(
+                    archive,
+                    table,
+                    members[table],
+                    config.get("columns"),
+                    config.get("filter") or {},
+                    max_rows,
+                    budget,
+                )
         except Exception as e:
             return None, str(e)
 
@@ -222,6 +242,7 @@ class GtfsStatic(BaseResourceRunner):
                     "columns: array of column names to return (default all)",
                     "filter: {column: value | [values]}, compared as strings and ANDed",
                     f"row cap: the max_rows configuration, default {DEFAULT_MAX_ROWS}",
+                    "table: locations reads GTFS-Flex locations.geojson; format: rows (default) | featurecollection",
                 ],
             },
             {
@@ -231,6 +252,8 @@ class GtfsStatic(BaseResourceRunner):
                     '{"table": "stops"}',
                     '{"table": "stops", "columns": ["stop_id", "stop_name", "stop_lat", "stop_lon"]}',
                     '{"table": "trips", "filter": {"route_id": ["12", "14"]}}',
+                    '{"table": "locations", "format": "featurecollection"}',
+                    '{"table": "pathways", "filter": {"pathway_mode": "5"}}',
                 ],
             },
         ]

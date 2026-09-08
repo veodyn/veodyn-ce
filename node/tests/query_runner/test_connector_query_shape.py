@@ -88,6 +88,7 @@ FAMILY_CONFIGS = {
     "gbfs": {},
     "geotab": {"server": "s", "database": "d", "username": "u", "password": "p"},
     "go511": {"api_key": "k"},
+    "gofs": {},
     "gtfs_realtime": {},
     "gtfs_static": {"gtfs_url": "https://x.invalid/gtfs.zip"},
     "metrocloudalliance": {"base_url": "https://x.invalid/", "api_key": "k"},
@@ -96,6 +97,7 @@ FAMILY_CONFIGS = {
     "socaltransport": {},
     "static_geojson": {},
     "tmdd": {"endpoint_url": "https://c.invalid/c2cxml/", "organization_id": "ORG"},
+    "tods": {"tods_url": "https://x.invalid/tods.zip"},
     "trafficland": {"base_url": "https://x.invalid/", "api_key": "k", "system": "s"},
     "waze": {},
 }

@@ -25,6 +25,7 @@ excel
 gbfs
 geotab
 go511
+gofs
 google_spreadsheets
 gtfs_realtime
 gtfs_static
@@ -51,6 +52,7 @@ socaltransport
 sqlite
 static_geojson
 tmdd
+tods
 trafficland
 trino
 waze
