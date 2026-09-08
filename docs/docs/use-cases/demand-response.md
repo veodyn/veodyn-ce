@@ -18,10 +18,15 @@ month.
 
 ## What has to be true
 
-There is no demand-response connector here. The source is your dispatch system,
+The per-trip record these measures need comes from your dispatch system,
 reached through a [data source](/admin/data-sources) pointed at your scheduling
 vendor's database, or at a replica of it, or at an export you land in your own
-warehouse.
+warehouse. The service definition around it can come from a feed: the
+[GOFS](/connectors) connector reads an on-demand service's zones, operating
+rules and booking rules, the Static GTFS connector reads the same from a
+GTFS-Flex archive, and the TODS connector reads runs and vehicle assignments
+from the scheduler. None of those carries a denial, a no-show or a pickup time,
+which is why the dispatch record is still the source for the board.
 
 Getting read access is usually most of the work. Ask for a read-only replica
 rather than credentials on production, and expect the vendor to have a supported
