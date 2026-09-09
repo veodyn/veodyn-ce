@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import requests
 
+from redash.query_runner.wzdx_records import DATA_SOURCE_FIELDS
 from tests.query_runner.wzdx_fixtures import (
     FEED_INFO,
     FEED_URL,
@@ -32,6 +33,17 @@ class TestWZDxFeed(TestCase):
         self.assertIsNone(error)
         self.assertEqual([row["data_source_id"] for row in data["rows"]], ["1", "2"])
         self.assertEqual(data["rows"][0]["organization_name"], "Test City 1")
+
+    def test_data_source_columns_cover_fields_the_first_source_omits(self):
+        data, error, _get = run('{"resource": "data_sources"}')
+        self.assertIsNone(error)
+        names = [column["name"] for column in data["columns"]]
+        self.assertEqual(names[:6], list(DATA_SOURCE_FIELDS))
+        self.assertIn("region", names)
+        self.assertEqual(data["rows"][0]["contact_email"], None)
+        self.assertEqual(data["rows"][1]["contact_email"], "samuel.sourcefeed@testdot.gov")
+        self.assertEqual(data["rows"][0]["region"], None)
+        self.assertEqual(data["rows"][1]["region"], "central")
 
     def test_a_3x_feed_is_refused_by_version(self):
         legacy = {"road_event_feed_info": {"version": "3.1"}, "type": "FeatureCollection", "features": []}

@@ -47,6 +47,14 @@ DEVICE_CORE_FIELDS = (
     "status_messages",
 )
 LANE_FIELDS = ("order", "type", "status", "restrictions")
+DATA_SOURCE_FIELDS = (
+    "data_source_id",
+    "organization_name",
+    "contact_name",
+    "contact_email",
+    "update_frequency",
+    "update_date",
+)
 LEGACY_FEED_INFO_KEY = "road_event_feed_info"
 
 
@@ -69,7 +77,13 @@ def feed_info_row(feed_info):
 
 
 def data_source_rows(feed_info):
-    return list(feed_info.get("data_sources") or [])
+    sources = feed_info.get("data_sources") or []
+    fields = list(DATA_SOURCE_FIELDS)
+    for source in sources:
+        for key in source:
+            if key not in fields:
+                fields.append(key)
+    return [{field: source.get(field) for field in fields} for source in sources]
 
 
 def _geometry_columns(feature):

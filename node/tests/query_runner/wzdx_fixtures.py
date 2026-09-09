@@ -23,8 +23,10 @@ FEED_INFO = {
         {
             "data_source_id": "2",
             "organization_name": "TestDOT",
+            "contact_email": "samuel.sourcefeed@testdot.gov",
             "update_frequency": 60,
             "update_date": "2020-06-18T14:39:01Z",
+            "region": "central",
         },
     ],
 }
