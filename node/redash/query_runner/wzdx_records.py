@@ -55,13 +55,13 @@ DATA_SOURCE_FIELDS = (
     "update_frequency",
     "update_date",
 )
-LEGACY_FEED_INFO_KEY = "road_event_feed_info"
+LEGACY_FEED_INFO_FIELD = "road_event_feed_info"
 
 
 def feed_document_error(document):
     if not isinstance(document, dict):
         return "the feed is not a JSON object"
-    if LEGACY_FEED_INFO_KEY in document and "feed_info" not in document:
+    if LEGACY_FEED_INFO_FIELD in document and "feed_info" not in document:
         return "the feed is WZDx 3.x (root road_event_feed_info); this connector reads WZDx 4.x feeds"
     if not isinstance(document.get("feed_info"), dict):
         return "the feed has no feed_info object, so it is not a WZDx 4.x feed"

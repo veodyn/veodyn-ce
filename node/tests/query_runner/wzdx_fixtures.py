@@ -32,7 +32,7 @@ FEED_INFO = {
 }
 
 SIMPLE = {
-    "id": "af2e3f51-611f-4ce0-9282-2f28ca68e62f",
+    "id": "wz-simple",
     "type": "Feature",
     "properties": {
         "core_details": {
@@ -63,7 +63,7 @@ SIMPLE = {
 }
 
 LANED = {
-    "id": "edf2162b-1f5d-4ddd-a731-78fb81a22e6a",
+    "id": "wz-laned",
     "type": "Feature",
     "properties": {
         "core_details": {
@@ -99,15 +99,15 @@ LANED = {
 }
 
 SEQUENCED = {
-    "id": "8bfb0ce0-98cd-4e92-924d-f0a9d3a4ba8f",
+    "id": "wz-seq-2",
     "type": "Feature",
     "properties": {
         "core_details": {
             "data_source_id": "2",
             "event_type": "work-zone",
             "related_road_events": [
-                {"type": "first-in-sequence", "id": "6f57aded-7291-462e-9892-607b2b7d116c"},
-                {"type": "next-in-sequence", "id": "e6c2abad-04e2-41fd-bd66-4cc41e4bb6e7"},
+                {"type": "first-in-sequence", "id": "wz-seq-1"},
+                {"type": "next-in-sequence", "id": "wz-seq-3"},
             ],
             "road_names": ["I-235"],
             "direction": "westbound",
@@ -165,12 +165,12 @@ WORK_ZONE_FEED = {
 }
 
 ARROW_BOARD = {
-    "id": "280258a2-d131-4d8d-b5a7-2cef813b25a8",
+    "id": "arrow-board-1",
     "type": "Feature",
     "properties": {
         "core_details": {
             "device_type": "arrow-board",
-            "data_source_id": "ff55b721-bd18-4c21-8ad7-1b31fdddd876",
+            "data_source_id": "vendor-source",
             "road_names": ["I-80", "I-35"],
             "device_status": "ok",
             "has_automatic_location": True,
@@ -191,7 +191,7 @@ CAMERA = {
     "properties": {
         "core_details": {
             "device_type": "camera",
-            "data_source_id": "ff55b721-bd18-4c21-8ad7-1b31fdddd876",
+            "data_source_id": "vendor-source",
             "device_status": "error",
             "status_messages": ["No image for 2 hours"],
             "has_automatic_location": False,
