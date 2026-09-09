@@ -100,6 +100,7 @@ FAMILY_CONFIGS = {
     "tods": {"tods_url": "https://x.invalid/tods.zip"},
     "trafficland": {"base_url": "https://x.invalid/", "api_key": "k", "system": "s"},
     "waze": {},
+    "wzdx": {"feed_url": "https://x.invalid/workzones.geojson"},
 }
 
 

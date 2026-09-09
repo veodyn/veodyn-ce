@@ -348,6 +348,7 @@ default_query_runners = [
     "redash.query_runner.gbfs",
     "redash.query_runner.gofs",
     "redash.query_runner.tods",
+    "redash.query_runner.wzdx",
     "redash.query_runner.ntcip_dms",
     "redash.query_runner.static_geojson",
     "redash.query_runner.tmdd",
