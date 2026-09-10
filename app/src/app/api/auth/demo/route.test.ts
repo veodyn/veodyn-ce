@@ -41,7 +41,23 @@ function loginPage(csrf = 'csrf-123') {
   })
 }
 
+const DEPLOYED_PERSONAS =
+  '[{"id":"operations","label":"Operations lead","email":"demo-ops@veodyn.com","description":"Sees every dashboard, runs and saves queries"},{"id":"analyst","label":"Analyst","email":"demo-analyst@veodyn.com","description":"Writes queries against the catalog, cannot administer"},{"id":"viewer","label":"Viewer","email":"demo-viewer@veodyn.com","description":"Reads dashboards and reports, changes nothing"}]'
+
 describe('the demo persona sign-in route', () => {
+  it('loads a three-persona VEODYN_DEMO__PERSONAS of the shape a deployment sets', async () => {
+    vi.stubEnv('REDASH_URL', 'http://redash.test')
+    vi.stubEnv('DEMO_LOGIN_PASSWORD', 'demo-secret')
+    vi.stubEnv('VEODYN_DEMO__PERSONAS', DEPLOYED_PERSONAS)
+    vi.resetModules()
+    const { POST } = await import('./route')
+
+    const res = await POST(demoRequest({ persona: 'nobody' }))
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).message).toMatch(/unknown demo persona/i)
+  })
+
   it('is absent on an instance that configures no personas', async () => {
     const { POST } = await loadRoute({ personas: [] })
 
