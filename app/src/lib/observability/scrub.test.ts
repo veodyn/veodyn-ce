@@ -27,6 +27,15 @@ describe('scrubProperties', () => {
     expect(out.customerName).toBe('[redacted]')
   })
 
+  it('keeps distinct_id, which ingestion reads from properties and not the envelope', () => {
+    const out = scrubProperties({
+      distinct_id: '01a08cbb-8b3f-7089-891a-e6fe616b0cbd',
+      customerName: 'Acme',
+    })
+    expect(out.distinct_id).toBe('01a08cbb-8b3f-7089-891a-e6fe616b0cbd')
+    expect(out.customerName).toBe('[redacted]')
+  })
+
   it('truncates a long message rather than redacting it', () => {
     const out = scrubProperties({ message: 'x'.repeat(400) })
     expect(out.message).toHaveLength(200)

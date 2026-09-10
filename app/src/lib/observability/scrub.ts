@@ -21,11 +21,7 @@ export const SAFE_KEYS: ReadonlySet<string> = new Set([
   'reason',
 ])
 
-// posthog-js carries the project api_key in `properties.token` and ingestion
-// resolves the team from it, so redacting it drops every event silently: the
-// capture endpoint still answers `200 {"status":"Ok"}`. It is the public client
-// ingestion key, so keeping it leaks nothing.
-const REQUIRED_BY_INGESTION: ReadonlySet<string> = new Set(['token'])
+const REQUIRED_BY_INGESTION: ReadonlySet<string> = new Set(['token', 'distinct_id'])
 
 export function scrubProperties(props: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {}
