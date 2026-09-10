@@ -427,6 +427,119 @@ class UserCommandTests(BaseTestCase):
         self.assertTrue(u.verify_password("password1"))
         self.assertEqual(u.group_ids, [u.org.default_group.id, u.org.admin_group.id])
 
+    def test_create_with_one_group_id(self):
+        group = self.factory.create_group(name="viewer", permissions=["view_query"])
+        db.session.flush()
+        group_id = group.id
+        runner = CliRunner()
+        result = runner.invoke(
+            manager,
+            [
+                "users",
+                "create",
+                "foobar@example.com",
+                "Fred Foobar",
+                "--password",
+                "password1",
+                "--groups",
+                str(group_id),
+            ],
+        )
+        self.assertFalse(result.exception)
+        self.assertEqual(result.exit_code, 0)
+        u = User.query.filter(User.email == "foobar@example.com").first()
+        self.assertEqual(u.group_ids, [group_id])
+
+    def test_create_with_several_group_ids(self):
+        group = self.factory.create_group(name="viewer", permissions=["view_query"])
+        db.session.flush()
+        group_id = group.id
+        default_id = self.factory.default_group.id
+        runner = CliRunner()
+        result = runner.invoke(
+            manager,
+            [
+                "users",
+                "create",
+                "foobar@example.com",
+                "Fred Foobar",
+                "--password",
+                "password1",
+                "--groups",
+                f"{default_id},{group_id}",
+            ],
+        )
+        self.assertFalse(result.exception)
+        self.assertEqual(result.exit_code, 0)
+        u = User.query.filter(User.email == "foobar@example.com").first()
+        self.assertEqual(u.group_ids, [default_id, group_id])
+
+    def test_create_with_group_name(self):
+        group = self.factory.create_group(name="viewer", permissions=["view_query"])
+        db.session.flush()
+        group_id = group.id
+        runner = CliRunner()
+        result = runner.invoke(
+            manager,
+            [
+                "users",
+                "create",
+                "foobar@example.com",
+                "Fred Foobar",
+                "--password",
+                "password1",
+                "--groups",
+                "viewer",
+            ],
+        )
+        self.assertFalse(result.exception)
+        self.assertEqual(result.exit_code, 0)
+        u = User.query.filter(User.email == "foobar@example.com").first()
+        self.assertEqual(u.group_ids, [group_id])
+
+    def test_create_with_unknown_group_says_so(self):
+        runner = CliRunner()
+        result = runner.invoke(
+            manager,
+            [
+                "users",
+                "create",
+                "foobar@example.com",
+                "Fred Foobar",
+                "--password",
+                "password1",
+                "--groups",
+                "nosuchgroup",
+            ],
+        )
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("nosuchgroup", result.output)
+        self.assertIsNone(User.query.filter(User.email == "foobar@example.com").first())
+
+    def test_create_admin_with_a_group_keeps_both(self):
+        group = self.factory.create_group(name="viewer", permissions=["view_query"])
+        db.session.flush()
+        group_id = group.id
+        runner = CliRunner()
+        result = runner.invoke(
+            manager,
+            [
+                "users",
+                "create",
+                "foobar@example.com",
+                "Fred Foobar",
+                "--password",
+                "password1",
+                "--groups",
+                str(group_id),
+                "--admin",
+            ],
+        )
+        self.assertFalse(result.exception)
+        self.assertEqual(result.exit_code, 0)
+        u = User.query.filter(User.email == "foobar@example.com").first()
+        self.assertEqual(u.group_ids, [group_id, u.org.admin_group.id])
+
     def test_create_googleauth(self):
         runner = CliRunner()
         result = runner.invoke(

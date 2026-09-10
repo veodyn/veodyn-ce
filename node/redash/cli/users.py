@@ -1,4 +1,3 @@
-import json
 from sys import exit
 
 from click import BOOL, argument, option, prompt
@@ -7,24 +6,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
 from redash import models
+from redash.cli.group_membership import build_groups
+from redash.cli.user_listing import user_as_text, users_as_json
 from redash.handlers.users import invite_user
 
 manager = AppGroup(help="Users management commands.")
-
-
-def build_groups(org, groups, is_admin):
-    if isinstance(groups, str):
-        groups = groups.split(",")
-        groups.remove("")  # in case it was empty string
-        groups = [int(g) for g in groups]
-
-    if groups is None:
-        groups = [org.default_group.id]
-
-    if is_admin:
-        groups += [org.admin_group.id]
-
-    return groups
 
 
 @manager.command(name="grant_admin")
@@ -294,35 +280,12 @@ def list_command(organization=None, as_json=False):
         users = models.User.query.filter(models.User.org == org)
     else:
         users = models.User.query
+    ordered = users.order_by(models.User.name)
     if as_json:
-        result = []
-        for user in users.order_by(models.User.name):
-            result.append(
-                {
-                    "id": user.id,
-                    "name": user.name,
-                    "email": user.email,
-                    "org": {
-                        "slug": user.org.slug,
-                        "name": user.org.name,
-                    },
-                    "active": not user.is_disabled,
-                }
-            )
-
-        print(json.dumps(result, indent=2))
+        print(users_as_json(ordered))
         return
 
-    for i, user in enumerate(users.order_by(models.User.name)):
+    for i, user in enumerate(ordered):
         if i > 0:
             print("-" * 20)
-
-        print(
-            "Id: {}\nName: {}\nEmail: {}\nOrganization: {}\nActive: {}".format(
-                user.id, user.name, user.email, user.org.name, not (user.is_disabled)
-            )
-        )
-
-        groups = models.Group.query.filter(models.Group.id.in_(user.group_ids)).all()
-        group_names = [group.name for group in groups]
-        print("Groups: {}".format(", ".join(group_names)))
+        print(user_as_text(user))
