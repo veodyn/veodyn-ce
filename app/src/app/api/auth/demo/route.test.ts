@@ -42,7 +42,7 @@ function loginPage(csrf = 'csrf-123') {
 }
 
 const DEPLOYED_PERSONAS =
-  '[{"id":"operations","label":"Operations lead","email":"demo-ops@veodyn.com","description":"Sees every dashboard, runs and saves queries"},{"id":"analyst","label":"Analyst","email":"demo-analyst@veodyn.com","description":"Writes queries against the catalog, cannot administer"},{"id":"viewer","label":"Viewer","email":"demo-viewer@veodyn.com","description":"Reads dashboards and reports, changes nothing"}]'
+  '[{"id":"operations","label":"Operations lead","email":"demo-ops@veodyn.com","description":"Admin. Sees and changes everything"},{"id":"analyst","label":"Analyst","email":"demo-analyst@veodyn.com","description":"Writes and runs queries against the catalog"},{"id":"viewer","label":"Viewer","email":"demo-viewer@veodyn.com","description":"Reads dashboards and reports"}]'
 
 describe('the demo persona sign-in route', () => {
   it('loads a three-persona VEODYN_DEMO__PERSONAS of the shape a deployment sets', async () => {

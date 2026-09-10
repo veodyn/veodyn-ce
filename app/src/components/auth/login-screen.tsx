@@ -179,7 +179,7 @@ export function LoginScreen({ next }: { next?: string | null }) {
               ))}
             </div>
             <p className="text-xs text-muted-foreground mt-3">
-              Demo accounts are shared and reset every 24 hours. Do not put real data here.
+              Demo accounts are shared and reset regularly. Do not put real data here.
             </p>
           </section>
         )}
