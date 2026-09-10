@@ -28,7 +28,7 @@ import { SessionProvider } from '@/components/auth/session-provider'
 import { useAuthStore } from '@/stores/auth-store'
 import type { SessionPayload } from '@/stores/auth-identity'
 import { defaultClientConfig } from '@/stores/auth-identity'
-import type { ClientConfig } from '@/lib/config-schema'
+import { NEUTRAL_CONFIG, toClientConfig } from '@/lib/config-schema'
 import type { TelemetryClientConfig } from '@/lib/observability/telemetryConfig'
 
 const telemetryOff: TelemetryClientConfig = {
@@ -61,7 +61,7 @@ afterEach(() => {
 function ssr(initialSession: Parameters<typeof Providers>[0]['initialSession']) {
   return renderToString(
     <Providers
-      config={{} as ClientConfig}
+      config={toClientConfig(NEUTRAL_CONFIG)}
       telemetry={telemetryOff}
       initialSession={initialSession}
     >

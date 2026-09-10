@@ -192,6 +192,10 @@ export type ClientConfig = Omit<VeodynConfig, 'ai'> & { ai: { enabled: boolean }
 
 export type DemoPersona = VeodynConfig['demo']['personas'][number]
 
+export function usesSharedDemoAccounts(config: Pick<ClientConfig, 'demo'>): boolean {
+  return config.demo.personas.length > 0
+}
+
 export function toClientConfig(config: VeodynConfig): ClientConfig {
   const { ai, ...rest } = config
   return { ...rest, ai: { enabled: ai.enabled } }

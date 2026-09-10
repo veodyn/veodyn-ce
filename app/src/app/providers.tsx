@@ -10,7 +10,7 @@ import { reportQueryError } from '@/lib/observability/querySeam'
 import { TelemetryProvider } from '@/lib/observability/TelemetryProvider'
 import type { TelemetryClientConfig } from '@/lib/observability/telemetryConfig'
 import { hydrateSession, useAuthStore, type InitialSession } from '@/stores/auth-store'
-import type { ClientConfig } from '@/lib/config-schema'
+import { usesSharedDemoAccounts, type ClientConfig } from '@/lib/config-schema'
 // Installs the instance's plugins into the BROWSER graph, so it has to run from
 // a client component: the root layout is a server component, and registering
 // there leaves the registry the browser hydrates against empty.
@@ -148,7 +148,7 @@ export function Providers({
           every sign-out: re-initialising PostHog there would tear down and
           restart the session recording each time. */}
       <TelemetryProvider config={telemetry}>
-        <IdentifyUser />
+        {!usesSharedDemoAccounts(config) && <IdentifyUser />}
         <IdentityScopedQueryProvider key={cacheEpoch}>
           {/* One provider for the whole app, so icon buttons across a toolbar
               share a hover delay rather than each imposing a fresh one. */}
