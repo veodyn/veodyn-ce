@@ -19,6 +19,8 @@ const envSchema = z.object({
   // it directly in client code.
   NEXT_PUBLIC_REDASH_URL: z.string().optional(),
 
+  DEMO_LOGIN_PASSWORD: z.string().default(''),
+
   // ── Veodyn AI assistant (server-only secret; config.ts carries the rest) ──
   VEODYN_AI__KEY: z.string().default(''),
 

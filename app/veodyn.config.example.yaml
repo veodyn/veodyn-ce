@@ -96,3 +96,17 @@ assistant:
 #   # Core types: TABLE, CHART, COUNTER, PIVOT, FUNNEL, DETAILS, MAP, HEATMAP,
 #   # BOXPLOT, SANKEY, CHOROPLETH, COHORT, SUNBURST_SEQUENCE, WORD_CLOUD.
 #   enabled: [TABLE, CHART, COUNTER, MAP]
+# demo:
+#   # One-click sign-in buttons on the sign-in card. Public demo instances
+#   # only: these accounts are shared, and the deployment wipes them daily.
+#   # The shared password is DEMO_LOGIN_PASSWORD in the environment, never
+#   # here, because everything in this file reaches the browser.
+#   personas:
+#     - id: operations
+#       label: Operations lead
+#       email: demo-ops@veodyn.com
+#       description: Runs the network view
+#     - id: analyst
+#       label: Analyst
+#       email: demo-analyst@veodyn.com
+#       description: Writes queries, cannot administer

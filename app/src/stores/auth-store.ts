@@ -12,6 +12,8 @@ import {
   type CurrentUser,
   type InitialSession,
 } from '@/stores/auth-identity'
+import { signInThrough } from '@/stores/auth-sign-in'
+import type { DemoPersona } from '@/lib/config-schema'
 
 // The identity shapes live next door; re-exported because every consumer in the
 // app imports them from the store.
@@ -54,16 +56,9 @@ interface AuthState {
   loadSession: () => Promise<void>
   requireSession: () => Promise<boolean>
   login: (email: string, password?: string) => Promise<boolean>
+  loginAsDemo: (persona: DemoPersona) => Promise<boolean>
   logout: () => Promise<boolean>
   setApiKey: () => void
-}
-
-/** The route's own message, or a fallback that at least names the status. */
-async function refusalMessage(response: Response): Promise<string> {
-  const body = await response.json().catch(() => null)
-  const message = (body as { message?: unknown } | null)?.message
-  if (typeof message === 'string' && message.trim()) return message
-  return `Sign in failed (${response.status}).`
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -155,31 +150,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ loginError: null })
 
     if (USE_REAL_API) {
-      try {
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ email, password }),
-        })
-        if (!response.ok) {
-          set({ loginError: await refusalMessage(response) })
-          return false
-        }
-        await get().loadSession()
-        if (!get().isAuthenticated) {
-          // The credentials were accepted and the session check behind them
-          // was not. Saying "check your credentials" here would point at the
-          // one thing already known to be fine.
-          set({ loginError: 'Signed in, but the session could not be loaded. Please try again.' })
-          return false
-        }
-        return true
-      } catch (err) {
-        console.error('Login request failed:', err)
-        set({ loginError: 'Could not reach the sign-in service. Check your connection.' })
+      const outcome = await signInThrough(
+        '/api/auth/login',
+        { email, password },
+        () => get().loadSession(),
+        () => get().isAuthenticated
+      )
+      if (!outcome.ok) {
+        set({ loginError: outcome.error })
         return false
       }
+      return true
     } else {
       const user = mockUsers.find((u) => u.email === email)
       if (!user || user.is_disabled) {
@@ -192,6 +173,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ currentUser: cu, isAuthenticated: true, isLoading: false })
       return true
     }
+  },
+
+  loginAsDemo: async (persona: DemoPersona) => {
+    set({ loginError: null })
+
+    if (!USE_REAL_API) return get().login(persona.email)
+
+    const outcome = await signInThrough(
+      '/api/auth/demo',
+      { persona: persona.id },
+      () => get().loadSession(),
+      () => get().isAuthenticated
+    )
+    if (!outcome.ok) {
+      set({ loginError: outcome.error })
+      return false
+    }
+    return true
   },
 
   // ─── logout ─────────────────────────────────────────────────────────
