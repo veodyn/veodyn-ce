@@ -5,10 +5,8 @@
 // generator in generated-registry.test.ts, so a stale one fails the suite.
 
 import { register as register_example } from './example'
-import { register as register_riits } from './riits'
 
 /** Every plugin package installed in this build, by directory name. */
 export const PLUGIN_PACKAGES: Record<string, () => void> = {
   'example': register_example,
-  'riits': register_riits,
 }
