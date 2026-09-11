@@ -114,6 +114,24 @@ class TestPublicStops(PublicResourceCase):
         self.assertTrue(by_id["10270"]["retired"])
         self.assertEqual(by_id["80122"]["stop_kind"], "station")
 
+    def test_no_carrier_names_every_carriers_stops_under_its_own_profile(self):
+        santa_monica = dict(
+            MT_STOPS_BY_ID["3000001"], carrier_code="SM", stop_id="220", uuid="uuid-sm-220", **{"511_id": "1000220"}
+        )
+
+        def stops(params):
+            self.assertNotIn("carrier_code", params)
+            return MT_STOPS + [santa_monica]
+
+        data, _ = self.run_resource('{"resource": "public_stops"}', {STOPS: stops})
+        by_key = {(r["carrier_code"], r["stop_id"]): r for r in data["rows"]}
+        self.assertEqual(len(by_key), len(MT_STOPS) + 1)
+        self.assertEqual(by_key[("MT", "3000001")]["public_name_source"], "override")
+        self.assertEqual(len(by_key[("MT", "3000001")]["gtfs_digest"]), 64)
+        self.assertEqual(by_key[("SM", "220")]["511_id"], "1000220")
+        self.assertNotEqual(by_key[("SM", "220")]["public_name_source"], "override")
+        self.assertEqual(by_key[("SM", "220")]["gtfs_digest"], "")
+
 
 class TestPublicRouteStops(PublicResourceCase):
     def test_orders_stops_from_gtfs(self):

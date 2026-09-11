@@ -51,7 +51,6 @@ class MetroCloudAlliance(BaseResourceRunner):
         "reports": ("type",),
         "stoptimes": ("iline",),
         "public_routes": ("carrier_code",),
-        "public_stops": ("carrier_code",),
         "public_route_stops": ("carrier_code",),
         "public_departures": ("carrier_code",),
     }

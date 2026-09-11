@@ -44,7 +44,11 @@ PUBLIC_RESOURCES = {
     },
     "public_stops": {
         "path": "v2/transitnetwork/stops",
-        "doc_params": ["carrier_code (required): string", "stop_id (optional): string"],
+        "doc_params": [
+            "carrier_code (optional): string - omit for every carrier on the account's network "
+            "(tens of thousands of rows), each named under its own carrier's profile",
+            "stop_id (optional): string",
+        ],
         "doc_returns": [
             "carrier_code, stop_id, uuid, 511_id, public_name, raw_name, on_street, cross_street, direction, relation_to_cross_street",
             "stop_kind: intersection | station | named_place | unparsed",
@@ -136,13 +140,21 @@ def public_routes(params, fetch, profiles, archive_fetcher=None):
 
 
 def public_stops(params, fetch, profiles, archive_fetcher=None):
-    query = {"carrier_code": _carrier(params)}
+    query = {}
+    if _carrier(params):
+        query["carrier_code"] = _carrier(params)
     if params.get("stop_id"):
         query["stop_id"] = params["stop_id"]
     stops = fetch("stops", query)
-    profile = profiles.for_carrier(_carrier(params))
-    digest = _resolver(profile, False, archive_fetcher).digest
-    return [stop_row(stop, name_stop(stop, profile), profiles.revision, digest) for stop in stops]
+    digests = {}
+    rows = []
+    for stop in stops:
+        carrier = str(stop.get("carrier_code") or _carrier(params))
+        profile = profiles.for_carrier(carrier)
+        if carrier not in digests:
+            digests[carrier] = _resolver(profile, False, archive_fetcher).digest
+        rows.append(stop_row(stop, name_stop(stop, profile), profiles.revision, digests[carrier]))
+    return rows
 
 
 def public_route_stops(params, fetch, profiles, archive_fetcher=None):
