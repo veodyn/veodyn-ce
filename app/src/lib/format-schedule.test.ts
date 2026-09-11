@@ -29,8 +29,6 @@ const UNSET = { text: 'No refresh schedule', state: 'unset' }
 
 describe('formatQuerySchedule', () => {
   it('names the absence when there is no schedule, rather than saying nothing', () => {
-    // Shown nothing, a reader cannot tell "runs on demand" from "this header
-    // does not mention schedules", and the phrase is also the way in to set one.
     expect(formatQuerySchedule(null, NOW)).toEqual(UNSET)
     expect(formatQuerySchedule(undefined, NOW)).toEqual(UNSET)
   })

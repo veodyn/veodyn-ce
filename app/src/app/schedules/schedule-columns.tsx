@@ -1,9 +1,5 @@
 'use client'
 
-// The Schedules table, split out of page.tsx when the cadence cell became a
-// control and the page outgrew a single file. The state vocabulary lives here
-// with the column that renders it.
-
 import Link from 'next/link'
 import { AlertTriangle, CircleCheck, CircleSlash } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -18,16 +14,12 @@ import { ScheduleRowActions } from './schedule-row-actions'
 
 type ScheduleState = 'on-time' | 'late' | 'expired'
 
-// Same convention as Feed Health: icon plus text plus a semantic token, never
-// colour alone.
 const STATE_META = {
   'on-time': { label: 'On time', Icon: CircleCheck, className: 'text-status-fresh' },
   late: { label: 'Late', Icon: AlertTriangle, className: 'text-status-stale' },
   expired: { label: 'Expired', Icon: CircleSlash, className: 'text-muted-foreground' },
 } as const
 
-// Ordering for the default sort, so what needs attention is at the top rather
-// than wherever the label happens to fall in the alphabet.
 const STATE_RANK: Record<ScheduleState, number> = { late: 0, 'on-time': 1, expired: 2 }
 
 function scheduleState(query: MockQuery): ScheduleState {
@@ -46,7 +38,6 @@ function StateCell({ state }: { state: ScheduleState }) {
 }
 
 interface ScheduleColumnOptions {
-  /** Who may change this row's schedule. Redash decides, per query. */
   canEdit: (query: MockQuery) => boolean
   onEdit: (query: MockQuery) => void
 }
@@ -71,11 +62,6 @@ export function buildScheduleColumns({ canEdit, onEdit }: ScheduleColumnOptions)
       key: 'schedule',
       title: 'Runs',
       sortValue: (q) => q.schedule?.interval ?? null,
-      // The cadence is the control, the way it is in a query's own header: this
-      // page was the one place that could show you every schedule at once and
-      // the one place you could not touch any of them, so changing one meant
-      // opening the query and finding the overflow menu. The name says which
-      // schedule, because "Edit schedule" repeated down a column names nothing.
       render: (q) =>
         canEdit(q) ? (
           <Button
@@ -85,10 +71,6 @@ export function buildScheduleColumns({ canEdit, onEdit }: ScheduleColumnOptions)
             className={INLINE_TEXT_CONTROL}
           >
             {describeSchedule(q.schedule)}
-            {/* Appended rather than an aria-label, which would REPLACE the
-                visible words: a voice-control user says what they can see, and
-                a name that does not contain it is a control they cannot ask
-                for. */}
             <span className="sr-only">, change the refresh schedule for {q.name}</span>
           </Button>
         ) : (
@@ -118,9 +100,6 @@ export function buildScheduleColumns({ canEdit, onEdit }: ScheduleColumnOptions)
       sortValue: (q) => q.user?.name ?? '',
       render: (q) => <span className="text-muted-foreground">{q.user?.name ?? '-'}</span>,
     },
-    // Both of this page's verbs, in the open. The clickable cadence above is
-    // the shortcut for someone who has found it; these are what makes the page
-    // look editable to someone who has not.
     {
       key: 'actions',
       title: '',

@@ -69,8 +69,6 @@ describe('the refresh schedule in the query header', () => {
   })
 
   it('says an unscheduled query has no schedule, and offers to set one', async () => {
-    // The header used to print nothing here, which left the query that most
-    // needs a schedule as the one whose header offered no way to set one.
     seedQuery({ schedule: null })
     await renderPage()
 

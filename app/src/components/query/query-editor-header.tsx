@@ -92,10 +92,6 @@ export function QueryEditorHeader({
         )}
       </div>
       <div className="flex items-center gap-2">
-        {/* The same chip the query page carries, on the same side as the menu
-            that holds the other way in. Whether a query refreshes itself is
-            something you decide while writing it, and until now the editor
-            could only tell you by way of opening the overflow menu. */}
         {existingQuery && queryId && (
           <ScheduleIndicator
             summary={formatQuerySchedule(existingQuery.schedule)}

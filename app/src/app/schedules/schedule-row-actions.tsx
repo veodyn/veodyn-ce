@@ -10,31 +10,15 @@ import type { MockQuery } from '@/lib/mock-data'
 
 interface ScheduleRowActionsProps {
   query: MockQuery
-  /** Decided by the page, so the cadence cell and these buttons agree. */
   canEdit: boolean
   onEdit: (query: MockQuery) => void
 }
 
-/**
- * Edit and Remove, per row, as two visible buttons.
- *
- * The library lists put their row actions behind the `RowActionsMenu` kebab,
- * and this page deliberately does not: there, acting on a row is incidental to
- * browsing it, while here changing and clearing schedules is the entire reason
- * the page exists. A kebab would hide both of the page's verbs behind a click
- * whose label is "Actions".
- *
- * Removing a schedule is not deleting the query, and the two must never be
- * confused, so the icon is a struck-through calendar rather than a bin and the
- * confirmation says in words what survives.
- */
 export function ScheduleRowActions({ query, canEdit, onEdit }: ScheduleRowActionsProps) {
   const [confirming, setConfirming] = useState(false)
   const updateQuery = useUpdateQuery()
   const toast = useToast()
 
-  // Nothing at all rather than disabled buttons: a control that explains
-  // nothing about why it is dead is worse than the space it occupies.
   if (!canEdit) return null
 
   const remove = () => {
@@ -43,8 +27,6 @@ export function ScheduleRowActions({ query, canEdit, onEdit }: ScheduleRowAction
       {
         onSuccess: () => {
           setConfirming(false)
-          // The row leaves the page on success, which on its own reads as the
-          // click having gone wrong.
           toast.success(`${query.name} no longer refreshes on a schedule`)
         },
         onError: () => {
@@ -57,8 +39,6 @@ export function ScheduleRowActions({ query, canEdit, onEdit }: ScheduleRowAction
 
   return (
     <div className="flex items-center justify-end gap-1">
-      {/* The tooltip is the verb; the aria-label names the row, because twenty
-          buttons called "Edit schedule" name nothing to a screen reader. */}
       <IconButton
         tooltip="Edit schedule"
         aria-label={`Edit the refresh schedule for ${query.name}`}

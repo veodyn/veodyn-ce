@@ -148,8 +148,6 @@ describe('SchedulesPage', () => {
     expect(await screen.findByText(/No query has a refresh schedule yet/i)).toBeInTheDocument()
   })
   it('changes a schedule from the row it is listed on', async () => {
-    // This page could show every schedule at once and change none of them, so
-    // editing one meant opening the query and finding the overflow menu.
     const user = userEvent.setup()
     setQueries([{ id: 1, name: 'Every five', interval: 300, retrieved_at: HOUR_AGO }])
 
@@ -162,7 +160,6 @@ describe('SchedulesPage', () => {
     await user.click(await screen.findByRole('option', { name: 'Every 1 hour' }))
     await user.click(screen.getByRole('button', { name: /save/i }))
 
-    // What the write left behind, not what the row claims it sent.
     await waitFor(() =>
       expect(useMockDataStore.getState().queries[0].schedule?.interval).toBe(3600)
     )
@@ -182,8 +179,6 @@ describe('SchedulesPage', () => {
       await screen.findByRole('button', { name: /change the refresh schedule for Weekly roll-up/i })
     )
 
-    // The weekly row's own value, seeded into the dialog: On Day only exists at
-    // a weekly interval, so its presence is the proof.
     expect(await screen.findByLabelText(/on day/i)).toBeInTheDocument()
   })
 
@@ -218,8 +213,6 @@ describe('SchedulesPage', () => {
   })
 
   it('puts Edit and Remove on every row, rather than behind a menu', async () => {
-    // The clickable cadence was the only way in, and a page whose controls are
-    // discovered by hovering the text reads as a report you cannot act on.
     setQueries([{ id: 1, name: 'Every five', interval: 300, retrieved_at: HOUR_AGO }])
 
     renderWithProviders(<SchedulesPage />)
@@ -244,8 +237,6 @@ describe('SchedulesPage', () => {
       await screen.findByRole('button', { name: 'Edit the refresh schedule for Weekly roll-up' })
     )
 
-    // On Day exists only at a weekly interval, so it is the weekly row's own
-    // schedule that was seeded rather than the first row's.
     expect(await screen.findByLabelText(/on day/i)).toBeInTheDocument()
   })
 
@@ -259,7 +250,6 @@ describe('SchedulesPage', () => {
     )
 
     expect(await screen.findByText(/will stop refreshing on its own/i)).toBeInTheDocument()
-    // Nothing has been written yet: the dialog is the whole point.
     expect(useMockDataStore.getState().queries[0].schedule?.interval).toBe(300)
 
     await user.click(screen.getByRole('button', { name: 'Remove schedule' }))
@@ -283,8 +273,6 @@ describe('SchedulesPage', () => {
   })
 
   it('offers the controls to the author of a row a list payload said nothing about', async () => {
-    // QuerySerializer emits no can_edit on a list, so a gate that read only
-    // that field would treat every author as a stranger to their own query.
     setQueries([{ id: 1, name: 'Mine', interval: 300, retrieved_at: HOUR_AGO, canEdit: false }])
     const author = useMockDataStore.getState().queries[0].user
     useAuthStore.setState({

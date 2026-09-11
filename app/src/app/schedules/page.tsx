@@ -4,9 +4,6 @@
 // every query carries a Redash schedule, and /admin/outdated was reading it.
 // That page is admin-only and shows only what is late. This is the whole
 // picture, for everyone: what runs, how often, and whether it is keeping up.
-//
-// And, for anyone Redash would let write, where you change it. A monitoring
-// page that can only report is a page you leave to go and act somewhere else.
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -27,9 +24,6 @@ import { buildScheduleColumns } from './schedule-columns'
 export default function SchedulesPage() {
   const { data, isLoading } = useAllQueries()
   const [search, setSearch] = useState('')
-  // The row whose schedule is being changed, rather than a boolean: the dialog
-  // seeds its fields from the schedule it is handed, so it has to be handed a
-  // particular query's.
   const [editing, setEditing] = useState<MockQuery | null>(null)
   const updateQuery = useUpdateQuery()
   const toast = useToast()
@@ -44,11 +38,6 @@ export default function SchedulesPage() {
     [allScheduled, search]
   )
 
-  // Both halves matter. A list payload carries no can_edit at all: Redash
-  // attaches it in QueryResource.get only (handlers/queries.py:402), so a gate
-  // reading it alone would hide these controls from every author on the page.
-  // And a detail-shaped row that does carry it is authoritative, including for
-  // an ACL grant that owner-or-admin cannot see.
   const columns = buildScheduleColumns({
     canEdit: (query) => Boolean(query.can_edit || currentUser?.canEdit(query)),
     onEdit: setEditing,
@@ -115,8 +104,6 @@ export default function SchedulesPage() {
         </>
       )}
 
-      {/* Mounted only while a row is being edited, and keyed to that row, so it
-          opens on the schedule you clicked rather than on the last one. */}
       {editing && (
         <ScheduleDialog
           key={editing.id}
@@ -127,8 +114,6 @@ export default function SchedulesPage() {
             updateQuery.mutate(
               { id: editing.id, schedule },
               {
-                // Clearing a schedule takes the row off this page, which on its
-                // own reads as the click having gone wrong.
                 onSuccess: () =>
                   toast.success(
                     schedule

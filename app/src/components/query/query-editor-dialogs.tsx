@@ -40,9 +40,6 @@ export function QueryEditorDialogs({
 }: QueryEditorDialogsProps) {
   return (
     <>
-      {/* Remounted whenever the saved schedule changes, so the fields it
-          seeds at mount are the stored ones rather than the last thing typed
-          into it. */}
       <ScheduleDialog
         key={JSON.stringify(query.schedule)}
         open={open === 'schedule'}
