@@ -62,6 +62,10 @@ EXTRA_ALLOWLISTED_LITERALS = (
     # entry that outlives its file is exactly what
     # scan_secrets_known_exceptions_test.py's expiry guard refuses.
     ("helm/charts/flow/contrib-helm-chart/values.yaml", "e6ebef1e5ab866ce1e706eaee6260edaffdc2bd7"),
+    (
+        "app/src/lib/observability/scrub.test.ts",
+        "01a08cbb-8b3f-7089-891a-e6fe616b0cbd",
+    ),
 )
 
 
