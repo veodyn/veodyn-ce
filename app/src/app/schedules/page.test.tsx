@@ -1,7 +1,9 @@
 // The Schedules nav item 404'd while every query already carried a schedule.
 import { afterEach, describe, expect, it } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { buildCurrentUser } from '@/stores/auth-identity'
+import { useAuthStore } from '@/stores/auth-store'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import { useMockDataStore } from '@/stores/mock-data-store'
 import SchedulesPage from './page'
@@ -20,6 +22,7 @@ function setQueries(
     owner?: string
     archived?: boolean
     until?: string | null
+    canEdit?: boolean
   }[]
 ) {
   const template = useMockDataStore.getState().queries[0]
@@ -29,6 +32,7 @@ function setQueries(
       id: row.id,
       name: row.name,
       is_archived: row.archived ?? false,
+      can_edit: row.canEdit ?? true,
       retrieved_at: row.retrieved_at,
       user: { ...template.user, name: row.owner ?? 'Admin User' },
       schedule: row.interval
@@ -142,5 +146,177 @@ describe('SchedulesPage', () => {
     renderWithProviders(<SchedulesPage />)
 
     expect(await screen.findByText(/No query has a refresh schedule yet/i)).toBeInTheDocument()
+  })
+  it('changes a schedule from the row it is listed on', async () => {
+    // This page could show every schedule at once and change none of them, so
+    // editing one meant opening the query and finding the overflow menu.
+    const user = userEvent.setup()
+    setQueries([{ id: 1, name: 'Every five', interval: 300, retrieved_at: HOUR_AGO }])
+
+    renderWithProviders(<SchedulesPage />)
+
+    await user.click(
+      await screen.findByRole('button', { name: /change the refresh schedule for Every five/i })
+    )
+    await user.click(await screen.findByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'Every 1 hour' }))
+    await user.click(screen.getByRole('button', { name: /save/i }))
+
+    // What the write left behind, not what the row claims it sent.
+    await waitFor(() =>
+      expect(useMockDataStore.getState().queries[0].schedule?.interval).toBe(3600)
+    )
+    expect(await screen.findByText('every hour')).toBeInTheDocument()
+  })
+
+  it('opens the dialog on the row that was clicked, not on the first one', async () => {
+    const user = userEvent.setup()
+    setQueries([
+      { id: 1, name: 'Five minutes', interval: 300, retrieved_at: HOUR_AGO },
+      { id: 2, name: 'Weekly roll-up', interval: 604800, retrieved_at: HOUR_AGO },
+    ])
+
+    renderWithProviders(<SchedulesPage />)
+
+    await user.click(
+      await screen.findByRole('button', { name: /change the refresh schedule for Weekly roll-up/i })
+    )
+
+    // The weekly row's own value, seeded into the dialog: On Day only exists at
+    // a weekly interval, so its presence is the proof.
+    expect(await screen.findByLabelText(/on day/i)).toBeInTheDocument()
+  })
+
+  it('takes the row off the page when the schedule is set back to never', async () => {
+    const user = userEvent.setup()
+    setQueries([{ id: 1, name: 'Every five', interval: 300, retrieved_at: HOUR_AGO }])
+
+    renderWithProviders(<SchedulesPage />)
+
+    await user.click(
+      await screen.findByRole('button', { name: /change the refresh schedule for Every five/i })
+    )
+    await user.click(await screen.findByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'Never' }))
+    await user.click(screen.getByRole('button', { name: /save/i }))
+
+    await waitFor(() => expect(useMockDataStore.getState().queries[0].schedule).toBeNull())
+    expect(screen.queryByText('Every five')).not.toBeInTheDocument()
+  })
+
+  it('shows the cadence as plain text to someone who cannot edit that query', async () => {
+    setQueries([
+      { id: 1, name: 'Not yours', interval: 300, retrieved_at: HOUR_AGO, canEdit: false },
+    ])
+
+    renderWithProviders(<SchedulesPage />)
+
+    expect(await screen.findByText('every 5 minutes')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /change the refresh schedule for Not yours/i })
+    ).not.toBeInTheDocument()
+  })
+
+  it('puts Edit and Remove on every row, rather than behind a menu', async () => {
+    // The clickable cadence was the only way in, and a page whose controls are
+    // discovered by hovering the text reads as a report you cannot act on.
+    setQueries([{ id: 1, name: 'Every five', interval: 300, retrieved_at: HOUR_AGO }])
+
+    renderWithProviders(<SchedulesPage />)
+
+    expect(
+      await screen.findByRole('button', { name: 'Edit the refresh schedule for Every five' })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Remove the refresh schedule from Every five' })
+    ).toBeInTheDocument()
+  })
+
+  it('opens the dialog on the row whose Edit button was pressed', async () => {
+    const user = userEvent.setup()
+    setQueries([
+      { id: 1, name: 'Five minutes', interval: 300, retrieved_at: HOUR_AGO },
+      { id: 2, name: 'Weekly roll-up', interval: 604800, retrieved_at: HOUR_AGO },
+    ])
+
+    renderWithProviders(<SchedulesPage />)
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit the refresh schedule for Weekly roll-up' })
+    )
+
+    // On Day exists only at a weekly interval, so it is the weekly row's own
+    // schedule that was seeded rather than the first row's.
+    expect(await screen.findByLabelText(/on day/i)).toBeInTheDocument()
+  })
+
+  it('asks before removing a schedule, and says the query itself survives', async () => {
+    const user = userEvent.setup()
+    setQueries([{ id: 1, name: 'Every five', interval: 300, retrieved_at: HOUR_AGO }])
+
+    renderWithProviders(<SchedulesPage />)
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove the refresh schedule from Every five' })
+    )
+
+    expect(await screen.findByText(/will stop refreshing on its own/i)).toBeInTheDocument()
+    // Nothing has been written yet: the dialog is the whole point.
+    expect(useMockDataStore.getState().queries[0].schedule?.interval).toBe(300)
+
+    await user.click(screen.getByRole('button', { name: 'Remove schedule' }))
+
+    await waitFor(() => expect(useMockDataStore.getState().queries[0].schedule).toBeNull())
+    expect(screen.queryByText('Every five')).not.toBeInTheDocument()
+  })
+
+  it('leaves the schedule alone when the removal is cancelled', async () => {
+    const user = userEvent.setup()
+    setQueries([{ id: 1, name: 'Every five', interval: 300, retrieved_at: HOUR_AGO }])
+
+    renderWithProviders(<SchedulesPage />)
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove the refresh schedule from Every five' })
+    )
+    await user.click(await screen.findByRole('button', { name: 'Cancel' }))
+
+    expect(useMockDataStore.getState().queries[0].schedule?.interval).toBe(300)
+    expect(screen.getByText('Every five')).toBeInTheDocument()
+  })
+
+  it('offers the controls to the author of a row a list payload said nothing about', async () => {
+    // QuerySerializer emits no can_edit on a list, so a gate that read only
+    // that field would treat every author as a stranger to their own query.
+    setQueries([{ id: 1, name: 'Mine', interval: 300, retrieved_at: HOUR_AGO, canEdit: false }])
+    const author = useMockDataStore.getState().queries[0].user
+    useAuthStore.setState({
+      currentUser: buildCurrentUser({ ...author, permissions: [] }),
+    })
+
+    renderWithProviders(<SchedulesPage />)
+
+    expect(
+      await screen.findByRole('button', { name: 'Edit the refresh schedule for Mine' })
+    ).toBeInTheDocument()
+  })
+
+  it('offers nothing to a reader who owns neither the query nor the instance', async () => {
+    setQueries([{ id: 1, name: 'Not yours', interval: 300, retrieved_at: HOUR_AGO, canEdit: false }])
+    useAuthStore.setState({
+      currentUser: buildCurrentUser({
+        id: 9_999,
+        name: 'Passer by',
+        email: 'passer@example.com',
+        permissions: [],
+      }),
+    })
+
+    renderWithProviders(<SchedulesPage />)
+
+    expect(await screen.findByText('every 5 minutes')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Edit the refresh schedule for Not yours' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Remove the refresh schedule from Not yours' })
+    ).not.toBeInTheDocument()
   })
 })

@@ -8,8 +8,12 @@ import { renderWithProviders } from '@/test/utils'
 
 const list = { count: 0, results: [] as unknown[], truncated: true }
 
+// The page writes as well as reads now, so the mock has to carry the mutation
+// hook too: a partial module mock leaves useUpdateQuery undefined, and the page
+// crashes before it can render the warning under test.
 vi.mock('@/hooks/use-queries', () => ({
   useAllQueries: () => ({ data: list, isLoading: false }),
+  useUpdateQuery: () => ({ mutate: vi.fn() }),
 }))
 
 import SchedulesPage from './page'

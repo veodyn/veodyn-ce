@@ -4,101 +4,36 @@
 // every query carries a Redash schedule, and /admin/outdated was reading it.
 // That page is admin-only and shows only what is late. This is the whole
 // picture, for everyone: what runs, how often, and whether it is keeping up.
+//
+// And, for anyone Redash would let write, where you change it. A monitoring
+// page that can only report is a page you leave to go and act somewhere else.
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { CalendarClock, CircleCheck, AlertTriangle, CircleSlash } from 'lucide-react'
+import { CalendarClock } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
-import { ItemsTable, type Column } from '@/components/shared/items-table'
+import { ItemsTable } from '@/components/shared/items-table'
 import { ListToolbar } from '@/components/shared/list-toolbar'
 import { NoData } from '@/components/ui/no-data'
-import { TimeAgo } from '@/components/shared/time-ago'
-import { useAllQueries } from '@/hooks/use-queries'
-import { describeSchedule, hasExpired, isOverdue } from '@/lib/query-schedule'
+import { ScheduleDialog } from '@/components/query/schedule-dialog'
+import { useToast } from '@/components/shared/toast-provider'
+import { useAllQueries, useUpdateQuery } from '@/hooks/use-queries'
+import { useAuthStore } from '@/stores/auth-store'
 import { matchesSearch } from '@/lib/list-filter'
-import { cn } from '@/lib/utils'
 import type { MockQuery } from '@/lib/mock-data'
 import { PageContainer } from '@/components/layout/page-container'
-import { ENTITY_NAME_CLASS } from '@/lib/entity-name'
-
-type ScheduleState = 'on-time' | 'late' | 'expired'
-
-// Same convention as Feed Health: icon plus text plus a semantic token, never
-// colour alone.
-const STATE_META = {
-  'on-time': { label: 'On time', Icon: CircleCheck, className: 'text-status-fresh' },
-  late: { label: 'Late', Icon: AlertTriangle, className: 'text-status-stale' },
-  expired: { label: 'Expired', Icon: CircleSlash, className: 'text-muted-foreground' },
-} as const
-
-// Ordering for the default sort, so what needs attention is at the top rather
-// than wherever the label happens to fall in the alphabet.
-const STATE_RANK: Record<ScheduleState, number> = { late: 0, 'on-time': 1, expired: 2 }
-
-function scheduleState(query: MockQuery): ScheduleState {
-  if (hasExpired(query.schedule)) return 'expired'
-  return isOverdue(query) ? 'late' : 'on-time'
-}
-
-function ScheduleState({ state }: { state: ScheduleState }) {
-  const { label, Icon, className } = STATE_META[state]
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', className)}>
-      <Icon className="h-4 w-4" aria-hidden="true" />
-      {label}
-    </span>
-  )
-}
-
-const columns: Column<MockQuery>[] = [
-  {
-    key: 'name',
-    title: 'Query',
-    sortValue: (q) => q.name,
-    render: (q) => (
-      <Link
-        href={`/queries/${q.id}`}
-        className={ENTITY_NAME_CLASS}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {q.name}
-      </Link>
-    ),
-  },
-  {
-    key: 'schedule',
-    title: 'Runs',
-    sortValue: (q) => q.schedule?.interval ?? null,
-    render: (q) => <span className="text-muted-foreground">{describeSchedule(q.schedule)}</span>,
-  },
-  {
-    key: 'state',
-    title: 'State',
-    sortValue: (q) => STATE_RANK[scheduleState(q)],
-    render: (q) => <ScheduleState state={scheduleState(q)} />,
-  },
-  {
-    key: 'retrieved_at',
-    title: 'Last Result',
-    sortValue: (q) => q.retrieved_at,
-    render: (q) =>
-      q.retrieved_at ? (
-        <TimeAgo date={q.retrieved_at} className="text-muted-foreground" />
-      ) : (
-        <span className="text-muted-foreground">never</span>
-      ),
-  },
-  {
-    key: 'owner',
-    title: 'Owner',
-    sortValue: (q) => q.user?.name ?? '',
-    render: (q) => <span className="text-muted-foreground">{q.user?.name ?? '-'}</span>,
-  },
-]
+import { buildScheduleColumns } from './schedule-columns'
 
 export default function SchedulesPage() {
   const { data, isLoading } = useAllQueries()
   const [search, setSearch] = useState('')
+  // The row whose schedule is being changed, rather than a boolean: the dialog
+  // seeds its fields from the schedule it is handed, so it has to be handed a
+  // particular query's.
+  const [editing, setEditing] = useState<MockQuery | null>(null)
+  const updateQuery = useUpdateQuery()
+  const toast = useToast()
+  const currentUser = useAuthStore((s) => s.currentUser)
 
   const allScheduled = useMemo(
     () => (data?.results ?? []).filter((query) => !query.is_archived && query.schedule?.interval),
@@ -108,6 +43,16 @@ export default function SchedulesPage() {
     () => allScheduled.filter((query) => matchesSearch(search, [query.name, query.user?.name])),
     [allScheduled, search]
   )
+
+  // Both halves matter. A list payload carries no can_edit at all: Redash
+  // attaches it in QueryResource.get only (handlers/queries.py:402), so a gate
+  // reading it alone would hide these controls from every author on the page.
+  // And a detail-shaped row that does carry it is authoritative, including for
+  // an ACL grant that owner-or-admin cannot see.
+  const columns = buildScheduleColumns({
+    canEdit: (query) => Boolean(query.can_edit || currentUser?.canEdit(query)),
+    onEdit: setEditing,
+  })
 
   const nothingScheduled = !isLoading && allScheduled.length === 0
   // The reader gives up at a page cap. Saying so beats a monitoring screen that
@@ -168,6 +113,33 @@ export default function SchedulesPage() {
             />
           </div>
         </>
+      )}
+
+      {/* Mounted only while a row is being edited, and keyed to that row, so it
+          opens on the schedule you clicked rather than on the last one. */}
+      {editing && (
+        <ScheduleDialog
+          key={editing.id}
+          open
+          onClose={() => setEditing(null)}
+          schedule={editing.schedule}
+          onSave={(schedule) =>
+            updateQuery.mutate(
+              { id: editing.id, schedule },
+              {
+                // Clearing a schedule takes the row off this page, which on its
+                // own reads as the click having gone wrong.
+                onSuccess: () =>
+                  toast.success(
+                    schedule
+                      ? `Schedule updated for ${editing.name}`
+                      : `Schedule removed from ${editing.name}`
+                  ),
+                onError: () => toast.error(`Could not save the schedule for ${editing.name}`),
+              }
+            )
+          }
+        />
       )}
     </PageContainer>
   )

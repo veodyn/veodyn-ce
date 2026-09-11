@@ -190,12 +190,13 @@ export default function QueryViewPage({ params }: { params: Promise<{ queryId: s
                 Runtime: {query.runtime.toFixed(2)}s
               </span>
             )}
-            {scheduleSummary && (
-              <ScheduleIndicator
-                summary={scheduleSummary}
-                onOpen={canEdit ? () => setScheduleOpen(true) : null}
-              />
-            )}
+            {/* Rendered for every query, the unscheduled ones included: the
+                indicator itself decides whether "No refresh schedule" earns a
+                line, and for anyone who can set one it does. */}
+            <ScheduleIndicator
+              summary={scheduleSummary}
+              onOpen={canEdit ? () => setScheduleOpen(true) : null}
+            />
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -256,7 +257,12 @@ export default function QueryViewPage({ params }: { params: Promise<{ queryId: s
         fill
       />
 
+      {/* Keyed on the saved schedule so a save remounts it: the dialog seeds
+          its fields from these props once, at mount, and without this a second
+          open showed whatever was typed the first time rather than what is
+          stored. */}
       <ScheduleDialog
+        key={JSON.stringify(query.schedule)}
         open={scheduleOpen}
         onClose={() => setScheduleOpen(false)}
         schedule={query.schedule as { interval: number | null; time: string | null; day_of_week: string | null; until: string | null } | null}

@@ -68,14 +68,33 @@ describe('the refresh schedule in the query header', () => {
     expect(screen.queryByText('Refreshes every 15 minutes')).not.toBeInTheDocument()
   })
 
-  it('adds nothing to the row when the query is not scheduled', async () => {
+  it('says an unscheduled query has no schedule, and offers to set one', async () => {
+    // The header used to print nothing here, which left the query that most
+    // needs a schedule as the one whose header offered no way to set one.
     seedQuery({ schedule: null })
+    await renderPage()
+
+    expect(await screen.findByRole('button', { name: 'No refresh schedule' })).toBeInTheDocument()
+    expect(screen.queryByText(/^Refreshes/)).not.toBeInTheDocument()
+  })
+
+  it('opens the Schedule dialog from the unscheduled phrase too', async () => {
+    const user = userEvent.setup()
+    seedQuery({ schedule: null })
+    await renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'No refresh schedule' }))
+
+    expect(screen.getByRole('dialog', { name: 'Schedule Query' })).toBeInTheDocument()
+  })
+
+  it('leaves the row alone for a reader who could not set one anyway', async () => {
+    seedQuery({ schedule: null, can_edit: false })
     await renderPage()
 
     // The header itself rendered, so the absence below is a real absence.
     expect(await screen.findByText('Platform Dwell Time')).toBeInTheDocument()
-    expect(screen.queryByText(/^Refreshes/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/^Schedule ended/)).not.toBeInTheDocument()
+    expect(screen.queryByText('No refresh schedule')).not.toBeInTheDocument()
   })
 
   it('opens the Schedule dialog when the cadence is clicked', async () => {

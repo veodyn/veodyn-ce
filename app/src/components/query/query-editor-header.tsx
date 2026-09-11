@@ -10,6 +10,8 @@ import { FavoritesControl } from '@/components/shared/favorites-control'
 import { useAuthStore } from '@/stores/auth-store'
 import { QuerySourceMenu } from './query-source-menu'
 import { QueryDraftBadge } from './query-draft-badge'
+import { ScheduleIndicator } from './schedule-indicator'
+import { formatQuerySchedule } from '@/lib/format-schedule'
 import type { MockQuery } from '@/lib/mock-data'
 import { SECTION_HEADING } from '@/lib/section-heading'
 
@@ -90,6 +92,16 @@ export function QueryEditorHeader({
         )}
       </div>
       <div className="flex items-center gap-2">
+        {/* The same chip the query page carries, on the same side as the menu
+            that holds the other way in. Whether a query refreshes itself is
+            something you decide while writing it, and until now the editor
+            could only tell you by way of opening the overflow menu. */}
+        {existingQuery && queryId && (
+          <ScheduleIndicator
+            summary={formatQuerySchedule(existingQuery.schedule)}
+            onOpen={canEdit ? onOpenSchedule : null}
+          />
+        )}
         {existingQuery && (
           <QuerySourceMenu
             query={existingQuery}
