@@ -133,6 +133,33 @@ class TestPublicStops(PublicResourceCase):
         self.assertEqual(by_key[("SM", "220")]["gtfs_digest"], "")
 
 
+class TestPublicStopLocations(PublicResourceCase):
+    def stops(self, params):
+        self.assertNotIn("carrier_code", params)
+        shared_corner = dict(MT_STOPS_BY_ID["1"], carrier_code="SM", stop_id="220", uuid="uuid-sm-220")
+        return MT_STOPS + [shared_corner]
+
+    def test_groups_every_carriers_stops_by_511_id(self):
+        data, _ = self.run_resource('{"resource": "public_stop_locations"}', {STOPS: self.stops})
+        by_id = {r["511_id"]: r for r in data["rows"]}
+        corner = by_id[MT_STOPS_BY_ID["1"]["511_id"]]
+        self.assertEqual(
+            (corner["public_name"], corner["source_stops"], corner["carriers"]), ("Paramount Bl/Slauson Av", 2, 2)
+        )
+        self.assertEqual((corner["public_name_source"], corner["source_stop_ids"]), ("consensus", "MT 1, SM 220"))
+        self.assertEqual(len(by_id), len({s["511_id"] for s in MT_STOPS}))
+
+    def test_filters_to_one_location_and_keeps_its_columns_when_empty(self):
+        corner = MT_STOPS_BY_ID["1"]["511_id"]
+        query = '{"resource": "public_stop_locations", "params": {"stop_511_id": "%s"}}' % corner
+        data, _ = self.run_resource(query, {STOPS: self.stops})
+        self.assertEqual([r["511_id"] for r in data["rows"]], [corner])
+        query = '{"resource": "public_stop_locations", "params": {"stop_511_id": "none"}}'
+        data, _ = self.run_resource(query, {STOPS: self.stops})
+        self.assertEqual(data["rows"], [])
+        self.assertEqual([c["name"] for c in data["columns"]][:3], ["511_id", "public_name", "public_name_source"])
+
+
 class TestPublicRouteStops(PublicResourceCase):
     def test_orders_stops_from_gtfs(self):
         data, get = self.run_resource(

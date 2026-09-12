@@ -3,6 +3,7 @@ from redash.query_runner.metrocloudalliance_departures import flatten_departures
 from redash.transit_naming.departures import PUBLIC_DEPARTURE_COLUMNS, enrich_departures
 from redash.transit_naming.gtfs_cache import http_fetch
 from redash.transit_naming.gtfs_routes import GtfsResolver
+from redash.transit_naming.locations import LOCATION_COLUMNS, location_rows
 from redash.transit_naming.patterns import (
     StopIndex,
     cut_patterns,
@@ -82,6 +83,19 @@ PUBLIC_RESOURCES = {
         "doc_returns": PUBLIC_DEPARTURE_COLUMNS,
         "example": '{"resource": "public_departures", "params": {"carrier_code": "MT", "stop_id": "1166"}}',
     },
+    "public_stop_locations": {
+        "path": "v2/transitnetwork/stops",
+        "doc_params": [
+            "stop_511_id (optional): string - one 511 stop id; default every location on the account's network",
+        ],
+        "doc_returns": [
+            "511_id, public_name, public_name_source: consensus | tiebreak | override",
+            "chosen_carrier, chosen_stop_id, agreeing_stops, source_stops, carriers",
+            "source_stop_ids: '<carrier> <stop_id>, ...'; names: every distinct public name, '; ' separated",
+            "stop_kind, retired_stops, lat, lng (mean of the active members), normalization_revision",
+        ],
+        "example": '{"resource": "public_stop_locations", "params": {"stop_511_id": "1000997"}}',
+    },
     "naming_profiles": {
         "path": "",
         "doc_params": ["none - reads the loaded profile set"],
@@ -119,6 +133,7 @@ PUBLIC_COLUMN_NAMES = {
     "public_stops": list(stop_row({}, StopName("", "", "", "", "", "", False, ""), "", "")),
     "public_route_stops": list(pattern_row(PatternStop(*[""] * 11), "", "")),
     "public_departures": [column.split(":")[0] for column in PUBLIC_DEPARTURE_COLUMNS],
+    "public_stop_locations": list(LOCATION_COLUMNS),
     "naming_profiles": ["carrier_code", "source_file", "is_default", "gtfs_sources", "overrides", "revision"],
 }
 
@@ -252,6 +267,9 @@ def run_public_resource(resource, params, fetch, now=None, archive_fetcher=None)
         return public_routes(params, fetch, profiles, archive_fetcher)
     if resource == "public_stops":
         return public_stops(params, fetch, profiles, archive_fetcher)
+    if resource == "public_stop_locations":
+        stops = public_stops({}, fetch, profiles, archive_fetcher)
+        return location_rows(stops, profiles, params)
     if resource == "public_route_stops":
         return public_route_stops(params, fetch, profiles, archive_fetcher)
     if resource == "public_departures":

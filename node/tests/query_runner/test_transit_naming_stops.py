@@ -215,6 +215,20 @@ class TestLiveDataFindings(TestCase):
         name = name_stop(stop, PROFILE)
         self.assertEqual((name.public_name, name.stop_kind), ("Fullerton Park and Ride", "named_place"))
 
+    def test_street_parts_naming_another_corner_are_ignored(self):
+        stop = bare_stop("Imperial / Wadsworth", on="Vermont", cross="Santa Monica Bl")
+        name = name_stop(stop, PROFILE)
+        self.assertEqual((name.public_name, name.stop_kind), ("Imperial/Wadsworth", "intersection"))
+        place = bare_stop("UCSB Bus Loop", on="Edinger Av", cross="San Diego")
+        name = name_stop(place, PROFILE)
+        self.assertEqual((name.public_name, name.stop_kind), ("UCSB Bus Loop", "unparsed"))
+
+    def test_street_parts_that_spell_the_raw_name_out_still_win(self):
+        stop = bare_stop("Victory/De Soto", on="Victory Bl", cross="De Soto Av")
+        self.assertEqual(name_stop(stop, PROFILE).public_name, "Victory Bl/De Soto Av")
+        numbered = bare_stop("1st & Main", on="1st St", cross="Main St")
+        self.assertEqual(name_stop(numbered, PROFILE).public_name, "1st St/Main St")
+
     def test_multi_line_station_references_are_stripped(self):
         cases = {
             "7th Street / City Center Station - Metro A & E Lines": "7th Street / City Center Station",

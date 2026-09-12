@@ -7,7 +7,7 @@ BRAND_SOURCES = ("gtfs_route_long_name", "brand_bands", "carrier_display_name")
 PATTERN_PLACEHOLDERS = frozenset({"brand", "route_number", "carrier_display_name"})
 RAIL_PATTERN_PLACEHOLDERS = frozenset({"public_name", "legacy_color"})
 MODES = ("bus", "light_rail", "heavy_rail", "commuter_rail", "busway", "")
-OVERRIDE_KINDS = ("route", "stop")
+OVERRIDE_KINDS = ("route", "stop", "location")
 
 
 class ProfileError(ValueError):

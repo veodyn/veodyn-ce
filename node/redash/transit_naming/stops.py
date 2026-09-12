@@ -12,6 +12,7 @@ STREET_SEPARATOR = re.compile(r"[/\\]")
 NAMED_PLACE = re.compile(r"park\s*(?:&|and)\s*ride|terminal|dock|\bbay\b|transit center|plaza|station", re.IGNORECASE)
 STATION = re.compile(r"\bstation\b", re.IGNORECASE)
 ENDS_WITH_STATION = re.compile(r"\bstation\s*$", re.IGNORECASE)
+WORD = re.compile(r"[A-Za-z0-9.]+")
 
 
 def _tidy(text):
@@ -94,6 +95,22 @@ def _from_raw(raw, body, rules, direction, mode, retired):
     return StopName(body, "", "", direction, kind, mode, retired, source)
 
 
+def _significant_words(text, rules):
+    lookup = _suffix_lookup(rules)
+    abbreviations = {value.lower() for value in rules.suffixes.values()}
+    words = {word.rstrip(".").lower() for word in WORD.findall(text)}
+    return {word for word in words if word and word not in lookup and word not in abbreviations}
+
+
+def _streets_spell_the_raw_name(on_street, cross_street, raw, rules):
+    raw_words = {word.rstrip(".").lower() for word in WORD.findall(raw)}
+    for street in (on_street, cross_street):
+        significant = _significant_words(street, rules)
+        if not significant or not significant & raw_words:
+            return False
+    return True
+
+
 def name_stop(stop, profile):
     rules = profile.stop_name
     raw = _tidy(stop.get("stop_name"))
@@ -103,11 +120,12 @@ def name_stop(stop, profile):
     cross_street = _tidy(stop.get("cross_street"))
     body, parsed_direction = _split_direction(raw, rules)
     direction = _tidy(stop.get("street_direction")) or parsed_direction
+    street_pair = on_street and cross_street and on_street.lower() != cross_street.lower()
     if mode == "rail" or ENDS_WITH_STATION.search(_without_line_reference(body, rules)):
         public_name = _station(body, rules)
         source = provenance.RULE if public_name != raw else provenance.PASSTHROUGH
         result = StopName(public_name, "", "", direction, "station", mode, retired, source)
-    elif on_street and cross_street and on_street.lower() != cross_street.lower():
+    elif street_pair and _streets_spell_the_raw_name(on_street, cross_street, raw, rules):
         result = _intersection(on_street, cross_street, rules, direction, mode, retired)
     else:
         result = _from_raw(raw, body, rules, direction, mode, retired)
