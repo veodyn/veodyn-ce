@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { usePathname } from 'next/navigation'
 import { AppSidebar } from '@/components/layout/app-sidebar'
@@ -63,8 +63,23 @@ describe('AppSidebar', () => {
     useAuthStore.setState({ currentUser: mockUser, isAuthenticated: true, isLoading: false })
     renderSidebar()
     expect(screen.getAllByText('CE').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Community edition').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Community Edition').length).toBeGreaterThan(0)
     expect(screen.queryByText('HUB')).toBeNull()
+  })
+
+  it('names the edition in full when the chip is hovered', async () => {
+    useAuthStore.setState({ currentUser: mockUser, isAuthenticated: true, isLoading: false })
+    renderSidebar()
+    const user = userEvent.setup()
+
+    await user.hover(screen.getAllByText('CE')[0])
+
+    await waitFor(() => {
+      const tooltips = [...document.querySelectorAll('[data-slot="tooltip-content"]')].map(
+        (popup) => popup.textContent ?? ''
+      )
+      expect(tooltips).toContain('Community Edition')
+    })
   })
 
   it('shows CE for a hub-scale config when the build installs no enterprise features', () => {
@@ -211,16 +226,16 @@ describe('AppSidebar', () => {
 
 describe('BrandMark', () => {
   it('renders the edition code visibly and the full label for assistive tech', () => {
-    render(<BrandMark name="RIITS" logo={null} edition={{ code: 'HUB', label: 'Hub' }} />)
+    render(<BrandMark name="RIITS" logo={null} edition={{ code: 'HUB', label: 'Enterprise Hub' }} />)
     expect(screen.getByText('HUB')).toHaveAttribute('aria-hidden', 'true')
-    expect(screen.getByRole('link', { name: /^RIITS\s?Hub$/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^RIITS\s?Enterprise Hub$/ })).toBeInTheDocument()
   })
 
   it('keeps the edition in the accessible name when the rail is collapsed', () => {
     render(
-      <BrandMark name="RIITS" logo={null} edition={{ code: 'EE', label: 'Enterprise edition' }} collapsed />
+      <BrandMark name="RIITS" logo={null} edition={{ code: 'EE', label: 'Enterprise Edition' }} collapsed />
     )
     expect(screen.queryByText('EE')).toBeNull()
-    expect(screen.getByRole('link', { name: /^R\s?Enterprise edition$/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^R\s?Enterprise Edition$/ })).toBeInTheDocument()
   })
 })

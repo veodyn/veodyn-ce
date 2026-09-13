@@ -65,15 +65,22 @@ function RailTooltip({
 function EditionBadge({ edition, collapsed }: { edition: Edition; collapsed: boolean }) {
   if (collapsed) return <span className="sr-only">{edition.label}</span>
   return (
-    <Badge
-      variant="outline"
-      className="h-4 px-1.5 font-mono text-[0.68rem] tracking-wider text-muted-foreground"
-    >
-      <span aria-hidden="true" className="uppercase">
-        {edition.code}
-      </span>
-      <span className="sr-only">{edition.label}</span>
-    </Badge>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Badge
+            variant="outline"
+            className="h-4 px-1.5 font-mono text-[0.68rem] tracking-wider text-muted-foreground"
+          />
+        }
+      >
+        <span aria-hidden="true" className="uppercase">
+          {edition.code}
+        </span>
+        <span className="sr-only">{edition.label}</span>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{edition.label}</TooltipContent>
+    </Tooltip>
   )
 }
 

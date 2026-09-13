@@ -9,15 +9,15 @@ afterEach(() => vi.restoreAllMocks())
 
 describe('instanceEdition', () => {
   it('is Community when the build installs no feature packages', () => {
-    expect(instanceEdition('node', community)).toEqual({ code: 'CE', label: 'Community edition' })
+    expect(instanceEdition('node', community)).toEqual({ code: 'CE', label: 'Community Edition' })
   })
 
   it('is Enterprise when a feature package is installed', () => {
-    expect(instanceEdition('node', enterprise)).toEqual({ code: 'EE', label: 'Enterprise edition' })
+    expect(instanceEdition('node', enterprise)).toEqual({ code: 'EE', label: 'Enterprise Edition' })
   })
 
   it('is Hub only when the deployment declares hub scale on an enterprise build', () => {
-    expect(instanceEdition('hub', enterprise)).toEqual({ code: 'HUB', label: 'Hub' })
+    expect(instanceEdition('hub', enterprise)).toEqual({ code: 'HUB', label: 'Enterprise Hub' })
   })
 
   it('never claims Hub for a community build, whatever the config says', () => {

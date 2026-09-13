@@ -9,9 +9,9 @@ export interface Edition {
   label: string
 }
 
-const COMMUNITY: Edition = { code: 'CE', label: 'Community edition' }
-const ENTERPRISE: Edition = { code: 'EE', label: 'Enterprise edition' }
-const HUB: Edition = { code: 'HUB', label: 'Hub' }
+const COMMUNITY: Edition = { code: 'CE', label: 'Community Edition' }
+const ENTERPRISE: Edition = { code: 'EE', label: 'Enterprise Edition' }
+const HUB: Edition = { code: 'HUB', label: 'Enterprise Hub' }
 
 function installsEnterprise(registry: Record<string, FeatureDescriptor>): boolean {
   return featureList(registry).length > 0
