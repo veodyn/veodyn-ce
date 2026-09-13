@@ -13,6 +13,7 @@ import { readFileSync } from 'node:fs'
 import { parse as parseYaml } from 'yaml'
 import { deriveDarkColumn, effectivePalette, formatReport, validatePalette, CHART_PALETTE_SIZE } from '@/lib/chart-palette'
 import { CHART_SURFACE_DARK, CHART_SURFACE_LIGHT, veodynConfigSchema, type VeodynConfig } from '@/lib/config-schema'
+import { warnOnHubWithoutEnterprise } from '@/lib/edition'
 
 const CONFIG_PATH = process.env.VEODYN_CONFIG_PATH ?? 'veodyn.config.yaml'
 
@@ -164,3 +165,4 @@ export function warnOnPaletteDefects(palette: string[]): void {
 
 export const config = loadConfig()
 warnOnPaletteDefects(config.theme.chart_palette)
+warnOnHubWithoutEnterprise(config.deployment.scale)

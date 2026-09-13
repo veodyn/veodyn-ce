@@ -150,6 +150,12 @@ export const veodynConfigSchema = z.object({
     })
     .strict()
     .default({}),
+  deployment: z
+    .object({
+      scale: z.enum(['node', 'hub']).default('node'),
+    })
+    .strict()
+    .default({}),
   // Two sections nothing in this edition reads: the enterprise pack owns both
   // readers. The schema is `.strict()`, so an undeclared key fails to parse and
   // an enterprise config would be rejected by the community half of its own app.

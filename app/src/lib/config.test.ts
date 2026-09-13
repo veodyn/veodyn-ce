@@ -21,6 +21,11 @@ describe('applyEnvOverrides', () => {
     expect(out).toMatchObject({ ai: { enabled: true } })
   })
 
+  it('sets deployment.scale from VEODYN_DEPLOYMENT__SCALE', () => {
+    const out = applyEnvOverrides({}, { VEODYN_DEPLOYMENT__SCALE: 'hub' } as unknown as NodeJS.ProcessEnv)
+    expect(out).toMatchObject({ deployment: { scale: 'hub' } })
+  })
+
   it('ignores env vars without the VEODYN_ prefix', () => {
     const out = applyEnvOverrides({}, { PATH: '/usr/bin' } as unknown as NodeJS.ProcessEnv)
     expect(out).toEqual({})

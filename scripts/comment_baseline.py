@@ -554,7 +554,7 @@ BASELINE = {
     "app/src/components/layout/editor-loading.tsx": 12,
     "app/src/components/layout/page-container.tsx": 10,
     "app/src/components/layout/page-loading.tsx": 19,
-    "app/src/components/layout/sidebar-body.tsx": 54,
+    "app/src/components/layout/sidebar-body.tsx": 50,
     "app/src/components/layout/sidebar-collapse.test.tsx": 27,
     "app/src/components/layout/use-sidebar-collapsed.ts": 13,
     "app/src/components/parameters/parameter-control.test.tsx": 23,
@@ -1727,5 +1727,5 @@ BASELINE = {
 }
 
 FILES_WITH_COMMENTS = 1725
-COMMENT_LINES = 45871
-FILES_SCANNED = 2043
+COMMENT_LINES = 45867
+FILES_SCANNED = 2045

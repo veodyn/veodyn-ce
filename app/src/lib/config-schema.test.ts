@@ -142,3 +142,15 @@ describe('config-schema', () => {
     expect(() => veodynConfigSchema.parse({ visualizations: { enabeld: ['TABLE'] } })).toThrow()
   })
 })
+
+describe('deployment.scale', () => {
+  it('defaults to node', () => {
+    expect(veodynConfigSchema.parse({}).deployment.scale).toBe('node')
+    expect(NEUTRAL_CONFIG.deployment.scale).toBe('node')
+  })
+
+  it('accepts hub and refuses anything else', () => {
+    expect(veodynConfigSchema.parse({ deployment: { scale: 'hub' } }).deployment.scale).toBe('hub')
+    expect(() => veodynConfigSchema.parse({ deployment: { scale: 'cluster' } })).toThrow()
+  })
+})

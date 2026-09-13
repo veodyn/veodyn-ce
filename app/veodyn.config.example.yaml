@@ -50,6 +50,9 @@ domains:
 home:
   tagline: "Meridian Transit Authority's regional operations dashboard."
 
+deployment:
+  scale: node
+
 assistant:
   widget_url: https://assistant.example.com
   integration_id: meridian-redash
