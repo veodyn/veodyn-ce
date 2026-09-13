@@ -226,14 +226,14 @@ describe('AppSidebar', () => {
 
 describe('BrandMark', () => {
   it('renders the edition code visibly and the full label for assistive tech', () => {
-    render(<BrandMark name="RIITS" logo={null} edition={{ code: 'HUB', label: 'Enterprise Hub' }} />)
+    render(<BrandMark name="RegionHub" logo={null} edition={{ code: 'HUB', label: 'Enterprise Hub' }} />)
     expect(screen.getByText('HUB')).toHaveAttribute('aria-hidden', 'true')
-    expect(screen.getByRole('link', { name: /^RIITS\s?Enterprise Hub$/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^RegionHub\s?Enterprise Hub$/ })).toBeInTheDocument()
   })
 
   it('keeps the edition in the accessible name when the rail is collapsed', () => {
     render(
-      <BrandMark name="RIITS" logo={null} edition={{ code: 'EE', label: 'Enterprise Edition' }} collapsed />
+      <BrandMark name="RegionHub" logo={null} edition={{ code: 'EE', label: 'Enterprise Edition' }} collapsed />
     )
     expect(screen.queryByText('EE')).toBeNull()
     expect(screen.getByRole('link', { name: /^R\s?Enterprise Edition$/ })).toBeInTheDocument()
