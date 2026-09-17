@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { PageHeader } from '@/components/layout/page-header'
 import { PageContainer } from '@/components/layout/page-container'
 import { NoData } from '@/components/ui/no-data'
@@ -17,9 +17,7 @@ export default function NewFeedPage() {
   const router = useRouter()
   const toast = useToast()
   const createFeed = useCreatePublishedFeed()
-  // The server already refuses a non-admin create with a 403, so this is not a
-  // gate. It is a form that could only ever be filled in and rejected, which is
-  // worse than no form: the reader does the work before finding out.
+  const askedForEntity = useSearchParams().get('entity') ?? undefined
   const isAdmin = useAuthStore((s) => s.currentUser)?.isAdmin
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -31,8 +29,6 @@ export default function NewFeedPage() {
       const feed = await createFeed.mutateAsync(input)
       router.push(`/connect/feeds/${feed.slug}`)
     } catch (err) {
-      // Every value stays on screen: a refused create that silently dropped
-      // the mapping the reader just built would send them back to redo it.
       const placed = placeRefusal(err, 'Could not publish this feed.')
       setFieldErrors(placed.fieldErrors)
       setError(placed.formError)
@@ -56,6 +52,7 @@ export default function NewFeedPage() {
         description="Bind a query to a standard feed this instance will serve."
       />
       <FeedForm
+        defaultEntity={askedForEntity}
         submitLabel="Publish"
         isPending={createFeed.isPending}
         error={error}

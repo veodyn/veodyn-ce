@@ -39,13 +39,14 @@ export function useStaticGtfsRef(boundHere: string | null): StaticGtfsRefControl
   const [entering, setEntering] = useState(false)
 
   const options = referencesAlreadyBound(feeds, boundHere)
+  const value = chosen ?? theOnlyReference(options)
   const enterNew = () => {
-    setChosen('')
+    setChosen(value)
     setEntering(true)
   }
 
   return {
-    value: chosen ?? theOnlyReference(options),
+    value,
     options,
     entering: entering || options.length === 0,
     pick: setChosen,

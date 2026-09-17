@@ -10,5 +10,8 @@ export async function pickAStaticReference(
   const escape = screen.queryByRole('button', { name: /enter a different reference/i })
   if (escape !== null) await user.click(escape)
   const field = screen.queryByRole('textbox', { name: 'Static GTFS reference' })
-  if (field !== null) await user.type(field, reference)
+  if (field !== null) {
+    await user.clear(field)
+    await user.type(field, reference)
+  }
 }

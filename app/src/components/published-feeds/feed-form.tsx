@@ -21,6 +21,7 @@ import type { FeedStandard, PublishedFeed, PublishedFeedInput } from '@/types/pu
 interface FeedFormProps {
   /** Prefilled for an edit, absent for a create. */
   initial?: PublishedFeed
+  defaultEntity?: string
   /** Locked on edit: the slug is half the primary key and cannot be renamed. */
   slugLocked?: boolean
   submitLabel: string
@@ -30,6 +31,9 @@ interface FeedFormProps {
   onSubmit: (input: PublishedFeedInput) => void
   onCancel: () => void
 }
+
+export const NO_SOURCE_QUERY =
+  'No source query: this feed serves whatever is published to it, such as rider messages.'
 
 // What each standard starts a create form on, and what a version picker falls
 // back to before capabilities resolve.
@@ -51,6 +55,7 @@ function initialSelection(
 
 export function FeedForm({
   initial,
+  defaultEntity,
   slugLocked,
   submitLabel,
   isPending,
@@ -83,13 +88,7 @@ export function FeedForm({
     initial?.lastGoodMaxAgeSeconds != null ? String(initial.lastGoodMaxAgeSeconds) : ''
   )
   const [chosenRetire, setRetireOnFailure] = useState<boolean | null>(initial?.retireOnFailure ?? null)
-  // Only meaningful once resolveEntitySelection says this is a picker; null
-  // until the reader picks something of their own.
-  const [pickedEntity, setPickedEntity] = useState<string | null>(null)
-  const [localError, setLocalError] = useState<string | null>(null)
-  // Set once the reader has tried to submit, so the missing-field rows below
-  // update live as fields are mapped rather than staying stuck on whatever was
-  // missing at the moment of the first attempt.
+  const [pickedEntity, setPickedEntity] = useState<string | null>(defaultEntity ?? null)
   const [attempted, setAttempted] = useState(false)
 
   const { data: resultColumns } = useQueryResultColumns(selectedQueryId)
@@ -155,6 +154,9 @@ export function FeedForm({
   }
 
   const systemErrors = attempted ? systemFieldErrors(values) : {}
+  const problem = attempted
+    ? (submitError(values) ?? lastGoodAgeError(onError, lastGoodMaxAgeSeconds))
+    : null
 
   // A field mapped against one query's columns is meaningless (and possibly
   // unreachable-by-construction-breaking) against a different query's
@@ -187,16 +189,11 @@ export function FeedForm({
 
   const handleSubmit = () => {
     setAttempted(true)
-    const problem = submitError(values) ?? lastGoodAgeError(onError, lastGoodMaxAgeSeconds)
-    if (problem) {
-      setLocalError(problem)
-      return
-    }
-    setLocalError(null)
+    if (submitError(values) ?? lastGoodAgeError(onError, lastGoodMaxAgeSeconds)) return
     onSubmit(buildInput(values, initial))
   }
 
-  const shownError = localError ?? error
+  const shownError = problem ?? error
 
   return (
     <Card>
@@ -220,7 +217,7 @@ export function FeedForm({
           entityOptions={entitySelection.options}
         />
 
-        {needs.query && (
+        {needs.query ? (
           <div className="space-y-3">
             <h2 className={SUBSECTION_HEADING}>Source</h2>
             <QueryPicker
@@ -231,6 +228,8 @@ export function FeedForm({
               sourceIsNotAQuery={initial?.queryId === null}
             />
           </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">{NO_SOURCE_QUERY}</p>
         )}
 
         <AddressSection

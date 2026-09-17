@@ -4,24 +4,30 @@ import userEvent from '@testing-library/user-event'
 import { renderWithProviders, resetStores, signInAsAdmin } from '@/test/utils'
 import { pickAStaticReference } from '@/components/published-feeds/feed-form.test-helpers'
 import { AppError, ErrorIds } from '@/lib/errorIds'
+import type { EntityNeeds, FeedCapabilities } from '@/types/published-feed'
 
 const push = vi.fn()
+const opened = vi.hoisted(() => ({ search: '' }))
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, back: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(opened.search),
 }))
 
 const mutateAsync = vi.fn()
+const registry = vi.hoisted(() => ({ answer: undefined as FeedCapabilities | undefined }))
 vi.mock('@/hooks/use-published-feeds', async () => {
   const actual = await vi.importActual<typeof import('@/hooks/use-published-feeds')>(
     '@/hooks/use-published-feeds'
   )
   return {
     ...actual,
-    // Mock mode's store never refuses a create, so the refusal-mapping tests
-    // below control the mutation directly. useQueryResultColumns stays real,
-    // reading the fixture query and its result from the mock store, so the
-    // mapping table exercises the same columns a real pick would produce.
     useCreatePublishedFeed: () => ({ mutateAsync, isPending: false }),
+    useFeedCapabilities: () => {
+      const real = actual.useFeedCapabilities()
+      return registry.answer === undefined
+        ? real
+        : { data: registry.answer, isLoading: false, isError: false }
+    },
   }
 })
 
@@ -31,6 +37,45 @@ afterEach(() => {
   resetStores()
   mutateAsync.mockReset()
   push.mockClear()
+  opened.search = ''
+  registry.answer = undefined
+})
+
+const QUERY_BACKED: EntityNeeds = {
+  query: true,
+  staticReference: true,
+  columnMap: true,
+  retirementOnFailure: false,
+}
+
+const MESSAGE_FED: EntityNeeds = {
+  query: false,
+  staticReference: true,
+  columnMap: false,
+  retirementOnFailure: false,
+}
+
+describe('the entity the form opens on', () => {
+  it('follows the entity named in the address when the registry offers it', async () => {
+    registry.answer = {
+      standards: [
+        {
+          standard: 'gtfs-rt',
+          versions: ['2.0'],
+          entities: ['service_alerts', 'vehicle_positions'],
+          entityNeeds: { service_alerts: MESSAGE_FED, vehicle_positions: QUERY_BACKED },
+          timezones: [],
+        },
+      ],
+    }
+    opened.search = 'entity=vehicle_positions'
+    signInAsAdmin()
+
+    renderWithProviders(<NewFeedPage />)
+
+    expect(await screen.findByRole('combobox', { name: /entity/i })).toHaveTextContent('vehicle_positions')
+    expect(screen.getByText('Source')).toBeInTheDocument()
+  })
 })
 
 async function mapField(user: ReturnType<typeof userEvent.setup>, fieldName: string, columnName: string) {

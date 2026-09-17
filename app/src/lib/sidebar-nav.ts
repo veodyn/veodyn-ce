@@ -171,7 +171,7 @@ export function buildSidebarSections(
       label: 'ADMIN',
       items: [
         { label: 'Data Sources', href: '/data-sources', icon: Database },
-        { label: 'Alert Destinations', href: '/destinations', icon: Server },
+        { label: 'Alert Notifications', href: '/destinations', icon: Server },
         { label: 'Team', href: '/users', icon: Users },
         // Shared Links, if the reports feature directory is installed. Org
         // scoped like the rows above it: both backends behind it gate on org

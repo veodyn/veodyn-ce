@@ -49,10 +49,11 @@ function deploymentRegistering(entityNeeds: Record<string, EntityNeeds>): FeedCa
   }
 }
 
-function renderCreateForm() {
+function renderCreateForm({ defaultEntity }: { defaultEntity?: string } = {}) {
   const onSubmit = vi.fn()
   renderWithProviders(
     <FeedForm
+      defaultEntity={defaultEntity}
       submitLabel="Publish"
       isPending={false}
       error={null}
@@ -151,6 +152,59 @@ describe('the form follows the entity, not the standard', () => {
     // The map is a row of prose until a query is picked, so the table itself is
     // what says the section is being asked for.
     expect(screen.getByRole('table')).toBeInTheDocument()
+  })
+})
+
+describe('what stands where the source section would be', () => {
+  it('says a queryless feed serves what is published to it, rather than leaving a gap', () => {
+    renderCreateForm()
+
+    expect(screen.queryByText('Source')).not.toBeInTheDocument()
+    expect(screen.getByText(/no source query/i)).toBeInTheDocument()
+  })
+
+  it('drops a refusal about the source once the entity no longer has one', async () => {
+    const user = userEvent.setup()
+    registry.answer = deploymentRegistering({
+      bulletins: BULLETINS,
+      vehicle_positions: QUERY_BACKED,
+    })
+    renderCreateForm()
+
+    await user.click(screen.getByRole('combobox', { name: /entity/i }))
+    await user.click(await screen.findByRole('option', { name: 'vehicle_positions' }))
+    await user.click(screen.getByRole('button', { name: 'Publish' }))
+    expect(screen.getByText(/pick a source query/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox', { name: /entity/i }))
+    await user.click(await screen.findByRole('option', { name: 'bulletins' }))
+
+    expect(screen.queryByText(/pick a source query/i)).not.toBeInTheDocument()
+  })
+})
+
+describe('the entity a create form is opened on', () => {
+  it('starts on the entity the caller asked for when the registry offers it', () => {
+    registry.answer = deploymentRegistering({
+      bulletins: BULLETINS,
+      vehicle_positions: QUERY_BACKED,
+    })
+
+    renderCreateForm({ defaultEntity: 'vehicle_positions' })
+
+    expect(screen.getByRole('combobox', { name: /entity/i })).toHaveTextContent('vehicle_positions')
+    expect(screen.getByText('Source')).toBeInTheDocument()
+  })
+
+  it('ignores an asked-for entity the registry does not offer', () => {
+    registry.answer = deploymentRegistering({
+      bulletins: BULLETINS,
+      vehicle_positions: QUERY_BACKED,
+    })
+
+    renderCreateForm({ defaultEntity: 'trip_updates' })
+
+    expect(screen.getByRole('combobox', { name: /entity/i })).toHaveTextContent('bulletins')
   })
 })
 

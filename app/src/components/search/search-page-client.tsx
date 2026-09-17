@@ -175,7 +175,7 @@ export function SearchPageClient({
     <PageContainer>
       <PageHeader
         title="Search"
-        description="Everything in this instance: queries, dashboards, datasets, KPIs, and reports."
+        description="Everything in this instance, of every kind the facets below list."
       />
 
       <div className="sticky top-0 z-10 -mx-6 bg-background px-6 pt-3 pb-3">

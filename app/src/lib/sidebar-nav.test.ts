@@ -152,7 +152,7 @@ describe('buildSidebarSections', () => {
       '/connect/mcp': 'MCP',
       '/connect/feeds': 'Published Feeds',
       '/data-sources': 'Data Sources',
-      '/destinations': 'Alert Destinations',
+      '/destinations': 'Alert Notifications',
       '/users': 'Team',
       '/admin/plugins': 'Plugins',
       '/settings': 'Settings',

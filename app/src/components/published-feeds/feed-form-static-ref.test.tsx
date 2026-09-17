@@ -171,11 +171,22 @@ describe('the static GTFS reference', () => {
     const onSubmit = renderForm()
 
     await user.click(await theEscape())
+    await user.clear(screen.getByRole('textbox', { name: 'Static GTFS reference' }))
     await user.type(screen.getByRole('textbox', { name: 'Static GTFS reference' }), HARBOR)
     await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'harbor-feed')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ staticGtfsRef: HARBOR }))
+  })
+
+  it('keeps the picked reference as the starting text behind the escape, rather than blanking it', async () => {
+    const user = userEvent.setup()
+    boundOn([aFeed('downtown', DOWNTOWN)])
+    renderForm()
+
+    await user.click(await theEscape())
+
+    expect(screen.getByRole('textbox', { name: 'Static GTFS reference' })).toHaveValue(DOWNTOWN)
   })
 
   it('does not default over an escape the operator has already taken', async () => {
@@ -184,6 +195,7 @@ describe('the static GTFS reference', () => {
     const onSubmit = renderForm()
 
     await user.click(await theEscape())
+    await user.clear(screen.getByRole('textbox', { name: 'Static GTFS reference' }))
     await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'harbor-feed')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 

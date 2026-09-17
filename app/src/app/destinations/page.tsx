@@ -24,7 +24,7 @@ export default function DestinationsPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Alert Destinations"
+        title="Alert Notifications"
         description="Where a triggered alert sends its notification."
         action={
           <Button render={<Link href="/destinations/new" />}>

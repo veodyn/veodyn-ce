@@ -73,7 +73,8 @@ export function resolveEntitySelection(
   standard: FeedStandard
 ): EntitySelection {
   if (registeredEntities !== undefined && registeredEntities.length > 1) {
-    const entity = pickedEntity ?? initialEntity ?? registeredEntities[0]
+    const picked = pickedEntity !== null && registeredEntities.includes(pickedEntity) ? pickedEntity : null
+    const entity = picked ?? initialEntity ?? registeredEntities[0]
     return { isPicker: true, entity, options: registeredEntities }
   }
   const entity = initialEntity ?? registeredEntities?.[0] ?? DEFAULT_ENTITY_BY_STANDARD[standard]
