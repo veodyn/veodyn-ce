@@ -30,17 +30,22 @@ class StaticEntities:
     entities: tuple[StaticEntity, ...]
 
 
-def _entity_at(index: int, item: Any) -> StaticEntity:
+def _entity_at(index: int, item: Any, requested_kind: str) -> StaticEntity:
     if not isinstance(item, dict):
         raise ValidatorUnavailable(f"entity {index} is a {type(item).__name__}, not an object")
     kind = str(item.get("kind") or "").strip()
     entity_id = str(item.get("id") or "").strip()
     if not kind or not entity_id:
         raise ValidatorUnavailable(f"entity {index} carries no kind and id, so nothing could be picked from it")
+    if kind != requested_kind:
+        raise ValidatorUnavailable(
+            f"entity {index} is a {kind}, not the {requested_kind} that was asked for, so the listing "
+            "describes some other search than this one"
+        )
     return StaticEntity(kind=kind, id=entity_id, label=str(item.get("label") or entity_id))
 
 
-def read_static_entities(payload: Any) -> StaticEntities:
+def read_static_entities(payload: Any, requested_kind: str) -> StaticEntities:
     if not isinstance(payload, dict):
         raise ValidatorUnavailable(f"the feed validator returned a {type(payload).__name__}, not an entity listing")
     entities = payload.get("entities")
@@ -50,11 +55,11 @@ def read_static_entities(payload: Any) -> StaticEntities:
             "an absent listing is not an empty one"
         )
     feed_version = payload.get("feedVersion")
-    if not isinstance(feed_version, str) or not feed_version.strip():
+    if not isinstance(feed_version, str):
         raise ValidatorUnavailable("the feed validator did not say which version of the static dataset it read")
     return StaticEntities(
         feed_version=feed_version,
-        entities=tuple(_entity_at(index, item) for index, item in enumerate(entities)),
+        entities=tuple(_entity_at(index, item, requested_kind) for index, item in enumerate(entities)),
     )
 
 
@@ -83,7 +88,7 @@ def fetch_static_entities(
         payload = response.json()
     except ValueError as exc:
         raise ValidatorUnavailable(f"the feed validator did not return a listing: {exc}") from exc
-    return read_static_entities(payload)
+    return read_static_entities(payload, kind)
 
 
 def refusal_of(response: httpx.Response) -> str:

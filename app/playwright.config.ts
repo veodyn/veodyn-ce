@@ -40,6 +40,16 @@ export default defineConfig({
     // Without this line their local run boots enabled, every disabled half
     // skips itself, and the command reports a pass having tested none of them.
     // process.env wins over .env.local in Next, so this is the deciding value.
-    env: { NEXT_PUBLIC_REDASH_URL: '', VEODYN_AI__ENABLED: 'false' },
+    // VEODYN_MESSAGES__ENABLED is pinned on for the mirror-image reason. The
+    // messages surface exists only once an enterprise overlay is composed over
+    // this tree, and its specs arrive with that overlay, so a community-only
+    // run has nothing to switch on and nothing reads it. In a composed run the
+    // flag is what decides whether those routes exist at all, and left unset
+    // every messages spec fails at its first selector rather than skipping.
+    env: {
+      NEXT_PUBLIC_REDASH_URL: '',
+      VEODYN_AI__ENABLED: 'false',
+      VEODYN_MESSAGES__ENABLED: 'true',
+    },
   },
 })
