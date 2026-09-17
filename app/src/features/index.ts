@@ -14,6 +14,33 @@ import { FEATURES } from './generated-registry'
 
 export type { FeatureDescriptor, FeatureNavRow, FeatureRoute, FeatureSearchType, NavSectionId } from './types'
 import type { FeatureDescriptor, FeatureNavRow, FeatureRoute, FeatureSearchType, NavSectionId } from './types'
+import type { ClientConfig } from '@/lib/config-schema'
+
+type Registry = Record<string, FeatureDescriptor>
+
+const switchedOn = new WeakMap<Registry, Map<string, Registry>>()
+
+export function enabledFeatures(config: ClientConfig, registry: Registry = FEATURES): Registry {
+  const off = featureList(registry)
+    .filter((feature) => feature.enabled !== undefined && !feature.enabled(config))
+    .map((feature) => feature.id)
+  if (off.length === 0) return registry
+
+  const key = off.join('\0')
+  let byKey = switchedOn.get(registry)
+  if (!byKey) {
+    byKey = new Map()
+    switchedOn.set(registry, byKey)
+  }
+  const cached = byKey.get(key)
+  if (cached) return cached
+
+  const built = Object.fromEntries(
+    Object.entries(registry).filter(([, feature]) => !off.includes(feature.id))
+  )
+  byKey.set(key, built)
+  return built
+}
 
 /**
  * Every installed feature's descriptor, sorted by key so callers that derive

@@ -15,6 +15,7 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useFederatedSearch } from '@/hooks/use-federated-search'
 import { searchTypeLabel, type SearchSourceType } from '@/services/search/types'
 import { buildSidebarSections } from '@/lib/sidebar-nav'
+import { enabledFeatures, featureNavRows } from '@/features'
 import { useConfig } from '@/components/config/config-provider'
 import { useAuthStore } from '@/stores/auth-store'
 import { SEARCH_PLACEHOLDER } from '@/components/home/omnisearch-input'
@@ -27,7 +28,8 @@ export function CommandPalette({
   onOpenChange: (open: boolean) => void
 }) {
   const router = useRouter()
-  const { domains, features } = useConfig()
+  const config = useConfig()
+  const { domains, features } = config
   const currentUser = useAuthStore((s) => s.currentUser)
   const [raw, setRaw] = useState('')
   const debouncedQuery = useDebouncedValue(raw, 200)
@@ -39,13 +41,16 @@ export function CommandPalette({
 
   const navSections = useMemo(() => {
     if (!currentUser) return []
-    return buildSidebarSections({
-      domains,
-      canAccessAdmin: currentUser.isAdmin,
-      canViewInstanceAdmin: currentUser.hasPermission('super_admin'),
-      features,
-    })
-  }, [domains, features, currentUser])
+    return buildSidebarSections(
+      {
+        domains,
+        canAccessAdmin: currentUser.isAdmin,
+        canViewInstanceAdmin: currentUser.hasPermission('super_admin'),
+        features,
+      },
+      (section) => featureNavRows(section, enabledFeatures(config))
+    )
+  }, [domains, features, config, currentUser])
 
   const needle = raw.trim().toLowerCase()
   const filteredNavSections = navSections

@@ -1,6 +1,9 @@
 import { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
+import { ConfigProvider } from '@/components/config/config-provider'
+import { enabledFeatures } from '@/features'
+import { NEUTRAL_CONFIG, toClientConfig } from '@/lib/config-schema'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useFederatedSearch } from '@/hooks/use-federated-search'
 import { useMockDataStore } from '@/stores/mock-data-store'
@@ -33,7 +36,11 @@ function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={client}>
+      <ConfigProvider value={toClientConfig(NEUTRAL_CONFIG)}>{children}</ConfigProvider>
+    </QueryClientProvider>
+  )
 }
 
 /**
@@ -87,6 +94,9 @@ describe('useFederatedSearch', () => {
     useMockDataStore.setState({ queries: [makeQuery(1, 'Bus ridership')] })
     const { result } = renderHook(() => useFederatedSearch('bus'), { wrapper })
     await waitFor(() => expect(result.current.data).toBeDefined())
-    expect(federatedSearchSpy).toHaveBeenCalledWith('bus', { signal: expect.any(AbortSignal) })
+    expect(federatedSearchSpy).toHaveBeenCalledWith('bus', {
+      signal: expect.any(AbortSignal),
+      registry: enabledFeatures(toClientConfig(NEUTRAL_CONFIG)),
+    })
   })
 })

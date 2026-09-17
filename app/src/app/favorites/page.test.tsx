@@ -44,6 +44,8 @@ vi.mock('@/features', async (importOriginal) => {
     ...actual,
     FEATURES: mockRegistry,
     featureList: (registry = mockRegistry) => actual.featureList(registry),
+    enabledFeatures: (config: import('@/lib/config-schema').ClientConfig, registry = mockRegistry) =>
+      actual.enabledFeatures(config, registry),
   }
 })
 vi.mock('@/features/generated-registry', () => ({ FEATURES: mockRegistry }))

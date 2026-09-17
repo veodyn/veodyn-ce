@@ -1,8 +1,10 @@
 import { Bell, Star } from 'lucide-react'
 import { describe, expect, it } from 'vitest'
 import { buildSidebarSections, type SidebarModelInput } from '@/lib/sidebar-nav'
+import { NEUTRAL_CONFIG, toClientConfig, type ClientConfig } from '@/lib/config-schema'
 import {
   FEATURES,
+  enabledFeatures,
   featureList,
   featureNavRows,
   featureRouteFor,
@@ -40,6 +42,56 @@ const STUB: Record<string, FeatureDescriptor> = {
     routes: [{ pattern: /^\/alpha\/print\/?$/, forcedTheme: 'light' }],
   },
 }
+
+const CONFIG = toClientConfig(NEUTRAL_CONFIG)
+
+function withMessages(enabled: boolean): ClientConfig {
+  return { ...CONFIG, messages: { enabled } }
+}
+
+const SWITCHABLE: Record<string, FeatureDescriptor> = {
+  ...STUB,
+  gamma: {
+    id: 'gamma',
+    enabled: (config) => config.messages.enabled,
+    nav: [{ label: 'Gamma', href: '/gamma', icon: Star, section: 'library' }],
+    searchType: { type: 'gamma', label: 'Gamma', noun: 'gamma', icon: Star },
+    routes: [],
+  },
+}
+
+describe('enabledFeatures', () => {
+  it('keeps a package with no switch of its own, whatever the config says', () => {
+    expect(Object.keys(enabledFeatures(withMessages(false), STUB)).sort()).toEqual(['alpha', 'beta'])
+  })
+
+  it('drops the package its own switch turns off, and every contribution with it', () => {
+    const off = enabledFeatures(withMessages(false), SWITCHABLE)
+
+    expect(Object.keys(off).sort()).toEqual(['alpha', 'beta'])
+    expect(featureNavRows('library', off).map((row) => row.label)).toEqual(['Alpha'])
+    expect(featureSearchTypes(off).map((type) => type.type)).toEqual(['alpha'])
+    expect(hasFeature('gamma', off)).toBe(false)
+  })
+
+  it('keeps it when the switch is on', () => {
+    const on = enabledFeatures(withMessages(true), SWITCHABLE)
+
+    expect(Object.keys(on).sort()).toEqual(['alpha', 'beta', 'gamma'])
+    expect(featureNavRows('library', on).map((row) => row.label)).toEqual(['Alpha', 'Gamma'])
+    expect(featureSearchTypes(on).map((type) => type.type)).toEqual(['alpha', 'gamma'])
+  })
+
+  it('returns the registry itself when nothing is switched off, and one stable object when something is', () => {
+    expect(enabledFeatures(withMessages(true), SWITCHABLE)).toBe(SWITCHABLE)
+    expect(enabledFeatures(withMessages(false), SWITCHABLE)).toBe(
+      enabledFeatures(withMessages(false), SWITCHABLE)
+    )
+    expect(enabledFeatures({ ...withMessages(false) }, SWITCHABLE)).toBe(
+      enabledFeatures(withMessages(false), SWITCHABLE)
+    )
+  })
+})
 
 describe('featureNavRows', () => {
   it('returns one section of rows, in featureList order', () => {

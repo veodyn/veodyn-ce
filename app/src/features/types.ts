@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import type { LucideIcon } from 'lucide-react'
+import type { ClientConfig } from '@/lib/config-schema'
 import type { MockDashboard } from '@/lib/mock-data'
 import type { SearchSource } from '@/services/search/types'
 import type { Dataset, HubCounter } from '@/types/catalog'
@@ -188,6 +189,7 @@ export type MockDataFactory = () => Promise<Record<string, unknown[]>>
 export interface FeatureDescriptor {
   /** Equal to the directory name. Asserted by the boundary guard. */
   id: string
+  enabled?: (config: ClientConfig) => boolean
   nav: FeatureNavRow[]
   searchType?: FeatureSearchType
   searchSource?: SearchSourceFactory

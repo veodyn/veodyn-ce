@@ -7,6 +7,7 @@
 //
 // assembleSearchSources composes the community sources with whatever the
 // installed features contribute; a caller may pass its own list instead.
+import type { FeatureDescriptor } from '@/features'
 import { assembleSearchSources } from '@/features/search-sources'
 import { AppError, ErrorIds } from '@/lib/errorIds'
 import type { SearchResultItem, SearchSource } from './types'
@@ -23,9 +24,14 @@ function isAbortRejection(reason: unknown, signal: AbortSignal | undefined): boo
 
 export async function federatedSearch(
   query: string,
-  ctx: { signal?: AbortSignal; sources?: SearchSource[]; tag?: string } = {}
+  ctx: {
+    signal?: AbortSignal
+    sources?: SearchSource[]
+    tag?: string
+    registry?: Record<string, FeatureDescriptor>
+  } = {}
 ): Promise<SearchResultItem[]> {
-  const sources = ctx.sources ?? (await assembleSearchSources())
+  const sources = ctx.sources ?? (await assembleSearchSources(ctx.registry))
   const settled = await Promise.allSettled(
     sources.map((source) => source.search(query, { signal: ctx.signal, tag: ctx.tag }))
   )

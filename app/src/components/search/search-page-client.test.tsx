@@ -1,11 +1,24 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render as renderBare, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { SearchPageClient } from './search-page-client'
 import { useFederatedSearch } from '@/hooks/use-federated-search'
 import { RECENTS_KEY } from '@/hooks/use-recent-searches'
 import type { SearchResultItem } from '@/services/search/types'
+import { ConfigProvider } from '@/components/config/config-provider'
+import { NEUTRAL_CONFIG, toClientConfig } from '@/lib/config-schema'
+
+const CONFIG = toClientConfig(NEUTRAL_CONFIG)
+
+function render(page: React.ReactElement) {
+  const rendered = renderBare(<ConfigProvider value={CONFIG}>{page}</ConfigProvider>)
+  return {
+    ...rendered,
+    rerender: (next: React.ReactElement) =>
+      rendered.rerender(<ConfigProvider value={CONFIG}>{next}</ConfigProvider>),
+  }
+}
 
 vi.mock('@/hooks/use-federated-search', () => ({ useFederatedSearch: vi.fn() }))
 

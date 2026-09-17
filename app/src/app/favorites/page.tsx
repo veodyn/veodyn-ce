@@ -8,8 +8,9 @@ import { SkeletonCard } from '@/components/ui/skeleton-card'
 import { NoData } from '@/components/ui/no-data'
 import { ItemsTable, type Column } from '@/components/shared/items-table'
 import { FavoritesControl } from '@/components/shared/favorites-control'
-import { featureList } from '@/features'
+import { enabledFeatures, featureList } from '@/features'
 import { SlotList, hasSlotContributor } from '@/features/slots'
+import { useConfig } from '@/components/config/config-provider'
 import { useVeodynFavorites } from '@/hooks/use-favorites'
 import { TimeAgo } from '@/components/shared/time-ago'
 import { MICRO_LABEL } from '@/lib/section-heading'
@@ -20,21 +21,15 @@ import type { MockQuery, MockDashboard } from '@/lib/mock-data'
 import { PageContainer } from '@/components/layout/page-container'
 import { ENTITY_NAME_CLASS } from '@/lib/entity-name'
 
-/**
- * Where a reader can go to star something, for the empty state to name.
- *
- * Queries and dashboards are in every build; the rest is derived from the
- * features that fill `favorites.section`, so a build without a feature offers
- * no link that 404s. Filtered to the library section, the row that names the
- * feature's own collection rather than an admin console over it.
- */
-const STARRABLE: { label: string; href: string }[] = [
-  { label: 'Queries', href: '/queries' },
-  { label: 'Dashboards', href: '/dashboards' },
-  ...featureList()
-    .filter((feature) => feature.slots?.['favorites.section'] !== undefined)
-    .flatMap((feature) => feature.nav.filter((row) => row.section === 'library')),
-]
+function starrable(registry: Parameters<typeof featureList>[0]): { label: string; href: string }[] {
+  return [
+    { label: 'Queries', href: '/queries' },
+    { label: 'Dashboards', href: '/dashboards' },
+    ...featureList(registry)
+      .filter((feature) => feature.slots?.['favorites.section'] !== undefined)
+      .flatMap((feature) => feature.nav.filter((row) => row.section === 'library')),
+  ]
+}
 
 const queryColumns: Column<MockQuery>[] = [
   {
@@ -110,6 +105,8 @@ const dashboardColumns: Column<MockDashboard>[] = [
 ]
 
 export default function FavoritesPage() {
+  const installed = enabledFeatures(useConfig())
+  const starrableHere = starrable(installed)
   const queries = useFavoriteQueries()
   const dashboards = useFavoriteDashboards()
   // The sidecar keeps stars in a table of its own and answers with ids grouped
@@ -128,7 +125,7 @@ export default function FavoritesPage() {
   // Counted as ids, and only where some feature can turn an id into a row: a
   // star this build will never render must not stop the page from saying the
   // shelf is empty.
-  const starredSidecarIds = hasSlotContributor('favorites.section')
+  const starredSidecarIds = hasSlotContributor('favorites.section', installed)
     ? Object.values(sidecarStars.data ?? {}).flat()
     : []
   const nothingStarred =
@@ -174,9 +171,9 @@ export default function FavoritesPage() {
             ) : (
               <>
                 Nothing starred yet. Use the star on anything in{' '}
-                {STARRABLE.map((row, index) => (
+                {starrableHere.map((row, index) => (
                   <Fragment key={row.href}>
-                    {index > 0 && (index === STARRABLE.length - 1 ? ' or ' : ', ')}
+                    {index > 0 && (index === starrableHere.length - 1 ? ' or ' : ', ')}
                     <Link href={row.href} className="text-foreground underline underline-offset-4">
                       {row.label}
                     </Link>
@@ -227,7 +224,7 @@ export default function FavoritesPage() {
               today), each rendering only when it has something to show. A multi
               slot, so a build with one feature and not the other shows one and
               not the other. */}
-          <SlotList id="favorites.section" props={{}} />
+          <SlotList id="favorites.section" props={{}} registry={installed} />
         </div>
       )}
     </PageContainer>

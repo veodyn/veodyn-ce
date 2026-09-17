@@ -9,8 +9,10 @@ import { NoData } from '@/components/ui/no-data'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useFederatedSearch } from '@/hooks/use-federated-search'
 import { useRecentSearches } from '@/hooks/use-recent-searches'
+import { useConfig } from '@/components/config/config-provider'
+import { enabledFeatures, featureSearchTypes } from '@/features'
 import { countByType } from '@/lib/search/grouping'
-import { searchHref, type SearchTab } from '@/lib/search/url'
+import { searchHref, searchTabs, type SearchTab } from '@/lib/search/url'
 import { searchTypeNoun } from '@/services/search/types'
 import { SearchInput } from './search-input'
 import { SearchRecents } from './search-recents'
@@ -47,6 +49,8 @@ export function SearchPageClient({
   /** Set when arriving from a tag chip: /search?tag=rail. */
   initialTag?: string
 }) {
+  const config = useConfig()
+  const searchTypes = useMemo(() => featureSearchTypes(enabledFeatures(config)), [config])
   const [value, setValue] = useState(initialQuery)
 
   // A recent-search link, a tab link, and back/forward are all same-route
@@ -90,7 +94,7 @@ export function SearchPageClient({
   }, [settled, trimmed, record])
 
   const results = useMemo(() => data ?? [], [data])
-  const counts = useMemo(() => countByType(results), [results])
+  const counts = useMemo(() => countByType(results, searchTypes), [results, searchTypes])
   const visible = useMemo(
     () => (initialTab === 'all' ? results : results.filter((r) => r.type === initialTab)),
     [results, initialTab]
@@ -207,6 +211,7 @@ export function SearchPageClient({
           <SearchTypeTabs
             query={trimmed}
             activeTab={initialTab}
+            tabs={searchTabs(searchTypes)}
             counts={settled ? counts : undefined}
             total={settled ? results.length : undefined}
             tag={initialTag || undefined}
@@ -246,6 +251,7 @@ export function SearchPageClient({
             results={visible}
             query={trimmed}
             activeTab={initialTab}
+            searchTypes={searchTypes}
             tag={initialTag || undefined}
           />
         )}

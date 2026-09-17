@@ -17,7 +17,7 @@
  * `veodyn_api/schemas/ai.py`, and removal copy must not move when the AI
  * conversation contract does.
  */
-export type LibraryKind = 'query' | 'dashboard' | 'kpi' | 'report' | 'snippet'
+export type LibraryKind = 'query' | 'dashboard' | 'kpi' | 'report' | 'snippet' | 'message'
 
 /** Recoverable, or not. Drives the verb and whether a Restore path is offered. */
 export type RemovalSemantic = 'archive' | 'delete'
@@ -70,6 +70,12 @@ const REMOVAL: Record<LibraryKind, RemovalDescriptor> = {
     noun: 'report',
     consequence:
       'This removes the report and every block in it, for everyone. Any public link to it stops working. It cannot be undone.',
+  },
+  message: {
+    semantic: 'delete',
+    noun: 'message',
+    consequence:
+      'This removes the message, its wording in every language and its delivery record, for everyone. If it is on the air, riders stop seeing it once the alert feed next rebuilds. It cannot be undone.',
   },
   snippet: {
     semantic: 'delete',

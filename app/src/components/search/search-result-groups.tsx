@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { groupResults } from '@/lib/search/grouping'
+import { featureSearchTypes, type FeatureSearchType } from '@/features'
+import { groupResults, GROUP_CAP } from '@/lib/search/grouping'
 import { searchHref, type SearchTab } from '@/lib/search/url'
 import { searchTypeLabel, type SearchResultItem } from '@/services/search/types'
 import { SearchResultRow } from './search-result-row'
@@ -11,6 +12,7 @@ export function SearchResultGroups({
   query,
   activeTab,
   tag,
+  searchTypes = featureSearchTypes(),
 }: {
   /** Already filtered to activeTab by the caller. */
   results: SearchResultItem[]
@@ -18,6 +20,7 @@ export function SearchResultGroups({
   activeTab: SearchTab
   /** Carried into "Show all", for the same reason the tabs carry it. */
   tag?: string
+  searchTypes?: FeatureSearchType[]
 }) {
   // A type tab is a single type already, so headings and caps would be noise.
   if (activeTab !== 'all') {
@@ -34,7 +37,7 @@ export function SearchResultGroups({
 
   return (
     <div className="flex flex-col gap-6">
-      {groupResults(results).map((group) => (
+      {groupResults(results, GROUP_CAP, searchTypes).map((group) => (
         <section key={group.type}>
           <div className="mb-1 border-b px-3 pb-1.5">
             <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
