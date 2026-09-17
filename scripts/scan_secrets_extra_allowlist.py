@@ -66,6 +66,15 @@ EXTRA_ALLOWLISTED_LITERALS = (
         "app/src/lib/observability/scrub.test.ts",
         "01a08cbb-8b3f-7089-891a-e6fe616b0cbd",
     ),
+    ("app/e2e/chat-autoscroll.spec.ts", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+    ("app/e2e/chat-autoscroll.spec.ts", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
+    ("app/src/hooks/use-chat-thread.test.tsx", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+    ("app/src/hooks/use-chat-thread.test.tsx", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
+    ("app/src/hooks/use-chat-thread.test.tsx", "cccccccc-cccc-4ccc-8ccc-cccccccccccc"),
+    ("app/src/lib/chat/relay-test-harness.ts", "6f1f7a4e-1a4b-4a51-9c3a-3f3d0f8b1c11"),
+    ("app/src/lib/chat/thread-model.test.ts", "11111111-1111-4111-8111-111111111111"),
+    ("app/src/lib/chat/thread-model.test.ts", "22222222-2222-4222-8222-222222222222"),
+    ("app/src/lib/chat/thread-model.test.ts", "33333333-3333-4333-8333-333333333333"),
 )
 
 
