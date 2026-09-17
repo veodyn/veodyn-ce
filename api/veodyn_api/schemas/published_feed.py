@@ -179,6 +179,15 @@ class PublishedFeedIn(CamelModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def _an_entity_whose_rows_can_be_withdrawn_may_not_be_bound_without_retirement(self) -> "PublishedFeedIn":
+        needs = publish_produce.needs_for(self.standard, self.entity)
+        if needs.retirement_on_failure and publish_produce.keeps_a_stale_artifact(
+            on_error=self.on_error, retire_on_failure=self.retire_on_failure
+        ):
+            raise ValueError(publish_produce.retirement_is_not_optional_error(self.standard, self.entity))
+        return self
+
 
 class PublishedFeedOut(CamelModel):
     slug: str

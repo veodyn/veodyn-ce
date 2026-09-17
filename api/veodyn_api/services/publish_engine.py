@@ -48,10 +48,12 @@ from veodyn_api.services.publish_produce import (
     Validate,
     anything_is_registered_under,
     producer_for,
+    unbuildable_reason,
 )
 from veodyn_api.services.publish_record import (
     AttemptResult,
     AttemptSource,
+    a_header_timestamp_that_never_goes_backwards,
     current_artifact,
     of_current_revision,
     previous_artifact_of_revision,
@@ -64,6 +66,7 @@ __all__ = [
     "AttemptResult",
     "GbfsPublisher",
     "Validate",
+    "a_header_timestamp_that_never_goes_backwards",
     "current_artifact",
     "previous_artifact_of_revision",
     "run_attempt",
@@ -115,7 +118,7 @@ def run_attempt(
         return record_and_retire_if_the_binding_says_to(db, feed, source, "failed", reason)
     producer = producer_for(feed.standard, feed.entity)
     if producer is None:
-        reason = f"entity {feed.entity!r} is not supported yet"
+        reason = unbuildable_reason(feed.standard, feed.entity)
         return record_and_retire_if_the_binding_says_to(db, feed, source, "failed", reason)
 
     # Two rows, two questions. `served` is the row a publish must clear, whatever

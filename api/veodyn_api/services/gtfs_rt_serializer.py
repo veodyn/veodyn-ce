@@ -12,10 +12,21 @@ Genuine absence stays absent: an optional field that is unmapped, or mapped onto
 NULL or blank, says nothing rather than saying a default.
 """
 
-import math
 from typing import Any
 
 from google.transit import gtfs_realtime_pb2
+
+from veodyn_api.services.gtfs_rt_values import (
+    SerializationError as SerializationError,
+)
+from veodyn_api.services.gtfs_rt_values import (
+    is_blank,
+    optional_epoch_seconds,
+    optional_number,
+    optional_text,
+    require_coordinate,
+    whole_epoch_seconds,
+)
 
 # The versions this serializer can write. `schemas/published_feed.py` refuses
 # anything else, and `published_feed_registry.VERSIONS_BY_STANDARD` must agree.
@@ -37,119 +48,6 @@ SUPPORTED_FIELDS: dict[str, frozenset[str]] = {
 # which is a real bearing and a real speed.
 _OPTIONAL_POSITION_FLOATS = ("bearing", "speed")
 
-# WGS-84, the only coordinate system GTFS-Realtime positions are in.
-_COORDINATE_LIMITS: dict[str, float] = {"latitude": 90.0, "longitude": 180.0}
-
-# `Position.latitude`, `longitude`, `bearing` and `speed` are protobuf `float`, so
-# anything past this rounds to infinity on the way in.
-_MAX_FLOAT32 = 3.4028234663852886e38
-
-# `VehiclePosition.timestamp` is uint64. Outside this range protobuf raises a bare
-# ValueError that loses the row index.
-_MAX_UINT64 = 2**64 - 1
-
-
-class SerializationError(Exception):
-    """A binding or a row that cannot honestly become a feed entity."""
-
-    def __init__(self, reason: str) -> None:
-        super().__init__(reason)
-        self.reason = reason
-
-
-def _is_blank(value: Any) -> bool:
-    return value is None or (isinstance(value, str) and not value.strip())
-
-
-def _coerce_number(value: Any, field: str, entity_hint: str) -> float:
-    """A present value read as a finite number, or a refusal naming the row.
-
-    Booleans are refused before `float()` sees them: `float(True)` is 1.0, a
-    perfectly ordinary coordinate and never what a boolean column meant.
-    """
-    if isinstance(value, bool):
-        raise SerializationError(f"{entity_hint}: {field} value {value!r} is a boolean, not a number")
-    try:
-        number = float(value)
-    except (TypeError, ValueError) as exc:
-        raise SerializationError(f"{entity_hint}: {field} value {value!r} is not a number") from exc
-    if not math.isfinite(number):
-        raise SerializationError(f"{entity_hint}: {field} value {value!r} is not a finite number")
-    return number
-
-
-def _require_float32(number: float, value: Any, field: str, entity_hint: str) -> float:
-    if abs(number) > _MAX_FLOAT32:
-        raise SerializationError(
-            f"{entity_hint}: {field} value {value!r} is too large for the 32-bit float the field holds, "
-            "and would be published as infinity"
-        )
-    return number
-
-
-def _require_coordinate(value: Any, field: str, entity_hint: str) -> float:
-    """A required WGS-84 coordinate, in range and finite, or a refusal."""
-    if _is_blank(value):
-        raise SerializationError(f"{entity_hint}: {field} is empty, and it is required")
-    number = _coerce_number(value, field, entity_hint)
-    limit = _COORDINATE_LIMITS[field]
-    if not -limit <= number <= limit:
-        raise SerializationError(
-            f"{entity_hint}: {field} value {value!r} is outside the WGS-84 range [-{limit:g}, {limit:g}]"
-        )
-    return _require_float32(number, value, field, entity_hint)
-
-
-def _optional_number(row: dict[str, Any], column_map: dict[str, str], field: str, entity_hint: str) -> float | None:
-    """An optional numeric field: absent when unstated, refused when unusable.
-
-    Unmapped, NULL or blank means the source said nothing, so the field stays
-    absent. A mapped column holding `"north"` is a source defect, and is refused.
-    """
-    column = column_map.get(field)
-    if column is None:
-        return None
-    value = row.get(column)
-    if _is_blank(value):
-        return None
-    number = _coerce_number(value, field, entity_hint)
-    return _require_float32(number, value, field, entity_hint)
-
-
-def _optional_epoch_seconds(row: dict[str, Any], column_map: dict[str, str], entity_hint: str) -> int | None:
-    """`timestamp` as whole seconds, refusing anything `int()` would reshape.
-
-    The field cannot carry sub-second precision, so a fractional value is refused
-    with its row named rather than truncated silently.
-    """
-    column = column_map.get("timestamp")
-    if column is None:
-        return None
-    value = row.get(column)
-    if _is_blank(value):
-        return None
-    number = _coerce_number(value, "timestamp", entity_hint)
-    if number != int(number):
-        raise SerializationError(
-            f"{entity_hint}: timestamp value {value!r} is not a whole number of seconds, and truncating it "
-            "would move the reported time without saying so"
-        )
-    if not 0 <= number <= _MAX_UINT64:
-        raise SerializationError(
-            f"{entity_hint}: timestamp value {value!r} is outside the range of epoch seconds the field holds"
-        )
-    return int(number)
-
-
-def _optional_text(row: dict[str, Any], column_map: dict[str, str], field: str) -> str | None:
-    column = column_map.get(field)
-    if column is None:
-        return None
-    value = row.get(column)
-    if _is_blank(value):
-        return None
-    return str(value)
-
 
 def serialize_vehicle_positions(
     rows: list[dict[str, Any]],
@@ -167,15 +65,12 @@ def serialize_vehicle_positions(
             "Mapping a column it ignores publishes a feed that is quietly incomplete."
         )
 
-    message = gtfs_realtime_pb2.FeedMessage()
-    message.header.gtfs_realtime_version = "2.0"
-    message.header.incrementality = gtfs_realtime_pb2.FeedHeader.FULL_DATASET
-    message.header.timestamp = feed_timestamp
+    message = _full_dataset(feed_timestamp)
 
     seen: set[str] = set()
     for index, row in enumerate(rows):
         raw_id = row.get(column_map["vehicle_id"])
-        if _is_blank(raw_id):
+        if is_blank(raw_id):
             raise SerializationError(f"row {index}: vehicle_id is empty, and it is required")
         vehicle_id = str(raw_id)
         if vehicle_id in seen:
@@ -183,8 +78,8 @@ def serialize_vehicle_positions(
         seen.add(vehicle_id)
 
         hint = f"row {index} (vehicle_id {vehicle_id})"
-        latitude = _require_coordinate(row.get(column_map["latitude"]), "latitude", hint)
-        longitude = _require_coordinate(row.get(column_map["longitude"]), "longitude", hint)
+        latitude = require_coordinate(row.get(column_map["latitude"]), "latitude", hint)
+        longitude = require_coordinate(row.get(column_map["longitude"]), "longitude", hint)
 
         entity = message.entity.add()
         entity.id = vehicle_id
@@ -194,26 +89,199 @@ def serialize_vehicle_positions(
         vehicle.position.longitude = longitude
 
         for field in _OPTIONAL_POSITION_FLOATS:
-            value = _optional_number(row, column_map, field, hint)
+            value = optional_number(row, column_map, field, hint)
             if value is not None:
                 setattr(vehicle.position, field, value)
 
         # `trip` is a submessage, so touching it at all creates it: both fields are
         # read before it is reached for, or an unmapped trip publishes an empty
         # TripDescriptor a reader takes as a claim.
-        trip_id = _optional_text(row, column_map, "trip_id")
-        route_id = _optional_text(row, column_map, "route_id")
+        trip_id = optional_text(row, column_map, "trip_id")
+        route_id = optional_text(row, column_map, "route_id")
         if trip_id is not None:
             vehicle.trip.trip_id = trip_id
         if route_id is not None:
             vehicle.trip.route_id = route_id
 
-        stamp = _optional_epoch_seconds(row, column_map, hint)
+        stamp = optional_epoch_seconds(row, column_map, hint)
         if stamp is not None:
             vehicle.timestamp = stamp
 
-    # deterministic=True: the artifact digest and the validator's content-changed
-    # rule both compare serialized output, and protobuf map ordering is otherwise
-    # free to vary between runs. Annotated because `SerializeToString` is untyped.
+    return _deterministic_bytes_of(message)
+
+
+ALERT_KEYS: dict[str, frozenset[str]] = {
+    "required": frozenset({"entity_id", "severity", "cause", "effect", "informed_entities", "header", "description"}),
+    "optional": frozenset({"active_periods", "url"}),
+}
+
+SUPPORTED_ALERT_KEYS: frozenset[str] = ALERT_KEYS["required"] | ALERT_KEYS["optional"]
+
+_ALERT_ENUMS: dict[str, tuple[str, Any]] = {
+    "severity": ("severity_level", gtfs_realtime_pb2.Alert.SeverityLevel),
+    "cause": ("cause", gtfs_realtime_pb2.Alert.Cause),
+    "effect": ("effect", gtfs_realtime_pb2.Alert.Effect),
+}
+
+_PLAIN_ID_SELECTOR_FIELD_BY_KIND: dict[str, str] = {"agency": "agency_id", "route": "route_id", "stop": "stop_id"}
+
+_SUBMESSAGE_SELECTOR_KIND = "trip"
+
+SUPPORTED_ENTITY_KINDS: frozenset[str] = frozenset({*_PLAIN_ID_SELECTOR_FIELD_BY_KIND, _SUBMESSAGE_SELECTOR_KIND})
+
+_REQUIRED_TRANSLATED_TEXT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("header", "header_text"),
+    ("description", "description_text"),
+)
+
+_OPTIONAL_TRANSLATED_TEXT_FIELDS: tuple[tuple[str, str], ...] = (("url", "url"),)
+
+
+def alert_enum_values(field: str) -> frozenset[str]:
+    return frozenset(_ALERT_ENUMS[field][1].keys())
+
+
+def _full_dataset(feed_timestamp: int) -> Any:
+    message = gtfs_realtime_pb2.FeedMessage()
+    message.header.gtfs_realtime_version = "2.0"
+    message.header.incrementality = gtfs_realtime_pb2.FeedHeader.FULL_DATASET
+    message.header.timestamp = feed_timestamp
+    return message
+
+
+def _deterministic_bytes_of(message: Any) -> bytes:
     payload: bytes = message.SerializeToString(deterministic=True)
     return payload
+
+
+def _enum_value(field: str, raw: Any, hint: str) -> int:
+    if is_blank(raw):
+        raise SerializationError(f"{hint}: {field} is empty, and it is required")
+    name = str(raw)
+    accepted = alert_enum_values(field)
+    if name not in accepted:
+        raise SerializationError(
+            f"{hint}: {field} value {name!r} is not a GTFS-Realtime {field}. Known: {', '.join(sorted(accepted))}"
+        )
+    value: int = _ALERT_ENUMS[field][1].Value(name)
+    return value
+
+
+def _translations(raw: Any, field: str, hint: str) -> list[tuple[str, str]]:
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise SerializationError(f"{hint}: {field} is a {type(raw).__name__}, not a list of translations")
+    written: list[tuple[str, str]] = []
+    for value in raw:
+        if not isinstance(value, dict):
+            raise SerializationError(f"{hint}: {field} holds a {type(value).__name__}, not a translation")
+        language = value.get("language")
+        text = value.get("text")
+        if is_blank(language):
+            raise SerializationError(f"{hint}: a {field} translation names no language")
+        if is_blank(text):
+            raise SerializationError(f"{hint}: the {field} translation for {str(language)!r} carries no text")
+        written.append((str(language), str(text)))
+    return written
+
+
+def _write_translations(target: Any, translations: list[tuple[str, str]]) -> None:
+    for language, text in translations:
+        entry = target.translation.add()
+        entry.text = text
+        entry.language = language
+
+
+def _write_informed_entities(alert: Any, raw: Any, hint: str) -> None:
+    if not isinstance(raw, list) or not raw:
+        raise SerializationError(f"{hint}: informed_entities is empty, and an alert must name what it affects")
+    for value in raw:
+        if not isinstance(value, dict):
+            raise SerializationError(f"{hint}: informed_entities holds a {type(value).__name__}, not an entity")
+        kind = value.get("kind")
+        entity_id = value.get("id")
+        if kind not in SUPPORTED_ENTITY_KINDS:
+            raise SerializationError(
+                f"{hint}: informed entity kind {kind!r} is not one this serializer selects on. "
+                f"Known: {', '.join(sorted(SUPPORTED_ENTITY_KINDS))}"
+            )
+        if is_blank(entity_id):
+            raise SerializationError(f"{hint}: an informed {kind} entity carries no id")
+        selector = alert.informed_entity.add()
+        if kind == _SUBMESSAGE_SELECTOR_KIND:
+            selector.trip.trip_id = str(entity_id)
+        else:
+            setattr(selector, _PLAIN_ID_SELECTOR_FIELD_BY_KIND[str(kind)], str(entity_id))
+
+
+def _write_active_periods(alert: Any, raw: Any, hint: str) -> None:
+    if raw is None:
+        return
+    if not isinstance(raw, list):
+        raise SerializationError(f"{hint}: active_periods is a {type(raw).__name__}, not a list of periods")
+    for index, value in enumerate(raw):
+        if not isinstance(value, dict):
+            raise SerializationError(f"{hint}: active period {index} is a {type(value).__name__}, not a period")
+        unknown = sorted(set(value) - {"start", "end"})
+        if unknown:
+            raise SerializationError(f"{hint}: active period {index} carries unknown key(s): {', '.join(unknown)}")
+        bounds: dict[str, int] = {}
+        for bound in ("start", "end"):
+            if is_blank(value.get(bound)):
+                continue
+            bounds[bound] = whole_epoch_seconds(value[bound], f"active period {index} {bound}", hint)
+        if not bounds:
+            raise SerializationError(
+                f"{hint}: active period {index} names neither a start nor an end, so it covers all of time "
+                "rather than a window"
+            )
+        if "start" in bounds and "end" in bounds and bounds["end"] < bounds["start"]:
+            raise SerializationError(
+                f"{hint}: active period {index} ends at {bounds['end']}, before it starts at {bounds['start']}"
+            )
+        period = alert.active_period.add()
+        for bound, when in bounds.items():
+            setattr(period, bound, when)
+
+
+def serialize_service_alerts(rows: list[dict[str, Any]], feed_timestamp: int) -> bytes:
+    message = _full_dataset(feed_timestamp)
+
+    seen: set[str] = set()
+    for index, row in enumerate(rows):
+        unknown = sorted(set(row) - SUPPORTED_ALERT_KEYS)
+        if unknown:
+            raise SerializationError(
+                f"row {index}: key(s) this serializer does not write: {', '.join(unknown)}. "
+                "Carrying a key it ignores publishes a feed that is quietly incomplete."
+            )
+        raw_id = row.get("entity_id")
+        if is_blank(raw_id):
+            raise SerializationError(f"row {index}: entity_id is empty, and it is required")
+        entity_id = str(raw_id)
+        if entity_id in seen:
+            raise SerializationError(f"duplicate entity_id {entity_id!r}: entity ids must be unique in a feed")
+        seen.add(entity_id)
+
+        hint = f"row {index} (entity_id {entity_id})"
+        required_text: list[tuple[str, list[tuple[str, str]]]] = []
+        for field, attribute in _REQUIRED_TRANSLATED_TEXT_FIELDS:
+            written = _translations(row.get(field), field, hint)
+            if not written:
+                raise SerializationError(f"{hint}: {field} is empty, and it is required")
+            required_text.append((attribute, written))
+
+        entity = message.entity.add()
+        entity.id = entity_id
+        alert = entity.alert
+        for field, (attribute, _) in _ALERT_ENUMS.items():
+            setattr(alert, attribute, _enum_value(field, row.get(field), hint))
+        _write_informed_entities(alert, row.get("informed_entities"), hint)
+        _write_active_periods(alert, row.get("active_periods"), hint)
+        for attribute, written in required_text:
+            _write_translations(getattr(alert, attribute), written)
+        for field, attribute in _OPTIONAL_TRANSLATED_TEXT_FIELDS:
+            _write_translations(getattr(alert, attribute), _translations(row.get(field), field, hint))
+
+    return _deterministic_bytes_of(message)

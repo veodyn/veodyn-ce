@@ -63,6 +63,19 @@ class Needs:
     query: bool = True
     static_reference: bool = False
     column_map: bool = True
+    retirement_on_failure: bool = False
+
+
+def retirement_is_not_optional_error(standard: str, entity: str) -> str:
+    return (
+        f"{entity!r} under {standard} may not keep serving an artifact a later attempt failed to replace, "
+        "because the rows behind it can be withdrawn and a retained artifact would keep a withdrawn row on "
+        "the air. Set onError to 'block' and retireOnFailure to true."
+    )
+
+
+def keeps_a_stale_artifact(*, on_error: str, retire_on_failure: bool) -> bool:
+    return on_error != "block" or not retire_on_failure
 
 
 @dataclass(frozen=True)
@@ -213,17 +226,29 @@ def produce_gbfs(production: Production) -> Produced:
 
 _GBFS_STANDARD = "gbfs"
 
-# The entities each standard can publish in a community build. A pack widens the
-# binding vocabulary, and an entity nothing has registered a producer for is a
-# failed attempt rather than an exception.
 _SUPPORTED_ENTITIES: dict[str, frozenset[str]] = {
+    "gtfs-rt": frozenset({"vehicle_positions", "service_alerts"}),
+    _GBFS_STANDARD: frozenset({"stations", "vehicles"}),
+}
+
+_ENTITIES_A_COMMUNITY_BUILD_PRODUCES: dict[str, frozenset[str]] = {
     "gtfs-rt": frozenset({"vehicle_positions"}),
     _GBFS_STANDARD: frozenset({"stations", "vehicles"}),
 }
 
 
+def entities_of_standard(standard: str) -> frozenset[str]:
+    return _SUPPORTED_ENTITIES.get(standard, frozenset())
+
+
+def unbuildable_reason(standard: str, entity: str) -> str:
+    if entity in entities_of_standard(standard):
+        return f"entity {entity!r} has no producer installed in this deployment"
+    return f"entity {entity!r} is not supported yet"
+
+
 def _register_the_community_producers() -> None:
-    for standard, entities in _SUPPORTED_ENTITIES.items():
+    for standard, entities in _ENTITIES_A_COMMUNITY_BUILD_PRODUCES.items():
         producer = produce_gbfs if standard == _GBFS_STANDARD else produce_gtfs_rt
         for entity in entities:
             register_producer(standard, entity, producer)

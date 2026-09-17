@@ -304,6 +304,27 @@ wheels = [
 ]
 
 [[package]]
+name = "gtfs-rt-validator"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "gtfs-validator" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/68/bb/3efbd63c66cd2d18602a451e26c42334b511abca23d3838df7526ed9f21a/gtfs_rt_validator-0.3.0.tar.gz", hash = "sha256:beab926ed3514cafc9bf46a0c5b6955f36a2e0630259b184ed641a41cb166bd5", size = 736241, upload-time = "2026-08-16T22:16:35.377Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/30/86/4d9ed319bbb00634328a01efa9b3553ed4f3e8a54d965ad76d5ba7896b7f/gtfs_rt_validator-0.3.0-py3-none-any.whl", hash = "sha256:e7051cdd3a0bcbf0c989a1a2f6ee8722871cdcf72a58428912083d44d20ded10", size = 473273, upload-time = "2026-08-16T22:16:34.124Z" },
+]
+
+[[package]]
+name = "gtfs-validator"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/59/6b/caa7dae2c8e2f138d5c8f13c994ee51bc00449ebb6937037c327cf6a011f/gtfs_validator-0.1.2.tar.gz", hash = "sha256:83cae922e3bcfc82b1161293c845f8d727de936257b3d7efa6b89a9cc3f436d5", size = 600944, upload-time = "2026-08-15T11:33:27.276Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/87/b4/d20a6fe25549f2405141dcac9bad8fe195f5996a58a6652dd2af2247336b/gtfs_validator-0.1.2-py3-none-any.whl", hash = "sha256:a8d305dc55da96204a7827d72b890b865ba4e8f082281f8b9ac1ad27ea5579a8", size = 526148, upload-time = "2026-08-15T11:33:26.072Z" },
+]
+
+[[package]]
 name = "h11"
 version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1046,6 +1067,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "gtfs-rt-validator" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -1074,6 +1096,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "gtfs-rt-validator", specifier = "==0.3.0" },
     { name = "mypy", specifier = ">=1.13" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-cov", specifier = ">=7.1.0" },

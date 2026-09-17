@@ -116,6 +116,7 @@
     "services/gbfs_validation.py",
     "services/gbfs_vocabulary.py",
     "services/gtfs_rt_serializer.py",
+    "services/gtfs_rt_values.py",
     "services/llm.py",
     "services/public_feed_lookup.py",
     "services/publish_engine.py",

@@ -101,6 +101,21 @@ def published_high_water_mark(db: Session, feed: PublishedFeed) -> int | None:
     ).scalar()
 
 
+def published_feed_timestamp_high_water_mark(db: Session, feed: PublishedFeed) -> int | None:
+    return db.execute(
+        select(func.max(PublishAttempt.feed_timestamp)).where(
+            PublishAttempt.org_slug == feed.org_slug,
+            PublishAttempt.slug == feed.slug,
+            PublishAttempt.decision == "published",
+        )
+    ).scalar()
+
+
+def a_header_timestamp_that_never_goes_backwards(db: Session, feed: PublishedFeed, generated_at: int) -> int:
+    served = published_feed_timestamp_high_water_mark(db, feed)
+    return generated_at if served is None else max(generated_at, served + 1)
+
+
 def record(
     db: Session,
     feed: PublishedFeed,

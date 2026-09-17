@@ -1,0 +1,23 @@
+validator-test:
+  stage: test
+  image: ${IMAGE_PYTHON}
+  services: []
+  variables:
+    IMAGE_PYTHON: "python:3.12"
+  before_script:
+    - pip install --no-cache-dir uv
+    - cd validator
+    - uv sync --frozen
+  script:
+    - uv run ruff check .
+    - uv run ruff format --check .
+    - uv run mypy validator_service
+    - uv run pytest --junitxml=junit.xml
+  artifacts:
+    when: always
+    expire_in: 1 week
+    reports:
+      junit: validator/junit.xml
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
