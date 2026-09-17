@@ -6,7 +6,9 @@ from typing import Any
 
 from veodyn_api.services.connector_contract import (
     MASKABLE_CREDENTIAL_TYPES,
+    NO_COMPOSE_REQUIREMENTS,
     RENDERABLE_CREDENTIAL_TYPES,
+    ComposeRequirements,
     Connector,
     ContentContract,
     CredentialField,
@@ -30,6 +32,7 @@ class RegisteredConnector:
     credential_schema: CredentialSchema
     content_contract: ContentContract
     recallable: bool
+    compose_requirements: ComposeRequirements
     channel: Connector
 
     def verify_credentials(self, credentials: Mapping[str, Any]) -> CredentialVerdict:
@@ -52,6 +55,10 @@ class UnrenderableCredentialSchema(Exception):
 
 
 class UnsatisfiableContentContract(Exception):
+    pass
+
+
+class UnreadableComposeRequirements(Exception):
     pass
 
 
@@ -161,6 +168,19 @@ def _refuse_a_contract_no_rendering_can_satisfy(connector_id: str, contract: Con
         )
 
 
+def compose_requirements_of(connector: Connector, connector_id: str) -> ComposeRequirements:
+    declared = getattr(connector, "compose_requirements", None)
+    if declared is None:
+        return NO_COMPOSE_REQUIREMENTS
+    if not isinstance(declared, ComposeRequirements):
+        raise UnreadableComposeRequirements(
+            f"{connector_id} declares compose requirements as {type(declared).__name__}, and the compose form "
+            "would be built from the defaults instead with nothing to say the declaration was dropped. Declare a "
+            "ComposeRequirements."
+        )
+    return declared
+
+
 def register_connector(connector: Connector) -> None:
     connector_id = str(connector.connector_id)
     _refuse_an_id_no_admin_url_can_carry(connector_id)
@@ -183,6 +203,7 @@ def register_connector(connector: Connector) -> None:
         credential_schema=schema,
         content_contract=contract,
         recallable=bool(connector.recallable),
+        compose_requirements=compose_requirements_of(connector, connector_id),
         channel=connector,
     )
 

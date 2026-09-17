@@ -119,6 +119,16 @@ class ContentContract:
 
 
 @dataclass(frozen=True)
+class ComposeRequirements:
+    needs_entities: bool = False
+    needs_classification: bool = False
+    accepts_override: bool = False
+
+
+NO_COMPOSE_REQUIREMENTS = ComposeRequirements()
+
+
+@dataclass(frozen=True)
 class Rendering:
     body: str
     language: str = "en"

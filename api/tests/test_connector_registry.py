@@ -1,4 +1,5 @@
 import dataclasses
+from typing import Any
 
 import pytest
 
@@ -10,10 +11,16 @@ from tests.connector_stubs import (
     TownCrierConnector,
     good_credentials,
 )
-from veodyn_api.services.connector_contract import ContentContract, CredentialField, CredentialSchema
+from veodyn_api.services.connector_contract import (
+    ComposeRequirements,
+    ContentContract,
+    CredentialField,
+    CredentialSchema,
+)
 from veodyn_api.services.connector_registry import (
     AlreadyRegistered,
     UnaddressableConnectorId,
+    UnreadableComposeRequirements,
     UnrenderableCredentialSchema,
     UnsatisfiableContentContract,
     connector_for,
@@ -212,3 +219,51 @@ def test_the_registry_keeps_the_identity_it_read_at_registration() -> None:
         assert registered.display_name == "Town Crier"
         assert GOOD_TOKEN not in registered.display_name
         assert registered.credential_schema is TOWN_CRIER_SCHEMA
+
+
+def test_a_connector_that_declares_nothing_gets_the_empty_requirements() -> None:
+    with restored_connectors():
+        register_connector(TownCrierConnector())
+        registered = connector_for(TOWN_CRIER_ID)
+        assert registered is not None
+        assert registered.compose_requirements == ComposeRequirements()
+
+
+def test_a_connector_that_declares_requirements_keeps_them_through_registration() -> None:
+    declared = ComposeRequirements(needs_entities=True, accepts_override=True)
+
+    class Declaring(TownCrierConnector):
+        @property
+        def compose_requirements(self) -> ComposeRequirements:
+            return declared
+
+    with restored_connectors():
+        register_connector(Declaring())
+        registered = connector_for(TOWN_CRIER_ID)
+        assert registered is not None
+        assert registered.compose_requirements == declared
+
+
+def test_a_connector_declaring_none_still_registers_with_the_default() -> None:
+    class Silent(TownCrierConnector):
+        @property
+        def compose_requirements(self) -> Any:
+            return None
+
+    with restored_connectors():
+        register_connector(Silent())
+        registered = connector_for(TOWN_CRIER_ID)
+        assert registered is not None
+        assert registered.compose_requirements == ComposeRequirements()
+
+
+def test_a_requirements_object_of_the_wrong_type_is_refused_at_registration() -> None:
+    class Duckish(TownCrierConnector):
+        @property
+        def compose_requirements(self) -> Any:
+            return {"needs_entities": True}
+
+    with restored_connectors():
+        with pytest.raises(UnreadableComposeRequirements) as refusal:
+            register_connector(Duckish())
+    assert TOWN_CRIER_ID in str(refusal.value)
