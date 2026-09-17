@@ -38,6 +38,7 @@ import { featureList } from './index'
 import type {
   FeatureDescriptor,
   MultiSlotId,
+  NavRowBadgeSlotId,
   SingleSlotId,
   SlotId,
   SlotLoader,
@@ -159,7 +160,7 @@ export function hasSlotContributor(id: SlotId, registry: Registry = FEATURES): b
  * view while the contributed chunk loads. Pass `null` where showing nothing is
  * the honest community answer.
  */
-export function Slot<Id extends SingleSlotId>({
+export function Slot<Id extends SingleSlotId | NavRowBadgeSlotId>({
   id,
   props,
   fallback,

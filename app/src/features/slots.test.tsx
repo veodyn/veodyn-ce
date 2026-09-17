@@ -148,6 +148,7 @@ describe('Slot', () => {
 const SINGLE_EMPTY: { [Id in SingleSlotId]: SlotProps[Id] } = {
   'home.notableChanges': {},
   'home.aiDigest': {},
+  'home.reviewQueue': {},
   'catalog.hubCounters': { counter: COUNTER },
   'dashboard.annotationSuggest': { dashboardId: 17, widgetId: 4 },
   'dashboard.viewActions': { dashboard: DASHBOARD },

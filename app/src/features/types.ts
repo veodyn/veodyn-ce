@@ -71,6 +71,7 @@ export interface FeatureRoute {
 export type SingleSlotId =
   | 'home.notableChanges'
   | 'home.aiDigest'
+  | 'home.reviewQueue'
   | 'catalog.hubCounters'
   | 'dashboard.annotationSuggest'
   | 'dashboard.viewActions'
@@ -80,6 +81,8 @@ export type SingleSlotId =
   | 'publishedFeed.schedule'
   | 'dataset.records'
   | 'dataset.headerActions'
+
+export type NavRowBadgeSlotId = `nav.rowBadge:${string}`
 
 /**
  * A slot every installed feature may fill, all of them rendered, with
@@ -98,7 +101,7 @@ export type MultiSlotId = 'favorites.section' | 'profile.section'
  * a Notable changes section and a hub still has a counter row. The id names the
  * surface, not the payload.
  */
-export type SlotId = SingleSlotId | MultiSlotId
+export type SlotId = SingleSlotId | MultiSlotId | NavRowBadgeSlotId
 
 /**
  * What each slot's component is rendered with.
@@ -164,6 +167,8 @@ export interface SlotProps {
    * which mounts a whole editor at the foot of the page.
    */
   'dataset.headerActions': { dataset: Dataset }
+  'home.reviewQueue': Record<string, never>
+  [key: NavRowBadgeSlotId]: Record<string, never>
 }
 
 /**
