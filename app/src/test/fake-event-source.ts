@@ -27,6 +27,13 @@ export class FakeEventSource {
     for (const listener of this.listeners.get(event) ?? []) listener(message)
   }
 
+  drop() {
+    this.readyState = FakeEventSource.CONNECTING
+    const event = new Event('error')
+    for (const listener of this.listeners.get('error') ?? []) listener(event as MessageEvent)
+    this.onerror?.(event)
+  }
+
   fail() {
     this.readyState = FakeEventSource.CLOSED
     this.onerror?.(new Event('error'))

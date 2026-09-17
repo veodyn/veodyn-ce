@@ -18,9 +18,9 @@ export function ChatShell({ activeId, children }: { activeId: string | null; chi
       <div className="w-64 shrink-0 border-r bg-sidebar/40">
         <ThreadList activeId={activeId} />
       </div>
-      <main aria-label="Data chat" className="min-w-0 flex-1">
+      <div aria-label="Data chat" className="min-w-0 flex-1">
         {children}
-      </main>
+      </div>
     </div>
   )
 }

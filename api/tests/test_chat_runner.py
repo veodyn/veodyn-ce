@@ -294,3 +294,20 @@ async def test_spawned_turns_are_kept_until_they_finish(db: Session, bus: TurnBu
     await task
     await asyncio.sleep(0)
     assert task not in runner_module._RUNNING
+
+
+async def test_shutdown_fails_the_turns_still_running(db: Session, bus: TurnBus, sessions: Any) -> None:
+    turn = new_turn(db)
+
+    async def stuck() -> ModelTurn:
+        await asyncio.sleep(30)
+        return text_turn("never")
+
+    task = runner_module.spawn_turn(
+        make_runner(ScriptedChatModel(stuck), bus, sessions), turn.id, turn.thread_id, 1, turn.user_text
+    )
+    await asyncio.sleep(0.05)
+    await runner_module.cancel_running_turns()
+    assert task.cancelled()
+    assert (await frames(bus, turn))[-1][1]["id"] == ErrorId.AI_TURN_LOST.value
+    assert stored(db, turn).status == "failed"

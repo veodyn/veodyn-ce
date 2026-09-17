@@ -41,7 +41,8 @@ export function useTurnStream(handlers: TurnStreamHandlers) {
     }
     for (const event of CHAT_EVENTS) {
       stream.addEventListener(event, (message) => {
-        const frame = frameOf(event, message as MessageEvent)
+        if (!(message instanceof MessageEvent)) return
+        const frame = frameOf(event, message)
         if (frame === null) return end(true)
         latest.current.onFrame(turnId, frame)
         if (TERMINAL_EVENTS.has(frame.event)) end(false)

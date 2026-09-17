@@ -1,3 +1,6 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -9,8 +12,16 @@ class Health(BaseModel):
     status: str
 
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    yield
+    from veodyn_api.services.chat.runner import cancel_running_turns
+
+    await cancel_running_turns()
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="veodyn-api", version="0.1.0")
+    app = FastAPI(title="veodyn-api", version="0.1.0", lifespan=_lifespan)
     # Before any request is served, and here rather than at an entrypoint: this
     # module is what the image's CMD imports.
     install_feed_token_redaction()

@@ -130,6 +130,18 @@ describe('useChatThread', () => {
     expect(result.current.state.turns[0]).toMatchObject({ status: 'failed', errorMessage: LOST_TURN_MESSAGE })
   })
 
+  it('keeps a turn running through a dropped connection', async () => {
+    const { result } = await mounted()
+    act(() => result.current.send('go'))
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    const stream = FakeEventSource.latest()
+    act(() => stream.drop())
+    expect(stream.readyState).toBe(FakeEventSource.CONNECTING)
+    expect(result.current.state.turns[0].status).toBe('running')
+    act(() => stream.emit('turn_done', { stopReason: 'end_turn', usage: {} }, '1-1'))
+    expect(result.current.state.turns[0].status).toBe('done')
+  })
+
   it('treats an invalid frame as a lost stream', async () => {
     const { result } = await mounted()
     act(() => result.current.send('go'))

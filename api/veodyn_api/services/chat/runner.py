@@ -253,3 +253,10 @@ def spawn_turn(
     _RUNNING.add(task)
     task.add_done_callback(_RUNNING.discard)
     return task
+
+
+async def cancel_running_turns() -> None:
+    tasks = list(_RUNNING)
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)

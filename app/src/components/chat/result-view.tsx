@@ -5,6 +5,7 @@ import { VisualizationRenderer } from '@/components/visualizations/visualization
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { getVisualization, inferredVizOptions } from '@/lib/visualizations'
+import { visualizationData } from '@/lib/visualizations/data-gate'
 import { resolveVizChoice } from '@/lib/viz-choices'
 
 interface ResultViewProps {
@@ -29,9 +30,14 @@ export function chatVisualization(vizChoiceId: string, data: QueryResultData): M
 
 export function ResultView({ data, vizChoiceId, className }: ResultViewProps) {
   const visualization = useMemo(() => chatVisualization(vizChoiceId, data), [vizChoiceId, data])
+  const drawable = visualizationData(visualization.type, data, { requireRows: true })
   return (
     <div className={cn('h-72 min-h-0 overflow-auto rounded-md border bg-background', className)}>
-      <VisualizationRenderer visualization={visualization} data={data} />
+      {drawable ? (
+        <VisualizationRenderer visualization={visualization} data={drawable} />
+      ) : (
+        <p className="p-4 text-sm text-muted-foreground">The query returned no rows.</p>
+      )}
     </div>
   )
 }
