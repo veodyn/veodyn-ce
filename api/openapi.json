@@ -152,27 +152,61 @@
         "title": "CaptureOut",
         "type": "object"
       },
-      "ComposeRequirementsOut": {
+      "ComposeContractOut": {
         "properties": {
           "acceptsOverride": {
             "title": "Acceptsoverride",
             "type": "boolean"
           },
-          "needsClassification": {
-            "title": "Needsclassification",
+          "asksActivePeriod": {
+            "title": "Asksactiveperiod",
             "type": "boolean"
           },
-          "needsEntities": {
-            "title": "Needsentities",
+          "asksClassification": {
+            "title": "Asksclassification",
             "type": "boolean"
+          },
+          "asksEntities": {
+            "title": "Asksentities",
+            "type": "boolean"
+          },
+          "carriesTranslations": {
+            "title": "Carriestranslations",
+            "type": "boolean"
+          },
+          "requiresActivePeriod": {
+            "title": "Requiresactiveperiod",
+            "type": "boolean"
+          },
+          "requiresClassification": {
+            "title": "Requiresclassification",
+            "type": "boolean"
+          },
+          "requiresEntities": {
+            "title": "Requiresentities",
+            "type": "boolean"
+          },
+          "wording": {
+            "enum": [
+              "structured",
+              "text"
+            ],
+            "title": "Wording",
+            "type": "string"
           }
         },
         "required": [
-          "needsEntities",
-          "needsClassification",
+          "wording",
+          "asksClassification",
+          "requiresClassification",
+          "asksEntities",
+          "requiresEntities",
+          "asksActivePeriod",
+          "requiresActivePeriod",
+          "carriesTranslations",
           "acceptsOverride"
         ],
-        "title": "ComposeRequirementsOut",
+        "title": "ComposeContractOut",
         "type": "object"
       },
       "ConnectorHealthOut": {
@@ -289,8 +323,8 @@
       },
       "ConnectorTypeOut": {
         "properties": {
-          "composeRequirements": {
-            "$ref": "#/components/schemas/ComposeRequirementsOut"
+          "composeContract": {
+            "$ref": "#/components/schemas/ComposeContractOut"
           },
           "connectorId": {
             "title": "Connectorid",
@@ -317,7 +351,7 @@
           "recallable",
           "credentialSchema",
           "contentContract",
-          "composeRequirements"
+          "composeContract"
         ],
         "title": "ConnectorTypeOut",
         "type": "object"

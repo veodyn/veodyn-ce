@@ -8,7 +8,7 @@ from veodyn_api.db import get_db
 from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.models.connector_configuration import ConnectorConfiguration
 from veodyn_api.schemas.connector import (
-    ComposeRequirementsOut,
+    ComposeContractOut,
     ConnectorHealthOut,
     ConnectorIn,
     ConnectorOut,
@@ -52,7 +52,7 @@ def _credential_schema_out(connector: RegisteredConnector) -> CredentialSchemaOu
 
 def _type_out(connector: RegisteredConnector) -> ConnectorTypeOut:
     contract = connector.content_contract
-    requirements = connector.compose_requirements
+    declared = connector.compose_contract
     return ConnectorTypeOut(
         connector_id=connector.connector_id,
         display_name=connector.display_name,
@@ -64,10 +64,16 @@ def _type_out(connector: RegisteredConnector) -> ConnectorTypeOut:
             url_counts_as_characters=contract.url_counts_as_characters,
             required_footer=contract.required_footer,
         ),
-        compose_requirements=ComposeRequirementsOut(
-            needs_entities=requirements.needs_entities,
-            needs_classification=requirements.needs_classification,
-            accepts_override=requirements.accepts_override,
+        compose_contract=ComposeContractOut(
+            wording=declared.wording,
+            asks_classification=declared.asks_classification,
+            requires_classification=declared.requires_classification,
+            asks_entities=declared.asks_entities,
+            requires_entities=declared.requires_entities,
+            asks_active_period=declared.asks_active_period,
+            requires_active_period=declared.requires_active_period,
+            carries_translations=declared.carries_translations,
+            accepts_override=declared.accepts_override,
         ),
     )
 

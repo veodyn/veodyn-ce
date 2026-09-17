@@ -20,7 +20,7 @@ from tests.connector_stubs import (
     auth,
     good_credentials,
 )
-from veodyn_api.services.connector_contract import ComposeRequirements
+from veodyn_api.services.connector_contract import ComposeContract
 from veodyn_api.services.connector_registry import register_connector, restored_connectors
 
 
@@ -79,9 +79,15 @@ def test_the_type_picker_is_built_from_the_registry(api: TestClient, crier: Town
         "urlCountsAsCharacters": 23,
         "requiredFooter": "Reply STOP to opt out.",
     }
-    assert entry["composeRequirements"] == {
-        "needsEntities": False,
-        "needsClassification": False,
+    assert entry["composeContract"] == {
+        "wording": "text",
+        "asksClassification": False,
+        "requiresClassification": False,
+        "asksEntities": False,
+        "requiresEntities": False,
+        "asksActivePeriod": False,
+        "requiresActivePeriod": False,
+        "carriesTranslations": False,
         "acceptsOverride": False,
     }
 
@@ -89,11 +95,11 @@ def test_the_type_picker_is_built_from_the_registry(api: TestClient, crier: Town
 @respx.mock
 def test_connector_types_publish_what_an_author_must_supply(api: TestClient) -> None:
     as_user(ADMIN)
-    declared = ComposeRequirements(needs_entities=True, accepts_override=True)
+    declared = ComposeContract(asks_entities=True, accepts_override=True)
 
     class Declaring(TownCrierConnector):
         @property
-        def compose_requirements(self) -> ComposeRequirements:
+        def compose_contract(self) -> ComposeContract:
             return declared
 
     with restored_connectors():
@@ -101,9 +107,15 @@ def test_connector_types_publish_what_an_author_must_supply(api: TestClient) -> 
         body = api.get("/connectors/types", headers=auth()).json()
 
     published = [entry for entry in body if entry["connectorId"] == TOWN_CRIER_ID]
-    assert published[0]["composeRequirements"] == {
-        "needsEntities": True,
-        "needsClassification": False,
+    assert published[0]["composeContract"] == {
+        "wording": "text",
+        "asksClassification": False,
+        "requiresClassification": False,
+        "asksEntities": True,
+        "requiresEntities": False,
+        "asksActivePeriod": False,
+        "requiresActivePeriod": False,
+        "carriesTranslations": False,
         "acceptsOverride": True,
     }
 

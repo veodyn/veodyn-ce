@@ -5,10 +5,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from veodyn_api.services.connector_contract import (
+    DEFAULT_COMPOSE_CONTRACT,
     MASKABLE_CREDENTIAL_TYPES,
-    NO_COMPOSE_REQUIREMENTS,
     RENDERABLE_CREDENTIAL_TYPES,
-    ComposeRequirements,
+    ComposeContract,
     Connector,
     ContentContract,
     CredentialField,
@@ -32,7 +32,7 @@ class RegisteredConnector:
     credential_schema: CredentialSchema
     content_contract: ContentContract
     recallable: bool
-    compose_requirements: ComposeRequirements
+    compose_contract: ComposeContract
     channel: Connector
 
     def verify_credentials(self, credentials: Mapping[str, Any]) -> CredentialVerdict:
@@ -58,7 +58,7 @@ class UnsatisfiableContentContract(Exception):
     pass
 
 
-class UnreadableComposeRequirements(Exception):
+class UnreadableComposeContract(Exception):
     pass
 
 
@@ -168,40 +168,46 @@ def _refuse_a_contract_no_rendering_can_satisfy(connector_id: str, contract: Con
         )
 
 
-def _declares_compose_requirements(connector: Connector) -> bool:
+def _declares_compose_contract(connector: Connector) -> bool:
     owners = (connector, type(connector), *type(connector).__mro__)
-    return any("compose_requirements" in getattr(owner, "__dict__", {}) for owner in owners)
+    return any("compose_contract" in getattr(owner, "__dict__", {}) for owner in owners)
 
 
-def _settled(declared: object) -> ComposeRequirements | None:
-    if not isinstance(declared, ComposeRequirements):
+def _settled(declared: object) -> ComposeContract | None:
+    if not isinstance(declared, ComposeContract):
         return None
-    return ComposeRequirements(
-        needs_entities=bool(declared.needs_entities),
-        needs_classification=bool(declared.needs_classification),
+    return ComposeContract(
+        wording=declared.wording,
+        asks_classification=bool(declared.asks_classification),
+        requires_classification=bool(declared.requires_classification),
+        asks_entities=bool(declared.asks_entities),
+        requires_entities=bool(declared.requires_entities),
+        asks_active_period=bool(declared.asks_active_period),
+        requires_active_period=bool(declared.requires_active_period),
+        carries_translations=bool(declared.carries_translations),
         accepts_override=bool(declared.accepts_override),
     )
 
 
-def compose_requirements_of(connector: Connector, connector_id: str) -> ComposeRequirements:
-    if not _declares_compose_requirements(connector):
-        return NO_COMPOSE_REQUIREMENTS
+def compose_contract_of(connector: Connector, connector_id: str) -> ComposeContract:
+    if not _declares_compose_contract(connector):
+        return DEFAULT_COMPOSE_CONTRACT
     try:
-        declared = getattr(connector, "compose_requirements")  # noqa: B009
+        declared = getattr(connector, "compose_contract")  # noqa: B009
         settled = _settled(declared)
     except Exception as error:
-        raise UnreadableComposeRequirements(
-            f"{connector_id} declares compose requirements that cannot be read: asking for them raised "
+        raise UnreadableComposeContract(
+            f"{connector_id} declares a compose contract that cannot be read: asking for it raised "
             f"{type(error).__name__}. The compose form would be built from the defaults instead, with nothing "
             "to say the declaration was dropped."
         ) from error
     if declared is None:
-        return NO_COMPOSE_REQUIREMENTS
+        return DEFAULT_COMPOSE_CONTRACT
     if settled is None:
-        raise UnreadableComposeRequirements(
-            f"{connector_id} declares compose requirements as {type(declared).__name__}, and the compose form "
+        raise UnreadableComposeContract(
+            f"{connector_id} declares a compose contract as {type(declared).__name__}, and the compose form "
             "would be built from the defaults instead with nothing to say the declaration was dropped. Declare a "
-            "ComposeRequirements."
+            "ComposeContract."
         )
     return settled
 
@@ -228,7 +234,7 @@ def register_connector(connector: Connector) -> None:
         credential_schema=schema,
         content_contract=contract,
         recallable=bool(connector.recallable),
-        compose_requirements=compose_requirements_of(connector, connector_id),
+        compose_contract=compose_contract_of(connector, connector_id),
         channel=connector,
     )
 

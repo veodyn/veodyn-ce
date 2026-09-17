@@ -590,14 +590,29 @@ export interface components {
              */
             status: "fresh" | "stale";
         };
-        /** ComposeRequirementsOut */
-        ComposeRequirementsOut: {
+        /** ComposeContractOut */
+        ComposeContractOut: {
             /** Acceptsoverride */
             acceptsOverride: boolean;
-            /** Needsclassification */
-            needsClassification: boolean;
-            /** Needsentities */
-            needsEntities: boolean;
+            /** Asksactiveperiod */
+            asksActivePeriod: boolean;
+            /** Asksclassification */
+            asksClassification: boolean;
+            /** Asksentities */
+            asksEntities: boolean;
+            /** Carriestranslations */
+            carriesTranslations: boolean;
+            /** Requiresactiveperiod */
+            requiresActivePeriod: boolean;
+            /** Requiresclassification */
+            requiresClassification: boolean;
+            /** Requiresentities */
+            requiresEntities: boolean;
+            /**
+             * Wording
+             * @enum {string}
+             */
+            wording: "structured" | "text";
         };
         /** ConnectorHealthOut */
         ConnectorHealthOut: {
@@ -643,7 +658,7 @@ export interface components {
         };
         /** ConnectorTypeOut */
         ConnectorTypeOut: {
-            composeRequirements: components["schemas"]["ComposeRequirementsOut"];
+            composeContract: components["schemas"]["ComposeContractOut"];
             /** Connectorid */
             connectorId: string;
             contentContract: components["schemas"]["ContentContractOut"];
