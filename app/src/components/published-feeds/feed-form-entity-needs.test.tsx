@@ -213,6 +213,29 @@ describe('the entity a create form is opened on', () => {
     expect(screen.getByText('Source')).toBeInTheDocument()
   })
 
+  it('follows the asked-for entity to the standard that registers it', () => {
+    registry.answer = {
+      standards: [
+        ...deploymentRegistering({ vehicle_positions: QUERY_BACKED }).standards,
+        {
+          standard: 'gbfs',
+          versions: ['2.3'],
+          entities: ['stations', 'vehicles'],
+          entityNeeds: {
+            stations: { query: true, staticReference: false, columnMap: true, retirementOnFailure: false },
+            vehicles: { query: true, staticReference: false, columnMap: true, retirementOnFailure: false },
+          },
+          timezones: [],
+        },
+      ],
+    }
+
+    renderCreateForm({ defaultEntity: 'vehicles' })
+
+    expect(screen.getByRole('combobox', { name: /standard/i })).toHaveTextContent(/gbfs/i)
+    expect(screen.getByRole('combobox', { name: /entity/i })).toHaveTextContent('vehicles')
+  })
+
   it('ignores an asked-for entity the registry does not offer', () => {
     registry.answer = deploymentRegistering({
       bulletins: BULLETINS,

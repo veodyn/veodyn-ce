@@ -2,7 +2,7 @@
 // an editable picker rather than a stated fact. One registered entity is the
 // community case and renders as a fact; more than one means a pack widened the
 // registry (design section 4).
-import type { EntityNeeds, FeedStandard } from '@/types/published-feed'
+import type { EntityNeeds, FeedCapabilities, FeedStandard } from '@/types/published-feed'
 
 /**
  * What a create form defaults to before capabilities have resolved, or if they
@@ -64,6 +64,15 @@ export function resolveEntityNeeds(
   standard: FeedStandard
 ): EntityNeeds {
   return entityNeeds?.[entity] ?? fallbackEntityNeeds(standard)
+}
+
+export function standardRegistering(
+  capabilities: FeedCapabilities | undefined,
+  entity: string | undefined
+): FeedStandard | null {
+  if (capabilities === undefined || entity === undefined) return null
+  const owner = capabilities.standards.find((entry) => entry.entities.includes(entity))?.standard
+  return owner === 'gtfs-rt' || owner === 'gbfs' ? owner : null
 }
 
 export function resolveEntitySelection(

@@ -189,6 +189,20 @@ describe('the static GTFS reference', () => {
     expect(screen.getByRole('textbox', { name: 'Static GTFS reference' })).toHaveValue(DOWNTOWN)
   })
 
+  it('holds the reference it started the escape with even once the references on offer change', async () => {
+    const user = userEvent.setup()
+    boundOn([aFeed('downtown', DOWNTOWN)])
+    const onSubmit = renderForm()
+
+    await user.click(await theEscape())
+    boundOn([aFeed('downtown', DOWNTOWN), aFeed('harbor', HARBOR)])
+
+    expect(screen.getByRole('textbox', { name: 'Static GTFS reference' })).toHaveValue(DOWNTOWN)
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'downtown-feed')
+    await user.click(screen.getByRole('button', { name: 'Publish' }))
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ staticGtfsRef: DOWNTOWN }))
+  })
+
   it('does not default over an escape the operator has already taken', async () => {
     const user = userEvent.setup()
     boundOn([aFeed('downtown', DOWNTOWN)])

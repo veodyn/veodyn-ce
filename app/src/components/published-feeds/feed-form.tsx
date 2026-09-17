@@ -14,7 +14,7 @@ import { OnFailureSection, lastGoodAgeError } from './feed-form-on-failure'
 import { ShapeSection } from './feed-form-shape'
 import { SystemInfoSection } from './system-info-section'
 import { buildInput, submitError, systemFieldErrors, type FormValues } from './feed-form-submit'
-import { resolveEntityNeeds, resolveEntitySelection } from './entity-selection'
+import { resolveEntityNeeds, resolveEntitySelection, standardRegistering } from './entity-selection'
 import { useStaticGtfsRef } from './static-gtfs-ref'
 import type { FeedStandard, PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
 
@@ -64,8 +64,16 @@ export function FeedForm({
   onSubmit,
   onCancel,
 }: FeedFormProps) {
-  const [standard, setStandard] = useState<FeedStandard>(initial?.standard ?? 'gtfs-rt')
-  const [version, setVersion] = useState(initial?.version ?? DEFAULT_VERSION[standard])
+  const {
+    data: capabilities,
+    isLoading: capabilitiesLoading,
+    isError: capabilitiesError,
+  } = useFeedCapabilities()
+  const [chosenStandard, setChosenStandard] = useState<FeedStandard | null>(initial?.standard ?? null)
+  const standard: FeedStandard =
+    chosenStandard ?? standardRegistering(capabilities, defaultEntity) ?? 'gtfs-rt'
+  const [chosenVersion, setChosenVersion] = useState<string | null>(initial?.version ?? null)
+  const version = chosenVersion ?? DEFAULT_VERSION[standard]
   const [slug, setSlug] = useState(initial?.slug ?? '')
   const [visibility, setVisibility] = useState<PublishedFeedInput['visibility']>(
     initial?.visibility ?? 'private'
@@ -95,11 +103,6 @@ export function FeedForm({
   const columns = resultColumns?.columns ?? []
   const ageError = attempted ? lastGoodAgeError(onError, lastGoodMaxAgeSeconds) : null
 
-  const {
-    data: capabilities,
-    isLoading: capabilitiesLoading,
-    isError: capabilitiesError,
-  } = useFeedCapabilities()
   // Undefined covers both "still loading" and "the request failed": both
   // degrade to the single-fact form rather than an empty picker or a spinner
   // blocking the whole form. A deployment registering one entity for this
@@ -174,13 +177,10 @@ export function FeedForm({
     setSelectedQueryId(queryId)
   }
 
-  // The same doctrine one step up: the two standards share no field vocabulary,
-  // so a map built for one names nothing the other writes. Everything the old
-  // standard owned is cleared rather than carried across.
   const handleStandardChange = (next: FeedStandard) => {
     if (next === standard) return
-    setStandard(next)
-    setVersion(DEFAULT_VERSION[next])
+    setChosenStandard(next)
+    setChosenVersion(DEFAULT_VERSION[next])
     setSelection(initialSelection(undefined, next, undefined))
     setPickedEntity(null)
     staticRef.reset()
@@ -209,7 +209,7 @@ export function FeedForm({
           // under, so switching is a different feed, like the slug.
           standardLocked={Boolean(initial)}
           version={version}
-          onVersionChange={setVersion}
+          onVersionChange={setChosenVersion}
           versionOptions={versionOptions}
           entity={entitySelection.entity}
           onEntityChange={setPickedEntity}
