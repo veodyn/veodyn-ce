@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { AdministeredNote } from '@/components/published-feeds/administered-note'
+import { entityLabel } from '@/components/published-feeds/entity-label'
 import { ItemsTable, type Column } from '@/components/shared/items-table'
 import { ListToolbar } from '@/components/shared/list-toolbar'
 import { ListLoadError } from '@/components/shared/list-load-error'
@@ -18,15 +19,9 @@ import { useAuthStore } from '@/stores/auth-store'
 import { PageContainer } from '@/components/layout/page-container'
 import type { PublishedFeed } from '@/types/published-feed'
 
-// Typed against the standard union, so adding one fails to compile here until
-// it has a label rather than rendering a raw wire value.
 const STANDARD_LABEL: Record<PublishedFeed['standard'], string> = {
   'gtfs-rt': 'GTFS-Realtime',
   gbfs: 'GBFS',
-}
-const ENTITY_LABEL: Record<PublishedFeed['entity'], string> = {
-  vehicle_positions: 'vehicle positions',
-  stations: 'stations',
 }
 
 function sourceLabel(feed: PublishedFeed, queryNameById: Map<number, string>): string {
@@ -57,7 +52,7 @@ function buildColumns(queryNameById: Map<number, string>): Column<PublishedFeed>
       sortValue: (f) => f.standard,
       render: (f) => (
         <span className="text-sm">
-          {STANDARD_LABEL[f.standard]} {f.version} · {ENTITY_LABEL[f.entity]}
+          {STANDARD_LABEL[f.standard]} {f.version} · {entityLabel(f.entity)}
         </span>
       ),
     },

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 vi.mock('@/features/generated-registry', () => ({ FEATURES: {} }))
@@ -23,8 +23,8 @@ describe('the published feeds list', () => {
     renderWithProviders(<PublishedFeedsPage />)
 
     expect(screen.getByRole('heading', { name: 'Published Feeds' })).toBeInTheDocument()
-    expect(await screen.findByText('vehicles-live')).toBeInTheDocument()
-    expect(screen.getByText(/GTFS-Realtime/)).toBeInTheDocument()
+    const row = (await screen.findByText('vehicles-live')).closest('tr') as HTMLElement
+    expect(within(row).getByText('GTFS-Realtime 2.0 · vehicle positions')).toBeInTheDocument()
   })
 
   it('opens the feed on a row click, since nothing else reaches the detail page', async () => {
@@ -60,5 +60,32 @@ describe('the published feeds list', () => {
     renderWithProviders(<PublishedFeedsPage />)
 
     expect(await screen.findByText(/No feeds are published/i)).toBeInTheDocument()
+  })
+
+  it('names an entity no community build registers by its own id', async () => {
+    useMockDataStore.setState({
+      publishedFeeds: [
+        {
+          slug: 'alerts-live',
+          revision: 1,
+          queryId: null,
+          standard: 'gtfs-rt',
+          version: '2.0',
+          entity: 'service_alerts',
+          staticGtfsRef: 'https://example.org/gtfs.zip',
+          systemInfo: null,
+          sourceColumn: null,
+          columnMap: {},
+          onError: 'block',
+          lastGoodMaxAgeSeconds: null,
+          retireOnFailure: true,
+          visibility: 'public',
+          bindingState: 'unknown',
+        },
+      ],
+    })
+    renderWithProviders(<PublishedFeedsPage />)
+
+    expect(await screen.findByText('GTFS-Realtime 2.0 · service alerts')).toBeInTheDocument()
   })
 })

@@ -11,7 +11,7 @@
 // follow.
 import { describe, expect, it, vi } from 'vitest'
 import { ErrorIds } from '@/lib/errorIds'
-import { hydrateMockData } from '@/stores/mock-data-hydration'
+import { hydrateMockData, reapplyMockData } from '@/stores/mock-data-hydration'
 import { assembleMockData } from './mock-contributions'
 import type { FeatureDescriptor, MockDataFactory } from './types'
 
@@ -19,11 +19,11 @@ function featureWith(id: string, mockData: MockDataFactory): FeatureDescriptor {
   return { id, nav: [], routes: [], mockData }
 }
 
-/** A store shaped like the real one: the collections exist, and start empty. */
 function storeStub(initial: Record<string, unknown[]> = { kpis: [], reports: [], queries: [] }) {
   let state: Record<string, unknown> = { ...initial }
   return {
     getState: () => state,
+    getInitialState: () => initial,
     setState: (patch: Partial<Record<string, unknown>>) => {
       state = { ...state, ...patch }
     },
@@ -103,6 +103,46 @@ describe('hydrateMockData', () => {
     expect(store.read().kpis).toEqual([{ id: 'otp' }])
     // Untouched, and still an array rather than gone.
     expect(store.read().reports).toEqual([])
+  })
+
+  it('adds to a collection the store seeds for itself, rather than emptying it', async () => {
+    const store = storeStub({ publishedFeeds: [{ slug: 'vehicles-live' }] })
+
+    await hydrateMockData(store, {
+      messages: featureWith('messages', async () => ({
+        publishedFeeds: [{ slug: 'downtown' }],
+      })),
+    })
+
+    expect(store.read().publishedFeeds).toEqual([{ slug: 'vehicles-live' }, { slug: 'downtown' }])
+  })
+
+  it('puts the contributed rows back after a test helper resets the collection', async () => {
+    const store = storeStub({ publishedFeeds: [{ slug: 'vehicles-live' }] })
+    await hydrateMockData(store, {
+      messages: featureWith('messages', async () => ({
+        publishedFeeds: [{ slug: 'downtown' }],
+      })),
+    })
+
+    store.setState({ publishedFeeds: [{ slug: 'vehicles-live' }] })
+    reapplyMockData(store)
+
+    expect(store.read().publishedFeeds).toEqual([{ slug: 'vehicles-live' }, { slug: 'downtown' }])
+  })
+
+  it('holds the same rows when it runs twice, as StrictMode makes it', async () => {
+    const store = storeStub({ publishedFeeds: [{ slug: 'vehicles-live' }] })
+    const registry = {
+      messages: featureWith('messages', async () => ({
+        publishedFeeds: [{ slug: 'downtown' }],
+      })),
+    }
+
+    await hydrateMockData(store, registry)
+    await hydrateMockData(store, registry)
+
+    expect(store.read().publishedFeeds).toEqual([{ slug: 'vehicles-live' }, { slug: 'downtown' }])
   })
 
   it('ignores a contribution naming a collection the store does not declare', async () => {

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { USE_REAL_API } from '@/services/redash/config'
 import { withFixtureFallback } from '@/lib/backend-fallback'
+import { widenedCapabilities } from '@/features/mock-capabilities'
 import { useMockDataStore } from '@/stores/mock-data-store'
 import * as queriesService from '@/services/redash/queries'
 import { getResult } from '@/services/redash/execution'
@@ -23,20 +24,10 @@ const CAPABILITIES_KEY = ['published-feeds', 'capabilities']
 const feedKey = (slug: string) => ['published-feeds', slug]
 const attemptsKey = (slug: string) => ['published-feeds', slug, 'attempts']
 
-// Community's own registry, exactly as services/published_feed_registry.py seeds it:
-// one gtfs-rt entity, both gbfs shapes, and each standard's own supported
-// versions. What a real fixture-mode session returns when there is no backend to
-// ask. Mock mode is what pnpm test:e2e runs on, so gtfs-rt must show its entity
-// as a fact rather than an empty picker, while gbfs genuinely offers a choice of
-// shape and of version.
-//
-// `timezones` is the one field a fixture cannot mirror: the real answer is the
-// 597-name enum the API reads out of the validator's schema, so this carries a
-// sample and the picker offers fewer names here than a wired session does.
 const QUERY_BACKED_GBFS = { query: true, staticReference: false, columnMap: true }
 const QUERY_BACKED_GTFS_RT = { query: true, staticReference: true, columnMap: true }
 
-const MOCK_CAPABILITIES: FeedCapabilities = {
+const COMMUNITY_CAPABILITIES: FeedCapabilities = {
   standards: [
     {
       standard: 'gbfs',
@@ -98,10 +89,12 @@ export function usePublishedFeed(slug: string | undefined) {
 export function useFeedCapabilities() {
   return useQuery({
     queryKey: CAPABILITIES_KEY,
-    queryFn: async ({ signal }): Promise<FeedCapabilities> =>
-      USE_REAL_API
-        ? withFixtureFallback(() => fetchFeedCapabilities({ signal }), () => MOCK_CAPABILITIES)
-        : MOCK_CAPABILITIES,
+    queryFn: async ({ signal }): Promise<FeedCapabilities> => {
+      const fixture = () => widenedCapabilities(COMMUNITY_CAPABILITIES)
+      return USE_REAL_API
+        ? withFixtureFallback(() => fetchFeedCapabilities({ signal }), fixture)
+        : fixture()
+    },
   })
 }
 

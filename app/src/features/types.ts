@@ -4,7 +4,14 @@ import type { ClientConfig } from '@/lib/config-schema'
 import type { MockDashboard } from '@/lib/mock-data'
 import type { SearchSource } from '@/services/search/types'
 import type { Dataset, HubCounter } from '@/types/catalog'
+import type { EntityNeeds } from '@/types/published-feed'
 import type { ProposalContribution } from './proposal-types'
+
+export interface MockStandardWidening {
+  standard: string
+  entities: string[]
+  entityNeeds: Record<string, EntityNeeds>
+}
 
 export type NavSectionId = 'library' | 'monitor' | 'admin'
 
@@ -208,6 +215,7 @@ export interface FeatureDescriptor {
   proposals?: ProposalContribution[]
   /** What this feature puts in the mock store when there is no backend. */
   mockData?: MockDataFactory
+  mockCapabilities?: MockStandardWidening[]
   /**
    * The mock store slices this feature composes in, as module specifiers.
    *

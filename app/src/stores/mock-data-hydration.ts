@@ -7,24 +7,30 @@ import { assembleMockData } from '@/features/mock-contributions'
 import type { FeatureDescriptor } from '@/features/types'
 import { USE_REAL_API } from '@/services/redash/config'
 
-/** The two methods of a zustand store this needs, and nothing more. */
 export interface HydratableStore<S extends object> {
   getState: () => S
+  getInitialState: () => S
   setState: (patch: Partial<S>) => void
 }
 
-/**
- * Put each installed feature's fixtures into the collections the store already
- * declares.
- *
- * Only keys the store ALREADY has as an array are applied: the store's own
- * declarations stay the authority on what a collection is, and this only fills
- * one. So every collection exists as `[]` before this runs and is still `[]` if
- * nothing contributes, and no reader ever sees undefined.
- *
- * Skipped outright when there is a real backend, so the loader is never entered
- * and the browser never fetches the chunk behind it (see packs/empty.ts).
- */
+let contributedLast: Record<string, unknown[]> = {}
+
+function applyContributions<S extends object>(
+  store: HydratableStore<S>,
+  contributed: Record<string, unknown[]>
+): void {
+  const declaredNow = store.getState() as Record<string, unknown>
+  const seededAtBuild = store.getInitialState() as Record<string, unknown>
+  const patch: Record<string, unknown[]> = {}
+  for (const [collection, rows] of Object.entries(contributed)) {
+    if (!Array.isArray(declaredNow[collection])) continue
+    const seededRows = seededAtBuild[collection]
+    patch[collection] = Array.isArray(seededRows) ? [...seededRows, ...rows] : rows
+  }
+  if (Object.keys(patch).length === 0) return
+  store.setState(patch as Partial<S>)
+}
+
 export function hydrateMockData<S extends object>(
   store: HydratableStore<S>,
   registry?: Record<string, FeatureDescriptor>
@@ -32,13 +38,13 @@ export function hydrateMockData<S extends object>(
   if (USE_REAL_API) return Promise.resolve()
 
   return assembleMockData(registry).then((contributed) => {
-    const current = store.getState() as Record<string, unknown>
-    const patch: Record<string, unknown[]> = {}
-    for (const [collection, rows] of Object.entries(contributed)) {
-      if (Array.isArray(current[collection])) patch[collection] = rows
-    }
-    store.setState(patch as Partial<S>)
+    contributedLast = contributed
+    applyContributions(store, contributed)
   })
+}
+
+export function reapplyMockData<S extends object>(store: HydratableStore<S>): void {
+  applyContributions(store, contributedLast)
 }
 
 /**

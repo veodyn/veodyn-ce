@@ -10,6 +10,7 @@ import { NEUTRAL_CONFIG, toClientConfig, type ClientConfig } from '@/lib/config-
 import { useAuthStore, type CurrentUser, type Permission } from '@/stores/auth-store'
 import { mockPublishAttempts, mockPublishedFeeds, mockUsers } from '@/lib/mock-data'
 import { useMockDataStore } from '@/stores/mock-data-store'
+import { reapplyMockData } from '@/stores/mock-data-hydration'
 
 export function resetStores() {
   // Reset Zustand singletons to an authenticated baseline so tests are isolated.
@@ -32,6 +33,7 @@ export function resetStores() {
     publishedFeeds: [...mockPublishedFeeds],
     publishAttempts: { ...mockPublishAttempts },
   })
+  reapplyMockData(useMockDataStore)
 }
 
 // Sign a test in as an administrator.
