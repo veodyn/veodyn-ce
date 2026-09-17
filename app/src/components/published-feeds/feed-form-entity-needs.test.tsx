@@ -49,14 +49,17 @@ function deploymentRegistering(entityNeeds: Record<string, EntityNeeds>): FeedCa
   }
 }
 
-function renderCreateForm({ defaultEntity }: { defaultEntity?: string } = {}) {
+function renderCreateForm({
+  defaultEntity,
+  error = null,
+}: { defaultEntity?: string; error?: string | null } = {}) {
   const onSubmit = vi.fn()
   renderWithProviders(
     <FeedForm
       defaultEntity={defaultEntity}
       submitLabel="Publish"
       isPending={false}
-      error={null}
+      error={error}
       fieldErrors={{}}
       onSubmit={onSubmit}
       onCancel={vi.fn()}
@@ -180,6 +183,20 @@ describe('what stands where the source section would be', () => {
     await user.click(await screen.findByRole('option', { name: 'bulletins' }))
 
     expect(screen.queryByText(/pick a source query/i)).not.toBeInTheDocument()
+  })
+})
+
+describe('a refusal the server sent back', () => {
+  it('stays on screen beside a refusal the form finds on its own', async () => {
+    const user = userEvent.setup()
+    useMockDataStore.setState({ publishedFeeds: [] })
+    renderCreateForm({ error: 'Could not publish this feed.' })
+
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'bulletins')
+    await user.click(screen.getByRole('button', { name: 'Publish' }))
+
+    expect(screen.getByText(/static GTFS reference is required/i)).toBeInTheDocument()
+    expect(screen.getByText('Could not publish this feed.')).toBeInTheDocument()
   })
 })
 

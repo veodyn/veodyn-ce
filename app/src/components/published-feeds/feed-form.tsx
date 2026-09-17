@@ -193,7 +193,7 @@ export function FeedForm({
     onSubmit(buildInput(values, initial))
   }
 
-  const shownError = problem ?? error
+  const shownErrors = [problem, error].filter((entry): entry is string => entry !== null)
 
   return (
     <Card>
@@ -272,11 +272,11 @@ export function FeedForm({
           mustRetire={mustRetire}
         />
 
-        {shownError && (
-          <p role="alert" className="text-sm text-destructive">
-            {shownError}
+        {shownErrors.map((entry) => (
+          <p key={entry} role="alert" className="text-sm text-destructive">
+            {entry}
           </p>
-        )}
+        ))}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onCancel}>

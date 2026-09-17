@@ -10,7 +10,7 @@ description: "Watching conditions on query results, KPI-managed alerts, notifica
 
 The alerts surface is part of the [enterprise edition](/editions), and so are
 the chat and paging destinations. A community build has no Alerts page, no
-Alert Destinations page, and no KPI to arm an alert from.
+Alert Notifications page, and no KPI to arm an alert from.
 
 Two things on the community side are related but are not this page.
 [Captures](/features/captures) can put an expectation on a capture and raise
@@ -62,7 +62,7 @@ Below the facts, each alert has:
 
 ## Destinations (admin)
 
-**Admin → Alert Destinations** is where an administrator configures the channels alerts can notify through: email, webhooks, chat integrations, and the other destination types the backend supports. Each is a card showing its name and type, searchable on either.
+**Admin → Alert Notifications** is where an administrator configures the destinations alerts can notify through: email, webhooks, chat integrations, and the other destination types the backend supports. Each is a card showing its name and type, searchable on either.
 
 **New Destination** opens a type picker, then the fields that type needs. A destination's own page lets you edit those settings and delete it, and says **Destination not found** for an id that matches nothing.
 
