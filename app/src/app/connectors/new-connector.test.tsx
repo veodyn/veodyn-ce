@@ -103,15 +103,15 @@ describe('configuring a connector the registry declares', () => {
     const user = userEvent.setup()
     await pick(user, 'Town Crier')
 
-    expect(screen.getByLabelText(/^Crier API token/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/^Room/)).toBeInTheDocument()
-    expect(screen.queryByLabelText(/^Loft identifier/)).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Crier API token*')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Room' })).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Loft identifier' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Back' }))
     await user.click(screen.getByRole('button', { name: 'Pigeon Post' }))
 
-    expect(screen.getByLabelText(/^Loft identifier/)).toBeInTheDocument()
-    expect(screen.queryByLabelText(/^Crier API token/)).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Loft identifier' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Crier API token*')).not.toBeInTheDocument()
   })
 
   it('shows what the declared content contract accepts, per connector', async () => {
@@ -137,8 +137,8 @@ describe('configuring a connector the registry declares', () => {
     await pick(user, 'Town Crier')
 
     await user.type(screen.getAllByRole('textbox')[0], 'Agency crier')
-    await user.type(screen.getByLabelText(/^Crier API token/), 'crier-live-8f3a2b')
-    await user.type(screen.getByLabelText(/^Room/), 'market-square')
+    await user.type(screen.getByLabelText('Crier API token*'), 'crier-live-8f3a2b')
+    await user.type(screen.getByRole('textbox', { name: 'Room' }), 'market-square')
     await user.click(screen.getByRole('button', { name: 'Save and test' }))
 
     await waitFor(() =>
@@ -156,12 +156,12 @@ describe('configuring a connector the registry declares', () => {
     await pick(user, 'Town Crier')
 
     await user.type(screen.getAllByRole('textbox')[0], 'Agency crier')
-    await user.type(screen.getByLabelText(/^Room/), 'market-square')
+    await user.type(screen.getByRole('textbox', { name: 'Room' }), 'market-square')
     await user.click(screen.getByRole('button', { name: 'Back' }))
     await user.click(screen.getByRole('button', { name: 'Pigeon Post' }))
 
     await user.type(screen.getAllByRole('textbox')[0], 'Agency pigeons')
-    await user.type(screen.getByLabelText(/^Loft identifier/), 'loft-4')
+    await user.type(screen.getByRole('textbox', { name: 'Loft identifier' }), 'loft-4')
     await user.click(screen.getByRole('button', { name: 'Save and test' }))
 
     await waitFor(() => expect(posted).toBeDefined())
@@ -178,7 +178,7 @@ describe('configuring a connector the registry declares', () => {
     expect(
       screen.getByText('Loft identifier').querySelector('[data-slot="required-marker"]')
     ).not.toBeNull()
-    expect(screen.getByLabelText(/^Loft identifier/)).toBeRequired()
+    expect(screen.getByRole('textbox', { name: 'Loft identifier' })).toBeRequired()
 
     expect(screen.getByText('Ring secret').querySelector('[data-slot="required-marker"]')).toBeNull()
   })
@@ -188,7 +188,7 @@ describe('configuring a connector the registry declares', () => {
     await pick(user, 'Town Crier')
 
     await user.type(screen.getAllByRole('textbox')[0], 'Agency crier')
-    await user.type(screen.getByLabelText(/^Crier API token/), 'crier-live-8f3a2b')
+    await user.type(screen.getByLabelText('Crier API token*'), 'crier-live-8f3a2b')
     await user.click(screen.getByRole('button', { name: 'Save and test' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Room')
@@ -209,8 +209,8 @@ describe('configuring a connector the registry declares', () => {
     await pick(user, 'Town Crier')
 
     await user.type(screen.getAllByRole('textbox')[0], 'Agency crier')
-    await user.type(screen.getByLabelText(/^Crier API token/), 'crier-expired-0000')
-    await user.type(screen.getByLabelText(/^Room/), 'market-square')
+    await user.type(screen.getByLabelText('Crier API token*'), 'crier-expired-0000')
+    await user.type(screen.getByRole('textbox', { name: 'Room' }), 'market-square')
     await user.click(screen.getByRole('button', { name: 'Save and test' }))
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('town-crier refused these credentials'))

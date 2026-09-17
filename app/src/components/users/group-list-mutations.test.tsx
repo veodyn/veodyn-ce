@@ -96,7 +96,7 @@ describe('GroupList create', () => {
     const onSelectGroup = renderList()
 
     await user.click(await screen.findByRole('button', { name: /new group/i }))
-    const field = await screen.findByLabelText(/^Group Name/)
+    const field = await screen.findByRole('textbox', { name: 'Group Name' })
     // Nothing typed yet, so there is nothing to create. Checked after the
     // dialog is open, so this is a disabled control rather than a missing one.
     expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled()
@@ -129,7 +129,7 @@ describe('GroupList create', () => {
     await user.click(await screen.findByRole('button', { name: /new group/i }))
 
     expect(screen.getByText('Group Name').querySelector('[data-slot="required-marker"]')).not.toBeNull()
-    expect(await screen.findByLabelText(/^Group Name/)).toBeRequired()
+    expect(await screen.findByRole('textbox', { name: 'Group Name' })).toBeRequired()
   })
 
   it('keeps the dialog open and reports the failure when the create is refused', async () => {
@@ -139,14 +139,14 @@ describe('GroupList create', () => {
     const onSelectGroup = renderList()
 
     await user.click(await screen.findByRole('button', { name: /new group/i }))
-    await user.type(await screen.findByLabelText(/^Group Name/), 'Platform Team')
+    await user.type(await screen.findByRole('textbox', { name: 'Group Name' }), 'Platform Team')
     await user.click(screen.getByRole('button', { name: 'Create' }))
 
     await waitFor(() => expect(toastOfType('error')).toHaveTextContent(/failed to create group/i))
     // Closing the dialog on a refusal would look like it worked, and the typed
     // name would be gone with it.
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByLabelText(/^Group Name/)).toHaveValue('Platform Team')
+    expect(screen.getByRole('textbox', { name: 'Group Name' })).toHaveValue('Platform Team')
     expect(onSelectGroup).not.toHaveBeenCalled()
   })
 })

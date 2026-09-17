@@ -109,7 +109,7 @@ async function renderPage() {
 }
 
 async function loadedNameInput(): Promise<HTMLElement> {
-  const input = await screen.findByLabelText(/^Name/)
+  const input = await screen.findByRole('textbox', { name: 'Name' })
   await waitFor(() => expect(input).toHaveValue('Ops mail'))
   return input
 }
@@ -210,7 +210,7 @@ describe('editing an alert destination', () => {
     await waitFor(() => expect(addressesInput()).toHaveValue('ops@example.com'))
 
     expect(screen.getByText('Name').querySelector('[data-slot="required-marker"]')).not.toBeNull()
-    expect(screen.getByLabelText(/^Name/)).toBeRequired()
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeRequired()
 
     expect(
       screen.getByText('Email Addresses (comma-separated)').querySelector('[data-slot="required-marker"]')

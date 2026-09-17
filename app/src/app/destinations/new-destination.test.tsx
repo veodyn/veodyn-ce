@@ -152,7 +152,7 @@ describe('creating an alert destination', () => {
     await pickType(user, 'Email')
 
     expect(screen.getByText('Name').querySelector('[data-slot="required-marker"]')).not.toBeNull()
-    expect(screen.getByLabelText(/^Name/)).toBeRequired()
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeRequired()
 
     expect(
       screen.getByText('Email Addresses (comma-separated)').querySelector('[data-slot="required-marker"]')
@@ -179,7 +179,7 @@ describe('creating an alert destination', () => {
 
     // URL is declared secret, so it renders as a password input rather than a
     // textbox; the label is what identifies it either way.
-    await user.type(screen.getByLabelText(/^URL/), 'https://hooks.example/abc')
+    await user.type(screen.getByLabelText('URL*'), 'https://hooks.example/abc')
     await user.click(screen.getByRole('button', { name: 'Create' }))
 
     await waitFor(() => expect(posted).toBeDefined())

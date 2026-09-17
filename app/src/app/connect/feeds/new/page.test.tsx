@@ -56,7 +56,7 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>, opts: { s
   if (!opts.skipLatitude) await mapField(user, 'latitude', 'lat')
   await mapField(user, 'longitude', 'lon')
 
-  await user.type(screen.getByLabelText(/^Slug/), 'test-feed')
+  await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'test-feed')
   await pickAStaticReference(user)
 }
 
@@ -67,7 +67,7 @@ describe('publishing a new feed', () => {
     renderWithProviders(<NewFeedPage />)
 
     expect(await screen.findByText(/publishing is administered/i)).toBeInTheDocument()
-    expect(screen.queryByLabelText(/^Slug/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Slug' })).not.toBeInTheDocument()
   })
 
   it('blocks the post and names the field when a required field is left unmapped', async () => {
@@ -95,7 +95,7 @@ describe('publishing a new feed', () => {
 
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
-    const slugRow = screen.getByLabelText(/^Slug/).closest('div') as HTMLElement
+    const slugRow = screen.getByRole('textbox', { name: 'Slug' }).closest('div') as HTMLElement
     expect(await within(slugRow).findByRole('alert')).toHaveTextContent(/already published/i)
     expect(push).not.toHaveBeenCalled()
   })

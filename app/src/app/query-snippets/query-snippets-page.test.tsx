@@ -36,9 +36,9 @@ describe('QuerySnippetsPage', () => {
 
     await user.click(screen.getByRole('button', { name: /new snippet/i }))
 
-    expect(screen.getByLabelText(/^trigger/i)).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Trigger' })).toBeInTheDocument()
     expect(screen.getByLabelText(/^description$/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/^snippet/i)).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Snippet' })).toBeInTheDocument()
   })
 
   it('creates a snippet from the labelled fields', async () => {
@@ -46,8 +46,8 @@ describe('QuerySnippetsPage', () => {
     renderWithProviders(<QuerySnippetsPage />)
 
     await user.click(screen.getByRole('button', { name: /new snippet/i }))
-    await user.type(screen.getByLabelText(/^trigger/i), 'last90d')
-    await user.type(screen.getByLabelText(/^snippet/i), "date >= now() - interval '90 days'")
+    await user.type(screen.getByRole('textbox', { name: 'Trigger' }), 'last90d')
+    await user.type(screen.getByRole('textbox', { name: 'Snippet' }), "date >= now() - interval '90 days'")
     await user.click(screen.getByRole('button', { name: /^create$/i }))
 
     expect(await screen.findByText('last90d')).toBeInTheDocument()

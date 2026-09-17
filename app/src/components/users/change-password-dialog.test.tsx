@@ -8,7 +8,7 @@ afterEach(() => resetStores())
 
 const fill = async (user: ReturnType<typeof userEvent.setup>, cur: string, next: string, confirm: string) => {
   await user.type(screen.getByLabelText(/current password/i), cur)
-  await user.type(screen.getByLabelText(/^new password/i), next)
+  await user.type(screen.getByLabelText('New Password (min 6 characters)*'), next)
   await user.type(screen.getByLabelText(/confirm new password/i), confirm)
 }
 
@@ -20,7 +20,7 @@ describe('ChangePasswordDialog', () => {
       expect(screen.getByText(label).querySelector('[data-slot="required-marker"]')).not.toBeNull()
     }
     expect(screen.getByLabelText(/current password/i)).toBeRequired()
-    expect(screen.getByLabelText(/^new password/i)).toBeRequired()
+    expect(screen.getByLabelText('New Password (min 6 characters)*')).toBeRequired()
     expect(screen.getByLabelText(/confirm new password/i)).toBeRequired()
   })
 

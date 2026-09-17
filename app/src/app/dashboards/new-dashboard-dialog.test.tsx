@@ -21,7 +21,7 @@ describe('the New Dashboard dialog', () => {
     expect(
       screen.getByText('Dashboard Name').querySelector('[data-slot="required-marker"]')
     ).not.toBeNull()
-    expect(screen.getByLabelText(/^Dashboard Name/)).toBeRequired()
+    expect(screen.getByRole('textbox', { name: 'Dashboard Name' })).toBeRequired()
     expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled()
   })
 })

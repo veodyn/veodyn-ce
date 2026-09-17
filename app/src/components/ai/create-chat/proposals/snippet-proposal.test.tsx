@@ -41,10 +41,10 @@ describe('SnippetProposalCard', () => {
     const user = userEvent.setup()
     const { onCreated } = renderCard()
 
-    const trigger = screen.getByLabelText(/^Trigger/)
+    const trigger = screen.getByRole('textbox', { name: 'Trigger' })
     await user.clear(trigger)
     await user.type(trigger, 'last30')
-    const body = screen.getByLabelText(/^Snippet/)
+    const body = screen.getByRole('textbox', { name: 'Snippet' })
     await user.clear(body)
     await user.type(body, 'WHERE ts >= now() - INTERVAL 30 DAY')
     const description = screen.getByLabelText('Description')
@@ -67,9 +67,9 @@ describe('SnippetProposalCard', () => {
     renderCard()
 
     expect(screen.getByText('Trigger').querySelector('[data-slot="required-marker"]')).not.toBeNull()
-    expect(screen.getByLabelText(/^Trigger/)).toBeRequired()
+    expect(screen.getByRole('textbox', { name: 'Trigger' })).toBeRequired()
     expect(screen.getByText('Snippet').querySelector('[data-slot="required-marker"]')).not.toBeNull()
-    expect(screen.getByLabelText(/^Snippet/)).toBeRequired()
+    expect(screen.getByRole('textbox', { name: 'Snippet' })).toBeRequired()
     expect(screen.getByText('Description').querySelector('[data-slot="required-marker"]')).toBeNull()
   })
 
@@ -77,7 +77,7 @@ describe('SnippetProposalCard', () => {
     const user = userEvent.setup()
     const { onCreated } = renderCard()
 
-    await user.clear(screen.getByLabelText(/^Trigger/))
+    await user.clear(screen.getByRole('textbox', { name: 'Trigger' }))
 
     expect(screen.getByRole('button', { name: 'Create snippet' })).toBeDisabled()
     expect(onCreated).not.toHaveBeenCalled()

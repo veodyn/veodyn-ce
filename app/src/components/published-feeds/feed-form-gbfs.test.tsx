@@ -113,7 +113,7 @@ describe('editing a gbfs binding', () => {
     for (const field of ['system_id', 'language', 'name', 'timezone']) {
       expect(screen.getByText(field).querySelector('[data-slot="required-marker"]')).not.toBeNull()
     }
-    expect(screen.getByLabelText(/^name/)).toBeRequired()
+    expect(screen.getByRole('textbox', { name: 'name' })).toBeRequired()
   })
 
   it('submits a vehicles binding under its own column map', async () => {
@@ -219,7 +219,7 @@ describe('editing a gbfs binding', () => {
   it('names a language subtag, and refuses one that is not the shape GBFS defines', async () => {
     const user = userEvent.setup()
     const onSubmit = renderEdit()
-    const language = screen.getByLabelText(/^language/)
+    const language = screen.getByRole('combobox', { name: 'language' })
 
     await user.clear(language)
     await user.type(language, 'English')

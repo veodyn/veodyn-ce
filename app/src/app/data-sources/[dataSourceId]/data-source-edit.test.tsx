@@ -55,7 +55,7 @@ describe('the data source edit form', () => {
     await screen.findByLabelText('Name')
 
     expect(screen.getByText('URL').querySelector('[data-slot="required-marker"]')).not.toBeNull()
-    expect(screen.getByLabelText(/^URL/)).toBeRequired()
+    expect(screen.getByRole('textbox', { name: 'URL' })).toBeRequired()
 
     expect(screen.getByText('User').querySelector('[data-slot="required-marker"]')).toBeNull()
     expect(screen.getByLabelText('User')).not.toBeRequired()

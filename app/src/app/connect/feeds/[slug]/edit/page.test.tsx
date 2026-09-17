@@ -122,7 +122,7 @@ describe('the published feed edit page', () => {
   it('locks the slug field and says a feed cannot be renamed', async () => {
     await renderPage()
 
-    expect(await screen.findByLabelText(/^Slug/)).toBeDisabled()
+    expect(await screen.findByRole('textbox', { name: 'Slug' })).toBeDisabled()
     expect(screen.getByText(/cannot be renamed/i)).toBeInTheDocument()
   })
 
@@ -130,6 +130,6 @@ describe('the published feed edit page', () => {
     await renderPage({ asAdmin: false })
 
     expect(await screen.findByText(/publishing is administered/i)).toBeInTheDocument()
-    expect(screen.queryByLabelText(/^Slug/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Slug' })).not.toBeInTheDocument()
   })
 })

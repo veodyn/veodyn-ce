@@ -89,7 +89,7 @@ describe('a form for an entity whose producer needs no query', () => {
     const user = userEvent.setup()
     const onSubmit = renderCreateForm()
 
-    await user.type(screen.getByLabelText(/^Slug/), 'bulletins')
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'bulletins')
     await pickAStaticReference(user)
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
@@ -107,7 +107,7 @@ describe('a form for an entity whose producer needs no query', () => {
     useMockDataStore.setState({ publishedFeeds: [] })
     const onSubmit = renderCreateForm()
 
-    await user.type(screen.getByLabelText(/^Slug/), 'bulletins')
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'bulletins')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).not.toHaveBeenCalled()
@@ -147,7 +147,7 @@ describe('the form follows the entity, not the standard', () => {
     await user.click(await screen.findByRole('option', { name: 'vehicle_positions' }))
 
     expect(screen.getByText('Source')).toBeInTheDocument()
-    expect(screen.getByLabelText(/^Static GTFS reference/)).toBeInTheDocument()
+    expect(screen.getByText('Static GTFS reference')).toBeInTheDocument()
     // The map is a row of prose until a query is picked, so the table itself is
     // what says the section is being asked for.
     expect(screen.getByRole('table')).toBeInTheDocument()
@@ -161,7 +161,7 @@ describe('when the capabilities read has not answered', () => {
     renderCreateForm()
 
     expect(screen.getByText('Source')).toBeInTheDocument()
-    expect(screen.getByLabelText(/^Static GTFS reference/)).toBeInTheDocument()
+    expect(screen.getByText('Static GTFS reference')).toBeInTheDocument()
     expect(screen.getByRole('table')).toBeInTheDocument()
   })
 })

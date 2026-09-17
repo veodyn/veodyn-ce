@@ -75,7 +75,7 @@ function createRejects(message: string) {
 
 async function fillAndSubmit(user: ReturnType<typeof userEvent.setup>, label: string) {
   await user.type(screen.getByLabelText(/label/i), label)
-  fireEvent.change(screen.getByLabelText(/^start/i), { target: { value: '2026-04-01T09:00' } })
+  fireEvent.change(screen.getByLabelText('Start (UTC)*'), { target: { value: '2026-04-01T09:00' } })
   await user.click(screen.getByRole('button', { name: /add annotation/i }))
 }
 
@@ -100,8 +100,8 @@ describe('AnnotationDialog', () => {
   it('labels the start and end fields as UTC and explains the convention', () => {
     renderDialog()
 
-    expect(screen.getByLabelText(/^start \(utc\)/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/^end \(utc\)/i)).toBeInTheDocument()
+    expect(screen.getByLabelText('Start (UTC)*')).toBeInTheDocument()
+    expect(screen.getByLabelText('End (UTC)')).toBeInTheDocument()
     expect(screen.getByText(/times are utc, matching the chart axis/i)).toBeInTheDocument()
   })
 
@@ -111,7 +111,7 @@ describe('AnnotationDialog', () => {
     expect(screen.getByText('Label').querySelector('[data-slot="required-marker"]')).not.toBeNull()
     expect(screen.getByLabelText(/label/i)).toBeRequired()
     expect(screen.getByText('Start (UTC)').querySelector('[data-slot="required-marker"]')).not.toBeNull()
-    expect(screen.getByLabelText(/^start/i)).toBeRequired()
+    expect(screen.getByLabelText('Start (UTC)*')).toBeRequired()
     expect(screen.getByText('End (UTC)').querySelector('[data-slot="required-marker"]')).toBeNull()
   })
 
@@ -137,7 +137,7 @@ describe('AnnotationDialog', () => {
     renderDialog()
 
     await user.type(screen.getByLabelText(/label/i), 'Signal outage')
-    fireEvent.change(screen.getByLabelText(/^start/i), { target: { value: '2026-04-01T09:00' } })
+    fireEvent.change(screen.getByLabelText('Start (UTC)*'), { target: { value: '2026-04-01T09:00' } })
 
     await user.click(screen.getByRole('button', { name: /add annotation/i }))
 
@@ -158,7 +158,7 @@ describe('AnnotationDialog', () => {
     renderDialog()
 
     await user.type(screen.getByLabelText(/label/i), 'Sensor recalibration')
-    fireEvent.change(screen.getByLabelText(/^start/i), { target: { value: '2026-04-02T08:30' } })
+    fireEvent.change(screen.getByLabelText('Start (UTC)*'), { target: { value: '2026-04-02T08:30' } })
     await user.click(screen.getByRole('checkbox', { name: /pin to this widget only/i }))
 
     await user.click(screen.getByRole('button', { name: /add annotation/i }))
@@ -198,7 +198,7 @@ describe('AnnotationDialog', () => {
     const user = userEvent.setup()
     renderDialog()
 
-    fireEvent.change(screen.getByLabelText(/^start/i), { target: { value: '2026-04-01T09:00' } })
+    fireEvent.change(screen.getByLabelText('Start (UTC)*'), { target: { value: '2026-04-01T09:00' } })
     await user.click(screen.getByRole('button', { name: /add annotation/i }))
 
     expect(createMutate).not.toHaveBeenCalled()

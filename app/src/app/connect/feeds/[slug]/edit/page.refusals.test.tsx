@@ -61,7 +61,7 @@ describe('a refused save on the edit page', () => {
       })
     )
 
-    const slugRow = screen.getByLabelText(/^Slug/).closest('div') as HTMLElement
+    const slugRow = screen.getByRole('textbox', { name: 'Slug' }).closest('div') as HTMLElement
     expect(await within(slugRow).findByRole('alert')).toHaveTextContent(/already published/i)
     expect(push).not.toHaveBeenCalled()
   })

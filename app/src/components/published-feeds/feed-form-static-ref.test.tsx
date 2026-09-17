@@ -117,7 +117,7 @@ describe('the static GTFS reference', () => {
     boundOn([aFeed('downtown', DOWNTOWN)])
     const onSubmit = renderForm()
 
-    await user.type(screen.getByLabelText(/^Slug/), 'second-feed')
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'second-feed')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ staticGtfsRef: DOWNTOWN }))
@@ -128,7 +128,7 @@ describe('the static GTFS reference', () => {
     boundOn([aFeed('downtown', DOWNTOWN), aFeed('harbor', HARBOR)])
     const onSubmit = renderForm()
 
-    await user.type(screen.getByLabelText(/^Slug/), 'third-feed')
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'third-feed')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).not.toHaveBeenCalled()
@@ -141,8 +141,8 @@ describe('the static GTFS reference', () => {
     const onSubmit = renderForm()
 
     expect(screen.queryByRole('combobox', { name: /static gtfs reference/i })).not.toBeInTheDocument()
-    await user.type(screen.getByLabelText(/^Static GTFS reference/), DOWNTOWN)
-    await user.type(screen.getByLabelText(/^Slug/), 'first-feed')
+    await user.type(screen.getByRole('textbox', { name: 'Static GTFS reference' }), DOWNTOWN)
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'first-feed')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ staticGtfsRef: DOWNTOWN }))
@@ -155,7 +155,7 @@ describe('the static GTFS reference', () => {
     expect(
       screen.getByText('Static GTFS reference').querySelector('[data-slot="required-marker"]')
     ).not.toBeNull()
-    expect(screen.getByLabelText(/^Static GTFS reference/)).toBeRequired()
+    expect(screen.getByRole('textbox', { name: 'Static GTFS reference' })).toBeRequired()
   })
 
   it('carries aria-required on the picker trigger once a reference is bound elsewhere', async () => {
@@ -171,8 +171,8 @@ describe('the static GTFS reference', () => {
     const onSubmit = renderForm()
 
     await user.click(await theEscape())
-    await user.type(screen.getByLabelText(/^Static GTFS reference/), HARBOR)
-    await user.type(screen.getByLabelText(/^Slug/), 'harbor-feed')
+    await user.type(screen.getByRole('textbox', { name: 'Static GTFS reference' }), HARBOR)
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'harbor-feed')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ staticGtfsRef: HARBOR }))
@@ -184,7 +184,7 @@ describe('the static GTFS reference', () => {
     const onSubmit = renderForm()
 
     await user.click(await theEscape())
-    await user.type(screen.getByLabelText(/^Slug/), 'harbor-feed')
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'harbor-feed')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).not.toHaveBeenCalled()
