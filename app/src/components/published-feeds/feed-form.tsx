@@ -15,6 +15,7 @@ import { ShapeSection } from './feed-form-shape'
 import { SystemInfoSection } from './system-info-section'
 import { buildInput, submitError, systemFieldErrors, type FormValues } from './feed-form-submit'
 import { resolveEntityNeeds, resolveEntitySelection } from './entity-selection'
+import { useStaticGtfsRef } from './static-gtfs-ref'
 import type { FeedStandard, PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
 
 interface FeedFormProps {
@@ -75,13 +76,13 @@ export function FeedForm({
   // different one must clear it, whether this is a fresh create or an edit
   // that started with a prefilled columnMap.
   const [mappedQueryId, setMappedQueryId] = useState<number | null>(initial?.queryId ?? null)
-  const [staticGtfsRef, setStaticGtfsRef] = useState(initial?.staticGtfsRef ?? '')
+  const staticRef = useStaticGtfsRef(initial?.staticGtfsRef ?? null)
   const [systemInfo, setSystemInfo] = useState<Record<string, string>>(initial?.systemInfo ?? {})
   const [onError, setOnError] = useState<PublishedFeedInput['onError']>(initial?.onError ?? 'block')
   const [lastGoodMaxAgeSeconds, setLastGoodMaxAgeSeconds] = useState(
     initial?.lastGoodMaxAgeSeconds != null ? String(initial.lastGoodMaxAgeSeconds) : ''
   )
-  const [retireOnFailure, setRetireOnFailure] = useState(initial?.retireOnFailure ?? false)
+  const [chosenRetire, setRetireOnFailure] = useState<boolean | null>(initial?.retireOnFailure ?? null)
   // Only meaningful once resolveEntitySelection says this is a picker; null
   // until the reader picks something of their own.
   const [pickedEntity, setPickedEntity] = useState<string | null>(null)
@@ -119,6 +120,8 @@ export function FeedForm({
   // feed, a static schedule to check it against, or a column map to build it
   // from, and the answer differs between two entities of the same standard.
   const needs = resolveEntityNeeds(capability?.entityNeeds, entitySelection.entity, standard)
+  const mustRetire = Boolean(needs.retainedArtifactUnsafe)
+  const retireOnFailure = chosenRetire ?? mustRetire
 
   // After the entity is resolved: under gbfs the shape, not the standard, picks
   // the vocabulary.
@@ -142,7 +145,7 @@ export function FeedForm({
     standard,
     version,
     entity: entitySelection.entity,
-    staticGtfsRef,
+    staticGtfsRef: staticRef.value,
     systemInfo,
     selection,
     onError,
@@ -178,7 +181,7 @@ export function FeedForm({
     setVersion(DEFAULT_VERSION[next])
     setSelection(initialSelection(undefined, next, undefined))
     setPickedEntity(null)
-    setStaticGtfsRef('')
+    staticRef.reset()
     setSystemInfo({})
   }
 
@@ -251,8 +254,7 @@ export function FeedForm({
 
         <MappingSection
           needs={needs}
-          staticGtfsRef={staticGtfsRef}
-          onStaticGtfsRefChange={setStaticGtfsRef}
+          staticRef={staticRef}
           columns={columns}
           fields={fields}
           selection={selection}
@@ -268,6 +270,7 @@ export function FeedForm({
           ageError={ageError}
           retireOnFailure={retireOnFailure}
           onRetireOnFailureChange={setRetireOnFailure}
+          mustRetire={mustRetire}
         />
 
         {shownError && (

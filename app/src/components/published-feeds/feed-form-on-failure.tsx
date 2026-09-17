@@ -16,9 +16,18 @@ interface OnFailureSectionProps {
   ageError?: string | null
   retireOnFailure: boolean
   onRetireOnFailureChange: (value: boolean) => void
+  mustRetire?: boolean
 }
 
-function retirementConsequence(retireOnFailure: boolean): string {
+const RETAINED_ARTIFACT_IS_UNSAFE =
+  'a retained artifact can keep serving something that has since been withdrawn'
+
+function retirementConsequence(retireOnFailure: boolean, mustRetire: boolean): string {
+  if (mustRetire) {
+    return retireOnFailure
+      ? `A failed publish attempt takes this feed dark: the artifact stops being served, and consumers get nothing until the next publish succeeds. This entity requires it, because ${RETAINED_ARTIFACT_IS_UNSAFE}.`
+      : `This entity cannot be published this way: ${RETAINED_ARTIFACT_IS_UNSAFE}. Turn this on before publishing.`
+  }
   return retireOnFailure
     ? 'A failed publish attempt takes this feed dark: the artifact stops being served, and consumers get nothing until the next publish succeeds. What an alerts feed wants, where a stale artifact is a wrong answer.'
     : 'A failed publish attempt is recorded and the artifact already serving stays up. What a vehicle-position feed usually wants, where slightly stale beats nothing at all.'
@@ -64,6 +73,7 @@ export function OnFailureSection({
   ageError,
   retireOnFailure,
   onRetireOnFailureChange,
+  mustRetire = false,
 }: OnFailureSectionProps) {
   const blockId = useId()
   const lastGoodId = useId()
@@ -114,6 +124,7 @@ export function OnFailureSection({
             Retiring the served artifact on failure is not offered in this mode: it would clear the
             artifact the maximum age above promises to keep serving, so the two cannot both apply.
             Choose Block to retire on failure instead.
+            {mustRetire && ` This entity has no other option, because ${RETAINED_ARTIFACT_IS_UNSAFE}.`}
           </p>
         ) : (
           <>
@@ -127,7 +138,9 @@ export function OnFailureSection({
                 Retire the served artifact when a publish fails
               </Label>
             </div>
-            <p className="text-sm text-muted-foreground">{retirementConsequence(retireOnFailure)}</p>
+            <p className="text-sm text-muted-foreground">
+              {retirementConsequence(retireOnFailure, mustRetire)}
+            </p>
           </>
         )}
       </div>

@@ -56,7 +56,6 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>, opts: { s
   await mapField(user, 'longitude', 'lon')
 
   await user.type(screen.getByLabelText('Slug'), 'test-feed')
-  await user.type(screen.getByLabelText('Static GTFS reference'), 'https://example.com/static.zip')
 }
 
 describe('publishing a new feed', () => {

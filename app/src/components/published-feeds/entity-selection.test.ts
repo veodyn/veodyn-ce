@@ -131,4 +131,23 @@ describe('resolveEntityNeeds', () => {
     expect(needs.query).toBe(true)
     expect(needs.columnMap).toBe(true)
   })
+
+  it('calls no entity community registers unsafe to serve a retained artifact for', () => {
+    for (const [entity, standard] of [
+      ['vehicle_positions', 'gtfs-rt'],
+      ['stations', 'gbfs'],
+    ] as const) {
+      expect(resolveEntityNeeds(undefined, entity, standard).retainedArtifactUnsafe).toBeUndefined()
+    }
+  })
+
+  it('carries a registry that does call one unsafe, which is the pack case', () => {
+    const needs = resolveEntityNeeds(
+      { bulletins: { ...QUERYLESS, retainedArtifactUnsafe: true } },
+      'bulletins',
+      'gtfs-rt'
+    )
+
+    expect(needs.retainedArtifactUnsafe).toBe(true)
+  })
 })

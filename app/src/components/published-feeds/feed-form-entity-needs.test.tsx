@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders, resetStores } from '@/test/utils'
+import { useMockDataStore } from '@/stores/mock-data-store'
 import type { EntityNeeds, FeedCapabilities } from '@/types/published-feed'
 
 const registry = vi.hoisted(() => ({ answer: undefined as unknown }))
@@ -78,7 +79,6 @@ describe('a form for an entity whose producer needs no query', () => {
     const onSubmit = renderCreateForm()
 
     await user.type(screen.getByLabelText('Slug'), 'bulletins')
-    await user.type(screen.getByLabelText('Static GTFS reference'), 'https://example.org/gtfs.zip')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -92,6 +92,7 @@ describe('a form for an entity whose producer needs no query', () => {
 
   it('still refuses the halves its producer does consume', async () => {
     const user = userEvent.setup()
+    useMockDataStore.setState({ publishedFeeds: [] })
     const onSubmit = renderCreateForm()
 
     await user.type(screen.getByLabelText('Slug'), 'bulletins')

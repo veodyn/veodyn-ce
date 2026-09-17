@@ -161,7 +161,6 @@ describe('the last-known-good age cap', () => {
     await mapField(user, 'latitude', 'lat')
     await mapField(user, 'longitude', 'lon')
     await user.type(screen.getByLabelText('Slug'), 'test-feed')
-    await user.type(screen.getByLabelText('Static GTFS reference'), 'https://example.com/static.zip')
     await user.click(screen.getByRole('radio', { name: /last known good/i }))
 
     await user.click(screen.getByRole('button', { name: 'Publish' }))
@@ -181,7 +180,6 @@ describe('the last-known-good age cap', () => {
     await mapField(user, 'latitude', 'lat')
     await mapField(user, 'longitude', 'lon')
     await user.type(screen.getByLabelText('Slug'), 'test-feed')
-    await user.type(screen.getByLabelText('Static GTFS reference'), 'https://example.com/static.zip')
     await user.click(screen.getByRole('radio', { name: /last known good/i }))
     await user.type(screen.getByLabelText(/maximum age/i), '0')
 
@@ -200,7 +198,6 @@ describe('the last-known-good age cap', () => {
     await mapField(user, 'latitude', 'lat')
     await mapField(user, 'longitude', 'lon')
     await user.type(screen.getByLabelText('Slug'), 'test-feed')
-    await user.type(screen.getByLabelText('Static GTFS reference'), 'https://example.com/static.zip')
     await user.click(screen.getByRole('radio', { name: /last known good/i }))
     await user.type(screen.getByLabelText(/maximum age/i), '300')
 

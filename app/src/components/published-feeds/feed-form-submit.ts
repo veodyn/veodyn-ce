@@ -82,7 +82,19 @@ export function submitError(values: FormValues): string | null {
   if (malformedLanguage(values)) {
     return 'The system language must be a code like en or en-GB.'
   }
+  if (wouldServeARetainedArtifact(values)) {
+    return (
+      'This entity cannot be published with the served artifact retained: a retained artifact can ' +
+      'keep serving something that has since been withdrawn. Choose Block and turn on retiring the ' +
+      'served artifact when a publish fails.'
+    )
+  }
   return null
+}
+
+function wouldServeARetainedArtifact(values: FormValues): boolean {
+  if (!values.needs.retainedArtifactUnsafe) return false
+  return values.onError !== 'block' || !values.retireOnFailure
 }
 
 /**

@@ -76,7 +76,6 @@ describe('retire on failure', () => {
     await user.click(await screen.findByRole('button', { name: /Bike Share Station Availability/i }))
     await screen.findByRole('button', { name: 'Change' })
     await user.type(screen.getByLabelText('Slug'), 'test-feed')
-    await user.type(screen.getByLabelText('Static GTFS reference'), 'https://example.com/static.zip')
     for (const [field, column] of [
       ['vehicle_id', 'station_name'],
       ['latitude', 'lat'],
