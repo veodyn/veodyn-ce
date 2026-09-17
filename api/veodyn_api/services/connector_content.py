@@ -3,6 +3,11 @@ import re
 from veodyn_api.services.connector_contract import ContentContract, Rendering
 
 MARKUP = re.compile(r"<[^<>]+>|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)")
+URL_IN_A_BODY = re.compile(r"https?://[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+(?::[0-9]+)?(?:/\S*)?")
+
+
+def urls_in(text: str) -> tuple[str, ...]:
+    return tuple(URL_IN_A_BODY.findall(text))
 
 
 def counted_length(contract: ContentContract, rendering: Rendering) -> int:
