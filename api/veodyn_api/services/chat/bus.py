@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, cast
 
@@ -18,6 +19,12 @@ def _key(turn_id: str, part: str) -> str:
 
 def _text(value: Any) -> str:
     return value.decode() if isinstance(value, bytes) else str(value)
+
+
+@dataclass(frozen=True)
+class PendingCall:
+    call_id: str
+    tool: str
 
 
 class TurnBus:
@@ -43,12 +50,16 @@ class TurnBus:
     async def seal(self, turn_id: str) -> None:
         await self._redis.expire(_key(turn_id, "frames"), FRAME_LOG_TTL_SECONDS)
 
-    async def set_pending(self, turn_id: str, call_id: str) -> None:
-        await self._redis.set(_key(turn_id, "pending"), call_id, ex=KEY_TTL_SECONDS)
+    async def set_pending(self, turn_id: str, call_id: str, tool: str) -> None:
+        value = json.dumps({"callId": call_id, "tool": tool}, separators=(",", ":"))
+        await self._redis.set(_key(turn_id, "pending"), value, ex=KEY_TTL_SECONDS)
 
-    async def pending(self, turn_id: str) -> str | None:
+    async def pending(self, turn_id: str) -> PendingCall | None:
         value = await self._redis.get(_key(turn_id, "pending"))
-        return None if value is None else _text(value)
+        if value is None:
+            return None
+        decoded = json.loads(_text(value))
+        return PendingCall(call_id=str(decoded["callId"]), tool=str(decoded["tool"]))
 
     async def clear_pending(self, turn_id: str) -> None:
         await self._redis.delete(_key(turn_id, "pending"))

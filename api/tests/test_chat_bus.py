@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 import pytest
 from redis.asyncio import Redis
 
-from veodyn_api.services.chat.bus import TurnBus
+from veodyn_api.services.chat.bus import PendingCall, TurnBus
 
 pytestmark = pytest.mark.anyio
 
@@ -57,8 +57,8 @@ async def test_waiting_for_a_result_times_out(bus: TurnBus) -> None:
 
 async def test_pending_call_round_trip(bus: TurnBus) -> None:
     assert await bus.pending(TURN) is None
-    await bus.set_pending(TURN, "c1")
-    assert await bus.pending(TURN) == "c1"
+    await bus.set_pending(TURN, "c1", "search_library")
+    assert await bus.pending(TURN) == PendingCall(call_id="c1", tool="search_library")
     await bus.clear_pending(TURN)
     assert await bus.pending(TURN) is None
 

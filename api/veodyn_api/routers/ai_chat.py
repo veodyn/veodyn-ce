@@ -37,6 +37,7 @@ from veodyn_api.services.chat import store
 from veodyn_api.services.chat.bus import TurnBus, get_redis
 from veodyn_api.services.chat.driver import get_chat_model
 from veodyn_api.services.chat.runner import TurnRunner, spawn_turn
+from veodyn_api.services.chat.tools import result_kind_for
 from veodyn_api.services.redash import RedashClient
 from veodyn_api.services.redash_lookups import warehouse_data_source_id
 from veodyn_api.settings import Settings, get_settings
@@ -324,7 +325,13 @@ async def post_tool_result(
 ) -> ChatAcceptedOut:
     turn = await run_in_threadpool(store.turn_for_owner, db, subject, turn_id)
     pending = await _redis(bus.pending(str(turn.id)))
-    if turn.status != "running" or pending != payload.call_id:
+    expected = result_kind_for(pending.tool) if pending else None
+    if (
+        turn.status != "running"
+        or pending is None
+        or pending.call_id != payload.call_id
+        or payload.result.kind != expected
+    ):
         raise ApiError(ErrorId.AI_TOOL_RESULT_REJECTED, "this turn is not waiting for that result", 409)
     result = payload.result.model_dump(by_alias=True, exclude_none=True, mode="json")
     await _redis(bus.push_result(str(turn.id), {"callId": payload.call_id, "result": result}))

@@ -165,6 +165,159 @@
         "title": "ChatAcceptedOut",
         "type": "object"
       },
+      "ChatDashboardRefIn": {
+        "properties": {
+          "id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Tags",
+            "type": "array"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ChatDashboardRefIn",
+        "type": "object"
+      },
+      "ChatDashboardResultIn": {
+        "properties": {
+          "dashboard": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatDashboardRefIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "const": "dashboard",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "textWidgets": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Textwidgets"
+          },
+          "widgets": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatDashboardWidgetIn"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Widgets"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatDashboardResultIn",
+        "type": "object"
+      },
+      "ChatDashboardWidgetIn": {
+        "properties": {
+          "queryId": {
+            "exclusiveMinimum": 0.0,
+            "title": "Queryid",
+            "type": "integer"
+          },
+          "queryName": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryname"
+          },
+          "title": {
+            "maxLength": 500,
+            "title": "Title",
+            "type": "string"
+          },
+          "visualizationId": {
+            "exclusiveMinimum": 0.0,
+            "title": "Visualizationid",
+            "type": "integer"
+          },
+          "visualizationType": {
+            "maxLength": 64,
+            "title": "Visualizationtype",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "queryId",
+          "visualizationId",
+          "visualizationType"
+        ],
+        "title": "ChatDashboardWidgetIn",
+        "type": "object"
+      },
       "ChatDraftOut": {
         "properties": {
           "id": {
@@ -227,6 +380,136 @@
           "createdAt"
         ],
         "title": "ChatDraftVersionOut",
+        "type": "object"
+      },
+      "ChatLibraryItemIn": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "hasResult": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hasresult"
+          },
+          "id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Tags",
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "query",
+              "dashboard"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "name"
+        ],
+        "title": "ChatLibraryItemIn",
+        "type": "object"
+      },
+      "ChatLibraryResultIn": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatLibraryItemIn"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items"
+          },
+          "kind": {
+            "const": "library",
+            "title": "Kind",
+            "type": "string"
+          },
+          "more": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "More"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatLibraryResultIn",
         "type": "object"
       },
       "ChatPromotionIn": {
@@ -314,6 +597,91 @@
         "title": "ChatPromotionOut",
         "type": "object"
       },
+      "ChatQueryResultIn": {
+        "properties": {
+          "columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatResultColumnIn"
+                },
+                "maxItems": 500,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Columns"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "const": "query_result",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "rowCount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rowcount"
+          },
+          "sample": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample"
+          },
+          "truncated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Truncated"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatQueryResultIn",
+        "type": "object"
+      },
       "ChatResultColumnIn": {
         "properties": {
           "distinct": {
@@ -371,6 +739,215 @@
           "distinct"
         ],
         "title": "ChatResultColumnIn",
+        "type": "object"
+      },
+      "ChatSavedQueryIn": {
+        "properties": {
+          "dataSourceId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datasourceid"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          },
+          "parameters": {
+            "items": {
+              "maxLength": 255,
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Parameters",
+            "type": "array"
+          },
+          "sql": {
+            "anyOf": [
+              {
+                "maxLength": 8000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sql"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ChatSavedQueryIn",
+        "type": "object"
+      },
+      "ChatSavedVisualizationResultIn": {
+        "properties": {
+          "columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatResultColumnIn"
+                },
+                "maxItems": 500,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Columns"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "const": "saved_visualization",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatSavedQueryIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retrievedAt": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrievedat"
+          },
+          "rowCount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rowcount"
+          },
+          "sample": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample"
+          },
+          "truncated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Truncated"
+          },
+          "visualization": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatVisualizationRefIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "visualizations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatVisualizationRefIn"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visualizations"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatSavedVisualizationResultIn",
         "type": "object"
       },
       "ChatThreadDetailOut": {
@@ -500,85 +1077,6 @@
         "title": "ChatThreadPatchIn",
         "type": "object"
       },
-      "ChatToolResultIn": {
-        "properties": {
-          "columns": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/ChatResultColumnIn"
-                },
-                "maxItems": 500,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Columns"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "ok": {
-            "title": "Ok",
-            "type": "boolean"
-          },
-          "rowCount": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rowcount"
-          },
-          "sample": {
-            "anyOf": [
-              {
-                "items": {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                "maxItems": 50,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sample"
-          },
-          "truncated": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Truncated"
-          }
-        },
-        "required": [
-          "ok"
-        ],
-        "title": "ChatToolResultIn",
-        "type": "object"
-      },
       "ChatToolResultPostIn": {
         "properties": {
           "callId": {
@@ -588,7 +1086,30 @@
             "type": "string"
           },
           "result": {
-            "$ref": "#/components/schemas/ChatToolResultIn"
+            "discriminator": {
+              "mapping": {
+                "dashboard": "#/components/schemas/ChatDashboardResultIn",
+                "library": "#/components/schemas/ChatLibraryResultIn",
+                "query_result": "#/components/schemas/ChatQueryResultIn",
+                "saved_visualization": "#/components/schemas/ChatSavedVisualizationResultIn"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ChatQueryResultIn"
+              },
+              {
+                "$ref": "#/components/schemas/ChatLibraryResultIn"
+              },
+              {
+                "$ref": "#/components/schemas/ChatSavedVisualizationResultIn"
+              },
+              {
+                "$ref": "#/components/schemas/ChatDashboardResultIn"
+              }
+            ],
+            "title": "Result"
           }
         },
         "required": [
@@ -714,6 +1235,32 @@
           "seq"
         ],
         "title": "ChatTurnStartedOut",
+        "type": "object"
+      },
+      "ChatVisualizationRefIn": {
+        "properties": {
+          "id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "maxLength": 64,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type"
+        ],
+        "title": "ChatVisualizationRefIn",
         "type": "object"
       },
       "ConverseIn": {

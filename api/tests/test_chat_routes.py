@@ -161,7 +161,9 @@ def test_another_users_ids_are_not_found(harness: Harness) -> None:
         client.get(f"/ai/chat/turns/{turn}/stream", headers=stranger),
         client.post(f"/ai/chat/turns/{turn}/cancel", headers=stranger),
         client.post(
-            f"/ai/chat/turns/{turn}/tool-results", json={"callId": "c", "result": {"ok": True}}, headers=stranger
+            f"/ai/chat/turns/{turn}/tool-results",
+            json={"callId": "c", "result": {"ok": True, "kind": "query_result"}},
+            headers=stranger,
         ),
         client.post(
             f"/ai/chat/drafts/{uuid.uuid4()}/promotions",
@@ -200,12 +202,21 @@ def test_a_query_round_trip_through_the_routes(harness: Harness) -> None:
     assert request["args"]["sql"] == SQL
     client = harness.client
     wrong = client.post(
-        f"/ai/chat/turns/{turn}/tool-results", json={"callId": "other", "result": {"ok": True}}, headers=headers()
+        f"/ai/chat/turns/{turn}/tool-results",
+        json={"callId": "other", "result": {"ok": True, "kind": "query_result"}},
+        headers=headers(),
     )
     assert wrong.status_code == 409
     assert wrong.json()["error"]["id"] == ErrorId.AI_TOOL_RESULT_REJECTED.value
+    mismatched = client.post(
+        f"/ai/chat/turns/{turn}/tool-results",
+        json={"callId": "call-1", "result": {"ok": True, "kind": "library", "items": []}},
+        headers=headers(),
+    )
+    assert mismatched.status_code == 409
     result = {
         "ok": True,
+        "kind": "query_result",
         "rowCount": 1,
         "truncated": False,
         "columns": [{"name": "avg", "type": "float", "nulls": 0, "distinct": 1, "min": 31.5, "max": 31.5}],
@@ -230,7 +241,7 @@ def test_an_oversized_sample_is_refused(harness: Harness) -> None:
     harness.model.turns.append(tool_turn("call-1", "run_query", RUN))
     turn = harness.turn(harness.thread())
     harness.wait_for(turn, "tool_request")
-    result = {"ok": True, "sample": [{"n": n} for n in range(51)]}
+    result = {"ok": True, "kind": "query_result", "sample": [{"n": n} for n in range(51)]}
     response = harness.client.post(
         f"/ai/chat/turns/{turn}/tool-results", json={"callId": "call-1", "result": result}, headers=headers()
     )
@@ -325,3 +336,68 @@ def test_redis_down_is_unavailable(harness: Harness, monkeypatch: pytest.MonkeyP
     assert response.json()["error"]["id"] == ErrorId.AI_CHAT_UNAVAILABLE.value
     detail = harness.client.get(f"/ai/chat/threads/{thread}", headers=headers()).json()
     assert detail["turns"][0]["status"] == "failed"
+
+
+def test_a_library_search_round_trip_through_the_routes(harness: Harness) -> None:
+    harness.model.turns.extend(
+        [tool_turn("call-1", "search_library", {"text": "bikeshare"}), text_turn("Two queries match.")]
+    )
+    turn = harness.turn(harness.thread())
+    request = harness.wait_for(turn, "tool_request")
+    assert request == {
+        "callId": "call-1",
+        "tool": "search_library",
+        "args": {"text": "bikeshare", "kinds": ["query", "dashboard"], "tags": []},
+    }
+    query_result = {"ok": True, "kind": "query_result", "rowCount": 1}
+    refused = harness.client.post(
+        f"/ai/chat/turns/{turn}/tool-results", json={"callId": "call-1", "result": query_result}, headers=headers()
+    )
+    assert refused.status_code == 409
+    result = {
+        "ok": True,
+        "kind": "library",
+        "items": [
+            {"type": "query", "id": 12, "name": "Trips by hour", "tags": ["bikeshare"], "hasResult": True},
+            {"type": "dashboard", "id": 4, "name": "Bikeshare overview", "tags": []},
+        ],
+        "more": False,
+    }
+    accepted = harness.client.post(
+        f"/ai/chat/turns/{turn}/tool-results", json={"callId": "call-1", "result": result}, headers=headers()
+    )
+    assert accepted.status_code == 202, accepted.text
+    settled = harness.wait_for(turn, "tool_settled")
+    assert settled["count"] == 2
+    harness.wait_for(turn, "turn_done")
+    sent = json.loads(harness.model.calls[1]["messages"][2]["content"][0]["content"])
+    assert sent["items"][0] == {
+        "type": "query",
+        "id": 12,
+        "name": "Trips by hour",
+        "tags": ["bikeshare"],
+        "hasResult": True,
+    }
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        {"ok": True},
+        {"ok": True, "kind": "report"},
+        {"ok": True, "kind": "library", "items": [{"type": "alert", "id": 1, "name": "x"}]},
+        {"ok": True, "kind": "library", "items": [{"type": "query", "id": 0, "name": "x"}]},
+        {"ok": True, "kind": "dashboard", "widgets": [{"title": "t"}]},
+        {"ok": True, "kind": "saved_visualization", "query": {"id": 1, "name": "q", "sql": "x" * 8001}},
+    ],
+)
+def test_malformed_results_are_refused(harness: Harness, result: dict[str, Any]) -> None:
+    harness.model.turns.append(tool_turn("call-1", "search_library", {"text": "x"}))
+    turn = harness.turn(harness.thread())
+    harness.wait_for(turn, "tool_request")
+    response = harness.client.post(
+        f"/ai/chat/turns/{turn}/tool-results", json={"callId": "call-1", "result": result}, headers=headers()
+    )
+    assert response.status_code == 422, response.text
+    harness.client.post(f"/ai/chat/turns/{turn}/cancel", headers=headers())
+    harness.wait_for(turn, "turn_done")

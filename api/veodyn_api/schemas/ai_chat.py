@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import Field
 
@@ -88,13 +88,91 @@ class ChatResultColumnIn(CamelModel):
     top: list[dict[str, Any]] | None = Field(default=None, max_length=3)
 
 
-class ChatToolResultIn(CamelModel):
+Tag = Annotated[str, Field(max_length=64)]
+
+
+class _ChatResultBase(CamelModel):
     ok: bool
     error: str | None = Field(default=None, max_length=500)
+
+
+class _ChatRowsBase(_ChatResultBase):
     row_count: int | None = Field(default=None, ge=0)
     truncated: bool | None = None
     columns: list[ChatResultColumnIn] | None = Field(default=None, max_length=500)
     sample: list[dict[str, Any]] | None = Field(default=None, max_length=50)
+
+
+class ChatQueryResultIn(_ChatRowsBase):
+    kind: Literal["query_result"]
+
+
+class ChatLibraryItemIn(CamelModel):
+    type: Literal["query", "dashboard"]
+    id: int = Field(gt=0)
+    name: str = Field(max_length=500)
+    description: str | None = Field(default=None, max_length=300)
+    tags: list[Tag] = Field(default_factory=list, max_length=10)
+    updated_at: str | None = Field(default=None, max_length=64)
+    has_result: bool | None = None
+
+
+class ChatLibraryResultIn(_ChatResultBase):
+    kind: Literal["library"]
+    items: list[ChatLibraryItemIn] | None = Field(default=None, max_length=20)
+    more: bool | None = None
+
+
+class ChatSavedQueryIn(CamelModel):
+    id: int = Field(gt=0)
+    name: str = Field(max_length=500)
+    description: str | None = Field(default=None, max_length=4_000)
+    sql: str | None = Field(default=None, max_length=8_000)
+    data_source_id: int | None = Field(default=None, gt=0)
+    parameters: list[Annotated[str, Field(max_length=255)]] = Field(default_factory=list, max_length=50)
+    updated_at: str | None = Field(default=None, max_length=64)
+
+
+class ChatVisualizationRefIn(CamelModel):
+    id: int = Field(gt=0)
+    name: str = Field(max_length=500)
+    type: str = Field(max_length=64)
+
+
+class ChatSavedVisualizationResultIn(_ChatRowsBase):
+    kind: Literal["saved_visualization"]
+    query: ChatSavedQueryIn | None = None
+    visualization: ChatVisualizationRefIn | None = None
+    visualizations: list[ChatVisualizationRefIn] | None = Field(default=None, max_length=20)
+    retrieved_at: str | None = Field(default=None, max_length=64)
+
+
+class ChatDashboardRefIn(CamelModel):
+    id: int = Field(gt=0)
+    name: str = Field(max_length=500)
+    tags: list[Tag] = Field(default_factory=list, max_length=10)
+    updated_at: str | None = Field(default=None, max_length=64)
+
+
+class ChatDashboardWidgetIn(CamelModel):
+    title: str = Field(max_length=500)
+    query_id: int = Field(gt=0)
+    query_name: str | None = Field(default=None, max_length=500)
+    visualization_id: int = Field(gt=0)
+    visualization_type: str = Field(max_length=64)
+
+
+class ChatDashboardResultIn(_ChatResultBase):
+    kind: Literal["dashboard"]
+    dashboard: ChatDashboardRefIn | None = None
+    widgets: list[ChatDashboardWidgetIn] | None = Field(default=None, max_length=50)
+    text_widgets: int | None = Field(default=None, ge=0)
+
+
+ChatToolResultIn = Annotated[
+    ChatQueryResultIn | ChatLibraryResultIn | ChatSavedVisualizationResultIn | ChatDashboardResultIn,
+    Field(discriminator="kind"),
+]
 
 
 class ChatToolResultPostIn(CamelModel):

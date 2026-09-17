@@ -215,7 +215,7 @@ class TurnRunner:
         return await self._round_trip(key, outcome)
 
     async def _round_trip(self, key: str, request: ClientCall) -> dict[str, Any]:
-        await self._bus.set_pending(key, request.call_id)
+        await self._bus.set_pending(key, request.call_id, request.tool)
         await self._bus.emit(key, "status", {"phase": "waiting_for_browser"})
         await self._bus.emit(
             key, "tool_request", {"callId": request.call_id, "tool": request.tool, "args": request.args}
@@ -228,6 +228,9 @@ class TurnRunner:
         settled: dict[str, Any] = {"callId": request.call_id, "ok": ok, "durationMs": elapsed_ms}
         if isinstance(result.get("rowCount"), int):
             settled["rowCount"] = result["rowCount"]
+        listed = result.get("items", result.get("widgets"))
+        if isinstance(listed, list):
+            settled["count"] = len(listed)
         await self._bus.emit(key, "status", {"phase": "reading_result"})
         await self._bus.emit(key, "tool_settled", settled)
         return _tool_result(request.call_id, json.dumps(result, separators=(",", ":")), not ok)

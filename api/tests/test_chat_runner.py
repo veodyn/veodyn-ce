@@ -97,7 +97,13 @@ async def test_a_text_only_turn_streams_and_is_stored(db: Session, bus: TurnBus,
     assert done.usage == {"input_tokens": 3, "output_tokens": 5, "model": "scripted-model"}
     assert not await bus.lease_alive(str(turn.id))
     assert model.calls[0]["messages"] == [{"role": "user", "content": [{"type": "text", "text": "how fast?"}]}]
-    assert [tool["name"] for tool in model.calls[0]["tools"]] == ["run_query", "propose_query"]
+    assert [tool["name"] for tool in model.calls[0]["tools"]] == [
+        "run_query",
+        "propose_query",
+        "search_library",
+        "show_visualization",
+        "open_dashboard",
+    ]
 
 
 async def test_a_query_round_trips_through_the_browser(db: Session, bus: TurnBus, sessions: Any) -> None:
@@ -311,3 +317,16 @@ async def test_shutdown_fails_the_turns_still_running(db: Session, bus: TurnBus,
     assert task.cancelled()
     assert (await frames(bus, turn))[-1][1]["id"] == ErrorId.AI_TURN_LOST.value
     assert stored(db, turn).status == "failed"
+
+
+async def test_a_dashboard_result_settles_with_its_widget_count(db: Session, bus: TurnBus, sessions: Any) -> None:
+    turn = new_turn(db)
+    model = ScriptedChatModel(tool_turn("call-1", "open_dashboard", {"dashboardId": 4}), text_turn("Two charts."))
+    run = asyncio.create_task(make_runner(model, bus, sessions).run(turn.id, turn.thread_id, 1, turn.user_text))
+    widgets = [{"title": "a", "queryId": 1, "visualizationId": 2, "visualizationType": "CHART"}] * 2
+    result = {"ok": True, "kind": "dashboard", "widgets": widgets}
+    [request] = await browser(bus, turn, [result])
+    await run
+    assert request["tool"] == "open_dashboard"
+    settled = next(data for event, data in await frames(bus, turn) if event == "tool_settled")
+    assert settled["count"] == 2 and "rowCount" not in settled
