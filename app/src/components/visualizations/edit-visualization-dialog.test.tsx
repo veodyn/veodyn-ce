@@ -46,8 +46,18 @@ describe('EditVisualizationDialog', () => {
       <EditVisualizationDialog open onClose={() => {}} data={data} onSave={() => {}} />
     )
 
-    expect(screen.getByLabelText('Type')).toHaveAttribute('role', 'combobox')
+    expect(screen.getByLabelText(/^Type/)).toHaveAttribute('role', 'combobox')
     expect(screen.getByLabelText('Name')).toHaveValue('')
+  })
+
+  it('marks Type required and leaves Name unmarked', () => {
+    renderWithProviders(
+      <EditVisualizationDialog open onClose={() => {}} data={data} onSave={() => {}} />
+    )
+
+    expect(screen.getByText('Type').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/^Type/)).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByText('Name').querySelector('[data-slot="required-marker"]')).toBeNull()
   })
 
   // The type select showed 'TABLE' where the option it came from reads 'Table'.
@@ -56,7 +66,7 @@ describe('EditVisualizationDialog', () => {
       <EditVisualizationDialog open onClose={() => {}} data={data} onSave={() => {}} />
     )
 
-    expect(screen.getByLabelText('Type')).toHaveTextContent('Table')
+    expect(screen.getByLabelText(/^Type/)).toHaveTextContent('Table')
   })
 
   it('passes the current visualization to onSave', async () => {
@@ -89,7 +99,7 @@ describe('EditVisualizationDialog chart column mapping', () => {
   }
 
   async function openChart(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(screen.getByLabelText('Type'))
+    await user.click(screen.getByLabelText(/^Type/))
     await user.click(await screen.findByRole('option', { name: 'Chart' }))
   }
 

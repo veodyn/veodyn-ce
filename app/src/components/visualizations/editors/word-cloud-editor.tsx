@@ -80,7 +80,7 @@ export function WordCloudEditor({ options: rawOptions, columns, onChange }: Word
         <p className="text-xs text-muted-foreground mt-1">Required: nothing renders without it. On its own, the text in each row is split on whitespace and every word is counted across all rows.</p>
       </div>
       <div>
-        <Label htmlFor={frequenciesColumnId} className="mb-1 block">Frequencies Column (optional)</Label>
+        <Label htmlFor={frequenciesColumnId} className="mb-1 block">Frequencies Column</Label>
         <Select
           value={options.frequenciesColumn || ''}
           onValueChange={(v) => setColumnOption('frequenciesColumn', v ?? '')}

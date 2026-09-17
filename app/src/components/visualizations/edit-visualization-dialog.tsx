@@ -184,8 +184,13 @@ export function EditVisualizationDialog({
                   text box. A `label` may target a button, so the select's trigger
                   takes the association directly. */}
               <div>
-                <Label htmlFor={typeId} className="mb-1 block">Type</Label>
-                <Select value={vizType} onValueChange={(v) => handleTypeChange(v ?? vizType)} disabled={!isNew}>
+                <Label htmlFor={typeId} className="mb-1 block" required>Type</Label>
+                <Select
+                  value={vizType}
+                  onValueChange={(v) => handleTypeChange(v ?? vizType)}
+                  disabled={!isNew}
+                  required
+                >
                   <SelectTrigger id={typeId} className="w-full h-8">
                     <SelectValue />
                   </SelectTrigger>

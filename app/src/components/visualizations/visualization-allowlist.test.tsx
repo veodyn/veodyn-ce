@@ -39,7 +39,7 @@ describe('the type selector under an instance allowlist', () => {
     const user = userEvent.setup()
     renderDialog(['TABLE', 'COUNTER'])
 
-    await user.click(screen.getByLabelText('Type'))
+    await user.click(screen.getByLabelText(/^Type/))
 
     expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual([
       'Table',
@@ -51,7 +51,7 @@ describe('the type selector under an instance allowlist', () => {
     const user = userEvent.setup()
     renderDialog(null)
 
-    await user.click(screen.getByLabelText('Type'))
+    await user.click(screen.getByLabelText(/^Type/))
 
     const names = (await screen.findAllByRole('option')).map((o) => o.textContent)
     expect(names).toContain('Sankey')
@@ -63,7 +63,7 @@ describe('the type selector under an instance allowlist', () => {
   it('starts a new visualization on a type the instance actually offers', () => {
     renderDialog(['COUNTER', 'MAP'])
 
-    expect(screen.getByLabelText('Type')).toHaveTextContent('Counter')
+    expect(screen.getByLabelText(/^Type/)).toHaveTextContent('Counter')
   })
 
   // Disabling a type controls what can be created, not what can be read. The
@@ -80,7 +80,7 @@ describe('the type selector under an instance allowlist', () => {
       updated_at: '',
     })
 
-    expect(screen.getByLabelText('Type')).toHaveTextContent('Sankey')
+    expect(screen.getByLabelText(/^Type/)).toHaveTextContent('Sankey')
   })
 })
 
