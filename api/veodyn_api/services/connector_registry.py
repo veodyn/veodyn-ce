@@ -195,10 +195,6 @@ def registered_connectors() -> list[RegisteredConnector]:
     return [_CONNECTORS[connector_id] for connector_id in sorted(_CONNECTORS)]
 
 
-def anything_is_registered() -> bool:
-    return bool(_CONNECTORS)
-
-
 @contextmanager
 def restored_connectors() -> Iterator[None]:
     saved = dict(_CONNECTORS)

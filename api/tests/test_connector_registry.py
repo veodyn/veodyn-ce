@@ -16,7 +16,6 @@ from veodyn_api.services.connector_registry import (
     UnaddressableConnectorId,
     UnrenderableCredentialSchema,
     UnsatisfiableContentContract,
-    anything_is_registered,
     connector_for,
     register_connector,
     registered_connectors,
@@ -29,7 +28,7 @@ def schema_of(*fields: CredentialField) -> CredentialSchema:
 
 
 def test_a_community_build_ships_no_connector() -> None:
-    assert anything_is_registered() is False
+    assert registered_connectors() == []
 
 
 def test_a_connector_invented_in_a_test_is_found_by_the_registry() -> None:
@@ -192,7 +191,7 @@ def test_the_registry_is_restored_when_a_test_block_ends() -> None:
     with restored_connectors():
         register_connector(TownCrierConnector())
     assert connector_for(TOWN_CRIER_ID) is None
-    assert anything_is_registered() is False
+    assert registered_connectors() == []
 
 
 def test_a_connector_declares_whether_its_channel_can_be_recalled() -> None:

@@ -7,12 +7,10 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from veodyn_api.models.connector_configuration import ConnectorConfiguration
-from veodyn_api.services.connector_content import contract_violations
-from veodyn_api.services.connector_contract import DeliveryOutcome, Rendering
+from veodyn_api.services.connector_contract import DeliveryOutcome
 from veodyn_api.services.connector_registry import RegisteredConnector
 from veodyn_api.services.connector_reports import (
     delivery_sentence,
-    outcome_of,
     refusal_sentence,
     unreachable_sentence,
     verdict_of,
@@ -27,12 +25,6 @@ class CredentialsRefused(Exception):
 
 class AlreadyConfigured(Exception):
     pass
-
-
-class DeliveryRefused(Exception):
-    def __init__(self, reason: str) -> None:
-        super().__init__(reason)
-        self.reason = reason
 
 
 def _quoted(names: Iterable[str]) -> str:
@@ -165,24 +157,3 @@ def record_delivery(
     row.last_delivery_detail = delivery_sentence(connector, outcome)
     db.commit()
     db.refresh(row)
-
-
-def deliver_through(
-    db: Session,
-    connector: RegisteredConnector,
-    row: ConnectorConfiguration,
-    rendering: Rendering,
-    idempotency_key: str,
-) -> DeliveryOutcome:
-    violations = contract_violations(connector.content_contract, rendering)
-    if violations:
-        raise DeliveryRefused(
-            f"the rendering does not meet what {connector.connector_id} accepts: " + "; ".join(violations)
-        )
-    try:
-        reported: object = connector.deliver(rendering, row.credentials, idempotency_key)
-    except Exception:
-        reported = None
-    outcome = outcome_of(reported)
-    record_delivery(db, connector, row, outcome)
-    return outcome

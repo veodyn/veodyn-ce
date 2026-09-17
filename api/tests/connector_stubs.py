@@ -4,8 +4,12 @@ from typing import Any
 
 import httpx
 import respx
+from sqlalchemy.orm import Session
 
 from tests.conftest import REDASH_TEST_URL, session_payload
+from veodyn_api.models.connector_configuration import ConnectorConfiguration
+from veodyn_api.services.connector_configs import record_delivery
+from veodyn_api.services.connector_content import contract_violations
 from veodyn_api.services.connector_contract import (
     ContentContract,
     CredentialField,
@@ -17,6 +21,8 @@ from veodyn_api.services.connector_contract import (
     Rendering,
     VerdictCode,
 )
+from veodyn_api.services.connector_registry import RegisteredConnector
+from veodyn_api.services.connector_reports import outcome_of
 
 REDASH = REDASH_TEST_URL
 
@@ -86,6 +92,7 @@ class TownCrierConnector:
     recallable: bool = True
     verified_with: list[dict[str, Any]] = field(default_factory=list)
     delivered: list[Rendering] = field(default_factory=list)
+    delivered_with: list[dict[str, Any]] = field(default_factory=list)
     idempotency_keys: list[str] = field(default_factory=list)
     raises_on_verify: bool = False
     raises_on_deliver: bool = False
@@ -103,6 +110,7 @@ class TownCrierConnector:
         if self.raises_on_deliver:
             raise RuntimeError(f"town crier exploded holding {credentials.get('crier_token')}")
         self.delivered.append(rendering)
+        self.delivered_with.append(dict(credentials))
         self.idempotency_keys.append(idempotency_key)
         if not self.next_delivery_succeeds:
             return DeliveryOutcome(delivered=False, code=DeliveryCode.CHANNEL_UNAVAILABLE)
@@ -167,6 +175,33 @@ class CarelessConnector:
             delivered=self.mode == "delivers",
             code=f"failed carrying {token}",  # type: ignore[arg-type]
         )
+
+
+class DeliveryRefused(Exception):
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+def deliver_through(
+    db: Session,
+    connector: RegisteredConnector,
+    row: ConnectorConfiguration,
+    rendering: Rendering,
+    idempotency_key: str,
+) -> DeliveryOutcome:
+    violations = contract_violations(connector.content_contract, rendering)
+    if violations:
+        raise DeliveryRefused(
+            f"the rendering does not meet what {connector.connector_id} accepts: " + "; ".join(violations)
+        )
+    try:
+        reported: object = connector.deliver(rendering, row.credentials, idempotency_key)
+    except Exception:
+        reported = None
+    outcome = outcome_of(reported)
+    record_delivery(db, connector, row, outcome)
+    return outcome
 
 
 def good_credentials() -> dict[str, Any]:

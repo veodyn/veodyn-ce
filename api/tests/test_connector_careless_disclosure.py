@@ -19,11 +19,12 @@ from tests.connector_stubs import (
     CarelessConnector,
     as_user,
     auth,
+    deliver_through,
     fits_the_contract,
     good_credentials,
 )
 from veodyn_api.models.connector_configuration import ConnectorConfiguration
-from veodyn_api.services.connector_configs import CredentialsRefused, create, deliver_through, verified_credentials
+from veodyn_api.services.connector_configs import CredentialsRefused, create, verified_credentials
 from veodyn_api.services.connector_contract import SUBCLASSING_REFUSED, WITHHELD, DeliveryCode, DeliveryHandle
 from veodyn_api.services.connector_registry import (
     RegisteredConnector,

@@ -6,14 +6,15 @@ from sqlalchemy.orm import Session
 from tests.connector_stubs import (
     GOOD_TOKEN,
     KEY,
-    ROOM,
     TOWN_CRIER_ID,
+    DeliveryRefused,
     TownCrierConnector,
+    deliver_through,
     fits_the_contract,
     good_credentials,
 )
 from veodyn_api.models.connector_configuration import ConnectorConfiguration
-from veodyn_api.services.connector_configs import DeliveryRefused, create, deliver_through
+from veodyn_api.services.connector_configs import create
 from veodyn_api.services.connector_contract import DeliveryCode, Rendering, is_permanent
 from veodyn_api.services.connector_registry import (
     RegisteredConnector,
@@ -106,7 +107,11 @@ def test_delivery_replays_the_stored_credentials_rather_than_a_digest_of_them(
 
     deliver_through(db, registered(), row, fits_the_contract(), KEY)
 
-    assert row.credentials == {"crier_token": GOOD_TOKEN, "crier_room": ROOM}
+    db.expire_all()
+    reread = db.get(ConnectorConfiguration, (row.org_slug, row.connector_id))
+    assert reread is not None
+    assert crier.delivered_with == [dict(reread.credentials)]
+    assert crier.delivered_with == crier.verified_with
 
 
 def test_the_idempotency_key_is_handed_to_the_connector_with_the_rendering(
