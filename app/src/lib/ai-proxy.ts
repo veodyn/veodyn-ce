@@ -113,14 +113,18 @@ function declaredBodyLength(request: Request, message: string): number | null {
   return Number(value)
 }
 
-async function readRequestText(request: Request, message: string): Promise<string> {
+async function readRequestText(
+  request: Request,
+  message: string,
+  maxBytes: number = MAX_REQUEST_BYTES
+): Promise<string> {
   const declaredLength = declaredBodyLength(request, message)
-  if (declaredLength !== null && declaredLength > MAX_REQUEST_BYTES) {
+  if (declaredLength !== null && declaredLength > maxBytes) {
     throw invalidRequest(message, { reason: 'body too large' })
   }
   if (request.body === null) throw invalidRequest(message, { reason: 'missing body' })
   try {
-    return await readCappedStream(request.body, MAX_REQUEST_BYTES)
+    return await readCappedStream(request.body, maxBytes)
   } catch (error) {
     if (isAppError(error) && error.id === ErrorIds.AI_REQUEST_FAILED) {
       throw invalidRequest(message, { reason: 'body too large' })
@@ -132,11 +136,12 @@ async function readRequestText(request: Request, message: string): Promise<strin
 export async function parseAiRequest<T>(
   request: Request,
   schema: ZodType<T>,
-  message: string
+  message: string,
+  maxBytes: number = MAX_REQUEST_BYTES
 ): Promise<T> {
   let text: string
   try {
-    text = await readRequestText(request, message)
+    text = await readRequestText(request, message, maxBytes)
   } catch (error) {
     if (isAppError(error)) throw error
     throw invalidRequest(message, { reason: 'unreadable body' })

@@ -4,6 +4,128 @@
  */
 
 export interface paths {
+    "/ai/chat/drafts/{draft_id}/promotions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Promotion */
+        post: operations["post_promotion_ai_chat_drafts__draft_id__promotions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ai/chat/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Threads */
+        get: operations["list_threads_ai_chat_threads_get"];
+        put?: never;
+        /** Create Thread */
+        post: operations["create_thread_ai_chat_threads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ai/chat/threads/{thread_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Thread */
+        get: operations["get_thread_ai_chat_threads__thread_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Thread */
+        delete: operations["delete_thread_ai_chat_threads__thread_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Thread */
+        patch: operations["patch_thread_ai_chat_threads__thread_id__patch"];
+        trace?: never;
+    };
+    "/ai/chat/threads/{thread_id}/turns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Turn */
+        post: operations["post_turn_ai_chat_threads__thread_id__turns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ai/chat/turns/{turn_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Turn */
+        post: operations["cancel_turn_ai_chat_turns__turn_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ai/chat/turns/{turn_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stream Turn */
+        get: operations["stream_turn_ai_chat_turns__turn_id__stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ai/chat/turns/{turn_id}/tool-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Tool Result */
+        post: operations["post_tool_result_ai_chat_turns__turn_id__tool_results_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ai/converse": {
         parameters: {
             query?: never;
@@ -151,60 +273,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/connectors": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Connectors */
-        get: operations["list_connectors_connectors_get"];
-        put?: never;
-        /** Configure Connector */
-        post: operations["configure_connector_connectors_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/connectors/types": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Connector Types */
-        get: operations["list_connector_types_connectors_types_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/connectors/{connector_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read Connector */
-        get: operations["read_connector_connectors__connector_id__get"];
-        /** Reconfigure Connector */
-        put: operations["reconfigure_connector_connectors__connector_id__put"];
-        post?: never;
-        /** Forget Connector */
-        delete: operations["forget_connector_connectors__connector_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -390,8 +458,7 @@ export interface paths {
         /**
          * Get Capabilities
          * @description Name the standards, versions and feed entities this build can bind a feed
-         *     to, and what each entity's producer needs of a binding. A read open to any
-         *     org member, the same authorization as listing feeds.
+         *     to. A read open to any org member, the same authorization as listing feeds.
          */
         get: operations["get_capabilities_published_feeds_capabilities_get"];
         put?: never;
@@ -450,23 +517,6 @@ export interface paths {
          *     and commits the row itself.
          */
         post: operations["publish_now_published_feeds__slug__attempts_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/published-feeds/{slug}/entities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Static Entities */
-        get: operations["list_static_entities_published_feeds__slug__entities_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -590,105 +640,203 @@ export interface components {
              */
             status: "fresh" | "stale";
         };
-        /** ComposeContractOut */
-        ComposeContractOut: {
-            /** Acceptsoverride */
-            acceptsOverride: boolean;
-            /** Asksactiveperiod */
-            asksActivePeriod: boolean;
-            /** Asksclassification */
-            asksClassification: boolean;
-            /** Asksentities */
-            asksEntities: boolean;
-            /** Carriestranslations */
-            carriesTranslations: boolean;
-            /** Requiresactiveperiod */
-            requiresActivePeriod: boolean;
-            /** Requiresclassification */
-            requiresClassification: boolean;
-            /** Requiresentities */
-            requiresEntities: boolean;
-            /**
-             * Wording
-             * @enum {string}
-             */
-            wording: "structured" | "text";
+        /** ChatAcceptedOut */
+        ChatAcceptedOut: {
+            /** Accepted */
+            accepted: boolean;
         };
-        /** ConnectorHealthOut */
-        ConnectorHealthOut: {
+        /** ChatDraftOut */
+        ChatDraftOut: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Promotions */
+            promotions: components["schemas"]["ChatPromotionOut"][];
+            /** Versions */
+            versions: components["schemas"]["ChatDraftVersionOut"][];
+        };
+        /** ChatDraftVersionOut */
+        ChatDraftVersionOut: {
             /**
-             * Credentialsverifiedat
+             * Createdat
              * Format: date-time
              */
-            credentialsVerifiedAt: string;
+            createdAt: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Turnid */
+            turnId: string;
+            /** Version */
+            version: number;
+        };
+        /** ChatPromotionIn */
+        ChatPromotionIn: {
+            /** Targetid */
+            targetId: string;
             /**
-             * Delivery
+             * Targettype
+             * @constant
+             */
+            targetType: "query";
+            /** Targetversionatpromote */
+            targetVersionAtPromote?: number | null;
+            /** Version */
+            version: number;
+        };
+        /** ChatPromotionOut */
+        ChatPromotionOut: {
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Id */
+            id: string;
+            /** Promotedversion */
+            promotedVersion: number;
+            /** Targetid */
+            targetId: string;
+            /** Targettype */
+            targetType: string;
+            /** Targetversionatpromote */
+            targetVersionAtPromote: number | null;
+        };
+        /** ChatResultColumnIn */
+        ChatResultColumnIn: {
+            /** Distinct */
+            distinct: number;
+            /**
+             * Distinctcapped
+             * @default false
+             */
+            distinctCapped: boolean;
+            /** Max */
+            max?: unknown;
+            /** Min */
+            min?: unknown;
+            /** Name */
+            name: string;
+            /** Nulls */
+            nulls: number;
+            /** Top */
+            top?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Type */
+            type: string;
+        };
+        /** ChatThreadDetailOut */
+        ChatThreadDetailOut: {
+            /** Drafts */
+            drafts: components["schemas"]["ChatDraftOut"][];
+            thread: components["schemas"]["ChatThreadOut"];
+            /** Turns */
+            turns: components["schemas"]["ChatTurnOut"][];
+        };
+        /** ChatThreadListOut */
+        ChatThreadListOut: {
+            /** Nextoffset */
+            nextOffset: number | null;
+            /** Threads */
+            threads: components["schemas"]["ChatThreadOut"][];
+        };
+        /** ChatThreadOut */
+        ChatThreadOut: {
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Id */
+            id: string;
+            /**
+             * Lastturnat
+             * Format: date-time
+             */
+            lastTurnAt: string;
+            /** Pinned */
+            pinned: boolean;
+            /** Title */
+            title: string;
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+        };
+        /** ChatThreadPatchIn */
+        ChatThreadPatchIn: {
+            /** Pinned */
+            pinned?: boolean | null;
+            /** Title */
+            title?: string | null;
+        };
+        /** ChatToolResultIn */
+        ChatToolResultIn: {
+            /** Columns */
+            columns?: components["schemas"]["ChatResultColumnIn"][] | null;
+            /** Error */
+            error?: string | null;
+            /** Ok */
+            ok: boolean;
+            /** Rowcount */
+            rowCount?: number | null;
+            /** Sample */
+            sample?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Truncated */
+            truncated?: boolean | null;
+        };
+        /** ChatToolResultPostIn */
+        ChatToolResultPostIn: {
+            /** Callid */
+            callId: string;
+            result: components["schemas"]["ChatToolResultIn"];
+        };
+        /** ChatTurnIn */
+        ChatTurnIn: {
+            /** Text */
+            text: string;
+        };
+        /** ChatTurnOut */
+        ChatTurnOut: {
+            /** Blocks */
+            blocks: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Errorid */
+            errorId: string | null;
+            /** Finishedat */
+            finishedAt: string | null;
+            /** Id */
+            id: string;
+            /** Seq */
+            seq: number;
+            /**
+             * Status
              * @enum {string}
              */
-            delivery: "untested" | "delivering" | "failing";
-            /** Lastdeliveryat */
-            lastDeliveryAt: string | null;
-            /** Lastdeliverydetail */
-            lastDeliveryDetail: string | null;
+            status: "running" | "done" | "failed";
+            /** Stopreason */
+            stopReason: string | null;
+            /** Usertext */
+            userText: string;
         };
-        /** ConnectorIn */
-        ConnectorIn: {
-            /** Connectorid */
-            connectorId: string;
-            /** Credentials */
-            credentials?: {
-                [key: string]: unknown;
-            };
-            /** Name */
-            name: string;
-        };
-        /** ConnectorOut */
-        ConnectorOut: {
-            /** Configuredfields */
-            configuredFields: string[];
-            /** Connectorid */
-            connectorId: string;
-            /** Displayname */
-            displayName: string;
-            health: components["schemas"]["ConnectorHealthOut"];
-            /** Name */
-            name: string;
-            /** Recallable */
-            recallable: boolean;
-        };
-        /** ConnectorTypeOut */
-        ConnectorTypeOut: {
-            composeContract: components["schemas"]["ComposeContractOut"];
-            /** Connectorid */
-            connectorId: string;
-            contentContract: components["schemas"]["ContentContractOut"];
-            credentialSchema: components["schemas"]["CredentialSchemaOut"];
-            /** Displayname */
-            displayName: string;
-            /** Recallable */
-            recallable: boolean;
-        };
-        /** ConnectorUpdateIn */
-        ConnectorUpdateIn: {
-            /** Clear */
-            clear?: string[];
-            /** Name */
-            name: string;
-            /** Replace */
-            replace?: {
-                [key: string]: unknown;
-            };
-        };
-        /** ContentContractOut */
-        ContentContractOut: {
-            /** Maxlength */
-            maxLength: number | null;
-            /** Requiredfooter */
-            requiredFooter: string | null;
-            /** Supportsmarkup */
-            supportsMarkup: boolean;
-            /** Urlcountsascharacters */
-            urlCountsAsCharacters: number | null;
+        /** ChatTurnStartedOut */
+        ChatTurnStartedOut: {
+            /** Seq */
+            seq: number;
+            /** Turnid */
+            turnId: string;
         };
         /** ConverseIn */
         ConverseIn: {
@@ -698,7 +846,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "query" | "dashboard" | "kpi" | "report" | "snippet" | "message";
+            kind: "query" | "dashboard" | "kpi" | "report" | "snippet";
             /** Messages */
             messages: components["schemas"]["ConverseMessageIn"][];
             /** Targetdashboardid */
@@ -719,37 +867,13 @@ export interface components {
             /** Focustable */
             focusTable: string | null;
             /** Proposal */
-            proposal: (components["schemas"]["QueryProposalOut"] | components["schemas"]["DashboardProposalOut"] | components["schemas"]["KpiProposalOut"] | components["schemas"]["ReportProposalOut"] | components["schemas"]["SnippetProposalOut"] | components["schemas"]["MessageProposalOut"]) | null;
+            proposal: (components["schemas"]["QueryProposalOut"] | components["schemas"]["DashboardProposalOut"] | components["schemas"]["KpiProposalOut"] | components["schemas"]["ReportProposalOut"] | components["schemas"]["SnippetProposalOut"]) | null;
             /** Ready */
             ready: boolean;
             /** Reply */
             reply: string;
             /** Suggestedanswers */
             suggestedAnswers: string[];
-        };
-        /** CredentialPropertyOut */
-        CredentialPropertyOut: {
-            /** Description */
-            description?: string | null;
-            /** Title */
-            title: string;
-            /** Type */
-            type: string;
-        };
-        /** CredentialSchemaOut */
-        CredentialSchemaOut: {
-            /** Clearable */
-            clearable: string[];
-            /** Order */
-            order: string[];
-            /** Properties */
-            properties: {
-                [key: string]: components["schemas"]["CredentialPropertyOut"];
-            };
-            /** Required */
-            required: string[];
-            /** Secret */
-            secret: string[];
         };
         /** DashboardProposalOut */
         DashboardProposalOut: {
@@ -858,17 +982,6 @@ export interface components {
             /** Label */
             label: string;
         };
-        /** EntityNeedsOut */
-        EntityNeedsOut: {
-            /** Columnmap */
-            columnMap: boolean;
-            /** Query */
-            query: boolean;
-            /** Retirementonfailure */
-            retirementOnFailure: boolean;
-            /** Staticreference */
-            staticReference: boolean;
-        };
         /**
          * ExpectationIn
          * @description How often this capture should deliver, or null to stop expecting.
@@ -891,7 +1004,21 @@ export interface components {
         FavoritesOut: {
             [key: string]: string[];
         };
-        /** FeedCapabilitiesOut */
+        /**
+         * FeedCapabilitiesOut
+         * @description What this deployment's feed registry actually holds, read at runtime
+         *     rather than inferred from a values file or a matching image digest.
+         *
+         *     Root CLAUDE.md records that an installed layer is inert until a deployment
+         *     names it, and the deploy succeeds either way -- costing four releases before
+         *     this pattern got an interrogation endpoint. `standards`, and `entities`
+         *     within each, are sorted so the response is stable across the registry's
+         *     unordered sets.
+         *
+         *     The frontend's binding form renders `entity` as a stated fact when there is
+         *     exactly one, and as a picker otherwise (design section 4's "one
+         *     consequence"); this is the response that decision reads.
+         */
         FeedCapabilitiesOut: {
             /** Standards */
             standards: components["schemas"]["StandardCapabilityOut"][];
@@ -1003,20 +1130,6 @@ export interface components {
             /** Valuecolumn */
             valueColumn: string;
         };
-        /** MessageProposalOut */
-        MessageProposalOut: {
-            /** Description */
-            description: string;
-            /** Header */
-            header: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "message";
-            /** Title */
-            title: string;
-        };
         /**
          * NewQueryProposalOut
          * @description A query the AI wrote because the instance did not have one that fits.
@@ -1084,7 +1197,7 @@ export interface components {
             /** Iscurrent */
             isCurrent: boolean;
             /** Queryresultid */
-            queryResultId: number | null;
+            queryResultId: number;
             /** Reason */
             reason: string;
         };
@@ -1113,12 +1226,7 @@ export interface components {
              */
             onError: "block" | "last_good";
             /** Queryid */
-            queryId?: number | null;
-            /**
-             * Retireonfailure
-             * @default false
-             */
-            retireOnFailure: boolean;
+            queryId: number;
             /** Slug */
             slug: string;
             /** Sourcecolumn */
@@ -1158,9 +1266,7 @@ export interface components {
             /** Onerror */
             onError: string;
             /** Queryid */
-            queryId: number | null;
-            /** Retireonfailure */
-            retireOnFailure: boolean;
+            queryId: number;
             /** Revision */
             revision: number;
             /** Slug */
@@ -1232,36 +1338,28 @@ export interface components {
             /** Trigger */
             trigger: string;
         };
-        /** StandardCapabilityOut */
+        /**
+         * StandardCapabilityOut
+         * @description One standard this deployment can bind a feed to, with the versions it can
+         *     publish and the entities registered under it.
+         *
+         *     `versions` comes from `published_feed_registry.VERSIONS_BY_STANDARD` and is empty for a
+         *     standard only a pack registers entities under.
+         *
+         *     `timezones` is the closed vocabulary this standard's system declaration
+         *     accepts, read from the validator's own schema by `gbfs_vocabulary.py`. Empty
+         *     for a standard that declares no timezone, and empty when that schema cannot
+         *     be read, which the form degrades to a text field.
+         */
         StandardCapabilityOut: {
             /** Entities */
             entities: string[];
-            /** Entityneeds */
-            entityNeeds: {
-                [key: string]: components["schemas"]["EntityNeedsOut"];
-            };
             /** Standard */
             standard: string;
             /** Timezones */
             timezones: string[];
             /** Versions */
             versions: string[];
-        };
-        /** StaticEntitiesOut */
-        StaticEntitiesOut: {
-            /** Entities */
-            entities: components["schemas"]["StaticEntityOut"][];
-            /** Feedversion */
-            feedVersion: string;
-        };
-        /** StaticEntityOut */
-        StaticEntityOut: {
-            /** Id */
-            id: string;
-            /** Kind */
-            kind: string;
-            /** Label */
-            label: string;
         };
         /** TagCountOut */
         TagCountOut: {
@@ -1308,6 +1406,359 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    post_promotion_ai_chat_drafts__draft_id__promotions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatPromotionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatPromotionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_threads_ai_chat_threads_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_thread_ai_chat_threads_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_thread_ai_chat_threads__thread_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_thread_ai_chat_threads__thread_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_thread_ai_chat_threads__thread_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatThreadPatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_turn_ai_chat_threads__thread_id__turns_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatTurnIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatTurnStartedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_turn_ai_chat_turns__turn_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path: {
+                turn_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatAcceptedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_turn_ai_chat_turns__turn_id__stream_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "last-event-id"?: string | null;
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path: {
+                turn_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The turn's frames as server-sent events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_tool_result_ai_chat_turns__turn_id__tool_results_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path: {
+                turn_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatToolResultPostIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatAcceptedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     post_converse_ai_converse_post: {
         parameters: {
             query?: never;
@@ -1504,210 +1955,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DatasetOut"][];
                 };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_connectors_connectors_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                cookie?: string | null;
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConnectorOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    configure_connector_connectors_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                cookie?: string | null;
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConnectorIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConnectorOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_connector_types_connectors_types_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                cookie?: string | null;
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConnectorTypeOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    read_connector_connectors__connector_id__get: {
-        parameters: {
-            query?: never;
-            header?: {
-                cookie?: string | null;
-                authorization?: string | null;
-            };
-            path: {
-                connector_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConnectorOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    reconfigure_connector_connectors__connector_id__put: {
-        parameters: {
-            query?: never;
-            header?: {
-                cookie?: string | null;
-                authorization?: string | null;
-            };
-            path: {
-                connector_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConnectorUpdateIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConnectorOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    forget_connector_connectors__connector_id__delete: {
-        parameters: {
-            query?: never;
-            header?: {
-                cookie?: string | null;
-                authorization?: string | null;
-            };
-            path: {
-                connector_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -2233,44 +2480,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublishAttemptOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_static_entities_published_feeds__slug__entities_get: {
-        parameters: {
-            query: {
-                kind: "agency" | "route" | "stop" | "trip";
-                q?: string | null;
-                limit?: number;
-            };
-            header?: {
-                cookie?: string | null;
-                authorization?: string | null;
-            };
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StaticEntitiesOut"];
                 };
             };
             /** @description Validation Error */
