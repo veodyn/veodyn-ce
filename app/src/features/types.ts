@@ -186,7 +186,13 @@ export type SlotContributions = { [Id in SlotId]?: SlotLoader<Id> }
  */
 export type MockDataFactory = () => Promise<Record<string, unknown[]>>
 
+export interface AnonymousRoute {
+  path: string
+  embeddable?: boolean
+}
+
 export interface FeatureDescriptor {
+  anonymousRoutes?: AnonymousRoute[]
   /** Equal to the directory name. Asserted by the boundary guard. */
   id: string
   enabled?: (config: ClientConfig) => boolean

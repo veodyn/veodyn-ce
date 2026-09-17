@@ -74,7 +74,12 @@ describe('content security policy', () => {
     expect(directive(middleware(request('/login', '')), 'frame-ancestors')).toBe("frame-ancestors 'none'")
   })
 
-  it.each(['/embed/query/1', '/dashboards/public/tok3n', '/reports/public/tok3n'])(
+  it.each([
+    '/embed/query/1/visualization/2',
+    '/embed/public/tok3n',
+    '/dashboards/public/tok3n',
+    '/reports/public/tok3n',
+  ])(
     'allows framing on %s, because being embedded is the point',
     async (path) => {
       const middleware = await loadMiddleware('production')

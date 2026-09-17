@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { isAnonymousPath, isEmbeddablePath } from '@/features/anonymous-routes'
 
 // A configured deployment must not serve an app shell to a request that carries
 // no session. Before this, a browser with no cookies at all could open /users,
@@ -15,36 +16,6 @@ import { NextResponse, type NextRequest } from 'next/server'
 // because Next inlines them.
 const CONFIGURED = !!process.env.NEXT_PUBLIC_REDASH_URL
 
-// Routes that exist precisely for people who have no session, plus the ones an
-// anonymous link is supposed to reach. Written without a trailing slash and
-// matched on a segment boundary below.
-const PUBLIC_ROUTES = [
-  '/login',
-  '/invite',
-  '/reset',
-  '/embed',
-  '/dashboards/public',
-  '/reports/public',
-  // Not public: /mcp authenticates for itself, with a Redash API key rather
-  // than a browser session. Redirecting it to an HTML sign-in page would break
-  // every MCP client, which wants a status code and a JSON body.
-  '/mcp',
-]
-
-/**
- * Segment-bounded, not a bare startsWith. A prefix test would exempt any future
- * route that merely begins with these characters: /mcp would open /mcp-admin,
- * /login would open /loginhistory, and /reports/public would open
- * /reports/publications, which is an analyst route rather than an anonymous
- * link. This is an authorization gate, so it fails closed on anything it was
- * not told about.
- */
-function isPublic(pathname: string): boolean {
-  return PUBLIC_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`)
-  )
-}
-
 // Redash's Flask session cookie, copied onto this origin by /api/auth/login.
 // Its presence is not proof of a valid session, and it is not treated as
 // proof: the app still calls /api/auth/session, and every backend route
@@ -52,35 +23,7 @@ function isPublic(pathname: string): boolean {
 // that plainly has no credential.
 const SESSION_COOKIE = 'session'
 
-/**
- * Marks a request as one of the PUBLIC_ROUTES for the root layout.
- *
- * The layout reads the caller's session server-side, which for a public route
- * is a Redash round trip in front of HTML that will never look at the answer.
- * An anonymous recipient does not pay it (no cookie, so there is nothing to
- * ask about), but a signed-in reader opening a share link does, and on an
- * embed that latency is the whole product. This is the one place that already
- * knows whether a path is public, and repeating that list in the layout is how
- * the two would drift.
- */
 export const PUBLIC_ROUTE_HEADER = 'x-veodyn-public-route'
-
-/**
- * Routes a customer is supposed to be able to put in an iframe. Everything else
- * refuses framing outright.
- *
- * Narrower than PUBLIC_ROUTES on purpose. /login, /invite and /reset are
- * reachable without a session but must never be framed: a framed sign-in form
- * is what clickjacking looks like. node/redash/security.py draws the same line
- * with csp_allows_embeding.
- */
-const EMBEDDABLE_ROUTES = ['/embed', '/dashboards/public', '/reports/public']
-
-function isEmbeddable(pathname: string): boolean {
-  return EMBEDDABLE_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`)
-  )
-}
 
 const IS_PROD = process.env.NODE_ENV === 'production'
 
@@ -158,7 +101,7 @@ function contentSecurityPolicy(nonce: string, pathname: string): string {
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    `frame-ancestors ${isEmbeddable(pathname) ? '*' : "'none'"}`,
+    `frame-ancestors ${isEmbeddablePath(pathname) ? '*' : "'none'"}`,
     ...(IS_PROD ? ['upgrade-insecure-requests'] : []),
   ].join('; ')
 }
@@ -194,7 +137,7 @@ export function middleware(request: NextRequest) {
   // headers: a demo build is a real deployment.
   if (!CONFIGURED) return proceed()
 
-  if (isPublic(pathname)) {
+  if (isAnonymousPath(pathname)) {
     requestHeaders.set(PUBLIC_ROUTE_HEADER, '1')
     return proceed()
   }

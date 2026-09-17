@@ -87,7 +87,7 @@ describe('AuthenticatedLayout', () => {
   })
 
   it('bypasses the chrome for embed routes', () => {
-    mockPathname = '/embed/abc'
+    mockPathname = '/embed/public/abc'
     render(
       <AuthenticatedLayout>
         <div>Embed body</div>

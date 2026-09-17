@@ -46,16 +46,10 @@ interface Exemption {
 
 const ALLOWED: Exemption[] = [
   {
-    file: 'src/middleware.ts',
-    literals: ['/reports/public'],
+    file: 'src/features/anonymous-routes.ts',
+    literals: ['/reports/public/[token]'],
     reason:
-      'Route MATCHING, not a link. It is an entry in the unauthenticated-route allowlist, so in a build with no reports feature it matches nothing and costs nothing: no page is served either way, and the only difference is whether a request that was going to 404 is redirected to /login first. Sourcing it from the registry would be worse than hardcoding it, for the reason authenticated-layout.tsx gives below.',
-  },
-  {
-    file: 'src/components/layout/authenticated-layout.tsx',
-    literals: ['/reports/public/'],
-    reason:
-      'Route matching again: the branch that strips the app shell off an anonymously shared report. It must keep working in a build with no reports package installed, because it serves people with no account at all, so it deliberately cannot come from that feature\'s registry entry. The file says so at the site, and says not to "finish the job" by folding it in.',
+      'Route MATCHING, not a link, and in one place now rather than the two it used to sit in: COMMUNITY_ANONYMOUS_ROUTES is the single classification that both the middleware gate and the app shell read, so they cannot disagree about it. It must keep working in a build with no reports package installed, because it serves people with no account at all, so it deliberately cannot come from that feature\'s registry entry. In such a build it matches nothing and costs nothing: no page is served either way, and the only difference is whether a request that was going to 404 is redirected to /login first.',
   },
   {
     file: 'src/components/captures/expected-interval-control.tsx',

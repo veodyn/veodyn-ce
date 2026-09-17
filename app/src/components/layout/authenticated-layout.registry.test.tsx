@@ -102,7 +102,7 @@ describe('AuthenticatedLayout with an empty feature registry', () => {
 
   it('still forces an embedded widget light, unaffected by the registry being empty', () => {
     window.localStorage.setItem(THEME_STORAGE_KEY, 'dark')
-    mockPathname = '/embed/query/3'
+    mockPathname = '/embed/query/3/visualization/4'
     render(
       <AuthenticatedLayout>
         <div>Embed body</div>

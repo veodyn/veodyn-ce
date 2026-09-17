@@ -63,10 +63,7 @@ describe('the session gate in a configured deployment', () => {
     expect(response.headers.get('location')).toBeNull()
   })
 
-  it.each(['/login', '/invite/tok', '/reset/tok', '/embed/query/1',
-    // The anonymous embed page. Covered by the existing '/embed' entry under
-    // segment-boundary matching, so PUBLIC_ROUTES deliberately does not carry a
-    // second entry for it; this case is what says so out loud.
+  it.each(['/login', '/invite/tok', '/reset/tok', '/embed/query/1/visualization/2',
     '/embed/public/abc',
     '/dashboards/public/abc', '/reports/public/abc'])(
     'leaves %s alone, since it is for people with no session',
