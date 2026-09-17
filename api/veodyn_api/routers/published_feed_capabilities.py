@@ -46,9 +46,6 @@ def _standard_out(standard: str) -> StandardCapabilityOut:
 
 @router.get("/capabilities", response_model=FeedCapabilitiesOut)
 def get_capabilities(identity: IdentityDep) -> FeedCapabilitiesOut:
-    """Name the standards, versions and feed entities this build can bind a feed
-    to, and what each entity's producer needs of a binding. A read open to any
-    org member, the same authorization as listing feeds."""
     return FeedCapabilitiesOut(
         standards=[_standard_out(standard) for standard in sorted(published_feed_registry.standards())]
     )

@@ -106,10 +106,6 @@ def publish_now(
     feed = load_feed(db, identity.org_slug, slug)
 
     if feed.query_id is None:
-        # This route publishes what a query last returned, and a binding with no
-        # query is rebuilt from its own source by whoever registered its
-        # producer. Refused rather than recorded as a failed attempt, for the
-        # same reason a missing cached result is.
         raise ApiError(
             ErrorId.PUBLISHED_FEED_NO_RESULT,
             f"the feed at {slug!r} has no query behind it, so there is no query result to publish here",

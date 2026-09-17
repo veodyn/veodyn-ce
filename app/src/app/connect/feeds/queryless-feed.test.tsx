@@ -1,7 +1,3 @@
-// A feed with no query behind it. The API models `queryId` as nullable and no
-// such feed exists yet, so every screen that renders one is unexercised until a
-// test constructs it. What is being pinned is that none of them render the
-// string "null", and that the query lookup does not fire on a null id.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -93,9 +89,6 @@ describe('a published feed with no query behind it', () => {
     await screen.findByText('Serving')
     expect(screen.queryByRole('button', { name: /publish now/i })).not.toBeInTheDocument()
     expect(screen.getByText(/no query behind it/i)).toBeInTheDocument()
-    // The hook is disabled, so react-query reports it as pending forever. A
-    // gate that ordered the pending branch first would sit on this sentence
-    // about a lookup that is never going to run.
     expect(screen.queryByText(/checking whether this query has a result newer/i)).not.toBeInTheDocument()
   })
 })

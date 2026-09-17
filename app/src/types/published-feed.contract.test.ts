@@ -57,9 +57,6 @@ describe('published-feed contract', () => {
     >()
   })
 
-  // Keys both ways here too, because the form now reads this shape to decide
-  // which of its own sections to render: a field added to the wire and not to
-  // ours is a capability the form silently ignores.
   it('a standard capability carries exactly the keys the wire does', () => {
     expectTypeOf<keyof StandardCapability>().toEqualTypeOf<
       keyof components['schemas']['StandardCapabilityOut']

@@ -50,9 +50,6 @@ def bulletins() -> AbstractContextManager[None]:
 
 
 def bulletins_from_a_query() -> AbstractContextManager[None]:
-    """A producer that reads a query result but maps no spec field to a column
-    of it: the combination `_check` used to answer "ok" for before it had proven
-    the query is there at all."""
     return a_fabricated_entity_no_community_build_ships(Needs(static_reference=True, column_map=False))
 
 

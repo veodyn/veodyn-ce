@@ -27,8 +27,6 @@ export interface PublishFinding {
 export interface PublishAttempt {
   attemptId: number
   bindingRevision: number
-  // Null when the feed has no query behind it. What the engine orders attempts
-  // on is a source version, which for a query-backed feed is this same number.
   queryResultId: number | null
   // A blocked attempt is the mapping or the data. A failed one is the
   // machinery, and carries a sentence instead of findings.
@@ -47,12 +45,6 @@ export type FeedStandard = 'gtfs-rt' | 'gbfs'
 /** What a write sends. Every field, every time: the endpoint is a PUT. */
 export interface PublishedFeedInput {
   slug: string
-  /**
-   * Null for an entity whose producer builds the feed from something other than
-   * a query result. Which entities those are is `EntityNeeds.query` below, and
-   * the API refuses a null for any entity that needs one, so this is never a
-   * silent fallback: it is either a real binding or a named refusal.
-   */
   queryId: number | null
   standard: FeedStandard
   // Not a Literal: each standard's serializer owns its supported set, and the
@@ -76,11 +68,6 @@ export interface PublishedFeedInput {
   columnMap: Record<string, string>
   onError: 'block' | 'last_good'
   lastGoodMaxAgeSeconds: number | null
-  /**
-   * Off leaves the last good artifact serving when a publish fails; on clears
-   * the served pointer, so the feed goes dark rather than serving something the
-   * latest validation did not cover.
-   */
   retireOnFailure: boolean
   visibility: 'private' | 'public'
 }
@@ -92,13 +79,6 @@ export interface PublishedFeed extends PublishedFeedInput {
   bindingState: string
 }
 
-/**
- * Which halves of a binding one entity's producer consumes, so the form asks
- * for those and no others. A property of the producer, not of the standard:
- * `publish_produce.py` is where a producer declares it, and an entity nothing
- * has registered a producer for reports its standard's defaults rather than
- * "needs nothing".
- */
 export interface EntityNeeds {
   query: boolean
   staticReference: boolean
@@ -111,7 +91,6 @@ export interface StandardCapability {
   standard: string
   versions: string[]
   entities: string[]
-  /** Keyed by the names in `entities`. */
   entityNeeds: Record<string, EntityNeeds>
   /**
    * The timezone names this standard's system declaration accepts, from the

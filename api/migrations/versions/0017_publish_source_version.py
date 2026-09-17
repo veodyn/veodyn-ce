@@ -1,11 +1,3 @@
-"""publish_attempt.source_version, an optional query behind a feed, retire-on-failure
-
-Revision ID: 0017
-Revises: 0016
-Create Date: 2026-08-27
-
-"""
-
 from collections.abc import Sequence
 
 import sqlalchemy as sa

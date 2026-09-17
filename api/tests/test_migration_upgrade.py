@@ -234,8 +234,6 @@ something other than a query leaves attempts the downgrade cannot narrow back.""
 def test_downgrading_past_the_queryless_revision_reverses_a_database_holding_nothing_queryless(
     fresh_url: str,
 ) -> None:
-    """The control for the refusal below. Without it, a downgrade that raised
-    unconditionally would pass that test just as well."""
     command.upgrade(ce_config(), "head")
 
     command.downgrade(ce_config(), BEFORE_IRREVERSIBLE)
@@ -244,9 +242,6 @@ def test_downgrading_past_the_queryless_revision_reverses_a_database_holding_not
 
 
 def test_downgrading_past_the_queryless_revision_names_the_rows_it_cannot_represent(fresh_url: str) -> None:
-    """Left to itself this fails inside `ALTER COLUMN ... SET NOT NULL`, as an
-    integrity error naming a column and no reason. The refusal has to say which
-    rows and what to do with them, and has to leave the schema where it was."""
     command.upgrade(ce_config(), "head")
     engine = create_engine(fresh_url)
     with engine.begin() as connection:

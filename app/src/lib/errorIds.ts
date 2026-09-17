@@ -95,7 +95,6 @@ export const ErrorIds = {
   // ── Published feeds (PUBFEED) ──────────────────────────────────────────────
   PUBLISHED_FEED_REQUEST_FAILED: 'E_PUBFEED_001',
 
-  // ── Channel connectors (CONNECTOR) ─────────────────────────────────────────
   CONNECTOR_REQUEST_FAILED: 'E_CONNECTOR_001',
 
   // ── KPI object (KPI) ───────────────────────────────────────────────────────

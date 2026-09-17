@@ -29,9 +29,6 @@ const QUERY_BACKED: EntityNeeds = {
   retirementOnFailure: false,
 }
 
-// No community build registers this entity, and that is the point: a test that
-// used a real name would pass for a form that hardcodes the name rather than
-// one that reads the registry.
 const BULLETINS: EntityNeeds = {
   query: false,
   staticReference: true,
@@ -115,8 +112,6 @@ describe('a form for an entity whose producer needs no query', () => {
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
     const sent = onSubmit.mock.calls[0][0]
-    // Named rather than matched loosely: 0 is the value this form used to send,
-    // and `toBeFalsy` would accept it.
     expect(sent.queryId).toBeNull()
     expect(sent.entity).toBe('bulletins')
     expect(sent.columnMap).toEqual({})
@@ -150,9 +145,6 @@ describe('a form for an entity whose producer needs no static schedule', () => {
 
 describe('the form follows the entity, not the standard', () => {
   it('brings the source, the static reference and the map back when the entity changes', async () => {
-    // Both entities are gtfs-rt at 2.0, so the standard cannot be what decides
-    // which sections render: read from the standard, the queryless one above
-    // would show every section too.
     const user = userEvent.setup()
     registry.answer = deploymentRegistering({
       bulletins: BULLETINS,
@@ -168,8 +160,6 @@ describe('the form follows the entity, not the standard', () => {
 
     expect(screen.getByText('Source')).toBeInTheDocument()
     expect(screen.getByText('Static GTFS reference')).toBeInTheDocument()
-    // The map is a row of prose until a query is picked, so the table itself is
-    // what says the section is being asked for.
     expect(screen.getByRole('table')).toBeInTheDocument()
   })
 })

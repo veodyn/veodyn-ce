@@ -35,13 +35,6 @@ export interface EntitySelection {
  * `pickedEntity` is the reader's own choice in picker mode, `null` until they
  * pick one.
  */
-/**
- * What the form asks for while capabilities are unresolved, and if they never
- * resolve: exactly what every entity a community build registers needs, so the
- * degraded form is the form this repository shipped before the registry
- * answered the question. Never "needs nothing", which would offer to create a
- * binding with no query behind it that no producer can publish.
- */
 export function fallbackEntityNeeds(standard: FeedStandard): EntityNeeds {
   return {
     query: true,
@@ -51,13 +44,6 @@ export function fallbackEntityNeeds(standard: FeedStandard): EntityNeeds {
   }
 }
 
-/**
- * What this entity's producer consumes, from the same capabilities read that
- * decides whether the entity control is a picker. `entityNeeds` is undefined
- * for a lookup still loading and for one that failed, and an entity missing
- * from it is one this deployment does not register at all, which an edit of a
- * binding carried down from a wider edition can still name.
- */
 export function resolveEntityNeeds(
   entityNeeds: Record<string, EntityNeeds> | undefined,
   entity: string,

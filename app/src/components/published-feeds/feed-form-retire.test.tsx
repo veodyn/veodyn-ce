@@ -61,9 +61,6 @@ describe('retire on failure', () => {
 
     await user.click(theSwitch())
 
-    // The whole point of the copy: on and off are not equally safe, and which
-    // one is safe depends on the feed, so a switch that only named itself
-    // would leave the reader to guess which way is which.
     expect(screen.getByText(/takes this feed dark/i)).toBeInTheDocument()
     expect(screen.queryByText(/already serving stays up/i)).not.toBeInTheDocument()
   })
@@ -96,9 +93,6 @@ describe('retire on failure', () => {
   it('names the failure by what actually retires the feed, not by validation alone', () => {
     renderForm()
 
-    // A publish also fails on a missing producer, a producer refusal and a
-    // validator answering with zero enabled rules, none of which is a
-    // conformance verdict, so "failed validation" describes a subset.
     expect(screen.getByText(/failed publish attempt/i)).toBeInTheDocument()
     expect(screen.queryByText(/failed validation/i)).not.toBeInTheDocument()
   })
@@ -125,8 +119,6 @@ describe('retire on failure', () => {
     await user.type(screen.getByLabelText(/maximum age/i), '300')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    // The API refuses the pair outright, so the form must not send a
-    // combination it has just told the reader is unavailable.
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({ onError: 'last_good', lastGoodMaxAgeSeconds: 300, retireOnFailure: false })
     )

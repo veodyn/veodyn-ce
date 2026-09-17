@@ -199,9 +199,6 @@ def test_an_entity_whose_producer_needs_no_query_is_accepted_without_one() -> No
 
 
 def test_an_entity_whose_producer_needs_no_query_refuses_one() -> None:
-    """The direction the rule was missing. A binding storing a query id its
-    producer never reads is what hands `POST /attempts` Redash rows and a Redash
-    result version for a feed built from something else entirely."""
     with bulletins_registered(AGGREGATE):
         with pytest.raises(ValidationError, match="cannot name one"):
             PublishedFeedIn.model_validate(_gtfs_rt(entity="bulletins", columnMap={}, queryId=9))
@@ -214,9 +211,6 @@ def test_an_entity_whose_producer_maps_no_columns_refuses_a_column_map() -> None
 
 
 def test_the_static_reference_is_read_off_the_producer_not_off_the_standard() -> None:
-    """The registry answers it, so an entity registered under gtfs-rt that
-    declares no producer of its own still gets the standard's default, and the
-    refusal names the entity rather than the standard."""
     with bulletins_registered(AGGREGATE):
         body = _gtfs_rt(entity="bulletins", columnMap={}, staticGtfsRef=None)
         body.pop("queryId")
@@ -226,9 +220,6 @@ def test_the_static_reference_is_read_off_the_producer_not_off_the_standard() ->
 
 
 def test_a_producer_may_not_declare_a_static_reference_its_column_cannot_hold() -> None:
-    """Refused at the declaration, not at the request. Honoured by the validator
-    and refused by the CHECK constraint, the pairing would reach PostgreSQL as an
-    IntegrityError at COMMIT, which is a 500 naming no field."""
     with published_feed_registry.restored_entities(), publish_produce.restored_producers():
         published_feed_registry.register_entity("bulletins", "gtfs-rt")
 
@@ -253,9 +244,6 @@ def test_retire_on_failure_is_off_unless_the_binding_asks_for_it() -> None:
 
 
 def test_last_good_refuses_to_be_paired_with_retirement() -> None:
-    """Retirement clears the pointer the age cap would serve from, so the two
-    stored together leave the cap unreachable and the binding saying one thing
-    and doing another."""
     with pytest.raises(ValidationError, match="contradict each other"):
         PublishedFeedIn.model_validate(_gtfs_rt(onError="last_good", lastGoodMaxAgeSeconds=300, retireOnFailure=True))
 

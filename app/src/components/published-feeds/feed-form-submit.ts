@@ -11,12 +11,6 @@ import type { EntityNeeds, FeedStandard, PublishedFeed, PublishedFeedInput } fro
 export interface FormValues {
   slug: string
   queryId: number | null
-  /**
-   * What this entity's producer consumes, from the capabilities read. Every
-   * rule below that used to test `standard` tests this instead: the standard
-   * decided the shape only because every entity registered under one standard
-   * happened to need the same halves of a binding.
-   */
   needs: EntityNeeds
   standard: FeedStandard
   version: string
@@ -59,9 +53,6 @@ export function systemFieldErrors(values: FormValues): Record<string, string> {
  * furthest up the form first rather than being sent back and forth.
  */
 export function submitError(values: FormValues): string | null {
-  // First, and ahead of the mapping: this is the refusal feed-form.tsx used to
-  // make before calling in here at all, and the mapping is meaningless until
-  // there is a query whose columns it names.
   if (values.needs.query && values.queryId == null) {
     return 'Pick a source query before publishing.'
   }
@@ -98,18 +89,12 @@ function wouldServeARetainedArtifact(values: FormValues): boolean {
 }
 
 /**
- * The whole binding, shaped for what its entity's producer consumes.
  *
  * Each standard carries exactly one of `staticGtfsRef` and `systemInfo` and
  * NULLS the other, because the API refuses a binding carrying both and the
  * database has a CHECK for each. `sourceColumn` is carried through rather than
  * re-sent as null: the endpoint is a whole-binding PUT, so a hardcoded null
  * here silently throws away a field this form offers no editor for.
- *
- * `queryId` is sent as null, never as a stand-in number, for an entity whose
- * producer needs no query: the API refuses a null for every entity that does
- * need one, so a form bug surfaces as a named refusal rather than as a binding
- * pointing at a query id nothing owns.
  */
 export function buildInput(values: FormValues, initial: PublishedFeed | undefined): PublishedFeedInput {
   const isGbfs = values.standard === 'gbfs'

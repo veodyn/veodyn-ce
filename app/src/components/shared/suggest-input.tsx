@@ -76,9 +76,6 @@ export function SuggestInput({
   const needle = value.trim().toLowerCase()
   const matches = needle === '' ? suggestions : ranked(suggestions, needle)
 
-  // Blur alone does not close this. A press on a region that takes no focus
-  // leaves the input focused, so the list stayed open over the rest of the form
-  // until something focusable was clicked.
   useEffect(() => {
     if (!open) return
     const closeUnlessInside = (event: PointerEvent) => {

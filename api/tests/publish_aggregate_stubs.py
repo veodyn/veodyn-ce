@@ -1,11 +1,3 @@
-"""A feed with no query behind it, and the producer that builds one.
-
-`publish_stubs.py` holds the query-backed binding every earlier publish module
-drives. This holds its opposite number, shared by `test_publish_source_version.py`
-and `test_publish_retire_on_failure.py` so the two cannot drift into testing
-different feeds.
-"""
-
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -26,13 +18,6 @@ def never_validated(feed_bytes: bytes, static_ref: str, previous: bytes | None) 
 
 
 class AggregateProducer:
-    """A producer with no query and no validator seam, built from plain rows.
-
-    It reads `production.rows` and nothing else, which is the whole point: the
-    engine hands it the same argument it hands the query-backed one and does not
-    know the difference.
-    """
-
     def __init__(self, outcome: ValidationOutcome = CLEAN, refusal: str | None = None) -> None:
         self.outcome = outcome
         self.refusal = refusal

@@ -1,14 +1,3 @@
-"""The served pointer and the row an attempt leaves behind.
-
-Split from `publish_engine.py` at the file-size limit, and this is the seam
-because it is everything the engine does to the two tables rather than to the
-bytes: which artifact is current, which one this attempt succeeds, and the
-`publish_attempt` row every decision writes.
-
-`publish_produce.py` is the other half, the one with no database in it. What is
-left in the engine is the ordering of the two.
-"""
-
 from dataclasses import dataclass
 from typing import Any
 
@@ -23,12 +12,6 @@ from veodyn_api.services.published_feed_validator import Finding, ValidationOutc
 
 @dataclass(frozen=True)
 class AttemptResult:
-    """What the attempt decided, why, and everything the validator said.
-
-    `findings` carries warnings on a published attempt too, so a slow drift into
-    non-conformance is visible before it becomes an error.
-    """
-
     decision: str
     reason: str
     findings: tuple[Finding, ...]
@@ -36,29 +19,11 @@ class AttemptResult:
 
 @dataclass(frozen=True)
 class AttemptSource:
-    """Where this attempt's rows came from, and how it orders against the last.
-
-    `version` is the only thing the ordering guard reads, and it is comparable
-    only within one binding revision. `query_result_id` is provenance and is
-    None for a feed with no query behind it.
-    """
-
     version: int
     query_result_id: int | None
 
 
 def current_artifact(db: Session, feed: PublishedFeed) -> PublishAttempt | None:
-    """The artifact the endpoint is serving, whatever revision produced it.
-
-    Not scoped to `feed.revision`: the partial unique index is on
-    `(org_slug, slug)`, so this is the row a publish has to clear even when a
-    binding edit since means it was built from a column map that no longer
-    exists. Scoping it to the current revision leaves the old row uncleared,
-    which is a unique violation on the next publish.
-
-    For anything that compares one artifact to the next, ask
-    `previous_artifact_of_revision` instead.
-    """
     return db.execute(
         select(PublishAttempt).where(
             PublishAttempt.org_slug == feed.org_slug,
@@ -75,18 +40,6 @@ def of_current_revision(artifact: PublishAttempt | None, feed: PublishedFeed) ->
 
 
 def previous_artifact_of_revision(db: Session, feed: PublishedFeed) -> PublishAttempt | None:
-    """The served artifact, but only when this binding revision produced it.
-
-    Two comparisons read this rather than `current_artifact`, and both are
-    meaningless across a revision boundary:
-
-    - The iteration rules (E017/E018) compare consecutive feeds, and two feeds
-      built from different column maps are not two versions of one feed.
-    - Staleness compares source versions, which for a query-backed feed are row
-      ids in one query's result history and for an aggregate feed are one
-      producer's own counter, so numbers from two lineages are unordered
-      against each other.
-    """
     return of_current_revision(current_artifact(db, feed), feed)
 
 
@@ -127,13 +80,6 @@ def record(
     feed_timestamp: int | None = None,
     feed_files: dict[str, Any] | None = None,
 ) -> AttemptResult:
-    """Write the attempt down and answer with it.
-
-    The two artifact columns default to None and are passed only on the
-    publishing path, exactly one of them per standard. The database holds the
-    same line with a CHECK, because a blocked artifact carrying an artifact is
-    one query away from being served.
-    """
     findings = outcome.findings if outcome is not None else ()
     db.add(
         PublishAttempt(

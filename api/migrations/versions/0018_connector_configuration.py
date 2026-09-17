@@ -1,11 +1,3 @@
-"""connector_configuration: one agency credential set per registered connector
-
-Revision ID: 0018
-Revises: 0017
-Create Date: 2026-08-28
-
-"""
-
 from collections.abc import Sequence
 
 import sqlalchemy as sa

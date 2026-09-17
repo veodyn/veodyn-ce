@@ -80,15 +80,10 @@ assistant:
 #   # reach the data source can still open a draft from its link, so do not use
 #   # it to keep a query secret.
 #   query_drafts: true
-# messages:
-#   # The rider-facing message surface (enterprise). Off means no Messages row,
-#   # no Channels admin page, and 404s on both routes.
-#   enabled: false
-# connectors:
-#   # The connector pages and the sidecar endpoints behind them. Refused when
-#   # messages is off: a connector is an outbound channel for a message. A
-#   # connector's credentials are entered on its own page, never here.
-#   enabled: false
+messages:
+  enabled: false
+connectors:
+  enabled: false
 # wall_mode:
 #   default_dashboard: transportation-overview
 # visualizations:

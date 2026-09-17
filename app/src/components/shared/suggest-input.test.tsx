@@ -55,8 +55,6 @@ describe('SuggestInput', () => {
   })
 
   it('puts the code you typed above the names that merely contain it', async () => {
-    // "es" is Spanish's whole code and also sits inside Avestan and Assamese,
-    // which alphabetical order would otherwise put first.
     const user = userEvent.setup()
     renderWithProviders(
       <Harness
@@ -78,10 +76,6 @@ describe('SuggestInput', () => {
   })
 
   it('closes on an outside press even when the field keeps focus', async () => {
-    // The browser restores focus to this input when the popup closes, so blur
-    // cannot be what dismisses it: the list reopened on the restored focus and
-    // sat over the rest of the form. fireEvent presses without moving focus,
-    // which is the case user.click cannot reproduce under jsdom.
     const user = userEvent.setup()
     renderWithProviders(<Harness />)
 

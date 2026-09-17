@@ -1,16 +1,3 @@
-"""Publishing without a query behind it, and the ordering guard that replaced
-the query result id.
-
-`test_publish_engine.py` drives the same engine through its query-backed
-producer. These drive it through a fabricated one, registered for the duration
-of a test, which is the shape a pack uses: an entity declares who builds it, and
-what it orders on is a monotonic source version rather than a row id in some
-query's result history.
-
-`test_publish_retire_on_failure.py` is the other half, and holds the pointer
-this rail is allowed to take down.
-"""
-
 import httpx
 import pytest
 import respx
@@ -31,12 +18,8 @@ from tests.published_feed_route_stubs import ADMIN, REDASH, as_user, auth
 from veodyn_api.services.publish_engine import current_artifact, run_attempt
 from veodyn_api.services.publish_produce import AlreadyRegistered, register_producer, restored_producers
 
-# --- a feed with no query at all -------------------------------------------
-
 
 def test_a_feed_with_no_query_publishes_from_a_registered_producer(db: Session) -> None:
-    """The definition of done for this phase: plain rows, no query result, no
-    query id on the binding, and an artifact on the air at the end of it."""
     with restored_producers():
         register_producer("gtfs-rt", AGGREGATE_ENTITY, AggregateProducer())
         feed = aggregate_feed(db)
@@ -52,8 +35,6 @@ def test_a_feed_with_no_query_publishes_from_a_registered_producer(db: Session) 
 
 
 def test_an_entity_nothing_registered_a_producer_for_is_a_failed_attempt(db: Session) -> None:
-    """Unregistering is what a community deployment looks like to a pack's feed,
-    and it must be a recorded refusal rather than an exception out of a worker."""
     feed = aggregate_feed(db)
 
     result = publish_version(db, feed, 1)
@@ -64,8 +45,6 @@ def test_an_entity_nothing_registered_a_producer_for_is_a_failed_attempt(db: Ses
 
 
 def test_an_attempt_with_neither_a_result_id_nor_a_version_is_refused_before_it_runs(db: Session) -> None:
-    """A programming error rather than an expected failure: there is nothing to
-    order the attempt by, so recording it would put an unordered row on a feed."""
     with restored_producers():
         register_producer("gtfs-rt", AGGREGATE_ENTITY, AggregateProducer())
         feed = aggregate_feed(db)
@@ -74,9 +53,6 @@ def test_an_attempt_with_neither_a_result_id_nor_a_version_is_refused_before_it_
             run_attempt(db, feed, ROWS, None, 1700, never_validated)
 
     assert attempts(db) == []
-
-
-# --- exactly one producer per entity ----------------------------------------
 
 
 def test_a_second_producer_for_one_entity_is_refused() -> None:
@@ -93,12 +69,7 @@ def test_a_producer_the_community_build_registered_cannot_be_replaced() -> None:
             register_producer("gtfs-rt", "vehicle_positions", AggregateProducer())
 
 
-# --- the ordering guard, on both kinds of feed -----------------------------
-
-
 def test_an_out_of_order_query_result_is_still_refused(db: Session) -> None:
-    """The query-backed half, unchanged: the source version a query-backed
-    attempt orders on is the result id it always ordered on."""
     feed = make_feed(db)
     run(db, feed, CLEAN, result_id=200)
 
@@ -127,9 +98,6 @@ def test_an_out_of_order_source_version_is_refused(db: Session) -> None:
 
 
 def test_the_same_source_version_twice_is_refused(db: Session) -> None:
-    """Equal is not newer, which is why this is a counter and not a clock: two
-    attempts inside one clock tick would carry the same timestamp and one of
-    them would replace the other."""
     with restored_producers():
         register_producer("gtfs-rt", AGGREGATE_ENTITY, AggregateProducer())
         feed = aggregate_feed(db)
@@ -139,9 +107,6 @@ def test_the_same_source_version_twice_is_refused(db: Session) -> None:
 
 
 def test_source_versions_are_not_compared_across_a_binding_edit(db: Session) -> None:
-    """The rule the query result id carried, kept: a binding edit starts a new
-    lineage, and a producer whose counter restarts there would otherwise be
-    refused forever."""
     with restored_producers():
         register_producer("gtfs-rt", AGGREGATE_ENTITY, AggregateProducer())
         feed = aggregate_feed(db)
@@ -156,13 +121,7 @@ def test_source_versions_are_not_compared_across_a_binding_edit(db: Session) -> 
     assert (served.binding_revision, served.source_version) == (2, 1)
 
 
-# --- the source_version column default --------------------------------------
-
-
 def test_the_default_source_version_is_the_inserted_query_result_id(db: Session) -> None:
-    """The default's own VALUE, from a write that does not go through the
-    engine. `run_attempt`'s recorder passes `source_version` explicitly, so every
-    other test in this module would pass with the default deleted."""
     feed = make_feed(db)
 
     db.add(attempt_row(feed, query_result_id=4242))
@@ -172,9 +131,6 @@ def test_the_default_source_version_is_the_inserted_query_result_id(db: Session)
 
 
 def test_the_default_source_version_refuses_an_insert_with_no_query_result(db: Session) -> None:
-    """It computes one thing and is not a general fallback. An attempt with no
-    query behind it carries its own version, and a writer that forgot has to be
-    told which column it forgot rather than left with a NOT NULL violation."""
     feed = make_feed(db)
     db.add(attempt_row(feed, query_result_id=None))
 
@@ -186,16 +142,10 @@ def test_the_default_source_version_refuses_an_insert_with_no_query_result(db: S
     assert attempts(db) == []
 
 
-# --- the manual route -------------------------------------------------------
-
-
 @respx.mock
 def test_the_manual_publish_route_refuses_a_feed_with_no_query(
     api: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """This route publishes what a query last returned. A feed with no query is
-    rebuilt by whoever registered its producer, so there is nothing here to run,
-    and the refusal has to name that rather than 500 on a null."""
     as_user(ADMIN)
     respx.get(f"{REDASH}/api/queries/42").mock(return_value=httpx.Response(500, json={"message": "never asked"}))
     aggregate_feed(db)

@@ -112,9 +112,6 @@ describe('resolveEntityNeeds', () => {
   })
 
   it('asks for everything while the capabilities lookup is unresolved', () => {
-    // Undefined is both "still loading" and "the request failed", the same as
-    // for the entity control. Reading either as "needs nothing" would offer a
-    // binding with no query behind it that no producer can publish.
     expect(resolveEntityNeeds(undefined, 'vehicle_positions', 'gtfs-rt')).toEqual({
       query: true,
       staticReference: true,
