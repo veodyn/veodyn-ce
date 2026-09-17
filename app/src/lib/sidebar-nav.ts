@@ -22,7 +22,6 @@ import {
   Home,
   LayoutDashboard,
   ListChecks,
-  MessagesSquare,
   Plane,
   Plug,
   Radio,
@@ -31,6 +30,7 @@ import {
   Server,
   Settings,
   Ship,
+  Sparkles,
   Star,
   TrainFront,
   Users,
@@ -117,8 +117,8 @@ export function buildSidebarSections(
     label: null,
     items: [
       { label: 'Home', href: '/', icon: Home },
+      ...(aiChat ? [{ label: 'Chat', href: '/chat', icon: Sparkles }] : []),
       { label: 'Search', href: '/search', icon: Search },
-      ...(aiChat ? [{ label: 'Data Chat', href: '/chat', icon: MessagesSquare }] : []),
       // Every label here is the destination page's own h1, verbatim. A nav
       // that says "Data" and lands on "Data Catalog" makes the reader check
       // whether they arrived somewhere else.

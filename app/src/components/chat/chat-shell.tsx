@@ -6,7 +6,7 @@ import { BigMessage } from '@/components/shared/big-message'
 import { useAiChatEnabled } from '@/hooks/use-chat'
 import { ThreadList } from './thread-list'
 
-export const CHAT_OFF_MESSAGE = 'The data chat is not turned on for this instance.'
+export const CHAT_OFF_MESSAGE = 'Chat is not turned on for this instance.'
 
 export function ChatShell({ activeId, children }: { activeId: string | null; children: ReactNode }) {
   const enabled = useAiChatEnabled()
@@ -18,7 +18,7 @@ export function ChatShell({ activeId, children }: { activeId: string | null; chi
       <div className="w-64 shrink-0 border-r bg-sidebar/40">
         <ThreadList activeId={activeId} />
       </div>
-      <div aria-label="Data chat" className="min-w-0 flex-1">
+      <div aria-label="Chat" className="min-w-0 flex-1">
         {children}
       </div>
     </div>
