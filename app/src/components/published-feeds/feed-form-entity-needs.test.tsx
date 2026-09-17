@@ -6,13 +6,17 @@ import { useMockDataStore } from '@/stores/mock-data-store'
 import { pickAStaticReference } from './feed-form.test-helpers'
 import type { EntityNeeds, FeedCapabilities } from '@/types/published-feed'
 
-const registry = vi.hoisted(() => ({ answer: undefined as unknown }))
+const registry = vi.hoisted(() => ({ answer: undefined as unknown, loading: false }))
 
 vi.mock('@/hooks/use-published-feeds', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/use-published-feeds')>()
   return {
     ...actual,
-    useFeedCapabilities: () => ({ data: registry.answer, isLoading: false, isError: false }),
+    useFeedCapabilities: () => ({
+      data: registry.loading ? undefined : registry.answer,
+      isLoading: registry.loading,
+      isError: false,
+    }),
   }
 })
 
@@ -70,6 +74,18 @@ function renderCreateForm({
 
 beforeEach(() => {
   registry.answer = deploymentRegistering({ bulletins: BULLETINS })
+  registry.loading = false
+})
+
+describe('a create form opened on an asked-for entity', () => {
+  it('offers nothing to touch until the registry that decides its standard has answered', () => {
+    registry.loading = true
+
+    renderCreateForm({ defaultEntity: 'vehicles' })
+
+    expect(screen.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Slug' })).not.toBeInTheDocument()
+  })
 })
 
 afterEach(() => resetStores())

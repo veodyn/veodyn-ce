@@ -52,6 +52,7 @@ export default function NewFeedPage() {
         description="Bind a query to a standard feed this instance will serve."
       />
       <FeedForm
+        key={askedForEntity ?? ''}
         defaultEntity={askedForEntity}
         submitLabel="Publish"
         isPending={createFeed.isPending}

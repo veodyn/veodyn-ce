@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { SkeletonCard } from '@/components/ui/skeleton-card'
 import { fieldsFor } from '@/lib/gbfs-fields'
 import { missingRequired } from '@/lib/gtfs-fields'
 import { useFeedCapabilities, useQueryResultColumns } from '@/hooks/use-published-feeds'
@@ -102,6 +103,8 @@ export function FeedForm({
   const { data: resultColumns } = useQueryResultColumns(selectedQueryId)
   const columns = resultColumns?.columns ?? []
   const ageError = attempted ? lastGoodAgeError(onError, lastGoodMaxAgeSeconds) : null
+
+  if (defaultEntity !== undefined && capabilitiesLoading) return <SkeletonCard lines={4} />
 
   // Undefined covers both "still loading" and "the request failed": both
   // degrade to the single-fact form rather than an empty picker or a spinner

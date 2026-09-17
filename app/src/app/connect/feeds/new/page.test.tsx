@@ -76,6 +76,30 @@ describe('the entity the form opens on', () => {
     expect(await screen.findByRole('combobox', { name: /entity/i })).toHaveTextContent('vehicle_positions')
     expect(screen.getByText('Source')).toBeInTheDocument()
   })
+
+  it('follows the address when its entity changes while the page stays mounted', async () => {
+    registry.answer = {
+      standards: [
+        {
+          standard: 'gtfs-rt',
+          versions: ['2.0'],
+          entities: ['service_alerts', 'vehicle_positions'],
+          entityNeeds: { service_alerts: MESSAGE_FED, vehicle_positions: QUERY_BACKED },
+          timezones: [],
+        },
+      ],
+    }
+    opened.search = 'entity=vehicle_positions'
+    signInAsAdmin()
+    const view = renderWithProviders(<NewFeedPage />)
+    expect(await screen.findByRole('combobox', { name: /entity/i })).toHaveTextContent('vehicle_positions')
+
+    opened.search = 'entity=service_alerts'
+    view.rerender(<NewFeedPage />)
+
+    expect(await screen.findByRole('combobox', { name: /entity/i })).toHaveTextContent('service_alerts')
+    expect(screen.queryByText('Source')).not.toBeInTheDocument()
+  })
 })
 
 async function mapField(user: ReturnType<typeof userEvent.setup>, fieldName: string, columnName: string) {
