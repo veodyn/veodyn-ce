@@ -24,8 +24,18 @@ const CAPABILITIES_KEY = ['published-feeds', 'capabilities']
 const feedKey = (slug: string) => ['published-feeds', slug]
 const attemptsKey = (slug: string) => ['published-feeds', slug, 'attempts']
 
-const QUERY_BACKED_GBFS = { query: true, staticReference: false, columnMap: true }
-const QUERY_BACKED_GTFS_RT = { query: true, staticReference: true, columnMap: true }
+const QUERY_BACKED_GBFS = {
+  query: true,
+  staticReference: false,
+  columnMap: true,
+  retirementOnFailure: false,
+}
+const QUERY_BACKED_GTFS_RT = {
+  query: true,
+  staticReference: true,
+  columnMap: true,
+  retirementOnFailure: false,
+}
 
 const COMMUNITY_CAPABILITIES: FeedCapabilities = {
   standards: [

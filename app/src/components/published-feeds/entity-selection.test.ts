@@ -89,7 +89,12 @@ describe('resolveEntitySelection', () => {
 })
 
 describe('resolveEntityNeeds', () => {
-  const QUERYLESS = { query: false, staticReference: false, columnMap: false }
+  const QUERYLESS = {
+    query: false,
+    staticReference: false,
+    columnMap: false,
+    retirementOnFailure: false,
+  }
 
   it('reports what the registry says for the entity, not what its standard usually needs', () => {
     const needs = resolveEntityNeeds({ bulletins: QUERYLESS }, 'bulletins', 'gtfs-rt')
@@ -100,7 +105,7 @@ describe('resolveEntityNeeds', () => {
   it('answers per entity, so one queryless entity does not excuse the one beside it', () => {
     const registry = {
       bulletins: QUERYLESS,
-      vehicle_positions: { query: true, staticReference: true, columnMap: true },
+      vehicle_positions: { query: true, staticReference: true, columnMap: true, retirementOnFailure: false },
     }
 
     expect(resolveEntityNeeds(registry, 'vehicle_positions', 'gtfs-rt').query).toBe(true)
@@ -114,6 +119,7 @@ describe('resolveEntityNeeds', () => {
       query: true,
       staticReference: true,
       columnMap: true,
+      retirementOnFailure: false,
     })
   })
 
@@ -122,6 +128,7 @@ describe('resolveEntityNeeds', () => {
       query: true,
       staticReference: false,
       columnMap: true,
+      retirementOnFailure: false,
     })
   })
 
@@ -132,22 +139,22 @@ describe('resolveEntityNeeds', () => {
     expect(needs.columnMap).toBe(true)
   })
 
-  it('calls no entity community registers unsafe to serve a retained artifact for', () => {
+  it('requires retirement of no entity community registers', () => {
     for (const [entity, standard] of [
       ['vehicle_positions', 'gtfs-rt'],
       ['stations', 'gbfs'],
     ] as const) {
-      expect(resolveEntityNeeds(undefined, entity, standard).retainedArtifactUnsafe).toBeUndefined()
+      expect(resolveEntityNeeds(undefined, entity, standard).retirementOnFailure).toBe(false)
     }
   })
 
-  it('carries a registry that does call one unsafe, which is the pack case', () => {
+  it('carries a registry that does require it, which is the pack case', () => {
     const needs = resolveEntityNeeds(
-      { bulletins: { ...QUERYLESS, retainedArtifactUnsafe: true } },
+      { bulletins: { ...QUERYLESS, retirementOnFailure: true } },
       'bulletins',
       'gtfs-rt'
     )
 
-    expect(needs.retainedArtifactUnsafe).toBe(true)
+    expect(needs.retirementOnFailure).toBe(true)
   })
 })

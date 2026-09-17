@@ -3,8 +3,8 @@ import type { FeedCapabilities } from '@/types/published-feed'
 import { widenedCapabilities } from './mock-capabilities'
 import type { FeatureDescriptor, MockStandardWidening } from './types'
 
-const QUERY_BACKED = { query: true, staticReference: true, columnMap: true }
-const QUERYLESS = { query: false, staticReference: true, columnMap: false }
+const QUERY_BACKED = { query: true, staticReference: true, columnMap: true, retirementOnFailure: false }
+const QUERYLESS = { query: false, staticReference: true, columnMap: false, retirementOnFailure: true }
 
 const COMMUNITY: FeedCapabilities = {
   standards: [

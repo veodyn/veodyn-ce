@@ -11,7 +11,14 @@ const SCHEDULE_ONLY = vi.hoisted<FeedCapabilities>(() => ({
       standard: 'gtfs-rt',
       versions: ['2.0'],
       entities: ['bulletins'],
-      entityNeeds: { bulletins: { query: false, staticReference: true, columnMap: false } },
+      entityNeeds: {
+        bulletins: {
+          query: false,
+          staticReference: true,
+          columnMap: false,
+          retirementOnFailure: false,
+        },
+      },
       timezones: [],
     },
   ],

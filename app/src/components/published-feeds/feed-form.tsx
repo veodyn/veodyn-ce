@@ -120,7 +120,7 @@ export function FeedForm({
   // feed, a static schedule to check it against, or a column map to build it
   // from, and the answer differs between two entities of the same standard.
   const needs = resolveEntityNeeds(capability?.entityNeeds, entitySelection.entity, standard)
-  const mustRetire = Boolean(needs.retainedArtifactUnsafe)
+  const mustRetire = needs.retirementOnFailure
   const retireOnFailure = chosenRetire ?? mustRetire
 
   // After the entity is resolved: under gbfs the shape, not the standard, picks

@@ -958,6 +958,10 @@
             "title": "Query",
             "type": "boolean"
           },
+          "retirementOnFailure": {
+            "title": "Retirementonfailure",
+            "type": "boolean"
+          },
           "staticReference": {
             "title": "Staticreference",
             "type": "boolean"
@@ -966,7 +970,8 @@
         "required": [
           "query",
           "staticReference",
-          "columnMap"
+          "columnMap",
+          "retirementOnFailure"
         ],
         "title": "EntityNeedsOut",
         "type": "object"

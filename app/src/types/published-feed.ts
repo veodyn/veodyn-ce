@@ -103,7 +103,7 @@ export interface EntityNeeds {
   query: boolean
   staticReference: boolean
   columnMap: boolean
-  retainedArtifactUnsafe?: boolean
+  retirementOnFailure: boolean
 }
 
 /** One standard this deployment can publish, and what it offers under it. */

@@ -29,6 +29,7 @@ def _needs_out(standard: str, entity: str) -> EntityNeedsOut:
         query=needs.query,
         static_reference=needs.static_reference,
         column_map=needs.column_map,
+        retirement_on_failure=needs.retirement_on_failure,
     )
 
 

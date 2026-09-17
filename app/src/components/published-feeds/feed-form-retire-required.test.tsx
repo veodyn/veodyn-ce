@@ -23,10 +23,15 @@ const MUST_RETIRE: EntityNeeds = {
   query: false,
   staticReference: true,
   columnMap: false,
-  retainedArtifactUnsafe: true,
+  retirementOnFailure: true,
 }
 
-const MAY_RETAIN: EntityNeeds = { query: false, staticReference: true, columnMap: false }
+const MAY_RETAIN: EntityNeeds = {
+  query: false,
+  staticReference: true,
+  columnMap: false,
+  retirementOnFailure: false,
+}
 
 function deploymentRegistering(entityNeeds: Record<string, EntityNeeds>): FeedCapabilities {
   return {

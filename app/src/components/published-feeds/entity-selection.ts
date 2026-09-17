@@ -43,7 +43,12 @@ export interface EntitySelection {
  * binding with no query behind it that no producer can publish.
  */
 export function fallbackEntityNeeds(standard: FeedStandard): EntityNeeds {
-  return { query: true, staticReference: standard === 'gtfs-rt', columnMap: true }
+  return {
+    query: true,
+    staticReference: standard === 'gtfs-rt',
+    columnMap: true,
+    retirementOnFailure: false,
+  }
 }
 
 /**

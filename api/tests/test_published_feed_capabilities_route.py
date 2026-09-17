@@ -58,11 +58,11 @@ def test_every_community_entity_needs_a_query_and_a_column_map(api: TestClient) 
 
     by_standard = {entry["standard"]: entry for entry in response.json()["standards"]}
     assert by_standard["gtfs-rt"]["entityNeeds"] == {
-        "vehicle_positions": {"query": True, "staticReference": True, "columnMap": True},
+        "vehicle_positions": {"query": True, "staticReference": True, "columnMap": True, "retirementOnFailure": False},
     }
     assert by_standard["gbfs"]["entityNeeds"] == {
-        "stations": {"query": True, "staticReference": False, "columnMap": True},
-        "vehicles": {"query": True, "staticReference": False, "columnMap": True},
+        "stations": {"query": True, "staticReference": False, "columnMap": True, "retirementOnFailure": False},
+        "vehicles": {"query": True, "staticReference": False, "columnMap": True, "retirementOnFailure": False},
     }
 
 
@@ -85,8 +85,40 @@ def test_an_entity_whose_producer_needs_no_query_reports_that(api: TestClient) -
 
     by_standard = {entry["standard"]: entry for entry in response.json()["standards"]}
     needs = by_standard["gtfs-rt"]["entityNeeds"]
-    assert needs["bulletins"] == {"query": False, "staticReference": True, "columnMap": False}
-    assert needs["vehicle_positions"] == {"query": True, "staticReference": True, "columnMap": True}
+    assert needs["bulletins"] == {
+        "query": False,
+        "staticReference": True,
+        "columnMap": False,
+        "retirementOnFailure": False,
+    }
+    assert needs["vehicle_positions"] == {
+        "query": True,
+        "staticReference": True,
+        "columnMap": True,
+        "retirementOnFailure": False,
+    }
+
+
+@respx.mock
+def test_a_producer_that_may_not_keep_a_stale_artifact_reports_that(api: TestClient) -> None:
+    as_user(ADMIN)
+
+    def build_it_from_somewhere_else(production: Production) -> Produced:
+        raise AssertionError("this producer exists to be asked about, never to run")
+
+    with published_feed_registry.restored_entities(), publish_produce.restored_producers():
+        published_feed_registry.register_entity("bulletins")
+        publish_produce.register_producer(
+            "gtfs-rt",
+            "bulletins",
+            build_it_from_somewhere_else,
+            publish_produce.Needs(query=False, static_reference=True, column_map=False, retirement_on_failure=True),
+        )
+        response = api.get("/published-feeds/capabilities", headers=auth())
+
+    needs = {entry["standard"]: entry for entry in response.json()["standards"]}["gtfs-rt"]["entityNeeds"]
+    assert needs["bulletins"]["retirementOnFailure"] is True
+    assert needs["vehicle_positions"]["retirementOnFailure"] is False
 
 
 @respx.mock
@@ -102,6 +134,7 @@ def test_an_entity_with_no_producer_registered_still_reports_its_standard_defaul
         "query": True,
         "staticReference": True,
         "columnMap": True,
+        "retirementOnFailure": False,
     }
 
 
@@ -172,7 +205,14 @@ def test_a_standard_only_a_pack_registers_appears_with_no_declared_versions(api:
         "standard": "gtfs-static",
         "versions": [],
         "entities": ["shapes"],
-        "entityNeeds": {"shapes": {"query": True, "staticReference": False, "columnMap": True}},
+        "entityNeeds": {
+            "shapes": {
+                "query": True,
+                "staticReference": False,
+                "columnMap": True,
+                "retirementOnFailure": False,
+            }
+        },
         "timezones": [],
     }
 

@@ -849,6 +849,8 @@ export interface components {
             columnMap: boolean;
             /** Query */
             query: boolean;
+            /** Retirementonfailure */
+            retirementOnFailure: boolean;
             /** Staticreference */
             staticReference: boolean;
         };

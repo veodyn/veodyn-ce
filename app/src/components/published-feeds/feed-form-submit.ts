@@ -93,7 +93,7 @@ export function submitError(values: FormValues): string | null {
 }
 
 function wouldServeARetainedArtifact(values: FormValues): boolean {
-  if (!values.needs.retainedArtifactUnsafe) return false
+  if (!values.needs.retirementOnFailure) return false
   return values.onError !== 'block' || !values.retireOnFailure
 }
 

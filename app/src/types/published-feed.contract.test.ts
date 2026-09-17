@@ -66,13 +66,7 @@ describe('published-feed contract', () => {
     >()
   })
 
-  it('the entity needs carry every key the wire does', () => {
-    expectTypeOf<keyof components['schemas']['EntityNeedsOut']>().toExtend<keyof EntityNeeds>()
-  })
-
-  it('the only key beyond the wire is the one a pack declares', () => {
-    expectTypeOf<
-      Exclude<keyof EntityNeeds, keyof components['schemas']['EntityNeedsOut']>
-    >().toEqualTypeOf<'retainedArtifactUnsafe'>()
+  it('the entity needs carry exactly the keys the wire does', () => {
+    expectTypeOf<keyof EntityNeeds>().toEqualTypeOf<keyof components['schemas']['EntityNeedsOut']>()
   })
 })

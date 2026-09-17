@@ -5,6 +5,7 @@ class EntityNeedsOut(CamelModel):
     query: bool
     static_reference: bool
     column_map: bool
+    retirement_on_failure: bool
 
 
 class StandardCapabilityOut(CamelModel):

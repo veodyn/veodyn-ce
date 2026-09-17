@@ -17,12 +17,22 @@ vi.mock('@/hooks/use-published-feeds', async (importOriginal) => {
 
 const { FeedForm } = await import('./feed-form')
 
-const QUERY_BACKED: EntityNeeds = { query: true, staticReference: true, columnMap: true }
+const QUERY_BACKED: EntityNeeds = {
+  query: true,
+  staticReference: true,
+  columnMap: true,
+  retirementOnFailure: false,
+}
 
 // No community build registers this entity, and that is the point: a test that
 // used a real name would pass for a form that hardcodes the name rather than
 // one that reads the registry.
-const BULLETINS: EntityNeeds = { query: false, staticReference: true, columnMap: false }
+const BULLETINS: EntityNeeds = {
+  query: false,
+  staticReference: true,
+  columnMap: false,
+  retirementOnFailure: false,
+}
 
 function deploymentRegistering(entityNeeds: Record<string, EntityNeeds>): FeedCapabilities {
   return {
@@ -106,7 +116,7 @@ describe('a form for an entity whose producer needs no query', () => {
 describe('a form for an entity whose producer needs no static schedule', () => {
   it('does not ask for one, and the whole mapping section goes with it', () => {
     registry.answer = deploymentRegistering({
-      bulletins: { query: false, staticReference: false, columnMap: false },
+      bulletins: { query: false, staticReference: false, columnMap: false, retirementOnFailure: false },
     })
 
     renderCreateForm()
