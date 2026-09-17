@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { DemoPersona } from '@/lib/config-schema'
 
 // Only a same-origin path is followed. `next` arrives in a query string that
 // anyone can write, so it is resolved against a fixed base and the result is
@@ -42,24 +41,19 @@ export function safeNextPath(next: string | null | undefined): string {
 
 export function LoginScreen({ next }: { next?: string | null }) {
   const login = useAuthStore((s) => s.login)
-  const loginAsDemo = useAuthStore((s) => s.loginAsDemo)
   const useRealApi = useAuthStore((s) => s.useRealApi)
   // Whoever refused the sign-in said why, and the store keeps that. The card
   // repeats it rather than assuming a bad password, which is what it used to
   // report for a Redash that was down, rate limited, or not set up yet.
   const loginError = useAuthStore((s) => s.loginError)
-  const { brand, demo } = useConfig()
+  const { brand } = useConfig()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [pendingPersonaId, setPendingPersonaId] = useState<string | null>(null)
   // Both fields carry a real label association. Without htmlFor/id the visible
   // text sits next to the control rather than naming it, which leaves the sign
   // in form unlabelled for assistive tech and for any name-based query.
   const emailFieldId = useId()
   const passwordFieldId = useId()
-  const demoHeadingId = useId()
-
-  const busy = loading || pendingPersonaId !== null
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -84,22 +78,18 @@ export function LoginScreen({ next }: { next?: string | null }) {
     setLoading(false)
   }
 
-  const handleDemo = async (persona: DemoPersona) => {
-    setPendingPersonaId(persona.id)
-    const success = await loginAsDemo(persona)
-    if (success) {
-      router.replace(safeNextPath(next))
-      return
-    }
-    setPendingPersonaId(null)
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="p-8 w-full max-w-sm">
         <div className="flex justify-center mb-2">
           {brand.logo ? (
-            <Image src={brand.logo} alt={brand.name} width={64} height={64} />
+            <Image
+              src={brand.logo}
+              alt={brand.name}
+              width={64}
+              height={64}
+              className="h-16 w-16 object-contain"
+            />
           ) : (
             <span className="text-lg font-semibold">{brand.name}</span>
           )}
@@ -135,54 +125,16 @@ export function LoginScreen({ next }: { next?: string | null }) {
             />
           </div>
 
-          {loginError && !busy && (
+          {loginError && !loading && (
             <p className="text-sm text-destructive" role="alert">
               {loginError}
             </p>
           )}
 
-          <Button type="submit" disabled={busy} className="w-full">
+          <Button type="submit" disabled={loading} className="w-full">
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
         </form>
-
-        {demo.personas.length > 0 && (
-          <section className="mt-6" aria-labelledby={demoHeadingId}>
-            <div className="flex items-center gap-3 mb-4">
-              <span className="h-px flex-1 bg-border" />
-              <h2 id={demoHeadingId} className="text-xs uppercase tracking-wide text-muted-foreground">
-                Or explore the demo
-              </h2>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-            <div className="space-y-2">
-              {demo.personas.map((persona) => (
-                <Button
-                  key={persona.id}
-                  type="button"
-                  variant="outline"
-                  className="w-full h-auto flex-col items-start py-2 text-left"
-                  disabled={busy}
-                  onClick={() => handleDemo(persona)}
-                >
-                  <span className="font-medium">
-                    {pendingPersonaId === persona.id
-                      ? `Signing in as ${persona.label}...`
-                      : `Sign in as ${persona.label}`}
-                  </span>
-                  {persona.description && (
-                    <span className="text-xs font-normal text-muted-foreground">
-                      {persona.description}
-                    </span>
-                  )}
-                </Button>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              Demo accounts are shared and reset regularly. Do not put real data here.
-            </p>
-          </section>
-        )}
 
         {!useRealApi && (
           <div className="mt-4 p-3 bg-muted rounded-md">

@@ -60,7 +60,11 @@ export default async function RootLayout({
             prefers dark never sees the light page flash past while the bundle
             loads. The server cannot do this for them, since the preference
             lives in localStorage and the OS setting is only knowable here. */}
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript() }} />
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: themeInitScript() }}
+        />
         <style dangerouslySetInnerHTML={{ __html: themeStyle(config) }} />
         {/* Telemetry config travels as a prop rather than a NEXT_PUBLIC_ var so
             it is read per request. This route is already force-dynamic, so one

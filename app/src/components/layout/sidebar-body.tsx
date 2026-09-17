@@ -79,7 +79,13 @@ export function BrandMark({
         className={cn('flex items-center gap-2 h-14 shrink-0', collapsed ? 'justify-center px-0' : 'px-3')}
       >
         {logo ? (
-          <Image src={logo} alt={name} width={24} height={24} className="rounded-sm shrink-0" />
+          <Image
+            src={logo}
+            alt={name}
+            width={24}
+            height={24}
+            className="size-6 rounded-sm object-contain shrink-0"
+          />
         ) : null}
         {/* With no logo there would be nothing left to click on, so a collapsed
             rail falls back to the first letter rather than an empty box. */}
