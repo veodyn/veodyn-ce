@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import Any, Protocol, final
 
 RENDERABLE_CREDENTIAL_TYPES = frozenset({"string", "number", "boolean"})
 MASKABLE_CREDENTIAL_TYPES = frozenset({"string"})
@@ -22,9 +22,42 @@ class DeliveryCode(StrEnum):
     CREDENTIALS_REJECTED = "credentials_rejected"
     CONTENT_REJECTED = "content_rejected"
     RATE_LIMITED = "rate_limited"
+    PARTIALLY_DELIVERED = "partially_delivered"
+    RECALL_TARGET_GONE = "recall_target_gone"
     CHANNEL_UNAVAILABLE = "channel_unavailable"
     CONNECTOR_RAISED = "connector_raised"
     UNSPECIFIED = "unspecified"
+
+
+WITHHELD = "<delivery handle withheld>"
+
+SUBCLASSING_REFUSED = (
+    "DeliveryHandle is final. A subclass could choose how a handle renders, and every path that writes one out "
+    "trusts the class to render it as nothing."
+)
+
+
+@final
+class DeliveryHandle:
+    __slots__ = ("_handle",)
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        raise TypeError(SUBCLASSING_REFUSED)
+
+    def __init__(self, handle: str) -> None:
+        self._handle = str(handle)
+
+    def reveal(self) -> str:
+        return self._handle
+
+    def __repr__(self) -> str:
+        return WITHHELD
+
+    def __str__(self) -> str:
+        return WITHHELD
+
+    def __format__(self, spec: str) -> str:
+        return WITHHELD
 
 
 @dataclass(frozen=True)
@@ -89,6 +122,7 @@ class CredentialVerdict:
 class DeliveryOutcome:
     delivered: bool
     code: DeliveryCode = DeliveryCode.UNSPECIFIED
+    reference: DeliveryHandle | None = None
 
 
 class Connector(Protocol):

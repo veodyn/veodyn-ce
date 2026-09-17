@@ -12,6 +12,7 @@ from veodyn_api.services.connector_contract import (
     CredentialSchema,
     CredentialVerdict,
     DeliveryCode,
+    DeliveryHandle,
     DeliveryOutcome,
     Rendering,
     VerdictCode,
@@ -35,6 +36,29 @@ BAD_TOKEN = "crier-expired-0000"
 ROOM = "market-square"
 NOTE = "rings the bell twice"
 REQUIRED_FOOTER = "Reply STOP to opt out."
+
+HANDLE_AS_STRING = "handle_string"
+HANDLE_AS_DECLARED_SECRET = "handle_secret"
+HANDLE_AS_CLASS_PROXY = "handle_proxy"
+
+
+class HandleShapedProxy:
+    def __init__(self, handle: str) -> None:
+        self._handle = handle
+
+    @property
+    def __class__(self) -> Any:
+        return DeliveryHandle
+
+    def reveal(self) -> str:
+        return self._handle
+
+    def __repr__(self) -> str:
+        return self._handle
+
+    def __str__(self) -> str:
+        return self._handle
+
 
 TOWN_CRIER_SCHEMA = CredentialSchema(
     fields=(
@@ -82,7 +106,7 @@ class TownCrierConnector:
         return DeliveryOutcome(delivered=True, code=DeliveryCode.DELIVERED)
 
 
-class LeakingConnector:
+class CarelessConnector:
     connector_id = TOWN_CRIER_ID
     credential_schema = TOWN_CRIER_SCHEMA
     content_contract = TOWN_CRIER_CONTRACT
@@ -118,6 +142,24 @@ class LeakingConnector:
             raise RuntimeError(f"the crier token is {token}")
         if self.mode == "returns_nonsense":
             return f"delivered with {token}"  # type: ignore[return-value]
+        if self.mode == HANDLE_AS_STRING:
+            return DeliveryOutcome(
+                delivered=True,
+                code=DeliveryCode.DELIVERED,
+                reference=token,  # type: ignore[arg-type]
+            )
+        if self.mode == HANDLE_AS_CLASS_PROXY:
+            return DeliveryOutcome(
+                delivered=True,
+                code=DeliveryCode.DELIVERED,
+                reference=HandleShapedProxy(token),  # type: ignore[arg-type]
+            )
+        if self.mode == HANDLE_AS_DECLARED_SECRET:
+            return DeliveryOutcome(
+                delivered=True,
+                code=DeliveryCode.DELIVERED,
+                reference=DeliveryHandle(token),
+            )
         return DeliveryOutcome(
             delivered=self.mode == "delivers",
             code=f"failed carrying {token}",  # type: ignore[arg-type]

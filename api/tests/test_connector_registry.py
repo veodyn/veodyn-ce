@@ -6,7 +6,7 @@ from tests.connector_stubs import (
     GOOD_TOKEN,
     TOWN_CRIER_ID,
     TOWN_CRIER_SCHEMA,
-    LeakingConnector,
+    CarelessConnector,
     TownCrierConnector,
     good_credentials,
 )
@@ -204,7 +204,7 @@ def test_a_connector_declares_whether_its_channel_can_be_recalled() -> None:
 
 
 def test_the_registry_keeps_the_identity_it_read_at_registration() -> None:
-    shifting = LeakingConnector()
+    shifting = CarelessConnector()
     with restored_connectors():
         register_connector(shifting)
         shifting.verify_credentials({"crier_token": GOOD_TOKEN})

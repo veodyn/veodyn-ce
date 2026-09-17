@@ -4,6 +4,7 @@ from veodyn_api.services.connector_contract import (
     CredentialSchema,
     CredentialVerdict,
     DeliveryCode,
+    DeliveryHandle,
     DeliveryOutcome,
     VerdictCode,
 )
@@ -24,6 +25,12 @@ DELIVERY_SENTENCE: dict[DeliveryCode, str] = {
     DeliveryCode.CREDENTIALS_REJECTED: "rejected the credentials this configuration holds",
     DeliveryCode.CONTENT_REJECTED: "refused the rendering it was handed",
     DeliveryCode.RATE_LIMITED: "is rate limiting this agency",
+    DeliveryCode.PARTIALLY_DELIVERED: (
+        "accepted the message for some of its audience and reported that the rest did not receive it"
+    ),
+    DeliveryCode.RECALL_TARGET_GONE: (
+        "no longer holds the post this correction would have edited, so nothing was corrected in place"
+    ),
     DeliveryCode.CHANNEL_UNAVAILABLE: "could not be reached",
     DeliveryCode.CONNECTOR_RAISED: (
         "raised while delivering, and what it said is not recorded because it may quote the credential it holds"
@@ -54,6 +61,11 @@ def _declared_only(schema: CredentialSchema, reported: Any) -> tuple[str, ...]:
     return tuple(name for name in schema.names if name in blamed)
 
 
+def _handle_only(reported: Any) -> DeliveryHandle | None:
+    handle = getattr(reported, "reference", None)
+    return handle if type(handle) is DeliveryHandle else None
+
+
 def verdict_of(schema: CredentialSchema, reported: object) -> CredentialVerdict | None:
     if not isinstance(reported, CredentialVerdict):
         return None
@@ -76,7 +88,7 @@ def outcome_of(reported: object) -> DeliveryOutcome:
     except Exception:
         return DeliveryOutcome(delivered=False, code=DeliveryCode.CONNECTOR_RAISED)
     code = DeliveryCode.DELIVERED if delivered else _delivery_code(getattr(reported, "code", None))
-    return DeliveryOutcome(delivered=delivered, code=code)
+    return DeliveryOutcome(delivered=delivered, code=code, reference=_handle_only(reported))
 
 
 def refusal_sentence(connector: RegisteredConnector, verdict: CredentialVerdict) -> str:
