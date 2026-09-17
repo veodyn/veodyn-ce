@@ -19,6 +19,7 @@ from veodyn_api.routers.published_feed_attempts import router as published_feed_
 from veodyn_api.routers.published_feed_capabilities import (
     router as published_feed_capabilities_router,
 )
+from veodyn_api.routers.published_feed_entities import router as published_feed_entities_router
 from veodyn_api.routers.published_feeds import router as published_feeds_router
 from veodyn_api.routers.tags import router as tags_router
 
@@ -36,6 +37,7 @@ for _router in (
     public_feeds_router,
     published_feeds_router,
     published_feed_attempts_router,
+    published_feed_entities_router,
     tags_router,
 ):
     register_router(_router)

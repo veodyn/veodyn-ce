@@ -456,6 +456,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/published-feeds/{slug}/entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Static Entities */
+        get: operations["list_static_entities_published_feeds__slug__entities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tags": {
         parameters: {
             query?: never;
@@ -1212,6 +1229,22 @@ export interface components {
             timezones: string[];
             /** Versions */
             versions: string[];
+        };
+        /** StaticEntitiesOut */
+        StaticEntitiesOut: {
+            /** Entities */
+            entities: components["schemas"]["StaticEntityOut"][];
+            /** Feedversion */
+            feedVersion: string;
+        };
+        /** StaticEntityOut */
+        StaticEntityOut: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
         };
         /** TagCountOut */
         TagCountOut: {
@@ -2183,6 +2216,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublishAttemptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_static_entities_published_feeds__slug__entities_get: {
+        parameters: {
+            query: {
+                kind: "agency" | "route" | "stop" | "trip";
+                q?: string | null;
+                limit?: number;
+            };
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaticEntitiesOut"];
                 };
             };
             /** @description Validation Error */

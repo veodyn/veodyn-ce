@@ -1926,6 +1926,50 @@
         "title": "StandardCapabilityOut",
         "type": "object"
       },
+      "StaticEntitiesOut": {
+        "properties": {
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/StaticEntityOut"
+            },
+            "title": "Entities",
+            "type": "array"
+          },
+          "feedVersion": {
+            "title": "Feedversion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "feedVersion",
+          "entities"
+        ],
+        "title": "StaticEntitiesOut",
+        "type": "object"
+      },
+      "StaticEntityOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "label"
+        ],
+        "title": "StaticEntityOut",
+        "type": "object"
+      },
       "TagCountOut": {
         "properties": {
           "count": {
@@ -3983,6 +4027,122 @@
           }
         },
         "summary": "Publish Now",
+        "tags": [
+          "published-feeds"
+        ]
+      }
+    },
+    "/published-feeds/{slug}/entities": {
+      "get": {
+        "operationId": "list_static_entities_published_feeds__slug__entities_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "agency",
+                "route",
+                "stop",
+                "trip"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaticEntitiesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Static Entities",
         "tags": [
           "published-feeds"
         ]
