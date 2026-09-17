@@ -18,6 +18,7 @@ import { ChatTranscript, type Selection } from './chat-transcript'
 import { DetailPane } from './detail-pane'
 import { DraftActions } from './draft-actions'
 import { DraftCard } from './draft-card'
+import { FollowNewTurns } from './follow-new-turns'
 import { SavedVizPane } from './saved-viz-pane'
 
 export function ChatThreadView({ threadId }: { threadId: string }) {
@@ -60,6 +61,7 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
         <MessageScrollerProvider autoScroll defaultScrollPosition="end">
+          <FollowNewTurns lastTurnId={state.turns.at(-1)?.id ?? null} loading={chat.loading} />
           <MessageScroller className="min-h-0 grow">
             <MessageScrollerViewport aria-label="Conversation">
               <MessageScrollerContent className="w-full max-w-3xl gap-6 px-6 py-6">

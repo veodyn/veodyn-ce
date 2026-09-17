@@ -21,6 +21,7 @@
     "gen:features": "node scripts/generate-feature-registry.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ai": "playwright test --config playwright.ai.config.ts",
+    "test:e2e:chat": "playwright test --config playwright.chat.config.ts",
     "screenshots:docs": "playwright test --config playwright.screenshots.config.ts",
     "validate:palette": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/validate-palette.mjs"
   },
