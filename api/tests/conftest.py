@@ -65,10 +65,9 @@ def client() -> TestClient:
 @pytest.fixture(scope="session")
 def engine() -> Engine:
     from tests.fixture_objects import FixtureBase
-    from veodyn_api.db import build_engine
     from veodyn_api.models.base import Base
 
-    engine = build_engine(TEST_DATABASE_URL)
+    engine = create_engine(TEST_DATABASE_URL)
     for metadata in (FixtureBase.metadata, Base.metadata):
         metadata.drop_all(engine)
     for metadata in (Base.metadata, FixtureBase.metadata):
@@ -209,3 +208,27 @@ def upgrade_to(engine: Engine, target: str) -> None:
     from tests.migration_chains import ce_config
 
     command.upgrade(ce_config(), target)
+
+
+TEST_REDIS_URL = os.environ.get("VEODYN_TEST_REDIS_URL", "redis://localhost:16379/15")
+
+
+@pytest.fixture
+def anyio_backend() -> str:
+    return "asyncio"
+
+
+@pytest.fixture
+def redis_url(monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
+    import redis
+
+    client = redis.Redis.from_url(TEST_REDIS_URL)
+    client.flushdb()
+    monkeypatch.setenv("VEODYN_REDIS_URL", TEST_REDIS_URL)
+    from veodyn_api.services.chat.bus import get_redis
+
+    get_redis.cache_clear()
+    yield TEST_REDIS_URL
+    get_redis.cache_clear()
+    client.flushdb()
+    client.close()

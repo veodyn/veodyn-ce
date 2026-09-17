@@ -26,6 +26,7 @@ jobs:
       # run on the runner VM and the service is reached through the published
       # port below. Same user, same database, same trust auth.
       VEODYN_TEST_DATABASE_URL: postgresql+psycopg://veodyn@localhost:5432/veodyn_test
+      VEODYN_TEST_REDIS_URL: redis://localhost:6379/15
     services:
       postgres:
         image: postgres:16
@@ -49,6 +50,10 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
     steps:
       - uses: actions/checkout@v4
 

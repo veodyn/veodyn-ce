@@ -17,9 +17,12 @@ veodyn-api-test:
     # for a password that does nothing is to delete it, not to except it.
     POSTGRES_HOST_AUTH_METHOD: trust
     VEODYN_TEST_DATABASE_URL: "postgresql+psycopg://veodyn@postgres:5432/veodyn_test"
+    VEODYN_TEST_REDIS_URL: "redis://redis:6379/15"
   services:
     - name: postgres:16
       alias: postgres
+    - name: redis:7
+      alias: redis
   before_script:
     - pip install --no-cache-dir uv
     - cd api

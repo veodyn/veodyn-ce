@@ -108,6 +108,7 @@
     "services/captures.py",
     "services/catalog.py",
     "services/chat/__init__.py",
+    "services/chat/bus.py",
     "services/chat/store.py",
     "services/clickhouse.py",
     "services/dataset_profile.py",
