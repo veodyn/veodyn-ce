@@ -16,9 +16,10 @@ interface DetailPaneProps {
   data?: QueryResultData
   onClose: () => void
   actions?: ReactNode
+  chart?: ReactNode
 }
 
-export function DetailPane({ title, sql, vizChoiceId, data, onClose, actions }: DetailPaneProps) {
+export function DetailPane({ title, sql, vizChoiceId, data, onClose, actions, chart }: DetailPaneProps) {
   const table = data ? { ...data, rows: data.rows.slice(0, PANE_TABLE_ROWS) } : undefined
   return (
     <aside aria-label={`Details: ${title}`} className="flex h-full min-h-0 flex-col border-l bg-background">
@@ -30,11 +31,11 @@ export function DetailPane({ title, sql, vizChoiceId, data, onClose, actions }: 
         </IconButton>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-        {data ? (
+        {chart ?? (data ? (
           <ResultView data={data} vizChoiceId={vizChoiceId} className="h-96" />
         ) : (
           <p className="text-sm text-muted-foreground">Run the query to see its result here.</p>
-        )}
+        ))}
         <CodeBlock code={sql} />
         {table ? (
           <>

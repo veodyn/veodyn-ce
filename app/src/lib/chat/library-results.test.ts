@@ -109,11 +109,11 @@ describe('libraryResult', () => {
   })
 
   it('marks a query that never ran and skips an empty description', () => {
-    const { items = [] } = libraryResult(
+    const result = libraryResult(
       { results: [query({ latest_query_data_id: null, description: '  ' })], count: 1 },
       null
     )
-    const [item] = items
+    const [item] = result.items ?? []
     expect(item.hasResult).toBe(false)
     expect(item).not.toHaveProperty('description', expect.anything())
   })

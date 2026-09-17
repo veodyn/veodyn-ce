@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/message-scroller'
 import type { RunView, ThreadState } from '@/lib/chat/thread-model'
 import { renderWithProviders } from '@/test/utils'
-import { ChatTranscript, PHASE_LABELS } from './chat-transcript'
+import { ChatTranscript, LIBRARY_PHASE_LABELS, PHASE_LABELS } from './chat-transcript'
 import { runStatusLabel } from './run-card'
 
 const RUN: RunView = {
@@ -114,5 +114,33 @@ describe('runStatusLabel', () => {
     expect(runStatusLabel({ ...RUN, status: 'failed' })).toBe('The query failed')
     expect(runStatusLabel({ ...RUN, rowCount: 1, durationMs: null })).toBe('1 row')
     expect(runStatusLabel({ ...RUN, rowCount: null, durationMs: null })).toBe('Done')
+  })
+
+  it('renders library and dashboard calls, and says when it is looking in the library', () => {
+    const thread = state({
+      status: 'running',
+      phase: 'waiting_for_browser',
+      stopReason: null,
+      items: [
+        { kind: 'call', callId: 'd1' },
+        { kind: 'call', callId: 's1' },
+      ],
+    })
+    thread.calls = {
+      d1: {
+        callId: 'd1',
+        tool: 'open_dashboard',
+        status: 'done',
+        target: null,
+        output: { kind: 'dashboard', ok: true, dashboard: { id: 4, name: 'Bikeshare overview' }, widgets: [] },
+        error: null,
+      },
+      s1: { callId: 's1', tool: 'search_library', status: 'running', target: null, output: null, error: null },
+    }
+    renderTranscript(thread)
+    expect(screen.getByRole('link', { name: 'Bikeshare overview' })).toBeInTheDocument()
+    expect(screen.getByText('Searching the library…')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(LIBRARY_PHASE_LABELS.waiting_for_browser)
+    expect(PHASE_LABELS.waiting_for_browser).not.toBe(LIBRARY_PHASE_LABELS.waiting_for_browser)
   })
 })

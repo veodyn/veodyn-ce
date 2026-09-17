@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button'
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
 import type { ThreadState, TurnItem, TurnView } from '@/lib/chat/thread-model'
 import type { QueryResultData } from '@/lib/mock-data'
+import { DashboardCard } from './dashboard-card'
+import { LibraryCard } from './library-card'
 import { RunCard } from './run-card'
+import { SavedVizCard } from './saved-viz-card'
 
 export const PHASE_LABELS: Record<string, string> = {
   answering: 'Thinking…',
@@ -16,7 +19,11 @@ export const PHASE_LABELS: Record<string, string> = {
   reading_result: 'Reading the result…',
 }
 
-export type Selection = { kind: 'run'; id: string } | { kind: 'draft'; id: string }
+export const LIBRARY_PHASE_LABELS: Record<string, string> = {
+  waiting_for_browser: 'Looking in the library…',
+}
+
+export type Selection = { kind: 'run'; id: string } | { kind: 'call'; id: string } | { kind: 'draft'; id: string }
 
 interface ChatTranscriptProps {
   state: ThreadState
@@ -47,7 +54,7 @@ export function ChatTranscript(props: ChatTranscriptProps) {
           {turn.items.map((item, index) => (
             <TranscriptItem key={`${turn.id}-${index}`} item={item} {...props} />
           ))}
-          <TurnFooter turn={turn} isLast={turn === last} onRetry={props.onRetry} />
+          <TurnFooter turn={turn} isLast={turn === last} onRetry={props.onRetry} library={waitsOnLibrary(state, turn)} />
         </MessageScrollerItem>
       ))}
     </>
@@ -60,6 +67,19 @@ function TranscriptItem({ item, ...props }: ChatTranscriptProps & { item: TurnIt
   }
   if (item.kind === 'draft') {
     return <>{props.renderDraft(item.draftId, item.version)}</>
+  }
+  if (item.kind === 'call') {
+    const call = props.state.calls[item.callId]
+    if (!call) return null
+    if (call.tool === 'search_library') return <LibraryCard call={call} />
+    if (call.tool === 'open_dashboard') return <DashboardCard call={call} />
+    return (
+      <SavedVizCard
+        call={call}
+        selected={isSelected(props.selection, 'call', item.callId)}
+        onSelect={() => props.onSelect({ kind: 'call', id: item.callId })}
+      />
+    )
   }
   const run = props.state.runs[item.callId]
   if (!run) return null
@@ -76,12 +96,25 @@ function TranscriptItem({ item, ...props }: ChatTranscriptProps & { item: TurnIt
   )
 }
 
-function TurnFooter({ turn, isLast, onRetry }: { turn: TurnView; isLast: boolean; onRetry: () => void }) {
+function waitsOnLibrary(state: ThreadState, turn: TurnView): boolean {
+  const last = turn.items[turn.items.length - 1]
+  return last?.kind === 'call' && state.calls[last.callId]?.status === 'running'
+}
+
+interface TurnFooterProps {
+  turn: TurnView
+  isLast: boolean
+  library: boolean
+  onRetry: () => void
+}
+
+function TurnFooter({ turn, isLast, library, onRetry }: TurnFooterProps) {
   if (turn.status === 'running') {
+    const phase = turn.phase ?? ''
     return (
       <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
         <Loader2 className="size-3 animate-spin" aria-hidden="true" />
-        {PHASE_LABELS[turn.phase ?? ''] ?? 'Working…'}
+        {(library ? LIBRARY_PHASE_LABELS[phase] : undefined) ?? PHASE_LABELS[phase] ?? 'Working…'}
       </p>
     )
   }

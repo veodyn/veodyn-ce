@@ -18,6 +18,7 @@ import { ChatTranscript, type Selection } from './chat-transcript'
 import { DetailPane } from './detail-pane'
 import { DraftActions } from './draft-actions'
 import { DraftCard } from './draft-card'
+import { SavedVizPane } from './saved-viz-pane'
 
 export function ChatThreadView({ threadId }: { threadId: string }) {
   const chat = useChatThread(threadId)
@@ -53,6 +54,7 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
   }
 
   const pane = paneFor(selection, chat.state, results)
+  const savedCall = selection?.kind === 'call' ? state.calls[selection.id] : undefined
 
   return (
     <div className="flex h-full min-h-0">
@@ -97,6 +99,11 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
       {pane ? (
         <div className="w-[42%] min-w-96 shrink-0">
           <DetailPane {...pane} onClose={() => setSelection(null)} />
+        </div>
+      ) : null}
+      {savedCall?.tool === 'show_visualization' ? (
+        <div className="w-[42%] min-w-96 shrink-0">
+          <SavedVizPane call={savedCall} onClose={() => setSelection(null)} />
         </div>
       ) : null}
     </div>
