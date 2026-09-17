@@ -16,19 +16,18 @@ interface Tagged {
   tags: string[]
 }
 
-// The detail entry the optimistic write patches, and the list entry it
-// invalidates, per kind. Kept here so the three callers cannot disagree about
-// which cache entry holds an object.
 const DETAIL_KEY: Record<TaggableObjectType, (id: string) => readonly unknown[]> = {
   kpi: (id) => ['kpi', id],
   report: (id) => ['report', id],
   dataset: (id) => ['catalog', id],
+  message: (id) => ['message', id],
 }
 
 const LIST_KEY: Record<TaggableObjectType, readonly unknown[]> = {
   kpi: ['kpis'],
   report: ['reports'],
   dataset: ['catalog'],
+  message: ['messages'],
 }
 
 const RESERVED_PREFIX_MESSAGE =

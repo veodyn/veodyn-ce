@@ -163,6 +163,9 @@ class ErrorId(StrEnum):
     # tell the author to pick a different feed, and here no feed on the instance
     # would work, so the fix is the deployment's rather than theirs.
     WAREHOUSE_SOURCE_UNRESOLVABLE = "VEODYN_WAREHOUSE_SOURCE_UNRESOLVABLE"
+    MESSAGE_NOT_FOUND = "VEODYN_MESSAGE_NOT_FOUND"
+    MESSAGE_ID_TAKEN = "VEODYN_MESSAGE_ID_TAKEN"
+    MESSAGE_TRANSITION_REFUSED = "VEODYN_MESSAGE_TRANSITION_REFUSED"
 
 
 class ApiError(Exception):

@@ -20,6 +20,13 @@ def test_api_error_renders_the_envelope() -> None:
     assert response.json() == {"error": {"id": "VEODYN_KPI_NOT_FOUND", "message": "no such kpi"}}
 
 
+def test_service_message_causes_are_distinguishable_on_the_wire() -> None:
+    assert ErrorId.MESSAGE_NOT_FOUND.value == "VEODYN_MESSAGE_NOT_FOUND"
+    assert ErrorId.MESSAGE_ID_TAKEN.value == "VEODYN_MESSAGE_ID_TAKEN"
+    assert ErrorId.MESSAGE_TRANSITION_REFUSED.value == "VEODYN_MESSAGE_TRANSITION_REFUSED"
+    assert ErrorId.MESSAGE_TRANSITION_REFUSED is not ErrorId.INVALID_REQUEST
+
+
 def test_request_validation_uses_the_same_envelope() -> None:
     router = APIRouter()
 

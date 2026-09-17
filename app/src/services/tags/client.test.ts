@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { isAppError } from '@/lib/errorIds'
 import {
   fetchRedashTagVocabulary,
@@ -7,6 +7,7 @@ import {
   TagErrorCause,
   tagErrorCause,
 } from './client'
+import type { TaggableObjectType } from './client'
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -197,5 +198,32 @@ describe('putObjectTags', () => {
 
     const error = await putObjectTags('kpi', 'k-1', []).catch((e: unknown) => e)
     expect(error).toBe(abort)
+  })
+
+  it('addresses a service message like any other taggable kind', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({ tags: ['triage'] })
+    )
+    await putObjectTags('message', 'm-1', ['triage'])
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/tags/message/m-1',
+      expect.objectContaining({
+        method: 'PUT',
+        credentials: 'include',
+        body: JSON.stringify({ tags: ['triage'] }),
+      })
+    )
+  })
+})
+
+describe('TaggableObjectType', () => {
+  it('covers message alongside the three the sidecar already owned', () => {
+    expectTypeOf<'message'>().toExtend<TaggableObjectType>()
+    expectTypeOf<TaggableObjectType>().toEqualTypeOf<'kpi' | 'report' | 'dataset' | 'message'>()
+  })
+
+  it('still refuses a kind nothing registers', () => {
+    expectTypeOf<'widget'>().not.toExtend<TaggableObjectType>()
   })
 })

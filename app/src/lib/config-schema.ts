@@ -127,32 +127,9 @@ export const veodynConfigSchema = z.object({
     })
     .strict()
     .default({}),
-  demo: z
-    .object({
-      personas: z
-        .array(
-          z
-            .object({
-              id: z.string().min(1),
-              label: z.string().min(1),
-              email: z.string().email(),
-              description: z.string().nullable().default(null),
-            })
-            .strict()
-        )
-        .default([]),
-    })
-    .strict()
-    .default({}),
   home: z
     .object({
       tagline: z.string().default('The data substrate for regional transportation.'),
-    })
-    .strict()
-    .default({}),
-  deployment: z
-    .object({
-      scale: z.enum(['node', 'hub']).default('node'),
     })
     .strict()
     .default({}),
@@ -188,6 +165,12 @@ export const veodynConfigSchema = z.object({
     })
     .strict()
     .default({}),
+  messages: z
+    .object({
+      enabled: booleanish.default(false),
+    })
+    .strict()
+    .default({}),
 })
   .strict()
 
@@ -195,12 +178,6 @@ export type VeodynConfig = z.infer<typeof veodynConfigSchema>
 
 // Client-safe subset: everything except server-only AI internals.
 export type ClientConfig = Omit<VeodynConfig, 'ai'> & { ai: { enabled: boolean } }
-
-export type DemoPersona = VeodynConfig['demo']['personas'][number]
-
-export function usesSharedDemoAccounts(config: Pick<ClientConfig, 'demo'>): boolean {
-  return config.demo.personas.length > 0
-}
 
 export function toClientConfig(config: VeodynConfig): ClientConfig {
   const { ai, ...rest } = config

@@ -8,8 +8,7 @@
 import { AppError, ErrorIds, isAppError } from '@/lib/errorIds'
 import type { TagSuggestion } from '@/lib/tags'
 
-/** The object kinds the sidecar's tag_assignment table covers. */
-export type TaggableObjectType = 'kpi' | 'report' | 'dataset'
+export type TaggableObjectType = 'kpi' | 'report' | 'dataset' | 'message'
 
 /** Which Redash vocabulary endpoint to read. */
 export type RedashTagScope = 'queries' | 'dashboards'
