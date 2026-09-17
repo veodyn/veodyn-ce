@@ -56,10 +56,17 @@ Declaring a key here does not put anything in it. The list decides which domains
 features:
   query_snippets: true   # default false
   query_drafts: true     # default false
+
+messages:
+  enabled: true          # default false
+connectors:
+  enabled: true          # default false, and needs messages.enabled
 ```
 
 - **Query Snippets**: reusable SQL fragments expanded by a trigger word in the editor. With it off, the route 404s and the nav row is absent rather than greyed out.
 - **Query drafts**: with it on, a saved query stays private (with a Draft badge) until its author picks "Share with the team". This governs the query list rather than access, so anyone who can reach the data source can still open a draft from its link. Off (the default), the word "draft" appears nowhere.
+- **Messages**: the rider-facing [message](/features/messages) surface, on an [enterprise](/editions) build. Off, the Messages row and the Channels admin page are absent and their routes 404.
+- **Connectors**: the [connector](/features/channels) routes and the sidecar endpoints behind them. Off, the connector pages 404 and only alert feeds can carry a message. The file refuses `connectors.enabled` without `messages.enabled`, since a connector is an outbound channel for a message and there is nothing to send with messages off. A connector's own credentials are entered on its page and stored per organization; nothing about them goes in this file or the environment.
 
 ## AI
 
@@ -93,24 +100,6 @@ assistant:            # an external chat widget on Home; no URL, no widget
   integration_id: my-instance
   title: "Data Assistant"
 ```
-
-## Edition badge
-
-```yaml
-deployment:
-  scale: hub   # node (default) or hub
-```
-
-A chip beside the brand mark reads **CE**, **EE** or **HUB**, and hovering it
-spells the [edition](/editions) out: Community Edition, Enterprise Edition or
-Enterprise Hub. The two halves of that answer come from different places.
-Whether a build is community or enterprise follows from the feature packages
-inside the image, so no key configures it and a community build cannot claim
-more than it contains. Scale is a deployment role with no code behind it, so
-it is declared here: `hub` turns an enterprise build's EE into HUB. On a
-community build it changes nothing and warns once at startup, since there is
-no community hub. Collapse the sidebar to a rail and the chip folds into the
-brand mark's tooltip.
 
 ## Visualization allowlist
 

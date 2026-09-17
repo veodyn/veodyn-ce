@@ -38,10 +38,10 @@ The left rail can be collapsed to icons, and the state is remembered per browser
 Sections, top to bottom:
 
 - **Ungrouped**: Home, Search, Data Catalog, Discover, Favorites, then one row per configured [domain](/configuration#domains) (Transit, Freeways, ...).
-- **Library**: Queries, Dashboards, and Query Snippets when that feature is enabled. Plus KPIs and Reports on an [enterprise](/editions) build.
+- **Library**: Queries, Dashboards, and Query Snippets when that feature is enabled. Plus KPIs, Messages and Reports on an [enterprise](/editions) build.
 - **Monitor**: Captures, Schedules. Plus Alerts on an enterprise build.
 - **Connect**: APIs, MCP.
-- **Admin** (admins only): Data Sources, Team, Plugins, Settings, and, for super admins, System Status, Query Jobs, and Outdated Queries. Plus Alert Notifications and Shared Links on an enterprise build.
+- **Admin** (admins only): Data Sources, Team, Plugins, Settings, and, for super admins, System Status, Query Jobs, and Outdated Queries. Plus Alert Notifications, Channels, Managed Datasets and Shared Links on an enterprise build.
 
 A surface that is switched off in the instance config has no nav row at all, and its route returns a 404, rather than a greyed-out entry for something you cannot use. An enterprise feature on a community build behaves the same way: the row is absent rather than disabled, and nothing anywhere advertises it.
 

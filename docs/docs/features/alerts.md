@@ -1,7 +1,7 @@
 ---
 sidebar_position: 8
 title: Alerts & Destinations
-description: "Watching conditions on query results, KPI-managed alerts, notification templates and subscriptions, and the admin-configured alert destinations."
+description: "Watching conditions on query results, KPI-managed alerts, team notifications and subscriptions, and the admin-configured alert destinations."
 ---
 
 # Alerts & Destinations
@@ -57,8 +57,11 @@ An alert id that does not exist says **Alert not found**.
 
 Below the facts, each alert has:
 
-- A **notification template** editor, controlling the message a trigger sends.
 - **Subscriptions**: who gets notified, and through which destination.
+- **Team notifications**: a switch per destination.
+- **Notification wording**: a collapsed editor for the internal template a team notification carries.
+
+Nothing in this card reaches a rider. On a build with [messages](/features/messages) on, a second card, **Rider message**, drafts a rider-facing message each time the alert fires; see [From an alert or KPI](/features/messages#from-an-alert-or-kpi).
 
 ## Destinations (admin)
 

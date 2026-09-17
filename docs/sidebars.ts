@@ -26,6 +26,8 @@ const sidebars: SidebarsConfig = {
         'features/sharing',
         'features/connect',
         'features/published-feeds',
+        'features/messages',
+        'features/channels',
         'features/settings',
       ],
     },

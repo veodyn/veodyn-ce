@@ -50,9 +50,6 @@ domains:
 home:
   tagline: "Meridian Transit Authority's regional operations dashboard."
 
-deployment:
-  scale: node
-
 assistant:
   widget_url: https://assistant.example.com
   integration_id: meridian-redash
@@ -80,6 +77,15 @@ assistant:
 #   # reach the data source can still open a draft from its link, so do not use
 #   # it to keep a query secret.
 #   query_drafts: true
+# messages:
+#   # The rider-facing message surface (enterprise). Off means no Messages row,
+#   # no Channels admin page, and 404s on both routes.
+#   enabled: false
+# connectors:
+#   # The connector pages and the sidecar endpoints behind them. Refused when
+#   # messages is off: a connector is an outbound channel for a message. A
+#   # connector's credentials are entered on its own page, never here.
+#   enabled: false
 # wall_mode:
 #   default_dashboard: transportation-overview
 # visualizations:
@@ -99,15 +105,3 @@ assistant:
 #   # Core types: TABLE, CHART, COUNTER, PIVOT, FUNNEL, DETAILS, MAP, HEATMAP,
 #   # BOXPLOT, SANKEY, CHOROPLETH, COHORT, SUNBURST_SEQUENCE, WORD_CLOUD.
 #   enabled: [TABLE, CHART, COUNTER, MAP]
-# demo:
-#   # Public demo instances only. The shared password is DEMO_LOGIN_PASSWORD
-#   # in the environment, never here: this whole file reaches the browser.
-#   personas:
-#     - id: operations
-#       label: Operations lead
-#       email: demo-ops@example.com
-#       description: Admin. Sees and changes everything
-#     - id: viewer
-#       label: Viewer
-#       email: demo-viewer@example.com
-#       description: Reads dashboards and reports

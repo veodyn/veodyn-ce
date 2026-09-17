@@ -131,6 +131,8 @@ If the save fails you stay on the form with the reason, rather than landing on a
 
 The notify toggle arms a real [alert](/features/alerts) whose condition follows the KPI's breached threshold. Recipients are added on the alert itself once it exists.
 
+On a build with [messages](/features/messages) on, the KPI page also carries a **Rider message** card, which drafts a message for riders each time the KPI breaches. Switching it on arms the alert first, since there is no breach to answer without one. The card is described under [From an alert or KPI](/features/messages#from-an-alert-or-kpi).
+
 ## Reading a KPI
 
 ![A KPI's page: scorecard, history chart with bands, and the definition card](/img/screenshots/kpi-detail.png)

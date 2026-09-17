@@ -76,6 +76,9 @@ and is licensed commercially.
 | | The Home digest and annotation suggestions | | ● |
 | **Notifications** | Email and webhook destinations | ● | ● |
 | | Chat and paging destinations | | ● |
+| **Rider communications** | [Messages](/features/messages): the composer, review and approval, publishing to alert feeds | | ● |
+| | [Channels](/features/channels) and the X, Facebook Page and rider-notifier connectors | | ● |
+| | Rider messages drafted by an alert or KPI | | ● |
 | **Sign-in** | Password and Google OAuth | ● | ● |
 | | SAML, LDAP, header and JWT authentication | | ● |
 
