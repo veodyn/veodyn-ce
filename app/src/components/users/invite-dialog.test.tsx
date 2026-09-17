@@ -24,6 +24,15 @@ describe('InviteDialog', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
+  it('marks the name and email fields required', () => {
+    renderWithProviders(<InviteDialog open onOpenChange={() => {}} onInvited={() => {}} />)
+
+    expect(screen.getByText('Name').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByPlaceholderText(/john doe/i)).toBeRequired()
+    expect(screen.getByText('Email').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByPlaceholderText(/user@example.com/i)).toBeRequired()
+  })
+
   it('keeps the width the wrapper gave it by default', () => {
     renderWithProviders(<InviteDialog open onOpenChange={() => {}} onInvited={() => {}} />)
     const panel = screen.getByRole('dialog')

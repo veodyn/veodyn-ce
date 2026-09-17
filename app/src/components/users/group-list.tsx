@@ -156,7 +156,7 @@ export function GroupList({ onSelectGroup }: GroupListProps) {
             <DialogTitle>Create Group</DialogTitle>
           </DialogHeader>
           <div className="max-h-[70vh] overflow-y-auto py-2">
-            <Label htmlFor={nameId} className="mb-1 block">
+            <Label htmlFor={nameId} className="mb-1 block" required>
               Group Name
             </Label>
             <Input
@@ -165,6 +165,8 @@ export function GroupList({ onSelectGroup }: GroupListProps) {
               onChange={(e) => setNewName(e.target.value)}
               placeholder="e.g. Data Team"
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+              required
+              aria-required="true"
             />
           </div>
           <DialogFooter>

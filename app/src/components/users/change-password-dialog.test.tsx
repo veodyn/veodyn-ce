@@ -13,6 +13,17 @@ const fill = async (user: ReturnType<typeof userEvent.setup>, cur: string, next:
 }
 
 describe('ChangePasswordDialog', () => {
+  it('marks all three password fields required', () => {
+    renderWithProviders(<ChangePasswordDialog userId="7" open onClose={() => {}} />)
+
+    for (const label of ['Current Password', 'New Password (min 6 characters)', 'Confirm New Password']) {
+      expect(screen.getByText(label).querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    }
+    expect(screen.getByLabelText(/current password/i)).toBeRequired()
+    expect(screen.getByLabelText(/^new password/i)).toBeRequired()
+    expect(screen.getByLabelText(/confirm new password/i)).toBeRequired()
+  })
+
   it('keeps submit disabled until all three fields are filled', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ChangePasswordDialog userId="7" open onClose={() => {}} />)

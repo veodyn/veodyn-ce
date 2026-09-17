@@ -46,8 +46,11 @@ describe('TokenPasswordForm', () => {
 
     expect(await screen.findByText('Test User')).toBeInTheDocument()
     expect(screen.getByText('test@example.com')).toBeInTheDocument()
-    expect(screen.getByLabelText('New password')).toBeRequired()
-    expect(screen.getByLabelText('Confirm password')).toBeRequired()
+    expect(screen.getByLabelText(/^New password/)).toBeRequired()
+    expect(screen.getByLabelText(/^New password/)).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByLabelText(/^Confirm password/)).toBeRequired()
+    expect(screen.getByText('New password').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByText('Confirm password').querySelector('[data-slot="required-marker"]')).not.toBeNull()
     expect(screen.getByRole('button', { name: 'Set new password' })).toBeDisabled()
   })
 
@@ -63,9 +66,9 @@ describe('TokenPasswordForm', () => {
     )
     renderTokenForm({ token: 'reset-token', mode: 'reset' })
 
-    await screen.findByLabelText('New password')
-    await user.type(screen.getByLabelText('New password'), 'short')
-    await user.type(screen.getByLabelText('Confirm password'), 'short')
+    await screen.findByLabelText(/^New password/)
+    await user.type(screen.getByLabelText(/^New password/), 'short')
+    await user.type(screen.getByLabelText(/^Confirm password/), 'short')
     await user.click(screen.getByRole('button', { name: 'Set new password' }))
 
     expect(screen.getByText('Password must be at least 6 characters.')).toBeInTheDocument()
@@ -84,9 +87,9 @@ describe('TokenPasswordForm', () => {
     )
     renderTokenForm({ token: 'reset-token', mode: 'reset' })
 
-    await screen.findByLabelText('New password')
-    await user.type(screen.getByLabelText('New password'), 'secret7')
-    await user.type(screen.getByLabelText('Confirm password'), 'secret7')
+    await screen.findByLabelText(/^New password/)
+    await user.type(screen.getByLabelText(/^New password/), 'secret7')
+    await user.type(screen.getByLabelText(/^Confirm password/), 'secret7')
     await user.click(screen.getByRole('button', { name: 'Set new password' }))
 
     await waitFor(() => expect(requestBody).toEqual({ password: 'secret7' }))

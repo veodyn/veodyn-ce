@@ -158,7 +158,7 @@ export function TokenPasswordForm({ token, mode }: TokenPasswordFormProps) {
             )}
 
             <div>
-              <Label htmlFor={passwordId} className="mb-1 block">
+              <Label htmlFor={passwordId} className="mb-1 block" required>
                 New password
               </Label>
               <InputGroup>
@@ -172,6 +172,7 @@ export function TokenPasswordForm({ token, mode }: TokenPasswordFormProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  aria-required="true"
                   autoFocus
                   autoComplete="new-password"
                   disabled={submitting}
@@ -190,7 +191,7 @@ export function TokenPasswordForm({ token, mode }: TokenPasswordFormProps) {
             </div>
 
             <div>
-              <Label htmlFor={confirmId} className="mb-1 block">
+              <Label htmlFor={confirmId} className="mb-1 block" required>
                 Confirm password
               </Label>
               <InputGroup>
@@ -204,6 +205,7 @@ export function TokenPasswordForm({ token, mode }: TokenPasswordFormProps) {
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   required
+                  aria-required="true"
                   autoComplete="new-password"
                   disabled={submitting}
                 />

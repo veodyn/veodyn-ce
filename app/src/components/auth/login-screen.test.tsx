@@ -69,6 +69,21 @@ describe('the sign-in card while it is handing over to the router', () => {
   })
 })
 
+describe('required field marking', () => {
+  it('marks Email required, and matches Password to whether this build enforces one', () => {
+    renderWithProviders(<LoginScreen />, { authenticated: false })
+
+    expect(screen.getByText('Email').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/email/i)).toBeRequired()
+
+    const passwordRequired = useAuthStore.getState().useRealApi
+    expect(screen.getByLabelText(/password/i)).toHaveProperty('required', passwordRequired)
+    expect(
+      screen.getByText('Password').querySelector('[data-slot="required-marker"]') !== null
+    ).toBe(passwordRequired)
+  })
+})
+
 describe('safeNextPath', () => {
   it('keeps a same-origin path', () => {
     expect(safeNextPath('/queries?tab=my')).toBe('/queries?tab=my')

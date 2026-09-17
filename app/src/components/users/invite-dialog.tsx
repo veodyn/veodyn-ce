@@ -78,7 +78,7 @@ export function InviteDialog({ open, onOpenChange, onInvited }: InviteDialogProp
                 Create a new user account and get an invite link to share directly.
               </p>
               <div>
-                <Label htmlFor={nameId} className="mb-1 block">
+                <Label htmlFor={nameId} className="mb-1 block" required>
                   Name
                 </Label>
                 <Input
@@ -86,10 +86,12 @@ export function InviteDialog({ open, onOpenChange, onInvited }: InviteDialogProp
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="John Doe"
+                  required
+                  aria-required="true"
                 />
               </div>
               <div>
-                <Label htmlFor={emailId} className="mb-1 block">
+                <Label htmlFor={emailId} className="mb-1 block" required>
                   Email
                 </Label>
                 <Input
@@ -98,6 +100,8 @@ export function InviteDialog({ open, onOpenChange, onInvited }: InviteDialogProp
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="user@example.com"
+                  required
+                  aria-required="true"
                 />
               </div>
             </div>

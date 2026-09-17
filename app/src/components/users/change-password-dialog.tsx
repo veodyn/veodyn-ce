@@ -75,7 +75,7 @@ export function ChangePasswordDialog({ userId, open, onClose }: ChangePasswordDi
         <div className="max-h-[70vh] space-y-4 overflow-y-auto py-2">
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div>
-            <Label htmlFor={`${fieldId}-current`} className="mb-1 block">
+            <Label htmlFor={`${fieldId}-current`} className="mb-1 block" required>
               Current Password
             </Label>
             <Input
@@ -83,10 +83,12 @@ export function ChangePasswordDialog({ userId, open, onClose }: ChangePasswordDi
               type="password"
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
+              required
+              aria-required="true"
             />
           </div>
           <div>
-            <Label htmlFor={`${fieldId}-new`} className="mb-1 block">
+            <Label htmlFor={`${fieldId}-new`} className="mb-1 block" required>
               New Password (min 6 characters)
             </Label>
             <Input
@@ -95,10 +97,12 @@ export function ChangePasswordDialog({ userId, open, onClose }: ChangePasswordDi
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               minLength={6}
+              required
+              aria-required="true"
             />
           </div>
           <div>
-            <Label htmlFor={`${fieldId}-confirm`} className="mb-1 block">
+            <Label htmlFor={`${fieldId}-confirm`} className="mb-1 block" required>
               Confirm New Password
             </Label>
             <Input
@@ -106,6 +110,8 @@ export function ChangePasswordDialog({ userId, open, onClose }: ChangePasswordDi
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              aria-required="true"
             />
           </div>
         </div>

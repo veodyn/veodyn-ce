@@ -101,7 +101,7 @@ export function LoginScreen({ next }: { next?: string | null }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor={emailFieldId} className="mb-1 block">
+            <Label htmlFor={emailFieldId} className="mb-1 block" required>
               Email
             </Label>
             <Input
@@ -110,10 +110,11 @@ export function LoginScreen({ next }: { next?: string | null }) {
               type="email"
               defaultValue={useRealApi ? '' : 'admin@example.com'}
               required
+              aria-required="true"
             />
           </div>
           <div>
-            <Label htmlFor={passwordFieldId} className="mb-1 block">
+            <Label htmlFor={passwordFieldId} className="mb-1 block" required={useRealApi}>
               Password
             </Label>
             <Input
@@ -121,6 +122,7 @@ export function LoginScreen({ next }: { next?: string | null }) {
               name="password"
               type="password"
               required={useRealApi}
+              aria-required={useRealApi || undefined}
               defaultValue={useRealApi ? '' : 'mock'}
             />
           </div>
