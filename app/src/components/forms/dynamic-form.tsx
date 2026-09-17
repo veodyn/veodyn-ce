@@ -74,6 +74,11 @@ export function jsonFieldError(value: unknown, fieldName?: string): string | nul
   return null
 }
 
+function numberOrText(type: string, raw: string): unknown {
+  if (type !== 'number') return raw
+  return raw.trim() === '' ? '' : Number(raw)
+}
+
 export function DynamicForm({ fields, values, onChange, className }: DynamicFormProps) {
   // One call, suffixed per field below: fields come from a .map(), and useId()
   // cannot be called inside a loop.
@@ -179,12 +184,7 @@ export function DynamicForm({ fields, values, onChange, className }: DynamicForm
                 id={fieldId}
                 type={field.type === 'number' ? 'number' : field.type === 'password' ? 'password' : 'text'}
                 value={rawValue}
-                onChange={(e) =>
-                  handleChange(
-                    field.name,
-                    field.type === 'number' ? Number(e.target.value) : e.target.value
-                  )
-                }
+                onChange={(e) => handleChange(field.name, numberOrText(field.type, e.target.value))}
                 placeholder={field.placeholder}
                 aria-describedby={descId}
               />

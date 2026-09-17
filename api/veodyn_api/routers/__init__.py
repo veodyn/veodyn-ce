@@ -11,6 +11,7 @@ from veodyn_api.registry import register_router
 from veodyn_api.routers.ai import router as ai_router
 from veodyn_api.routers.captures import router as captures_router
 from veodyn_api.routers.catalog import router as catalog_router
+from veodyn_api.routers.connectors import router as connectors_router
 from veodyn_api.routers.domains import router as domains_router
 from veodyn_api.routers.favorites import router as favorites_router
 from veodyn_api.routers.public_feeds import router as public_feeds_router
@@ -24,6 +25,7 @@ from veodyn_api.routers.tags import router as tags_router
 for _router in (
     ai_router,
     catalog_router,
+    connectors_router,
     domains_router,
     favorites_router,
     # Must precede published_feeds_router: both mount under "/published-feeds",

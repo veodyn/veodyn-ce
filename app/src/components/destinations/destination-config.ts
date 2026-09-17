@@ -20,6 +20,7 @@ export function configOptions(
   for (const field of fields) {
     const value = values[field.name] ?? field.default
     if (value === undefined || value === null) continue
+    if (field.type === 'number' && value === '') continue
     options[field.name] = value
   }
   // Anything the user typed that the schema does not describe still belongs to

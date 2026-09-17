@@ -152,6 +152,223 @@
         "title": "CaptureOut",
         "type": "object"
       },
+      "ConnectorHealthOut": {
+        "properties": {
+          "credentialsVerifiedAt": {
+            "format": "date-time",
+            "title": "Credentialsverifiedat",
+            "type": "string"
+          },
+          "delivery": {
+            "enum": [
+              "untested",
+              "delivering",
+              "failing"
+            ],
+            "title": "Delivery",
+            "type": "string"
+          },
+          "lastDeliveryAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastdeliveryat"
+          },
+          "lastDeliveryDetail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastdeliverydetail"
+          }
+        },
+        "required": [
+          "delivery",
+          "credentialsVerifiedAt",
+          "lastDeliveryAt",
+          "lastDeliveryDetail"
+        ],
+        "title": "ConnectorHealthOut",
+        "type": "object"
+      },
+      "ConnectorIn": {
+        "properties": {
+          "connectorId": {
+            "title": "Connectorid",
+            "type": "string"
+          },
+          "credentials": {
+            "additionalProperties": true,
+            "title": "Credentials",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connectorId",
+          "name"
+        ],
+        "title": "ConnectorIn",
+        "type": "object"
+      },
+      "ConnectorOut": {
+        "properties": {
+          "configuredFields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Configuredfields",
+            "type": "array"
+          },
+          "connectorId": {
+            "title": "Connectorid",
+            "type": "string"
+          },
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "health": {
+            "$ref": "#/components/schemas/ConnectorHealthOut"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "recallable": {
+            "title": "Recallable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "connectorId",
+          "displayName",
+          "name",
+          "recallable",
+          "configuredFields",
+          "health"
+        ],
+        "title": "ConnectorOut",
+        "type": "object"
+      },
+      "ConnectorTypeOut": {
+        "properties": {
+          "connectorId": {
+            "title": "Connectorid",
+            "type": "string"
+          },
+          "contentContract": {
+            "$ref": "#/components/schemas/ContentContractOut"
+          },
+          "credentialSchema": {
+            "$ref": "#/components/schemas/CredentialSchemaOut"
+          },
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "recallable": {
+            "title": "Recallable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "connectorId",
+          "displayName",
+          "recallable",
+          "credentialSchema",
+          "contentContract"
+        ],
+        "title": "ConnectorTypeOut",
+        "type": "object"
+      },
+      "ConnectorUpdateIn": {
+        "properties": {
+          "clear": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Clear",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "replace": {
+            "additionalProperties": true,
+            "title": "Replace",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ConnectorUpdateIn",
+        "type": "object"
+      },
+      "ContentContractOut": {
+        "properties": {
+          "maxLength": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxlength"
+          },
+          "requiredFooter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requiredfooter"
+          },
+          "supportsMarkup": {
+            "title": "Supportsmarkup",
+            "type": "boolean"
+          },
+          "urlCountsAsCharacters": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urlcountsascharacters"
+          }
+        },
+        "required": [
+          "maxLength",
+          "supportsMarkup",
+          "urlCountsAsCharacters",
+          "requiredFooter"
+        ],
+        "title": "ContentContractOut",
+        "type": "object"
+      },
       "ConverseIn": {
         "properties": {
           "focusTable": {
@@ -305,6 +522,83 @@
           "focusTable"
         ],
         "title": "ConverseOut",
+        "type": "object"
+      },
+      "CredentialPropertyOut": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title"
+        ],
+        "title": "CredentialPropertyOut",
+        "type": "object"
+      },
+      "CredentialSchemaOut": {
+        "properties": {
+          "clearable": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Clearable",
+            "type": "array"
+          },
+          "order": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Order",
+            "type": "array"
+          },
+          "properties": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CredentialPropertyOut"
+            },
+            "title": "Properties",
+            "type": "object"
+          },
+          "required": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required",
+            "type": "array"
+          },
+          "secret": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Secret",
+            "type": "array"
+          }
+        },
+        "required": [
+          "properties",
+          "required",
+          "clearable",
+          "secret",
+          "order"
+        ],
+        "title": "CredentialSchemaOut",
         "type": "object"
       },
       "DashboardProposalOut": {
@@ -2101,6 +2395,438 @@
         "summary": "List Datasets",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/connectors": {
+      "get": {
+        "operationId": "list_connectors_connectors_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectorOut"
+                  },
+                  "title": "Response List Connectors Connectors Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Connectors",
+        "tags": [
+          "connectors"
+        ]
+      },
+      "post": {
+        "operationId": "configure_connector_connectors_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Configure Connector",
+        "tags": [
+          "connectors"
+        ]
+      }
+    },
+    "/connectors/types": {
+      "get": {
+        "operationId": "list_connector_types_connectors_types_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectorTypeOut"
+                  },
+                  "title": "Response List Connector Types Connectors Types Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Connector Types",
+        "tags": [
+          "connectors"
+        ]
+      }
+    },
+    "/connectors/{connector_id}": {
+      "delete": {
+        "operationId": "forget_connector_connectors__connector_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connector_id",
+            "required": true,
+            "schema": {
+              "title": "Connector Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Forget Connector",
+        "tags": [
+          "connectors"
+        ]
+      },
+      "get": {
+        "operationId": "read_connector_connectors__connector_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connector_id",
+            "required": true,
+            "schema": {
+              "title": "Connector Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Connector",
+        "tags": [
+          "connectors"
+        ]
+      },
+      "put": {
+        "operationId": "reconfigure_connector_connectors__connector_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connector_id",
+            "required": true,
+            "schema": {
+              "title": "Connector Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorUpdateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reconfigure Connector",
+        "tags": [
+          "connectors"
         ]
       }
     },

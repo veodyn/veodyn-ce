@@ -61,7 +61,16 @@ deriving the allowlist from it would filter nothing at all.
 from alembic.runtime.environment import NameFilterParentNames, NameFilterType
 from sqlalchemy.sql.schema import SchemaItem
 
-CE_TABLES = frozenset({"favorite", "tag_assignment", "capture_expectation", "published_feed", "publish_attempt"})
+CE_TABLES = frozenset(
+    {
+        "favorite",
+        "tag_assignment",
+        "capture_expectation",
+        "published_feed",
+        "publish_attempt",
+        "connector_configuration",
+    }
+)
 """Every table the community chain creates.
 
 Hand maintained, and `tests/test_migration_allowlists.py` holds the ratchet that

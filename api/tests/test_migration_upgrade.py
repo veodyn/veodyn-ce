@@ -44,21 +44,11 @@ from tests.migration_chains import (
     ce_config,
 )
 
-HEAD_OBJECT = ("publish_attempt", "source_version")
-HEAD_OBJECT_DROP = (
-    "ALTER TABLE publish_attempt DROP COLUMN source_version",
-    "ALTER TABLE publish_attempt ALTER COLUMN query_result_id SET NOT NULL",
-    "ALTER TABLE published_feed DROP COLUMN retire_on_failure",
-    "ALTER TABLE published_feed ALTER COLUMN query_id SET NOT NULL",
-)
-"""One thing the head revision creates, and the statements that take ALL of it
-back.
+HEAD_OBJECT = ("connector_configuration", "credentials")
+HEAD_OBJECT_DROP = ("DROP TABLE connector_configuration",)
 
-Both move with head, and the pairing with `CE_HEAD` is one thing to update when
-a revision lands, so a mismatch reads as these constants being stale rather than
-as a puzzling `DuplicateTable` inside the upgrade. Head is not always a table or
-an index: 0015 renames a table, so the reversal is the rename run backwards, and
-`HEAD_OBJECT` is read after the upgrade under the NEW name."""
+BEFORE_IRREVERSIBLE = "0015"
+IRREVERSIBLE_OBJECT = ("publish_attempt", "source_version")
 
 CHAIN_DATABASE = "veodyn_migration_chain"
 """Its own database, named rather than randomised so a crashed run leaves one
@@ -242,17 +232,19 @@ QUERYLESS_ATTEMPT = (
 something other than a query leaves attempts the downgrade cannot narrow back."""
 
 
-def test_the_head_downgrade_reverses_a_database_holding_nothing_queryless(fresh_url: str) -> None:
+def test_downgrading_past_the_queryless_revision_reverses_a_database_holding_nothing_queryless(
+    fresh_url: str,
+) -> None:
     """The control for the refusal below. Without it, a downgrade that raised
     unconditionally would pass that test just as well."""
     command.upgrade(ce_config(), "head")
 
-    command.downgrade(ce_config(), CE_PREVIOUS)
+    command.downgrade(ce_config(), BEFORE_IRREVERSIBLE)
 
-    assert HEAD_OBJECT not in columns_in(fresh_url)
+    assert IRREVERSIBLE_OBJECT not in columns_in(fresh_url)
 
 
-def test_the_head_downgrade_names_the_rows_it_cannot_represent(fresh_url: str) -> None:
+def test_downgrading_past_the_queryless_revision_names_the_rows_it_cannot_represent(fresh_url: str) -> None:
     """Left to itself this fails inside `ALTER COLUMN ... SET NOT NULL`, as an
     integrity error naming a column and no reason. The refusal has to say which
     rows and what to do with them, and has to leave the schema where it was."""
@@ -263,6 +255,6 @@ def test_the_head_downgrade_names_the_rows_it_cannot_represent(fresh_url: str) -
     engine.dispose()
 
     with pytest.raises(RuntimeError, match="publish_attempt row"):
-        command.downgrade(ce_config(), CE_PREVIOUS)
+        command.downgrade(ce_config(), BEFORE_IRREVERSIBLE)
 
-    assert HEAD_OBJECT in columns_in(fresh_url)
+    assert IRREVERSIBLE_OBJECT in columns_in(fresh_url)

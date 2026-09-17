@@ -11,6 +11,7 @@ import { jsonFieldError, type FormField } from './dynamic-form'
 export interface RedashConfigSchema {
   properties?: Record<string, { type?: string; title?: string; default?: unknown; description?: string }>
   required?: string[]
+  clearable?: string[]
   secret?: string[]
   order?: string[]
 }
@@ -25,13 +26,10 @@ function looksLikeJsonField(title: string): boolean {
   return /\(json\b/i.test(title)
 }
 
-// Secret wins over the declared type: a secret is always a password input,
-// whatever the schema calls it. A json-shaped title only applies to a plain
-// string field; a boolean or number is never reinterpreted as JSON text.
 function fieldType(name: string, declared: string | undefined, title: string, secret: string[]): string {
-  if (secret.includes(name)) return 'password'
   if (declared === 'boolean') return 'boolean'
   if (declared === 'number') return 'number'
+  if (secret.includes(name)) return 'password'
   if (looksLikeJsonField(title)) return 'json'
   return 'string'
 }

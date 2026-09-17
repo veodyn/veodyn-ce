@@ -156,6 +156,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/connectors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Connectors */
+        get: operations["list_connectors_connectors_get"];
+        put?: never;
+        /** Configure Connector */
+        post: operations["configure_connector_connectors_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/connectors/types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Connector Types */
+        get: operations["list_connector_types_connectors_types_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/connectors/{connector_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Connector */
+        get: operations["read_connector_connectors__connector_id__get"];
+        /** Reconfigure Connector */
+        put: operations["reconfigure_connector_connectors__connector_id__put"];
+        post?: never;
+        /** Forget Connector */
+        delete: operations["forget_connector_connectors__connector_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/domains": {
         parameters: {
             query?: never;
@@ -519,6 +573,81 @@ export interface components {
              */
             status: "fresh" | "stale";
         };
+        /** ConnectorHealthOut */
+        ConnectorHealthOut: {
+            /**
+             * Credentialsverifiedat
+             * Format: date-time
+             */
+            credentialsVerifiedAt: string;
+            /**
+             * Delivery
+             * @enum {string}
+             */
+            delivery: "untested" | "delivering" | "failing";
+            /** Lastdeliveryat */
+            lastDeliveryAt: string | null;
+            /** Lastdeliverydetail */
+            lastDeliveryDetail: string | null;
+        };
+        /** ConnectorIn */
+        ConnectorIn: {
+            /** Connectorid */
+            connectorId: string;
+            /** Credentials */
+            credentials?: {
+                [key: string]: unknown;
+            };
+            /** Name */
+            name: string;
+        };
+        /** ConnectorOut */
+        ConnectorOut: {
+            /** Configuredfields */
+            configuredFields: string[];
+            /** Connectorid */
+            connectorId: string;
+            /** Displayname */
+            displayName: string;
+            health: components["schemas"]["ConnectorHealthOut"];
+            /** Name */
+            name: string;
+            /** Recallable */
+            recallable: boolean;
+        };
+        /** ConnectorTypeOut */
+        ConnectorTypeOut: {
+            /** Connectorid */
+            connectorId: string;
+            contentContract: components["schemas"]["ContentContractOut"];
+            credentialSchema: components["schemas"]["CredentialSchemaOut"];
+            /** Displayname */
+            displayName: string;
+            /** Recallable */
+            recallable: boolean;
+        };
+        /** ConnectorUpdateIn */
+        ConnectorUpdateIn: {
+            /** Clear */
+            clear?: string[];
+            /** Name */
+            name: string;
+            /** Replace */
+            replace?: {
+                [key: string]: unknown;
+            };
+        };
+        /** ContentContractOut */
+        ContentContractOut: {
+            /** Maxlength */
+            maxLength: number | null;
+            /** Requiredfooter */
+            requiredFooter: string | null;
+            /** Supportsmarkup */
+            supportsMarkup: boolean;
+            /** Urlcountsascharacters */
+            urlCountsAsCharacters: number | null;
+        };
         /** ConverseIn */
         ConverseIn: {
             /** Focustable */
@@ -555,6 +684,30 @@ export interface components {
             reply: string;
             /** Suggestedanswers */
             suggestedAnswers: string[];
+        };
+        /** CredentialPropertyOut */
+        CredentialPropertyOut: {
+            /** Description */
+            description?: string | null;
+            /** Title */
+            title: string;
+            /** Type */
+            type: string;
+        };
+        /** CredentialSchemaOut */
+        CredentialSchemaOut: {
+            /** Clearable */
+            clearable: string[];
+            /** Order */
+            order: string[];
+            /** Properties */
+            properties: {
+                [key: string]: components["schemas"]["CredentialPropertyOut"];
+            };
+            /** Required */
+            required: string[];
+            /** Secret */
+            secret: string[];
         };
         /** DashboardProposalOut */
         DashboardProposalOut: {
@@ -1277,6 +1430,210 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DatasetOut"][];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_connectors_connectors_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    configure_connector_connectors_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_connector_types_connectors_types_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorTypeOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_connector_connectors__connector_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                connector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reconfigure_connector_connectors__connector_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                connector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    forget_connector_connectors__connector_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                cookie?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                connector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

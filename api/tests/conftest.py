@@ -65,9 +65,10 @@ def client() -> TestClient:
 @pytest.fixture(scope="session")
 def engine() -> Engine:
     from tests.fixture_objects import FixtureBase
+    from veodyn_api.db import build_engine
     from veodyn_api.models.base import Base
 
-    engine = create_engine(TEST_DATABASE_URL)
+    engine = build_engine(TEST_DATABASE_URL)
     for metadata in (FixtureBase.metadata, Base.metadata):
         metadata.drop_all(engine)
     for metadata in (Base.metadata, FixtureBase.metadata):

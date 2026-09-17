@@ -1,0 +1,112 @@
+from collections.abc import Mapping
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Any, Protocol
+
+RENDERABLE_CREDENTIAL_TYPES = frozenset({"string", "number", "boolean"})
+MASKABLE_CREDENTIAL_TYPES = frozenset({"string"})
+
+
+class VerdictCode(StrEnum):
+    REJECTED = "rejected"
+    EXPIRED = "expired"
+    INSUFFICIENT_SCOPE = "insufficient_scope"
+    MALFORMED = "malformed"
+    UNREACHABLE = "unreachable"
+    UNSPECIFIED = "unspecified"
+
+
+class DeliveryCode(StrEnum):
+    DELIVERED = "delivered"
+    REJECTED_BY_CHANNEL = "rejected_by_channel"
+    CREDENTIALS_REJECTED = "credentials_rejected"
+    CONTENT_REJECTED = "content_rejected"
+    RATE_LIMITED = "rate_limited"
+    CHANNEL_UNAVAILABLE = "channel_unavailable"
+    CONNECTOR_RAISED = "connector_raised"
+    UNSPECIFIED = "unspecified"
+
+
+@dataclass(frozen=True)
+class CredentialField:
+    name: str
+    title: str
+    type: str = "string"
+    secret: bool = True
+    required: bool = True
+    description: str | None = None
+
+
+@dataclass(frozen=True)
+class CredentialSchema:
+    fields: tuple[CredentialField, ...]
+
+    @property
+    def names(self) -> tuple[str, ...]:
+        return tuple(field.name for field in self.fields)
+
+    @property
+    def required_names(self) -> tuple[str, ...]:
+        return tuple(field.name for field in self.fields if field.required)
+
+    @property
+    def optional_names(self) -> tuple[str, ...]:
+        return tuple(field.name for field in self.fields if not field.required)
+
+    def field_named(self, name: str) -> CredentialField | None:
+        for field in self.fields:
+            if field.name == name:
+                return field
+        return None
+
+    def titles_of(self, names: frozenset[str]) -> tuple[str, ...]:
+        return tuple(field.title for field in self.fields if field.name in names)
+
+
+@dataclass(frozen=True)
+class ContentContract:
+    max_length: int | None = None
+    supports_markup: bool = False
+    url_counts_as_characters: int | None = None
+    required_footer: str | None = None
+
+
+@dataclass(frozen=True)
+class Rendering:
+    body: str
+    language: str = "en"
+    urls: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class CredentialVerdict:
+    accepted: bool
+    code: VerdictCode = VerdictCode.UNSPECIFIED
+    fields: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class DeliveryOutcome:
+    delivered: bool
+    code: DeliveryCode = DeliveryCode.UNSPECIFIED
+
+
+class Connector(Protocol):
+    @property
+    def connector_id(self) -> str: ...
+
+    @property
+    def display_name(self) -> str: ...
+
+    @property
+    def credential_schema(self) -> CredentialSchema: ...
+
+    @property
+    def content_contract(self) -> ContentContract: ...
+
+    @property
+    def recallable(self) -> bool: ...
+
+    def verify_credentials(self, credentials: Mapping[str, Any]) -> CredentialVerdict: ...
+
+    def deliver(self, rendering: Rendering, credentials: Mapping[str, Any]) -> DeliveryOutcome: ...

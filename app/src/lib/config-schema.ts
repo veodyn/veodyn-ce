@@ -171,6 +171,12 @@ export const veodynConfigSchema = z.object({
     })
     .strict()
     .default({}),
+  connectors: z
+    .object({
+      enabled: booleanish.default(false),
+    })
+    .strict()
+    .default({}),
 })
   .strict()
 

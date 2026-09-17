@@ -1,11 +1,16 @@
 from collections.abc import Iterator
 
-from sqlalchemy import create_engine
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from veodyn_api.settings import get_settings
 
-_engine = create_engine(get_settings().database_url, pool_pre_ping=True)
+
+def build_engine(database_url: str) -> Engine:
+    return create_engine(database_url, pool_pre_ping=True, hide_parameters=True)
+
+
+_engine = build_engine(get_settings().database_url)
 SessionLocal = sessionmaker(bind=_engine, expire_on_commit=False)
 
 

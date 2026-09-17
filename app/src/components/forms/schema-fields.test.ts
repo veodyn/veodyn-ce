@@ -33,13 +33,21 @@ describe('schemaFields', () => {
     expect(byName.request_timeout.required).toBe(false)
   })
 
-  it('treats a secret as a password whatever the schema calls it', () => {
-    const [field] = schemaFields({
-      properties: { token: { type: 'boolean', title: 'Token' } },
-      secret: ['token'],
-    })
+  it('masks a secret string, and leaves a declared boolean or number its own control', () => {
+    const byName = Object.fromEntries(
+      schemaFields({
+        properties: {
+          token: { type: 'string', title: 'Token' },
+          loud: { type: 'boolean', title: 'Loud' },
+          repeats: { type: 'number', title: 'Repeats' },
+        },
+        secret: ['token', 'loud', 'repeats'],
+      }).map((f) => [f.name, f])
+    )
 
-    expect(field.type).toBe('password')
+    expect(byName.token.type).toBe('password')
+    expect(byName.loud.type).toBe('boolean')
+    expect(byName.repeats.type).toBe('number')
   })
 
   it('follows the schema order, leaving unlisted fields after the listed ones', () => {
