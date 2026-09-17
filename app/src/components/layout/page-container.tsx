@@ -12,9 +12,11 @@ import { cn } from '@/lib/utils'
  */
 export type PageWidth = 'full' | 'narrow'
 
+export const NARROW_WIDTH_CLASS = 'max-w-3xl'
+
 const WIDTH_CLASS: Record<PageWidth, string> = {
   full: '',
-  narrow: 'max-w-3xl',
+  narrow: NARROW_WIDTH_CLASS,
 }
 
 interface PageContainerProps {

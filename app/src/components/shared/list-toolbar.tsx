@@ -31,6 +31,7 @@ interface ListToolbarProps {
    * looking for the same control somewhere else.
    */
   filters?: ReactNode
+  trailing?: ReactNode
 }
 
 export function ListToolbar({
@@ -42,6 +43,7 @@ export function ListToolbar({
   noun = 'result',
   nounPlural,
   filters,
+  trailing,
 }: ListToolbarProps) {
   const fieldId = useId()
 
@@ -71,6 +73,7 @@ export function ListToolbar({
           {count} {count === 1 ? noun : (nounPlural ?? `${noun}s`)}
         </p>
       )}
+      {trailing}
     </div>
   )
 }
