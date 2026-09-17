@@ -112,6 +112,7 @@
     "services/captures.py",
     "services/catalog.py",
     "services/clickhouse.py",
+    "services/connector_compose_contract.py",
     "services/connector_configs.py",
     "services/connector_content.py",
     "services/connector_contract.py",

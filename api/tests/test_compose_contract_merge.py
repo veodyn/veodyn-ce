@@ -1,6 +1,7 @@
 import pytest
 
 from veodyn_api.services.connector_contract import (
+    BoundCap,
     ComposeContract,
     ContentContract,
     Declared,
@@ -44,7 +45,8 @@ def test_an_empty_roster_merges_to_nothing() -> None:
     roster = merged_roster_contract(AVAILABLE, [], [])
     assert roster.sections == ()
     assert roster.wording == "text"
-    assert roster.wording_cap is None
+    assert roster.carries_translations is False
+    assert roster.wording_caps == ()
     assert roster.overrides == ()
 
 
@@ -52,7 +54,7 @@ def test_unknown_channels_are_ignored() -> None:
     roster = merged_roster_contract(AVAILABLE, [UNKNOWN], [])
     assert roster.sections == ()
     assert roster.wording == "text"
-    assert roster.wording_cap is None
+    assert roster.wording_caps == ()
     assert roster.overrides == ()
 
 
@@ -81,50 +83,67 @@ def test_wording_is_structured_when_a_destination_declares_it() -> None:
     assert roster.wording == "structured"
 
 
-def test_wording_is_structured_when_a_text_destination_carries_translations() -> None:
+def test_carries_translations_is_true_when_a_destination_carries_them() -> None:
+    roster = merged_roster_contract(AVAILABLE, [FEED], [])
+    assert roster.carries_translations is True
+
+
+def test_a_text_destination_that_carries_translations_keeps_the_roster_in_text_wording() -> None:
     translating = ComposeContract(carries_translations=True)
     available = dict(AVAILABLE)
     available["translator"] = Declared(contract=translating, content_contract=ContentContract())
     roster = merged_roster_contract(available, ["translator"], [])
-    assert roster.wording == "structured"
+    assert roster.wording == "text"
+    assert roster.carries_translations is True
 
 
 def test_wording_stays_text_when_nothing_asks_for_structure() -> None:
     roster = merged_roster_contract(AVAILABLE, [X, INCUMBENT], [])
     assert roster.wording == "text"
+    assert roster.carries_translations is False
 
 
-def test_wording_cap_is_the_tightest_among_text_mode_destinations() -> None:
+def test_wording_caps_lists_every_text_destinations_own_cap() -> None:
     roster = merged_roster_contract(AVAILABLE, [X, FACEBOOK], [])
     assert roster.wording == "text"
-    assert roster.wording_cap is not None
-    assert roster.wording_cap.limit == 280
-    assert roster.wording_cap.url_counts_as_characters == 23
+    assert roster.wording_caps == (
+        BoundCap(channel=FACEBOOK, limit=63206, url_counts_as_characters=None),
+        BoundCap(channel=X, limit=280, url_counts_as_characters=23),
+    )
 
 
-def test_wording_cap_excludes_an_overridden_destination() -> None:
+def test_wording_caps_excludes_an_overridden_destination() -> None:
     roster = merged_roster_contract(AVAILABLE, [X, FACEBOOK], [X])
-    assert roster.wording_cap is not None
-    assert roster.wording_cap.limit == 63206
-    assert roster.wording_cap.url_counts_as_characters is None
+    assert roster.wording_caps == (BoundCap(channel=FACEBOOK, limit=63206, url_counts_as_characters=None),)
 
 
-def test_wording_cap_ignores_a_destination_with_no_cap() -> None:
+def test_wording_caps_ignores_a_destination_with_no_cap() -> None:
     roster = merged_roster_contract(AVAILABLE, [X, INCUMBENT], [])
-    assert roster.wording_cap is not None
-    assert roster.wording_cap.limit == 280
+    assert roster.wording_caps == (BoundCap(channel=X, limit=280, url_counts_as_characters=23),)
 
 
-def test_wording_cap_is_set_from_a_text_destination_even_in_a_structured_roster() -> None:
+def test_wording_caps_are_set_from_a_text_destination_even_in_a_structured_roster() -> None:
     roster = merged_roster_contract(AVAILABLE, [FEED, X], [])
     assert roster.wording == "structured"
-    assert roster.wording_cap is not None
-    assert roster.wording_cap.limit == 280
+    assert roster.wording_caps == (BoundCap(channel=X, limit=280, url_counts_as_characters=23),)
 
 
-def test_wording_cap_in_a_structured_roster_is_none_once_the_sole_text_destination_is_overridden() -> None:
+def test_wording_caps_is_empty_in_a_structured_roster_once_the_sole_text_destination_is_overridden() -> None:
     roster = merged_roster_contract(AVAILABLE, [FEED, X], [X])
-    assert roster.wording_cap is None
+    assert roster.wording_caps == ()
+
+
+def test_wording_caps_keeps_two_destinations_with_the_same_limit_and_different_url_policies() -> None:
+    no_url_credit = ComposeContract(accepts_override=True)
+    available = dict(AVAILABLE)
+    available["sms_gateway"] = Declared(
+        contract=no_url_credit, content_contract=ContentContract(max_length=280, url_counts_as_characters=None)
+    )
+    roster = merged_roster_contract(available, [X, "sms_gateway"], [])
+    assert roster.wording_caps == (
+        BoundCap(channel="sms_gateway", limit=280, url_counts_as_characters=None),
+        BoundCap(channel=X, limit=280, url_counts_as_characters=23),
+    )
 
 
 def test_overrides_lists_every_accepting_destination_when_more_than_one_is_chosen() -> None:
@@ -142,25 +161,39 @@ def test_overrides_lists_an_accepting_destination_regardless_of_whether_it_is_ov
     assert {override.channel for override in roster.overrides} == {X, FACEBOOK}
 
 
+def test_a_claimed_override_on_a_destination_that_does_not_accept_one_is_ignored_by_overrides() -> None:
+    roster = merged_roster_contract(AVAILABLE, [X, INCUMBENT], [INCUMBENT])
+    assert {override.channel for override in roster.overrides} == {X}
+
+
+def test_a_claimed_override_on_a_destination_that_does_not_accept_one_keeps_its_cap() -> None:
+    capped_non_accepting = ComposeContract()
+    available = dict(AVAILABLE)
+    available["capped_non_accepting"] = Declared(
+        contract=capped_non_accepting, content_contract=ContentContract(max_length=500)
+    )
+    roster = merged_roster_contract(available, [X, "capped_non_accepting"], ["capped_non_accepting"])
+    assert BoundCap(channel="capped_non_accepting", limit=500, url_counts_as_characters=None) in roster.wording_caps
+
+
 def test_the_sole_accepting_destination_in_a_text_roster_folds_into_the_shared_box() -> None:
     roster = merged_roster_contract(AVAILABLE, [X], [])
     assert roster.wording == "text"
     assert roster.overrides == ()
-    assert roster.wording_cap is not None
-    assert roster.wording_cap.limit == 280
+    assert roster.wording_caps == (BoundCap(channel=X, limit=280, url_counts_as_characters=23),)
 
 
 def test_the_fold_is_suppressed_when_the_sole_destination_is_overridden() -> None:
     roster = merged_roster_contract(AVAILABLE, [X], [X])
     assert len(roster.overrides) == 1
     assert roster.overrides[0].channel == X
-    assert roster.wording_cap is None
+    assert roster.wording_caps == ()
 
 
 def test_a_sole_non_accepting_destination_does_not_fold_because_it_was_never_in_overrides() -> None:
     roster = merged_roster_contract(AVAILABLE, [INCUMBENT], [])
     assert roster.overrides == ()
-    assert roster.wording_cap is None
+    assert roster.wording_caps == ()
 
 
 @pytest.mark.parametrize(
