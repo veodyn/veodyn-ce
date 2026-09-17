@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import { FeedForm } from './feed-form'
+import { pickAStaticReference } from './feed-form.test-helpers'
 import type { PublishedFeed } from '@/types/published-feed'
 
 afterEach(() => resetStores())
@@ -86,6 +87,7 @@ describe('retire on failure', () => {
       await user.click(await screen.findByRole('option', { name: column }))
     }
 
+    await pickAStaticReference(user)
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ retireOnFailure: false }))

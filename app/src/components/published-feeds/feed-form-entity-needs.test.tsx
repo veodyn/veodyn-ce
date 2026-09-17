@@ -3,6 +3,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import { useMockDataStore } from '@/stores/mock-data-store'
+import { pickAStaticReference } from './feed-form.test-helpers'
 import type { EntityNeeds, FeedCapabilities } from '@/types/published-feed'
 
 const registry = vi.hoisted(() => ({ answer: undefined as unknown }))
@@ -89,6 +90,7 @@ describe('a form for an entity whose producer needs no query', () => {
     const onSubmit = renderCreateForm()
 
     await user.type(screen.getByLabelText('Slug'), 'bulletins')
+    await pickAStaticReference(user)
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).toHaveBeenCalledTimes(1)

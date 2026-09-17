@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import { FeedForm } from './feed-form'
+import { pickAStaticReference } from './feed-form.test-helpers'
 import type { PublishedFeed } from '@/types/published-feed'
 
 afterEach(() => resetStores())
@@ -198,6 +199,7 @@ describe('the last-known-good age cap', () => {
     await mapField(user, 'latitude', 'lat')
     await mapField(user, 'longitude', 'lon')
     await user.type(screen.getByLabelText('Slug'), 'test-feed')
+    await pickAStaticReference(user)
     await user.click(screen.getByRole('radio', { name: /last known good/i }))
     await user.type(screen.getByLabelText(/maximum age/i), '300')
 

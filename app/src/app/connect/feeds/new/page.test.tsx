@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders, resetStores, signInAsAdmin } from '@/test/utils'
+import { pickAStaticReference } from '@/components/published-feeds/feed-form.test-helpers'
 import { AppError, ErrorIds } from '@/lib/errorIds'
 
 const push = vi.fn()
@@ -56,6 +57,7 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>, opts: { s
   await mapField(user, 'longitude', 'lon')
 
   await user.type(screen.getByLabelText('Slug'), 'test-feed')
+  await pickAStaticReference(user)
 }
 
 describe('publishing a new feed', () => {
