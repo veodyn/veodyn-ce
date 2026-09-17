@@ -162,7 +162,7 @@ describe('editing a configured connector', () => {
     await render()
 
     await choose(user, 'Crier API token', /Replace it with a new value/)
-    await user.type(screen.getByLabelText(/^Crier API token$/), 'crier-live-rotated')
+    await user.type(screen.getByLabelText('Crier API token*'), 'crier-live-rotated')
     await save(user)
 
     await waitFor(() =>
@@ -226,8 +226,8 @@ describe('editing a configured connector', () => {
     await render()
 
     await choose(user, 'Repeats', /Replace it with a new value/)
-    await user.type(screen.getByLabelText(/^Repeats$/), '3')
-    await user.clear(screen.getByLabelText(/^Repeats$/))
+    await user.type(screen.getByRole('spinbutton', { name: 'Repeats' }), '3')
+    await user.clear(screen.getByRole('spinbutton', { name: 'Repeats' }))
     await save(user)
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Repeats')
@@ -239,7 +239,7 @@ describe('editing a configured connector', () => {
     await render()
 
     await choose(user, 'Repeats', /Replace it with a new value/)
-    await user.type(screen.getByLabelText(/^Repeats$/), '3')
+    await user.type(screen.getByRole('spinbutton', { name: 'Repeats' }), '3')
     await save(user)
 
     await waitFor(() => expect(put).toEqual({ name: 'Agency crier', replace: { crier_repeats: 3 }, clear: [] }))
@@ -255,16 +255,20 @@ describe('editing a configured connector', () => {
     expect(screen.getByText('Repeats').querySelector('[data-slot="required-marker"]')).toBeNull()
   })
 
-  it('requires the value control only once a required credential has no stored value at all', async () => {
+  it('requires the value control whenever Replace is the active choice, whatever the schema says', async () => {
     const user = userEvent.setup()
     serve({ ...UNTESTED, configuredFields: ['crier_room'] })
     await render()
 
-    expect(screen.getByLabelText(/^Crier API token/)).toBeRequired()
-    expect(screen.getByLabelText(/^Crier API token/)).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByLabelText('Crier API token*')).toBeRequired()
+    expect(screen.getByLabelText('Crier API token*')).toHaveAttribute('aria-required', 'true')
 
     await choose(user, 'Room', /Replace it with a new value/)
-    expect(screen.getByLabelText(/^Room$/)).not.toBeRequired()
+    expect(screen.getByRole('textbox', { name: 'Room' })).toBeRequired()
+    expect(screen.getByRole('textbox', { name: 'Room' })).toHaveAttribute('aria-required', 'true')
+
+    await choose(user, 'Operator note', /Replace it with a new value/)
+    expect(screen.getByRole('textbox', { name: 'Operator note' })).toBeRequired()
   })
 
   it('demands a required credential that has never been configured', async () => {

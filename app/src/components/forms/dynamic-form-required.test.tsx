@@ -38,7 +38,7 @@ describe('DynamicForm required marking', () => {
     expect(input).not.toHaveAttribute('aria-required')
   })
 
-  it('marks a required select and boolean field, with aria-required on the select trigger', () => {
+  it('marks a required select field, with aria-required on the select trigger', () => {
     renderWithProviders(
       <DynamicForm
         fields={[
@@ -49,7 +49,6 @@ describe('DynamicForm required marking', () => {
             required: true,
             options: [{ label: 'Basic', value: 'basic' }],
           },
-          { name: 'enabled', title: 'Enabled', type: 'boolean', required: true },
         ]}
         values={{}}
         onChange={() => {}}
@@ -58,9 +57,20 @@ describe('DynamicForm required marking', () => {
 
     expect(screen.getByText('Mode').querySelector('[data-slot="required-marker"]')).not.toBeNull()
     expect(screen.getByRole('combobox')).toHaveAttribute('aria-required', 'true')
+  })
+
+  it('never marks a boolean field required, since either answer is a complete one', () => {
+    renderWithProviders(
+      <DynamicForm
+        fields={[{ name: 'enabled', title: 'Enabled', type: 'boolean', required: true }]}
+        values={{}}
+        onChange={() => {}}
+      />
+    )
 
     const enabledTexts = screen.getAllByText('Enabled')
-    expect(enabledTexts.some((el) => el.querySelector('[data-slot="required-marker"]'))).toBe(true)
-    expect(screen.getByRole('checkbox')).toHaveAttribute('aria-required', 'true')
+    expect(enabledTexts.some((el) => el.querySelector('[data-slot="required-marker"]'))).toBe(false)
+    expect(screen.getByRole('checkbox')).not.toBeRequired()
+    expect(screen.getByRole('checkbox')).not.toHaveAttribute('aria-required')
   })
 })

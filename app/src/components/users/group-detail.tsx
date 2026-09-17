@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useId, useState, useEffect, useCallback } from 'react'
 import { ArrowLeft, Trash2, Loader2 } from 'lucide-react'
 
 import { useAuthStore } from '@/stores/auth-store'
@@ -8,41 +8,11 @@ import { ApiError, redashApi } from '@/services/api-client'
 import { useToast } from '@/components/shared/toast-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GroupMembers } from './group-members'
 import { GroupDataSources } from './group-data-sources'
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface RedashGroupDetail {
-  id: number
-  name: string
-  type: 'builtin' | 'regular'
-  permissions: string[]
-}
-
-interface RedashGroupMember {
-  id: number
-  name: string
-  email: string
-  profile_image_url: string | null
-}
-
-interface RedashGroupDataSource {
-  id: number
-  name: string
-  type: string
-  view_only: boolean
-}
-
-/** Why there is no group to show: it is absent, or the load did not succeed. */
-type LoadError = 'not_found' | 'failed'
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+import type { LoadError, RedashGroupDataSource, RedashGroupDetail, RedashGroupMember } from './group-detail-types'
 
 interface GroupDetailProps {
   groupId: string
@@ -51,6 +21,7 @@ interface GroupDetailProps {
 
 export function GroupDetail({ groupId, onBack }: GroupDetailProps) {
   const toast = useToast()
+  const nameFieldId = useId()
   const currentUser = useAuthStore((s) => s.currentUser)
   const [group, setGroup] = useState<RedashGroupDetail | null>(null)
   const [members, setMembers] = useState<RedashGroupMember[]>([])
@@ -226,11 +197,19 @@ export function GroupDetail({ groupId, onBack }: GroupDetailProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               {isAdmin && !isBuiltin ? (
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="text-base font-semibold max-w-sm h-8 border-transparent bg-transparent hover:border-border"
-                />
+                <>
+                  <Label htmlFor={nameFieldId} className="sr-only" required>
+                    Group name
+                  </Label>
+                  <Input
+                    id={nameFieldId}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="text-base font-semibold max-w-sm h-8 border-transparent bg-transparent hover:border-border"
+                    required
+                    aria-required="true"
+                  />
+                </>
               ) : (
                 <h2 className="text-base font-semibold">{name}</h2>
               )}

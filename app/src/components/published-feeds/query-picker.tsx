@@ -33,9 +33,7 @@ export function QueryPicker({
   sourceIsNotAQuery,
 }: QueryPickerProps) {
   const [search, setSearch] = useState('')
-  const searchId = useId()
-  // Read by id rather than trusting the list to still contain the selection:
-  // a narrowed search would otherwise drop the picked query's name from view.
+  const groupLabelId = useId()
   const { data: selected } = useQueryById(selectedQueryId ?? undefined)
   const { data: page } = useQueries({ search: search || undefined })
   const queries = page?.results ?? []
@@ -43,12 +41,12 @@ export function QueryPicker({
   if (selectedQueryId != null) {
     return (
       <div className="space-y-1">
-        {/* No htmlFor: the search input this would have pointed at is in the
-            other branch and is not rendered once a query is picked, so the
-            association would dangle. What is below is a name and a button, not
-            a field. */}
-        <Label required>Source query</Label>
-        <div className="flex items-center justify-between rounded-lg border border-input px-3 py-2">
+        <Label id={groupLabelId} required>Source query</Label>
+        <div
+          role="group"
+          aria-labelledby={groupLabelId}
+          className="flex items-center justify-between rounded-lg border border-input px-3 py-2"
+        >
           <span className="text-sm font-medium">{selected?.name ?? `query ${selectedQueryId}`}</span>
           <Button type="button" variant="ghost" size="sm" onClick={onClear}>
             Change
@@ -65,7 +63,7 @@ export function QueryPicker({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={searchId} required>
+      <Label id={groupLabelId} required>
         Source query
       </Label>
       {sourceIsNotAQuery && (
@@ -74,51 +72,45 @@ export function QueryPicker({
           here binds it to that query, and it publishes from the query from then on.
         </p>
       )}
-      <InputGroup>
-        <InputGroupAddon>
-          <Search className="h-4 w-4" />
-        </InputGroupAddon>
-        <InputGroupInput
-          id={searchId}
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search queries by name..."
-        />
-      </InputGroup>
-      {/* ScrollArea rather than a raw `overflow-y-auto`, which rendered the
-          platform's own scrollbar: on a dark theme that is a light track and a
-          light thumb, drawn over the list and matching nothing else in the app.
-          Same primitive the sidebar scroller uses. */}
-      <ScrollArea className="max-h-[280px] rounded-lg border border-input">
-        <div className="divide-y">
-          {queries.length === 0 && (
-            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-              {search ? 'No queries match your search' : 'No queries available'}
-            </div>
-          )}
-          {queries.map((q) => (
-            <Button
-              key={q.id}
-              type="button"
-              variant="ghost"
-              onClick={() => onSelect(q.id)}
-              className="h-auto w-full justify-start rounded-none px-4 py-3 text-left"
-            >
-              {/* min-w-0 is load-bearing: the button is a flex container and a
-                  flex item's min-width defaults to auto, so without it the
-                  description sets the item's width from its full unwrapped
-                  length and runs under the scrollbar instead of truncating. */}
-              <div className="w-full min-w-0">
-                <div className="truncate text-sm font-medium">{q.name}</div>
-                {q.description && (
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{q.description}</p>
-                )}
+      <div role="group" aria-labelledby={groupLabelId} className="space-y-2">
+        <InputGroup>
+          <InputGroupAddon>
+            <Search className="h-4 w-4" />
+          </InputGroupAddon>
+          <InputGroupInput
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search queries by name..."
+            aria-label="Search queries by name"
+          />
+        </InputGroup>
+        <ScrollArea className="max-h-[280px] rounded-lg border border-input">
+          <div className="divide-y">
+            {queries.length === 0 && (
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                {search ? 'No queries match your search' : 'No queries available'}
               </div>
-            </Button>
-          ))}
-        </div>
-      </ScrollArea>
+            )}
+            {queries.map((q) => (
+              <Button
+                key={q.id}
+                type="button"
+                variant="ghost"
+                onClick={() => onSelect(q.id)}
+                className="h-auto w-full justify-start rounded-none px-4 py-3 text-left"
+              >
+                <div className="w-full min-w-0">
+                  <div className="truncate text-sm font-medium">{q.name}</div>
+                  {q.description && (
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{q.description}</p>
+                  )}
+                </div>
+              </Button>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}

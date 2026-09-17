@@ -17,8 +17,27 @@ describe('the column map editor', () => {
 
     expect(screen.getByText('vehicle_id')).toBeInTheDocument()
     expect(screen.getByText('timestamp')).toBeInTheDocument()
-    // Required is stated in text, not by colour or an asterisk alone.
-    expect(screen.getAllByText(/required/i).length).toBeGreaterThan(0)
+    expect(screen.getByText('vehicle_id').closest('div')?.querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByRole('combobox', { name: 'vehicle_id' })).toHaveAttribute('aria-required', 'true')
+  })
+
+  it('leaves an optional field unmarked', () => {
+    const optional = GTFS_FIELDS.find((field) => !field.required)
+    if (!optional) throw new Error('expected an optional GTFS field for this test')
+
+    render(
+      <ColumnMapEditor
+        columns={['bus', 'lat', 'lon']}
+        fields={GTFS_FIELDS}
+        selection={{}}
+        onChange={vi.fn()}
+      />
+    )
+
+    expect(
+      screen.getByText(optional.name).closest('div')?.querySelector('[data-slot="required-marker"]')
+    ).toBeNull()
+    expect(screen.getByRole('combobox', { name: optional.name })).not.toHaveAttribute('aria-required')
   })
 
   it('says so when the query has produced no columns to choose from', () => {

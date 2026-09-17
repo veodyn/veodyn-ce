@@ -1,6 +1,7 @@
 'use client'
 
 import type { GtfsField } from '@/lib/gtfs-fields'
+import { RequiredMarker } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
@@ -66,9 +67,7 @@ export function ColumnMapEditor({ columns, fields, selection, onChange, fieldErr
               <TableCell className="align-top">
                 <div className="flex items-baseline gap-2">
                   <span className="font-mono text-sm">{field.name}</span>
-                  {field.required && (
-                    <span className="text-xs text-muted-foreground">required</span>
-                  )}
+                  {field.required && <RequiredMarker />}
                 </div>
                 {fieldError && (
                   <p role="alert" className="mt-1 text-xs text-destructive">
@@ -87,8 +86,9 @@ export function ColumnMapEditor({ columns, fields, selection, onChange, fieldErr
                     if (v == null) return
                     onChange(field.name, v === NOT_MAPPED ? null : v)
                   }}
+                  required={field.required}
                 >
-                  <SelectTrigger size="sm" className="w-full">
+                  <SelectTrigger size="sm" className="w-full" aria-label={field.name}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

@@ -123,13 +123,8 @@ export function DynamicForm({ fields, values, onChange, className }: DynamicForm
                   aria-describedby={descId}
                   checked={isChecked(values[field.name] ?? field.default)}
                   onCheckedChange={(checked) => handleChange(field.name, checked)}
-                  required={field.required}
                 />
-                <Label
-                  htmlFor={fieldId}
-                  className="cursor-pointer text-muted-foreground"
-                  required={field.required}
-                >
+                <Label htmlFor={fieldId} className="cursor-pointer text-muted-foreground">
                   {field.title}
                 </Label>
               </div>

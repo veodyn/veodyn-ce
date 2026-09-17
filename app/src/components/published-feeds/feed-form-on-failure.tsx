@@ -135,8 +135,9 @@ export function OnFailureSection({
                 id={retireId}
                 checked={retireOnFailure}
                 onCheckedChange={(checked) => onRetireOnFailureChange(Boolean(checked))}
+                required={mustRetire}
               />
-              <Label htmlFor={retireId} className="font-normal">
+              <Label htmlFor={retireId} className="font-normal" required={mustRetire}>
                 Retire the served artifact when a publish fails
               </Label>
             </div>

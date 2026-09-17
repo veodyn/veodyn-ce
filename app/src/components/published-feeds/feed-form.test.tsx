@@ -157,9 +157,10 @@ describe('required field marking', () => {
     renderCreateForm()
 
     expect(screen.getByText('Slug').querySelector('[data-slot="required-marker"]')).not.toBeNull()
-    expect(screen.getByLabelText(/^Slug/)).toBeRequired()
+    expect(screen.getByRole('textbox', { name: 'Slug' })).toBeRequired()
 
     expect(screen.getByText('Source query').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByRole('textbox', { name: /search queries by name/i })).not.toBeRequired()
     expect(screen.getByText('Visibility').querySelector('[data-slot="required-marker"]')).toBeNull()
   })
 
@@ -185,7 +186,7 @@ describe('the last-known-good age cap', () => {
     await mapField(user, 'vehicle_id', 'station_name')
     await mapField(user, 'latitude', 'lat')
     await mapField(user, 'longitude', 'lon')
-    await user.type(screen.getByLabelText(/^Slug/), 'test-feed')
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'test-feed')
     await user.click(screen.getByRole('radio', { name: /last known good/i }))
 
     await user.click(screen.getByRole('button', { name: 'Publish' }))
@@ -204,7 +205,7 @@ describe('the last-known-good age cap', () => {
     await mapField(user, 'vehicle_id', 'station_name')
     await mapField(user, 'latitude', 'lat')
     await mapField(user, 'longitude', 'lon')
-    await user.type(screen.getByLabelText(/^Slug/), 'test-feed')
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'test-feed')
     await user.click(screen.getByRole('radio', { name: /last known good/i }))
     await user.type(screen.getByLabelText(/maximum age/i), '0')
 
@@ -222,7 +223,7 @@ describe('the last-known-good age cap', () => {
     await mapField(user, 'vehicle_id', 'station_name')
     await mapField(user, 'latitude', 'lat')
     await mapField(user, 'longitude', 'lon')
-    await user.type(screen.getByLabelText(/^Slug/), 'test-feed')
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'test-feed')
     await pickAStaticReference(user)
     await user.click(screen.getByRole('radio', { name: /last known good/i }))
     await user.type(screen.getByLabelText(/maximum age/i), '300')

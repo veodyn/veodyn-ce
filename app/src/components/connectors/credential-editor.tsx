@@ -88,15 +88,14 @@ function CredentialRow({
               id={`${baseId}-value`}
               checked={Boolean(edit?.value)}
               onCheckedChange={(checked) => setValue(Boolean(checked))}
-              required={forced}
             />
-            <Label htmlFor={`${baseId}-value`} className="cursor-pointer font-normal" required={forced}>
+            <Label htmlFor={`${baseId}-value`} className="cursor-pointer font-normal">
               {field.title}
             </Label>
           </div>
         ) : (
           <>
-            <Label htmlFor={`${baseId}-value`} className="sr-only" required={forced}>
+            <Label htmlFor={`${baseId}-value`} className="sr-only" required>
               {field.title}
             </Label>
             <Input
@@ -105,8 +104,8 @@ function CredentialRow({
               value={String(edit?.value ?? '')}
               onChange={(e) => setValue(e.target.value)}
               placeholder={field.placeholder}
-              required={forced}
-              aria-required={forced || undefined}
+              required
+              aria-required="true"
             />
           </>
         ))}

@@ -113,7 +113,7 @@ describe('an entity that cannot serve a retained artifact', () => {
     const onSubmit = renderCreateForm()
 
     await user.click(theSwitch())
-    await user.type(screen.getByLabelText(/^Slug/), 'downtown-two')
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'downtown-two')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).not.toHaveBeenCalled()
@@ -128,7 +128,7 @@ describe('an entity that cannot serve a retained artifact', () => {
 
     await user.click(screen.getByRole('radio', { name: /last known good/i }))
     await user.type(screen.getByLabelText(/maximum age/i), '300')
-    await user.type(screen.getByLabelText(/^Slug/), 'downtown-two')
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'downtown-two')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).not.toHaveBeenCalled()
@@ -137,11 +137,22 @@ describe('an entity that cannot serve a retained artifact', () => {
     )
   })
 
+  it('marks the retire switch required, since this entity accepts no other answer', () => {
+    renderCreateForm()
+
+    expect(theSwitch()).toHaveAttribute('aria-required', 'true')
+    expect(
+      screen.getByText('Retire the served artifact when a publish fails').querySelector(
+        '[data-slot="required-marker"]'
+      )
+    ).not.toBeNull()
+  })
+
   it('publishes once the binding is one the rebuild will accept', async () => {
     const user = userEvent.setup()
     const onSubmit = renderCreateForm()
 
-    await user.type(screen.getByLabelText(/^Slug/), 'downtown-two')
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'downtown-two')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).toHaveBeenCalledWith(
@@ -158,9 +169,21 @@ describe('an entity that declares nothing about a retained artifact', () => {
 
     expect(theSwitch()).not.toBeChecked()
 
-    await user.type(screen.getByLabelText(/^Slug/), 'downtown-two')
+    await user.type(screen.getByRole('textbox', { name: 'Slug' }), 'downtown-two')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ retireOnFailure: false }))
+  })
+
+  it('leaves the retire switch unmarked, since either answer is accepted here', () => {
+    registry.answer = deploymentRegistering({ bulletins: MAY_RETAIN })
+    renderCreateForm()
+
+    expect(theSwitch()).not.toHaveAttribute('aria-required')
+    expect(
+      screen.getByText('Retire the served artifact when a publish fails').querySelector(
+        '[data-slot="required-marker"]'
+      )
+    ).toBeNull()
   })
 })

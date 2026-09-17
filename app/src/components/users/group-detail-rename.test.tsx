@@ -67,6 +67,17 @@ describe('GroupDetail rename', () => {
     await waitFor(() => expect(saveButton()).not.toBeInTheDocument())
   })
 
+  it('marks the rename field required', async () => {
+    signInAsAdmin()
+    serveGroup({ members: [JANE] })
+    renderDetail()
+
+    const field = await screen.findByDisplayValue('Data Team')
+    expect(field).toBeRequired()
+    expect(field).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByRole('textbox', { name: 'Group name' })).toBe(field)
+  })
+
   it('does not offer Save for a name that is empty or only whitespace', async () => {
     const user = userEvent.setup()
     signInAsAdmin()
