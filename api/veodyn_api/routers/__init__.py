@@ -9,9 +9,9 @@ them in `VEODYN_EXTRA_MODULES` instead.
 
 from veodyn_api.registry import register_router
 from veodyn_api.routers.ai import router as ai_router
+from veodyn_api.routers.ai_chat import router as ai_chat_router
 from veodyn_api.routers.captures import router as captures_router
 from veodyn_api.routers.catalog import router as catalog_router
-from veodyn_api.routers.connectors import router as connectors_router
 from veodyn_api.routers.domains import router as domains_router
 from veodyn_api.routers.favorites import router as favorites_router
 from veodyn_api.routers.public_feeds import router as public_feeds_router
@@ -19,14 +19,13 @@ from veodyn_api.routers.published_feed_attempts import router as published_feed_
 from veodyn_api.routers.published_feed_capabilities import (
     router as published_feed_capabilities_router,
 )
-from veodyn_api.routers.published_feed_entities import router as published_feed_entities_router
 from veodyn_api.routers.published_feeds import router as published_feeds_router
 from veodyn_api.routers.tags import router as tags_router
 
 for _router in (
     ai_router,
+    ai_chat_router,
     catalog_router,
-    connectors_router,
     domains_router,
     favorites_router,
     # Must precede published_feeds_router: both mount under "/published-feeds",
@@ -37,7 +36,6 @@ for _router in (
     public_feeds_router,
     published_feeds_router,
     published_feed_attempts_router,
-    published_feed_entities_router,
     tags_router,
 ):
     register_router(_router)

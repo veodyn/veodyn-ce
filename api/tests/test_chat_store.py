@@ -61,7 +61,8 @@ def test_threads_list_pinned_first_then_most_recent(db: Session) -> None:
 
 def test_the_first_message_names_the_thread(db: Session) -> None:
     thread = store.create_thread(db, OWNER)
-    store.start_turn(db, thread, "  revenue   by route " + "x" * 200)
+    first = store.start_turn(db, thread, "  revenue   by route " + "x" * 200)
+    store.fail_turn(db, first.id, "X")
     store.start_turn(db, thread, "second message")
     title = store.thread_for_owner(db, OWNER, thread.id).title
     assert title.startswith("revenue by route x")
@@ -70,15 +71,21 @@ def test_the_first_message_names_the_thread(db: Session) -> None:
 
 def test_turns_are_numbered_per_thread(db: Session) -> None:
     thread = store.create_thread(db, OWNER)
-    assert [store.start_turn(db, thread, str(n)).seq for n in range(3)] == [1, 2, 3]
+    numbers = []
+    for n in range(3):
+        turn = store.start_turn(db, thread, str(n))
+        store.finish_turn(db, turn.id, status="done", blocks=[], usage=None, stop_reason=None, error_id=None)
+        numbers.append(turn.seq)
+    assert numbers == [1, 2, 3]
     assert store.start_turn(db, store.create_thread(db, OWNER), "a").seq == 1
 
 
 def test_a_full_thread_refuses_another_turn(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(store, "MAX_TURNS_PER_THREAD", 2)
     thread = store.create_thread(db, OWNER)
-    store.start_turn(db, thread, "a")
-    store.start_turn(db, thread, "b")
+    for text in ("a", "b"):
+        turn = store.start_turn(db, thread, text)
+        store.fail_turn(db, turn.id, "X")
     with pytest.raises(ApiError) as refused:
         store.start_turn(db, thread, "c")
     assert refused.value.status_code == 409
@@ -232,3 +239,11 @@ def test_replay_skips_a_turn_that_stopped_inside_a_tool_call(db: Session) -> Non
     messages, _ = store.replay(db, thread.id, current.seq, 100_000)
 
     assert [message["content"][0]["text"] for message in messages] == ["kept", "kept reply"]
+
+
+def test_a_second_turn_is_refused_while_one_runs(db: Session) -> None:
+    thread = store.create_thread(db, OWNER)
+    store.start_turn(db, thread, "a")
+    with pytest.raises(ApiError) as refused:
+        store.start_turn(db, thread, "b")
+    assert refused.value.error_id is ErrorId.AI_TURN_CONFLICT

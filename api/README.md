@@ -14,7 +14,7 @@ docs, and `../docs/docs/architecture.md` for how the three services connect.
 
 ## What it serves
 
-Thirteen paths, and `openapi.json` in this directory is the committed contract
+Twenty-six paths, and `openapi.json` in this directory is the committed contract
 for all of them:
 
 | Prefix | What |
@@ -25,6 +25,7 @@ for all of them:
 | `/favorites` | Per-person stars, for the object kinds this build registers |
 | `/captures` | Capture health, cadence expectations, and the alert armed from one |
 | `/ai` | The AI provider: SQL generation and the creation chat |
+| `/ai/chat` | The data chat: threads, turns streamed as server-sent events, tool results from the browser, and saved drafts |
 | `/health` | Liveness |
 
 ## This is the community edition, and it runs no worker

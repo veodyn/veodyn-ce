@@ -32,7 +32,17 @@ from tests.conftest import REDASH_TEST_URL
 from tests.converse_stubs import AUTH, FakeChatLlm, answer, build, mock_data_sources
 from veodyn_api.main import create_app
 
-COMMUNITY_AI_PATHS = ["/ai/converse", "/ai/generate-sql"]
+COMMUNITY_AI_PATHS = [
+    "/ai/chat/drafts/{draft_id}/promotions",
+    "/ai/chat/threads",
+    "/ai/chat/threads/{thread_id}",
+    "/ai/chat/threads/{thread_id}/turns",
+    "/ai/chat/turns/{turn_id}/cancel",
+    "/ai/chat/turns/{turn_id}/stream",
+    "/ai/chat/turns/{turn_id}/tool-results",
+    "/ai/converse",
+    "/ai/generate-sql",
+]
 ENTERPRISE_AI_PATHS = ["/ai/digest", "/ai/outline", "/ai/report", "/ai/suggest-annotations"]
 
 PACKAGE = Path(veodyn_api.__file__).parent
@@ -42,7 +52,7 @@ def ai_paths(app: FastAPI) -> list[str]:
     return sorted(path for path in app.openapi()["paths"] if path.startswith("/ai/"))
 
 
-def test_a_community_build_serves_exactly_the_two_community_ai_paths() -> None:
+def test_a_community_build_serves_exactly_the_community_ai_paths() -> None:
     """The assertion the split was for, now measurable without a fixture.
 
     Not "two paths are served": that the four enterprise ones are ABSENT is the

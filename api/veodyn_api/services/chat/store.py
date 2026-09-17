@@ -79,6 +79,10 @@ def running_turn(db: Session, thread_id: uuid.UUID) -> AiChatTurn | None:
 
 
 def start_turn(db: Session, thread: AiChatThread, text: str) -> AiChatTurn:
+    db.scalar(select(AiChatThread.id).where(AiChatThread.id == thread.id).with_for_update())
+    if running_turn(db, thread.id) is not None:
+        db.rollback()
+        raise ApiError(ErrorId.AI_TURN_CONFLICT, "a turn is already running in this conversation", status_code=409)
     count = db.scalar(select(func.count()).select_from(AiChatTurn).where(AiChatTurn.thread_id == thread.id)) or 0
     if count >= MAX_TURNS_PER_THREAD:
         raise ApiError(
