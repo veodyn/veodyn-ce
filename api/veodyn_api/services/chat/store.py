@@ -166,6 +166,16 @@ def _turn_messages(turn: AiChatTurn) -> list[dict[str, Any]]:
     return messages
 
 
+def _ends_cleanly(messages: list[dict[str, Any]]) -> bool:
+    last = messages[-1]
+    if last.get("role") != "assistant":
+        return False
+    content = last.get("content")
+    return not (
+        isinstance(content, list) and any(isinstance(b, dict) and b.get("type") == "tool_use" for b in content)
+    )
+
+
 def replay(db: Session, thread_id: uuid.UUID, before_seq: int, budget: int) -> tuple[list[dict[str, Any]], bool]:
     turns = db.scalars(
         select(AiChatTurn)
@@ -177,7 +187,7 @@ def replay(db: Session, thread_id: uuid.UUID, before_seq: int, budget: int) -> t
     omitted = False
     for turn in turns:
         messages = _turn_messages(turn)
-        if messages[-1]["role"] != "assistant":
+        if not _ends_cleanly(messages):
             continue
         size = len(json.dumps(messages))
         if used + size > budget:

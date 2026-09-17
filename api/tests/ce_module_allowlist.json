@@ -111,6 +111,7 @@
     "services/chat/bus.py",
     "services/chat/driver.py",
     "services/chat/prompt.py",
+    "services/chat/runner.py",
     "services/chat/store.py",
     "services/chat/tools.py",
     "services/clickhouse.py",

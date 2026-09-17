@@ -212,3 +212,23 @@ def test_update_thread_trims_the_title_and_sets_pinned(db: Session) -> None:
     assert updated.title == "y" * store.TITLE_CHARS
     assert updated.pinned is True
     assert store.update_thread(db, OWNER, thread.id, title=None, pinned=None).title == "y" * store.TITLE_CHARS
+
+
+def test_replay_skips_a_turn_that_stopped_inside_a_tool_call(db: Session) -> None:
+    thread = store.create_thread(db, OWNER)
+    stopped = store.start_turn(db, thread, "stopped")
+    store.finish_turn(
+        db,
+        stopped.id,
+        status="done",
+        blocks=[{"role": "assistant", "content": [{"type": "tool_use", "id": "t", "name": "run_query", "input": {}}]}],
+        usage=None,
+        stop_reason="cancelled",
+        error_id=None,
+    )
+    answered(db, thread.id, "kept", "kept reply")
+    current = store.start_turn(db, thread, "now")
+
+    messages, _ = store.replay(db, thread.id, current.seq, 100_000)
+
+    assert [message["content"][0]["text"] for message in messages] == ["kept", "kept reply"]
