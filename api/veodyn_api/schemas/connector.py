@@ -35,12 +35,19 @@ class ContentContractOut(CamelModel):
     required_footer: str | None
 
 
+class ComposeRequirementsOut(CamelModel):
+    needs_entities: bool
+    needs_classification: bool
+    accepts_override: bool
+
+
 class ConnectorTypeOut(CamelModel):
     connector_id: str
     display_name: str
     recallable: bool
     credential_schema: CredentialSchemaOut
     content_contract: ContentContractOut
+    compose_requirements: ComposeRequirementsOut
 
 
 class ConnectorHealthOut(CamelModel):

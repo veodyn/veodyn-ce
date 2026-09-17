@@ -152,6 +152,29 @@
         "title": "CaptureOut",
         "type": "object"
       },
+      "ComposeRequirementsOut": {
+        "properties": {
+          "acceptsOverride": {
+            "title": "Acceptsoverride",
+            "type": "boolean"
+          },
+          "needsClassification": {
+            "title": "Needsclassification",
+            "type": "boolean"
+          },
+          "needsEntities": {
+            "title": "Needsentities",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "needsEntities",
+          "needsClassification",
+          "acceptsOverride"
+        ],
+        "title": "ComposeRequirementsOut",
+        "type": "object"
+      },
       "ConnectorHealthOut": {
         "properties": {
           "credentialsVerifiedAt": {
@@ -266,6 +289,9 @@
       },
       "ConnectorTypeOut": {
         "properties": {
+          "composeRequirements": {
+            "$ref": "#/components/schemas/ComposeRequirementsOut"
+          },
           "connectorId": {
             "title": "Connectorid",
             "type": "string"
@@ -290,7 +316,8 @@
           "displayName",
           "recallable",
           "credentialSchema",
-          "contentContract"
+          "contentContract",
+          "composeRequirements"
         ],
         "title": "ConnectorTypeOut",
         "type": "object"

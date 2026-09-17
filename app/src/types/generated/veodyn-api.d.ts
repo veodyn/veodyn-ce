@@ -573,6 +573,15 @@ export interface components {
              */
             status: "fresh" | "stale";
         };
+        /** ComposeRequirementsOut */
+        ComposeRequirementsOut: {
+            /** Acceptsoverride */
+            acceptsOverride: boolean;
+            /** Needsclassification */
+            needsClassification: boolean;
+            /** Needsentities */
+            needsEntities: boolean;
+        };
         /** ConnectorHealthOut */
         ConnectorHealthOut: {
             /**
@@ -617,6 +626,7 @@ export interface components {
         };
         /** ConnectorTypeOut */
         ConnectorTypeOut: {
+            composeRequirements: components["schemas"]["ComposeRequirementsOut"];
             /** Connectorid */
             connectorId: string;
             contentContract: components["schemas"]["ContentContractOut"];

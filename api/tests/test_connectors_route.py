@@ -20,6 +20,7 @@ from tests.connector_stubs import (
     auth,
     good_credentials,
 )
+from veodyn_api.services.connector_contract import ComposeRequirements
 from veodyn_api.services.connector_registry import register_connector, restored_connectors
 
 
@@ -77,6 +78,33 @@ def test_the_type_picker_is_built_from_the_registry(api: TestClient, crier: Town
         "supportsMarkup": False,
         "urlCountsAsCharacters": 23,
         "requiredFooter": "Reply STOP to opt out.",
+    }
+    assert entry["composeRequirements"] == {
+        "needsEntities": False,
+        "needsClassification": False,
+        "acceptsOverride": False,
+    }
+
+
+@respx.mock
+def test_connector_types_publish_what_an_author_must_supply(api: TestClient) -> None:
+    as_user(ADMIN)
+    declared = ComposeRequirements(needs_entities=True, accepts_override=True)
+
+    class Declaring(TownCrierConnector):
+        @property
+        def compose_requirements(self) -> ComposeRequirements:
+            return declared
+
+    with restored_connectors():
+        register_connector(Declaring())
+        body = api.get("/connectors/types", headers=auth()).json()
+
+    published = [entry for entry in body if entry["connectorId"] == TOWN_CRIER_ID]
+    assert published[0]["composeRequirements"] == {
+        "needsEntities": True,
+        "needsClassification": False,
+        "acceptsOverride": True,
     }
 
 

@@ -8,6 +8,7 @@ from veodyn_api.db import get_db
 from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.models.connector_configuration import ConnectorConfiguration
 from veodyn_api.schemas.connector import (
+    ComposeRequirementsOut,
     ConnectorHealthOut,
     ConnectorIn,
     ConnectorOut,
@@ -51,6 +52,7 @@ def _credential_schema_out(connector: RegisteredConnector) -> CredentialSchemaOu
 
 def _type_out(connector: RegisteredConnector) -> ConnectorTypeOut:
     contract = connector.content_contract
+    requirements = connector.compose_requirements
     return ConnectorTypeOut(
         connector_id=connector.connector_id,
         display_name=connector.display_name,
@@ -61,6 +63,11 @@ def _type_out(connector: RegisteredConnector) -> ConnectorTypeOut:
             supports_markup=contract.supports_markup,
             url_counts_as_characters=contract.url_counts_as_characters,
             required_footer=contract.required_footer,
+        ),
+        compose_requirements=ComposeRequirementsOut(
+            needs_entities=requirements.needs_entities,
+            needs_classification=requirements.needs_classification,
+            accepts_override=requirements.accepts_override,
         ),
     )
 
