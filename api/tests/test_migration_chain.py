@@ -30,11 +30,7 @@ from alembic.script import ScriptDirectory
 
 from migrations.ownership import CE_TABLES
 from tests.migration_chains import (
-    CE_HEAD,
     CE_HISTORICAL_TABLE_NAMES,
-    CE_REVISIONS,
-    CE_SHIPPED_IDS,
-    EE_REVISIONS,
     EE_TABLES,
     ce_config,
     ce_version_files,
@@ -43,6 +39,7 @@ from tests.migration_chains import (
     ee_version_files,
     tables_touched,
 )
+from tests.migration_revisions import CE_HEAD, CE_REVISIONS, CE_SHIPPED_IDS, EE_REVISIONS
 
 SPLIT_IDS = frozenset(f"{number:04d}" for number in range(1, 11))
 """The ten revisions that were one chain before the split, as a literal.

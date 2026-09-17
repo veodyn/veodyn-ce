@@ -38,11 +38,10 @@ from sqlalchemy.engine import make_url
 from migrations.ownership import CE_TABLES
 from tests.conftest import TEST_DATABASE_URL
 from tests.migration_chains import (
-    CE_HEAD,
-    CE_PREVIOUS,
     CE_VERSION_TABLE,
     ce_config,
 )
+from tests.migration_revisions import CE_HEAD, CE_PREVIOUS
 
 HEAD_OBJECT = ("connector_configuration", "credentials")
 HEAD_OBJECT_DROP = ("DROP TABLE connector_configuration",)
