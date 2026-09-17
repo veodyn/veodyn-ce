@@ -509,12 +509,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get Capabilities
-         * @description Name the standards, versions and feed entities this build can bind a feed
-         *     to, and what each entity's producer needs of a binding. A read open to any
-         *     org member, the same authorization as listing feeds.
-         */
+        /** Get Capabilities */
         get: operations["get_capabilities_published_feeds_capabilities_get"];
         put?: never;
         post?: never;

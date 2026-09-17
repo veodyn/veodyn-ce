@@ -5525,7 +5525,6 @@
     },
     "/published-feeds/capabilities": {
       "get": {
-        "description": "Name the standards, versions and feed entities this build can bind a feed\nto, and what each entity's producer needs of a binding. A read open to any\norg member, the same authorization as listing feeds.",
         "operationId": "get_capabilities_published_feeds_capabilities_get",
         "parameters": [
           {
