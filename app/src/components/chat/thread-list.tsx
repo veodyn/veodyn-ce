@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Pin, PinOff, Plus, Trash2 } from 'lucide-react'
 import { IconButton } from '@/components/shared/icon-button'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { useChatThreads, useDeleteChatThread, useUpdateChatThread } from '@/hooks/use-chat'
 import type { ChatThread } from '@/lib/chat/wire'
 import { cn } from '@/lib/utils'
@@ -32,10 +32,10 @@ export function ThreadList({ activeId }: ThreadListProps) {
   return (
     <nav aria-label="Conversations" className="flex h-full min-h-0 flex-col">
       <div className="p-3">
-        <Button nativeButton={false} render={<Link href="/chat" />} variant="outline" className="w-full justify-start">
+        <Link href="/chat" className={cn(buttonVariants({ variant: 'outline' }), 'w-full justify-start')}>
           <Plus aria-hidden="true" />
           New conversation
-        </Button>
+        </Link>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {threads.isPending ? <p className="px-2 text-xs text-muted-foreground">Loading…</p> : null}
