@@ -81,7 +81,7 @@ The wording as written, then Affects, Until and Send to as read-only chips. **De
 | Withdrawn | The active period ended and the feed no longer carries it |
 | Superseded | A later revision replaced this one on the channel |
 
-**Resend** at the foot of the section sends the approved revision again to every channel, for the case where a channel was down or was switched on after publishing.
+**Resend** at the foot of the section hands the approved revision to any channel in Send to that has not been handed it yet, such as one switched on after publishing. It does not touch a channel that already took the message, and it does not retry a failed one: that is what the row's Retry is for, and Resend refuses when every channel has already been sent or queued.
 
 **Correct** on a published message opens the composer on a copy. The original stays on the air until the correction is approved, and the preview shows both, labelled **Carrying** and **Proposed**. A feed takes the correction in place. A connector cannot take back a post, so a correction there goes out as a follow-up, and the connector's page says which of the two it does.
 
