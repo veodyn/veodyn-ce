@@ -155,6 +155,12 @@ export const veodynConfigSchema = z.object({
     })
     .strict()
     .default({}),
+  deployment: z
+    .object({
+      scale: z.enum(['node', 'hub']).default('node'),
+    })
+    .strict()
+    .default({}),
   // Two sections nothing in this edition reads: the enterprise pack owns both
   // readers. The schema is `.strict()`, so an undeclared key fails to parse and
   // an enterprise config would be rejected by the community half of its own app.
@@ -187,8 +193,25 @@ export const veodynConfigSchema = z.object({
     })
     .strict()
     .default({}),
+  messages: z
+    .object({
+      enabled: booleanish.default(false),
+    })
+    .strict()
+    .default({}),
+  connectors: z
+    .object({
+      enabled: booleanish.default(false),
+    })
+    .strict()
+    .default({}),
 })
   .strict()
+  .refine((config) => !config.connectors.enabled || config.messages.enabled, {
+    message:
+      'connectors.enabled requires messages.enabled: a connector is an outbound channel for a service message, and with messages off there is nothing to send through it',
+    path: ['connectors', 'enabled'],
+  })
 
 export type VeodynConfig = z.infer<typeof veodynConfigSchema>
 

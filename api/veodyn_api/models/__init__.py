@@ -17,6 +17,7 @@ from veodyn_api.models.ai_chat import (
 )
 from veodyn_api.models.base import Base
 from veodyn_api.models.capture_expectation import CaptureExpectation
+from veodyn_api.models.connector_configuration import ConnectorConfiguration
 from veodyn_api.models.favorite import Favorite
 from veodyn_api.models.publish_attempt import PublishAttempt
 from veodyn_api.models.published_feed import PublishedFeed
@@ -30,6 +31,7 @@ __all__ = [
     "AiChatTurn",
     "Base",
     "CaptureExpectation",
+    "ConnectorConfiguration",
     "Favorite",
     "PublishAttempt",
     "PublishedFeed",

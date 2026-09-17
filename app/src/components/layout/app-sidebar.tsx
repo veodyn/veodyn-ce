@@ -8,6 +8,8 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useToast } from '@/components/shared/toast-provider'
 import { useConfig } from '@/components/config/config-provider'
 import { buildSidebarSections } from '@/lib/sidebar-nav'
+import { enabledFeatures, featureNavRows } from '@/features'
+import { instanceEdition } from '@/lib/edition'
 import { useAiChatEnabled } from '@/hooks/use-chat'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -26,9 +28,11 @@ export function AppSidebar() {
   const currentUser = useAuthStore((s) => s.currentUser)
   const logout = useAuthStore((s) => s.logout)
   const toast = useToast()
-  const { brand, domains, features } = useConfig()
+  const config = useConfig()
+  const { brand, domains, features, deployment } = config
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, toggleCollapsed] = useSidebarCollapsed()
+  const edition = instanceEdition(deployment.scale)
   const aiChat = useAiChatEnabled()
 
   // Only the server can clear the httpOnly session cookie. If that request
@@ -42,13 +46,16 @@ export function AppSidebar() {
 
   if (!currentUser) return null
 
-  const sections = buildSidebarSections({
-    domains,
-    canAccessAdmin: currentUser.isAdmin,
-    canViewInstanceAdmin: currentUser.hasPermission('super_admin'),
-    features,
-    aiChat,
-  })
+  const sections = buildSidebarSections(
+    {
+      domains,
+      canAccessAdmin: currentUser.isAdmin,
+      canViewInstanceAdmin: currentUser.hasPermission('super_admin'),
+      features,
+      aiChat,
+    },
+    (section) => featureNavRows(section, enabledFeatures(config))
+  )
 
   // `rail` is true only for the desktop shell. The drawer takes the same body
   // and never collapses it, and it never offers the toggle: a drawer you opened
@@ -58,7 +65,7 @@ export function AppSidebar() {
     const isCollapsed = rail && collapsed
     return (
       <>
-        <BrandMark name={brand.name} logo={brand.logo} collapsed={isCollapsed} />
+        <BrandMark name={brand.name} logo={brand.logo} edition={edition} collapsed={isCollapsed} />
         {/* min-h-0 is load-bearing: a flex item defaults to min-height:auto, so
             without it flex-1 resolves to the nav's content height and the
             scroller never scrolls. */}
@@ -101,7 +108,7 @@ export function AppSidebar() {
 
       {/* Mobile top bar + Sheet drawer. */}
       <div className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-sidebar px-3 md:hidden">
-        <BrandMark name={brand.name} logo={brand.logo} />
+        <BrandMark name={brand.name} logo={brand.logo} edition={edition} />
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           {/* This bar is not only phones: a narrow desktop window gets it too,
               and there the hamburger has a pointer and a keyboard to explain

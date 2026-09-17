@@ -89,6 +89,7 @@ export default function HomePage() {
           sections below close up the way they do when the digest has no items
           worth showing. */}
       <Slot id="home.aiDigest" props={{}} fallback={null} />
+      <Slot id="home.reviewQueue" props={{}} fallback={null} />
 
       {favoritesPending ? (
         // Two columns, which is what an instance with favourites shows and the

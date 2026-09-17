@@ -1263,6 +1263,284 @@
         "title": "ChatVisualizationRefIn",
         "type": "object"
       },
+      "ComposeContractOut": {
+        "properties": {
+          "acceptsOverride": {
+            "title": "Acceptsoverride",
+            "type": "boolean"
+          },
+          "asksActivePeriod": {
+            "title": "Asksactiveperiod",
+            "type": "boolean"
+          },
+          "asksClassification": {
+            "title": "Asksclassification",
+            "type": "boolean"
+          },
+          "asksEntities": {
+            "title": "Asksentities",
+            "type": "boolean"
+          },
+          "carriesTranslations": {
+            "title": "Carriestranslations",
+            "type": "boolean"
+          },
+          "requiresActivePeriod": {
+            "title": "Requiresactiveperiod",
+            "type": "boolean"
+          },
+          "requiresClassification": {
+            "title": "Requiresclassification",
+            "type": "boolean"
+          },
+          "requiresEntities": {
+            "title": "Requiresentities",
+            "type": "boolean"
+          },
+          "wording": {
+            "enum": [
+              "structured",
+              "text"
+            ],
+            "title": "Wording",
+            "type": "string"
+          }
+        },
+        "required": [
+          "wording",
+          "asksClassification",
+          "requiresClassification",
+          "asksEntities",
+          "requiresEntities",
+          "asksActivePeriod",
+          "requiresActivePeriod",
+          "carriesTranslations",
+          "acceptsOverride"
+        ],
+        "title": "ComposeContractOut",
+        "type": "object"
+      },
+      "ConnectorHealthOut": {
+        "properties": {
+          "credentialsVerifiedAt": {
+            "format": "date-time",
+            "title": "Credentialsverifiedat",
+            "type": "string"
+          },
+          "delivery": {
+            "enum": [
+              "untested",
+              "delivering",
+              "failing"
+            ],
+            "title": "Delivery",
+            "type": "string"
+          },
+          "lastDeliveryAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastdeliveryat"
+          },
+          "lastDeliveryDetail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastdeliverydetail"
+          }
+        },
+        "required": [
+          "delivery",
+          "credentialsVerifiedAt",
+          "lastDeliveryAt",
+          "lastDeliveryDetail"
+        ],
+        "title": "ConnectorHealthOut",
+        "type": "object"
+      },
+      "ConnectorIn": {
+        "properties": {
+          "connectorId": {
+            "title": "Connectorid",
+            "type": "string"
+          },
+          "credentials": {
+            "additionalProperties": true,
+            "title": "Credentials",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connectorId",
+          "name"
+        ],
+        "title": "ConnectorIn",
+        "type": "object"
+      },
+      "ConnectorOut": {
+        "properties": {
+          "configuredFields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Configuredfields",
+            "type": "array"
+          },
+          "connectorId": {
+            "title": "Connectorid",
+            "type": "string"
+          },
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "health": {
+            "$ref": "#/components/schemas/ConnectorHealthOut"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "recallable": {
+            "title": "Recallable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "connectorId",
+          "displayName",
+          "name",
+          "recallable",
+          "configuredFields",
+          "health"
+        ],
+        "title": "ConnectorOut",
+        "type": "object"
+      },
+      "ConnectorTypeOut": {
+        "properties": {
+          "composeContract": {
+            "$ref": "#/components/schemas/ComposeContractOut"
+          },
+          "connectorId": {
+            "title": "Connectorid",
+            "type": "string"
+          },
+          "contentContract": {
+            "$ref": "#/components/schemas/ContentContractOut"
+          },
+          "credentialSchema": {
+            "$ref": "#/components/schemas/CredentialSchemaOut"
+          },
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "recallable": {
+            "title": "Recallable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "connectorId",
+          "displayName",
+          "recallable",
+          "credentialSchema",
+          "contentContract",
+          "composeContract"
+        ],
+        "title": "ConnectorTypeOut",
+        "type": "object"
+      },
+      "ConnectorUpdateIn": {
+        "properties": {
+          "clear": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Clear",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "replace": {
+            "additionalProperties": true,
+            "title": "Replace",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ConnectorUpdateIn",
+        "type": "object"
+      },
+      "ContentContractOut": {
+        "properties": {
+          "maxLength": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxlength"
+          },
+          "requiredFooter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requiredfooter"
+          },
+          "supportsMarkup": {
+            "title": "Supportsmarkup",
+            "type": "boolean"
+          },
+          "urlCountsAsCharacters": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urlcountsascharacters"
+          }
+        },
+        "required": [
+          "maxLength",
+          "supportsMarkup",
+          "urlCountsAsCharacters",
+          "requiredFooter"
+        ],
+        "title": "ContentContractOut",
+        "type": "object"
+      },
       "ConverseIn": {
         "properties": {
           "focusTable": {
@@ -1283,7 +1561,8 @@
               "dashboard",
               "kpi",
               "report",
-              "snippet"
+              "snippet",
+              "message"
             ],
             "title": "Kind",
             "type": "string"
@@ -1361,6 +1640,7 @@
                   "mapping": {
                     "dashboard": "#/components/schemas/DashboardProposalOut",
                     "kpi": "#/components/schemas/KpiProposalOut",
+                    "message": "#/components/schemas/MessageProposalOut",
                     "query": "#/components/schemas/QueryProposalOut",
                     "report": "#/components/schemas/ReportProposalOut",
                     "snippet": "#/components/schemas/SnippetProposalOut"
@@ -1382,6 +1662,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/SnippetProposalOut"
+                  },
+                  {
+                    "$ref": "#/components/schemas/MessageProposalOut"
                   }
                 ]
               },
@@ -1416,6 +1699,83 @@
           "focusTable"
         ],
         "title": "ConverseOut",
+        "type": "object"
+      },
+      "CredentialPropertyOut": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title"
+        ],
+        "title": "CredentialPropertyOut",
+        "type": "object"
+      },
+      "CredentialSchemaOut": {
+        "properties": {
+          "clearable": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Clearable",
+            "type": "array"
+          },
+          "order": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Order",
+            "type": "array"
+          },
+          "properties": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CredentialPropertyOut"
+            },
+            "title": "Properties",
+            "type": "object"
+          },
+          "required": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required",
+            "type": "array"
+          },
+          "secret": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Secret",
+            "type": "array"
+          }
+        },
+        "required": [
+          "properties",
+          "required",
+          "clearable",
+          "secret",
+          "order"
+        ],
+        "title": "CredentialSchemaOut",
         "type": "object"
       },
       "DashboardProposalOut": {
@@ -1733,6 +2093,34 @@
         "title": "DomainHubOut",
         "type": "object"
       },
+      "EntityNeedsOut": {
+        "properties": {
+          "columnMap": {
+            "title": "Columnmap",
+            "type": "boolean"
+          },
+          "query": {
+            "title": "Query",
+            "type": "boolean"
+          },
+          "retirementOnFailure": {
+            "title": "Retirementonfailure",
+            "type": "boolean"
+          },
+          "staticReference": {
+            "title": "Staticreference",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query",
+          "staticReference",
+          "columnMap",
+          "retirementOnFailure"
+        ],
+        "title": "EntityNeedsOut",
+        "type": "object"
+      },
       "ExpectationIn": {
         "description": "How often this capture should deliver, or null to stop expecting.\n\nNull rather than a second endpoint: clearing only returns the capture to\nits Redash schedule, and a DELETE beside a PUT would read as destructive.",
         "properties": {
@@ -1766,7 +2154,6 @@
         "type": "object"
       },
       "FeedCapabilitiesOut": {
-        "description": "What this deployment's feed registry actually holds, read at runtime\nrather than inferred from a values file or a matching image digest.\n\nRoot CLAUDE.md records that an installed layer is inert until a deployment\nnames it, and the deploy succeeds either way -- costing four releases before\nthis pattern got an interrogation endpoint. `standards`, and `entities`\nwithin each, are sorted so the response is stable across the registry's\nunordered sets.\n\nThe frontend's binding form renders `entity` as a stated fact when there is\nexactly one, and as a picker otherwise (design section 4's \"one\nconsequence\"); this is the response that decision reads.",
         "properties": {
           "standards": {
             "items": {
@@ -2084,6 +2471,35 @@
         "title": "KpiProposalOut",
         "type": "object"
       },
+      "MessageProposalOut": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "header": {
+            "title": "Header",
+            "type": "string"
+          },
+          "kind": {
+            "const": "message",
+            "default": "message",
+            "title": "Kind",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "header",
+          "description"
+        ],
+        "title": "MessageProposalOut",
+        "type": "object"
+      },
       "NewQueryProposalOut": {
         "description": "A query the AI wrote because the instance did not have one that fits.\n\nThe output of one `generate_sql` call, so it has been through the\none-statement, read-only, right-table check and its retry-with-reason. It\nsits beside generate-sql rather than with the proposals in ai_create.py, or an\noutline section would import the conversation contract to describe a query.\n\nCarries everything QueryProposalOut does except its `kind` discriminator.",
         "properties": {
@@ -2218,8 +2634,15 @@
             "type": "boolean"
           },
           "queryResultId": {
-            "title": "Queryresultid",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryresultid"
           },
           "reason": {
             "title": "Reason",
@@ -2278,10 +2701,22 @@
             "type": "string"
           },
           "queryId": {
-            "exclusiveMinimum": 0.0,
-            "maximum": 2147483647.0,
-            "title": "Queryid",
-            "type": "integer"
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 2147483647.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryid"
+          },
+          "retireOnFailure": {
+            "default": false,
+            "title": "Retireonfailure",
+            "type": "boolean"
           },
           "slug": {
             "maxLength": 64,
@@ -2351,7 +2786,6 @@
         },
         "required": [
           "slug",
-          "queryId",
           "standard",
           "version",
           "entity",
@@ -2393,8 +2827,19 @@
             "type": "string"
           },
           "queryId": {
-            "title": "Queryid",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryid"
+          },
+          "retireOnFailure": {
+            "title": "Retireonfailure",
+            "type": "boolean"
           },
           "revision": {
             "title": "Revision",
@@ -2466,6 +2911,7 @@
           "columnMap",
           "onError",
           "lastGoodMaxAgeSeconds",
+          "retireOnFailure",
           "visibility",
           "bindingState"
         ],
@@ -2586,7 +3032,6 @@
         "type": "object"
       },
       "StandardCapabilityOut": {
-        "description": "One standard this deployment can bind a feed to, with the versions it can\npublish and the entities registered under it.\n\n`versions` comes from `published_feed_registry.VERSIONS_BY_STANDARD` and is empty for a\nstandard only a pack registers entities under.\n\n`timezones` is the closed vocabulary this standard's system declaration\naccepts, read from the validator's own schema by `gbfs_vocabulary.py`. Empty\nfor a standard that declares no timezone, and empty when that schema cannot\nbe read, which the form degrades to a text field.",
         "properties": {
           "entities": {
             "items": {
@@ -2594,6 +3039,13 @@
             },
             "title": "Entities",
             "type": "array"
+          },
+          "entityNeeds": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EntityNeedsOut"
+            },
+            "title": "Entityneeds",
+            "type": "object"
           },
           "standard": {
             "title": "Standard",
@@ -2618,9 +3070,54 @@
           "standard",
           "versions",
           "entities",
+          "entityNeeds",
           "timezones"
         ],
         "title": "StandardCapabilityOut",
+        "type": "object"
+      },
+      "StaticEntitiesOut": {
+        "properties": {
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/StaticEntityOut"
+            },
+            "title": "Entities",
+            "type": "array"
+          },
+          "feedVersion": {
+            "title": "Feedversion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "feedVersion",
+          "entities"
+        ],
+        "title": "StaticEntitiesOut",
+        "type": "object"
+      },
+      "StaticEntityOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "label"
+        ],
+        "title": "StaticEntityOut",
         "type": "object"
       },
       "TagCountOut": {
@@ -3936,6 +4433,438 @@
         ]
       }
     },
+    "/connectors": {
+      "get": {
+        "operationId": "list_connectors_connectors_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectorOut"
+                  },
+                  "title": "Response List Connectors Connectors Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Connectors",
+        "tags": [
+          "connectors"
+        ]
+      },
+      "post": {
+        "operationId": "configure_connector_connectors_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Configure Connector",
+        "tags": [
+          "connectors"
+        ]
+      }
+    },
+    "/connectors/types": {
+      "get": {
+        "operationId": "list_connector_types_connectors_types_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectorTypeOut"
+                  },
+                  "title": "Response List Connector Types Connectors Types Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Connector Types",
+        "tags": [
+          "connectors"
+        ]
+      }
+    },
+    "/connectors/{connector_id}": {
+      "delete": {
+        "operationId": "forget_connector_connectors__connector_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connector_id",
+            "required": true,
+            "schema": {
+              "title": "Connector Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Forget Connector",
+        "tags": [
+          "connectors"
+        ]
+      },
+      "get": {
+        "operationId": "read_connector_connectors__connector_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connector_id",
+            "required": true,
+            "schema": {
+              "title": "Connector Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Connector",
+        "tags": [
+          "connectors"
+        ]
+      },
+      "put": {
+        "operationId": "reconfigure_connector_connectors__connector_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connector_id",
+            "required": true,
+            "schema": {
+              "title": "Connector Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorUpdateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reconfigure Connector",
+        "tags": [
+          "connectors"
+        ]
+      }
+    },
     "/domains": {
       "get": {
         "operationId": "list_domain_hubs_domains_get",
@@ -4596,7 +5525,7 @@
     },
     "/published-feeds/capabilities": {
       "get": {
-        "description": "Name the standards, versions and feed entities this build can bind a feed\nto. A read open to any org member, the same authorization as listing feeds.",
+        "description": "Name the standards, versions and feed entities this build can bind a feed\nto, and what each entity's producer needs of a binding. A read open to any\norg member, the same authorization as listing feeds.",
         "operationId": "get_capabilities_published_feeds_capabilities_get",
         "parameters": [
           {
@@ -5028,6 +5957,122 @@
           }
         },
         "summary": "Publish Now",
+        "tags": [
+          "published-feeds"
+        ]
+      }
+    },
+    "/published-feeds/{slug}/entities": {
+      "get": {
+        "operationId": "list_static_entities_published_feeds__slug__entities_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "agency",
+                "route",
+                "stop",
+                "trip"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cookie"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaticEntitiesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Static Entities",
         "tags": [
           "published-feeds"
         ]

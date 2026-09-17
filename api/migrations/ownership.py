@@ -68,6 +68,7 @@ CE_TABLES = frozenset(
         "capture_expectation",
         "published_feed",
         "publish_attempt",
+        "connector_configuration",
         "ai_chat_thread",
         "ai_chat_turn",
         "ai_chat_draft",

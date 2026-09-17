@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils'
 import { IdentitySwitcher } from '@/components/auth/identity-switcher'
 import { Slot } from '@/features/slots'
 import type { NavSection } from '@/lib/sidebar-nav'
+import type { Edition } from '@/lib/edition'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -61,19 +63,41 @@ function RailTooltip({
   )
 }
 
+function EditionBadge({ edition, collapsed }: { edition: Edition; collapsed: boolean }) {
+  if (collapsed) return <span className="sr-only">{edition.label}</span>
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Badge
+            variant="outline"
+            className="h-4 px-1.5 font-mono text-[0.68rem] tracking-wider text-muted-foreground"
+          />
+        }
+      >
+        <span aria-hidden="true" className="uppercase">
+          {edition.code}
+        </span>
+        <span className="sr-only">{edition.label}</span>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{edition.label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 export function BrandMark({
   name,
   logo,
+  edition,
   collapsed = false,
 }: {
   name: string
   logo: string | null
+  edition: Edition
   collapsed?: boolean
 }) {
   return (
-    // The mark shows who you are looking at; the tooltip says where clicking it
-    // goes, which is the part a collapsed rail hides.
-    <RailTooltip label="Home" collapsed={collapsed}>
+    <RailTooltip label={`Home · ${edition.label}`} collapsed={collapsed}>
       <Link
         href="/"
         className={cn('flex items-center gap-2 h-14 shrink-0', collapsed ? 'justify-center px-0' : 'px-3')}
@@ -87,8 +111,6 @@ export function BrandMark({
             className="size-6 rounded-sm object-contain shrink-0"
           />
         ) : null}
-        {/* With no logo there would be nothing left to click on, so a collapsed
-            rail falls back to the first letter rather than an empty box. */}
         <span
           className={cn(
             'font-display text-lg font-medium text-foreground',
@@ -97,6 +119,7 @@ export function BrandMark({
         >
           {collapsed && !logo ? name.charAt(0) : name}
         </span>
+        <EditionBadge edition={edition} collapsed={collapsed} />
       </Link>
     </RailTooltip>
   )

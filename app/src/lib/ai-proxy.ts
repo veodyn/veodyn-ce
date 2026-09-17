@@ -166,12 +166,7 @@ export interface AiRelay<TRequest, TResponse> {
   requestSchema: ZodType<TRequest> | null
   /** The 400 message for anything malformed about the request. */
   invalidMessage: string
-  /**
-   * The provider's success shape. Anything else (an empty 200, an error
-   * payload, a smuggled extra field) is refused, so only canonical fields ever
-   * reach the browser.
-   */
-  responseSchema: ZodType<TResponse>
+  responseSchema: ZodType<TResponse> | ((payload: TRequest) => ZodType<TResponse>)
   mock: (payload: TRequest) => unknown
 }
 
@@ -216,7 +211,11 @@ async function callProvider<TRequest, TResponse>(
     return errorResponse(providerFailed(), 502)
   }
 
-  const result = relay.responseSchema.safeParse(parsed)
+  const schema =
+    typeof relay.responseSchema === 'function'
+      ? relay.responseSchema(payload)
+      : relay.responseSchema
+  const result = schema.safeParse(parsed)
   if (!result.success) return errorResponse(providerFailed(), 502)
   return NextResponse.json(result.data)
 }

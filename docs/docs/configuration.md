@@ -101,6 +101,24 @@ assistant:            # an external chat widget on Home; no URL, no widget
   title: "Data Assistant"
 ```
 
+## Edition badge
+
+```yaml
+deployment:
+  scale: hub   # node (default) or hub
+```
+
+A chip beside the brand mark reads **CE**, **EE** or **HUB**, and hovering it
+spells the [edition](/editions) out: Community Edition, Enterprise Edition or
+Enterprise Hub. The two halves of that answer come from different places.
+Whether a build is community or enterprise follows from the feature packages
+inside the image, so no key configures it and a community build cannot claim
+more than it contains. Scale is a deployment role with no code behind it, so
+it is declared here: `hub` turns an enterprise build's EE into HUB. On a
+community build it changes nothing and warns once at startup, since there is
+no community hub. Collapse the sidebar to a rail and the chip folds into the
+brand mark's tooltip.
+
 ## Visualization allowlist
 
 ```yaml
