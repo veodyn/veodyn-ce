@@ -44,6 +44,10 @@ app:
     VEODYN_AI_BASE_URL: "https://api.anthropic.com"
     # A model id the endpoint above accepts.
     VEODYN_AI_MODEL: "claude-sonnet-5"
+    VEODYN_AI_TOKEN_SECRET: "secret:VEODYN_AI_TOKEN_SECRET"
+    VEODYN_AI_PROVIDER: "anthropic"
+    VEODYN_AI_FOUNDRY_RESOURCE: ""
+    VEODYN_AI_CHAT_MODEL: ""
   readnessProbe:
     path: "/health"
     port: "8000"

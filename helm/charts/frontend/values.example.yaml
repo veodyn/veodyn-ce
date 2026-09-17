@@ -105,6 +105,8 @@ app:
     VEODYN_AI__ENABLED: "false"
     VEODYN_AI__ENDPOINT: "http://veodyn-api-api.example.svc.cluster.local:8000/ai"
     VEODYN_AI__KEY: "secret:VEODYN_AI_RELAY_KEY"
+    VEODYN_AI__CHAT: "false"
+    VEODYN_AI__TOKEN_SECRET: "secret:VEODYN_AI_TOKEN_SECRET"
     # Optional: a docs site link surfaced in the sidebar. Omit to hide it.
     VEODYN_BRAND__DOCS_URL: "https://docs.example.com"
     # --- Telemetry (optional) ---
