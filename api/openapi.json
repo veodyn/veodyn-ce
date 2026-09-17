@@ -389,7 +389,8 @@
               "dashboard",
               "kpi",
               "report",
-              "snippet"
+              "snippet",
+              "message"
             ],
             "title": "Kind",
             "type": "string"
@@ -467,6 +468,7 @@
                   "mapping": {
                     "dashboard": "#/components/schemas/DashboardProposalOut",
                     "kpi": "#/components/schemas/KpiProposalOut",
+                    "message": "#/components/schemas/MessageProposalOut",
                     "query": "#/components/schemas/QueryProposalOut",
                     "report": "#/components/schemas/ReportProposalOut",
                     "snippet": "#/components/schemas/SnippetProposalOut"
@@ -488,6 +490,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/SnippetProposalOut"
+                  },
+                  {
+                    "$ref": "#/components/schemas/MessageProposalOut"
                   }
                 ]
               },
@@ -1287,6 +1292,35 @@
           "breached"
         ],
         "title": "KpiProposalOut",
+        "type": "object"
+      },
+      "MessageProposalOut": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "header": {
+            "title": "Header",
+            "type": "string"
+          },
+          "kind": {
+            "const": "message",
+            "default": "message",
+            "title": "Kind",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "header",
+          "description"
+        ],
+        "title": "MessageProposalOut",
         "type": "object"
       },
       "NewQueryProposalOut": {

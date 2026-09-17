@@ -6,7 +6,14 @@ import { vi } from 'vitest'
 import { mockConverse } from '@/lib/ai-mock'
 import type { ConverseMessage, CreateKind } from '@/types/ai-create'
 
-export const KINDS: CreateKind[] = ['query', 'dashboard', 'kpi', 'report', 'snippet']
+export const KINDS: CreateKind[] = [
+  'query',
+  'dashboard',
+  'kpi',
+  'report',
+  'snippet',
+  'message',
+]
 
 /** A caller with an established app session cookie. */
 export const SESSION = 'session=abc'
@@ -79,9 +86,8 @@ export function jsonResponse(body: unknown, status = 200): Response {
   })
 }
 
-/** Drive the route in real mode against a provider that answers `body`. */
-export async function fromProvider(body: unknown, status = 200) {
+export async function fromProvider(body: unknown, status = 200, kind: CreateKind = 'query') {
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(body, status))
   const { POST } = await loadRoute({ enabled: true, endpoint: 'http://ai.test', realMode: true })
-  return POST(authedRequest())
+  return POST(authedRequest({ kind, messages: transcript(1) }))
 }

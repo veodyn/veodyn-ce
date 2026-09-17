@@ -117,6 +117,14 @@ KIND_RULES: dict[CreateKind, str] = {
         "rather than inventing them: a snippet naming a column that does not exist is a snippet that fails "
         "the first time somebody expands it."
     ),
+    "message": (
+        "You are proposing the WORDING of a rider-facing service message: a short headline and one or two "
+        "plain sentences under it. Never state a route number, a stop name, a stop id, a time, a date or a "
+        "cause. The author picks the affected routes and stops from the agency's own feed and the message "
+        "carries its own times, so anything you name there is a detail you invented that they have to find "
+        "and delete. Write for a transit rider waiting for a vehicle, not for an analyst: plain sentences, "
+        "no markup, no headings, no lists."
+    ),
 }
 
 EDIT_RULES = (

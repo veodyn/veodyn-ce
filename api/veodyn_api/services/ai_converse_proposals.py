@@ -22,6 +22,7 @@ from veodyn_api.schemas.ai_create import (
     ConverseOut,
     CreateKind,
     KpiProposalOut,
+    MessageProposalOut,
     SnippetProposalOut,
 )
 from veodyn_api.services.ai_converse_dashboard import Built, VisualizationResolver, dashboard_proposal
@@ -170,6 +171,18 @@ def _snippet_proposal(raw: dict[str, Any]) -> AnyProposalOut | str:
     return SnippetProposalOut(trigger=trigger, snippet=snippet, description=text_of(raw.get("description"), 4_000))
 
 
+def _message_proposal(raw: dict[str, Any]) -> AnyProposalOut | str:
+    header = text_of(raw.get("header"), 500)
+    description = text_of(raw.get("description"), 4_000)
+    if not header or not description:
+        return "a headline and a sentence for riders to read"
+    return MessageProposalOut(
+        title=text_of(raw.get("title"), 255) or header,
+        header=header,
+        description=description,
+    )
+
+
 def build_proposal(
     llm: LlmClient,
     kind: CreateKind,
@@ -187,6 +200,7 @@ def build_proposal(
     reason string becomes a Built with no proposal. A dashboard can come back
     partial, which is why Built exists.
     """
+    no_branch = f"anything to create from a {kind} conversation"
     if kind == "dashboard":
         return dashboard_proposal(llm, raw, grounding, resolve, warehouse, editing)
     if kind == "query":
@@ -195,7 +209,11 @@ def build_proposal(
         return _as_built(_kpi_proposal(llm, raw, grounding, warehouse, columns_of))
     if kind == "report":
         return _as_built(report_proposal(llm, raw, grounding, warehouse=warehouse))
-    return _as_built(_snippet_proposal(raw))
+    if kind == "snippet":
+        return _as_built(_snippet_proposal(raw))
+    if kind == "message":
+        return _as_built(_message_proposal(raw))
+    return _as_built(no_branch)
 
 
 def _as_built(result: AnyProposalOut | str) -> Built:

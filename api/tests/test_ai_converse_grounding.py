@@ -22,7 +22,7 @@ from veodyn_api.services.ai_grounding import MAX_GROUNDED_DATASETS
 from veodyn_api.services.redash import RedashClient
 from veodyn_api.settings import Settings
 
-ALL_KINDS = ("query", "dashboard", "kpi", "report", "snippet")
+ALL_KINDS = ("query", "dashboard", "kpi", "report", "snippet", "message")
 
 
 @pytest.fixture(autouse=True)

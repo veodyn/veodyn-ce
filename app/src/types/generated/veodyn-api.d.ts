@@ -656,7 +656,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "query" | "dashboard" | "kpi" | "report" | "snippet";
+            kind: "query" | "dashboard" | "kpi" | "report" | "snippet" | "message";
             /** Messages */
             messages: components["schemas"]["ConverseMessageIn"][];
             /** Targetdashboardid */
@@ -677,7 +677,7 @@ export interface components {
             /** Focustable */
             focusTable: string | null;
             /** Proposal */
-            proposal: (components["schemas"]["QueryProposalOut"] | components["schemas"]["DashboardProposalOut"] | components["schemas"]["KpiProposalOut"] | components["schemas"]["ReportProposalOut"] | components["schemas"]["SnippetProposalOut"]) | null;
+            proposal: (components["schemas"]["QueryProposalOut"] | components["schemas"]["DashboardProposalOut"] | components["schemas"]["KpiProposalOut"] | components["schemas"]["ReportProposalOut"] | components["schemas"]["SnippetProposalOut"] | components["schemas"]["MessageProposalOut"]) | null;
             /** Ready */
             ready: boolean;
             /** Reply */
@@ -958,6 +958,20 @@ export interface components {
             unit: string | null;
             /** Valuecolumn */
             valueColumn: string;
+        };
+        /** MessageProposalOut */
+        MessageProposalOut: {
+            /** Description */
+            description: string;
+            /** Header */
+            header: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "message";
+            /** Title */
+            title: string;
         };
         /**
          * NewQueryProposalOut

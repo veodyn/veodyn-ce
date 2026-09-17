@@ -116,7 +116,7 @@ describe('mockGenerateSql grounding safety', () => {
   )
 })
 
-const KINDS: CreateKind[] = ['query', 'dashboard', 'kpi', 'report', 'snippet']
+const KINDS: CreateKind[] = ['query', 'dashboard', 'kpi', 'report', 'snippet', 'message']
 
 /** A transcript of `userTurns` user messages, the assistant replying between them. */
 function transcript(userTurns: number): ConverseMessage[] {

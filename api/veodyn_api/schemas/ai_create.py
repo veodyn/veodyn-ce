@@ -15,7 +15,7 @@ from pydantic import Field, field_validator, model_validator
 
 from veodyn_api.schemas.ai import CamelModel, NewQueryProposalOut, ReportOutlineOut
 
-CreateKind = Literal["query", "dashboard", "kpi", "report", "snippet"]
+CreateKind = Literal["query", "dashboard", "kpi", "report", "snippet", "message"]
 # Mirrors KpiDirection/KpiCadence in app/src/types/kpi.ts. Named aliases so the
 # service can clamp a model's pick to one of them without a cast.
 KpiDirection = Literal["higher-is-better", "lower-is-better"]
@@ -185,9 +185,23 @@ class SnippetProposalOut(CamelModel):
     description: str
 
 
+class MessageProposalOut(CamelModel):
+    kind: Literal["message"] = "message"
+    title: str
+    header: str
+    description: str
+
+
 # The bare union is what services annotate against; the discriminated form is
 # what the field uses.
-AnyProposalOut = QueryProposalOut | DashboardProposalOut | KpiProposalOut | ReportProposalOut | SnippetProposalOut
+AnyProposalOut = (
+    QueryProposalOut
+    | DashboardProposalOut
+    | KpiProposalOut
+    | ReportProposalOut
+    | SnippetProposalOut
+    | MessageProposalOut
+)
 
 # Discriminated on `kind`, so a proposal that does not match its own kind is a
 # validation failure here rather than a card the frontend cannot render.

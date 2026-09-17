@@ -50,7 +50,7 @@ def test_the_row_carries_what_the_catalog_already_knew() -> None:
 
 
 def test_every_kind_is_told_how_a_capture_reads() -> None:
-    kinds: tuple[CreateKind, ...] = ("query", "dashboard", "kpi", "report", "snippet")
+    kinds: tuple[CreateKind, ...] = ("query", "dashboard", "kpi", "report", "snippet", "message")
     for kind in kinds:
         assert CAPTURE_SEMANTICS in system_prompt(kind, datasets=(dataset(),))
 

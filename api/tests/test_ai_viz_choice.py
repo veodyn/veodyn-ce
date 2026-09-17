@@ -91,7 +91,7 @@ def test_the_kinds_that_carry_a_shape_are_sent_the_guide(kind: str) -> None:
     assert "`heatmap`" in system_prompt(kind)  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("kind", ["kpi", "snippet"])
+@pytest.mark.parametrize("kind", ["kpi", "snippet", "message"])
 def test_a_kind_that_chooses_no_shape_is_not_sent_the_guide(kind: str) -> None:
     """Prompt budget the transcript needs.
 

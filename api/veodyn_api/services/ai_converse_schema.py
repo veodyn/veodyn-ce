@@ -133,6 +133,14 @@ PROPOSAL_FIELDS: dict[CreateKind, dict[str, Any]] = {
         "snippet": _string("The SQL fragment."),
         "description": _string("One sentence: when to use it."),
     },
+    "message": {
+        "title": _string("A short name for the message, for the author's own library list."),
+        "header": _string("The headline a rider reads. One line, and it names no route, stop, time, date or cause."),
+        "description": _string(
+            "One or two plain sentences under the headline, in the same terms: no route, stop, time, date "
+            "or cause, and no markup."
+        ),
+    },
 }
 
 

@@ -179,12 +179,21 @@ describe('POST /api/ai/converse: provider response handling', () => {
   it.each(KINDS)('relays a valid ready turn for kind %s unchanged', async (kind: CreateKind) => {
     const success = readyTurn(kind)
 
-    const response = await fromProvider(success)
+    const response = await fromProvider(success, 200, kind)
 
     // Also the proof that what mockConverse produces satisfies this route's own
     // response schema: the two ends of the contract cannot drift apart.
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual(success)
+  })
+
+  it.each(KINDS)('refuses a well-formed proposal of another kind on a %s turn', async (kind) => {
+    const other = KINDS.find((candidate) => candidate !== kind) as CreateKind
+
+    const response = await fromProvider(readyTurn(other), 200, kind)
+
+    expect(response.status).toBe(502)
+    expect(await response.json()).toMatchObject({ id: 'E_AI_001' })
   })
 
   it('refuses an empty 200 rather than relaying it as a turn', async () => {

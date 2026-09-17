@@ -24,7 +24,7 @@ import {
   type NewChatTurn,
 } from './create-chat-model'
 
-const KINDS: CreateKind[] = ['query', 'dashboard', 'kpi', 'report', 'snippet']
+const KINDS: CreateKind[] = ['query', 'dashboard', 'kpi', 'report', 'snippet', 'message']
 
 /**
  * A descriptor that claims one proposal kind and offers a by-hand route for it.
@@ -231,6 +231,10 @@ describe('per-kind copy', () => {
         href: '/reports/new',
         label: 'Write the report yourself',
       }),
+      messages: contributor('messages', 'message', {
+        href: '/messages/new',
+        label: 'Write the message yourself',
+      }),
     }
 
     expect(KINDS.map((kind) => manualPath(kind, registry)?.href)).toEqual([
@@ -239,6 +243,7 @@ describe('per-kind copy', () => {
       '/kpis/new',
       '/reports/new',
       '/query-snippets',
+      '/messages/new',
     ])
     expect(KINDS.every((kind) => (manualPath(kind, registry)?.label.length ?? 0) > 0)).toBe(true)
   })

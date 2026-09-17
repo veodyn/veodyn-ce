@@ -239,4 +239,18 @@ export const CONVERSE_SCRIPT: Record<CreateKind, KindScript> = {
       description: 'Filter for the last 30 days',
     },
   },
+  message: {
+    question: 'What do riders need to know, and how much disruption should they expect?',
+    suggestedAnswers: ['A service is suspended', 'A stop has moved', 'Expect longer waits'],
+    readyReply:
+      'Here is the wording. It names no route, stop or time on purpose: pick those from your feed in the editor, and the message carries its own times.',
+    focusTable: null,
+    proposal: {
+      kind: 'message',
+      title: 'Longer waits this evening',
+      header: 'Expect longer waits this evening',
+      description:
+        'Vehicles are running less often than usual and waits are longer than scheduled. Allow extra time for your trip, and check the arrival times at your stop before you travel.',
+    },
+  },
 }

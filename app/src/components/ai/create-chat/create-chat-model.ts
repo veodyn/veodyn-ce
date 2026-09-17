@@ -161,6 +161,12 @@ const KIND_COPY: Record<CreateKind, { title: string; opening: string; placeholde
     opening: 'Tell me what the snippet should insert and what should trigger it.',
     placeholder: 'What should the snippet insert?',
   },
+  message: {
+    title: 'Create a message with AI',
+    opening:
+      'Tell me what riders need to know and I will draft the wording. You pick the routes, stops and times afterwards.',
+    placeholder: 'What do riders need to know?',
+  },
 }
 
 export function dialogTitle(kind: CreateKind): string {

@@ -12,7 +12,7 @@
 // (`KpiProposal` in @/types/kpi, `ReportProposal` in @/types/ai-report) and reach
 // the chat through `FeatureDescriptor.proposals`.
 
-export type CreateKind = 'query' | 'dashboard' | 'kpi' | 'report' | 'snippet'
+export type CreateKind = 'query' | 'dashboard' | 'kpi' | 'report' | 'snippet' | 'message'
 
 export interface ConverseMessage {
   role: 'user' | 'assistant'
@@ -131,6 +131,13 @@ export interface FeatureProposal {
  * the single place that decides which it is.
  */
 export type AnyProposal = Proposal | FeatureProposal
+
+export interface MessageProposal {
+  kind: 'message'
+  title: string
+  header: string
+  description: string
+}
 
 export interface ConverseResponse {
   reply: string

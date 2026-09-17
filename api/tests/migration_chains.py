@@ -41,6 +41,8 @@ EE_TABLES = frozenset(
         "message_publication_run",
         "message_outbox_entry",
         "message_delivery_attempt",
+        "message_trigger",
+        "message_trigger_firing",
     }
 )
 """The enterprise chain's allowlist, restated rather than imported.

@@ -7,6 +7,7 @@ import {
   MAX_USER_TURNS,
   type ConverseRequest,
   type ConverseResponse,
+  type CreateKind,
 } from '@/types/ai-create'
 
 export const dynamic = 'force-dynamic'
@@ -16,7 +17,7 @@ export const dynamic = 'force-dynamic'
 // drift apart silently (spec section 4.3).
 const converseRequestSchema: z.ZodType<ConverseRequest> = z
   .object({
-    kind: z.enum(['query', 'dashboard', 'kpi', 'report', 'snippet']),
+    kind: z.enum(['query', 'dashboard', 'kpi', 'report', 'snippet', 'message']),
     targetDashboardId: z.number().int().positive().optional(),
     // Echoed back from the previous turn, so the service profiles the table the
     // conversation is already about. Accepted as a bare name and nothing more:
@@ -190,12 +191,22 @@ const snippetProposalSchema = z
   })
   .strict()
 
+const messageProposalSchema = z
+  .object({
+    kind: z.literal('message'),
+    title: name,
+    header: name,
+    description,
+  })
+  .strict()
+
 const proposalSchema = z.discriminatedUnion('kind', [
   queryProposalSchema,
   dashboardProposalSchema,
   kpiProposalSchema,
   reportProposalSchema,
   snippetProposalSchema,
+  messageProposalSchema,
 ])
 
 const converseResponseSchema: z.ZodType<ConverseResponse> = z
@@ -249,12 +260,23 @@ const converseResponseSchema: z.ZodType<ConverseResponse> = z
     }
   })
 
+const answeringTheKindAsked = (kind: CreateKind): z.ZodType<ConverseResponse> =>
+  converseResponseSchema.superRefine((value, ctx) => {
+    if (value.proposal !== null && value.proposal.kind !== kind) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['proposal', 'kind'],
+        message: 'the proposal does not answer the kind this turn asked for',
+      })
+    }
+  })
+
 export async function POST(request: Request) {
   return handleAiRelay(request, {
     path: 'converse',
     requestSchema: converseRequestSchema,
     invalidMessage: 'invalid converse request',
-    responseSchema: converseResponseSchema,
+    responseSchema: (payload) => answeringTheKindAsked(payload.kind),
     mock: mockConverse,
   })
 }
