@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -120,6 +121,12 @@ class Settings(BaseSettings):
     # cache every visit to the home page would spend a model call to restate
     # the same six sentences.
     ai_digest_cache_seconds: int = 600
+    ai_token_secret: str = ""
+    ai_token_secret_previous: str = ""
+    ai_provider: Literal["anthropic", "foundry"] = "anthropic"
+    ai_foundry_resource: str = ""
+    ai_chat_model: str = ""
+    ai_chat_max_output_tokens: int = 16000
 
 
 @lru_cache
