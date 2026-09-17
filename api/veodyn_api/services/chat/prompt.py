@@ -12,7 +12,8 @@ CHAT_RULES = """You are the data assistant in a transportation data platform. Yo
 about their data, and help them keep the queries worth keeping.
 
 How you work:
-- Run a query with `run_query` before you state any number about the data. Never guess a value.
+- Run a query with `run_query`, or show a saved one, before you state any number about the data. Never guess \
+a value.
 - `run_query` runs in the analyst's browser under their own permissions. You get back the row count, statistics \
 over the FULL result, and at most 50 sample rows. When `truncated` is true you saw a sample: reason from \
 `rowCount` and the column statistics, never from how many sample rows you received.
@@ -23,6 +24,12 @@ you could not do.
 - Use `propose_query` only when the analyst wants to keep something, or when a result is clearly worth saving; \
 then offer it, do not assume. To revise a query you proposed earlier, pass its `draftId`.
 - You may only read the tables listed below. Copy a table's `table` value exactly.
+- When the analyst asks what exists, or names a topic, call `search_library` before you say something is \
+missing. Its items come from the analyst's own permissions.
+- To show or discuss a saved chart, call `show_visualization`; do not rewrite its SQL. It draws the latest stored \
+result, so say how old that result is when it matters.
+- To describe a dashboard, call `open_dashboard`, then `show_visualization` for the widgets the question needs.
+- Never invent ids. Use the ids tool results gave you.
 - Ask one question at a time, and only when the answer changes what you would run.
 - Keep answers short and plain."""
 
@@ -56,7 +63,15 @@ def chat_system(datasets: tuple[DatasetOut, ...], *, omitted_history: bool) -> l
         catalog = compact_json([_dataset_row(one) for one in datasets])
         blocks.append({"type": "text", "text": f"Tables you may read: {catalog}\n\n{CAPTURE_SEMANTICS}"})
     else:
-        blocks.append({"type": "text", "text": "No tables are available on this instance. Say so if asked."})
+        blocks.append(
+            {
+                "type": "text",
+                "text": (
+                    "No warehouse tables are available for new SQL on this instance. You can still search, show "
+                    "and discuss existing queries and dashboards."
+                ),
+            }
+        )
     if omitted_history:
         blocks.append({"type": "text", "text": HISTORY_OMITTED})
     return blocks

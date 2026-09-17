@@ -151,8 +151,14 @@ async def test_arguments_that_are_not_an_object_are_treated_as_empty() -> None:
     assert isinstance(outcome, Immediate) and outcome.is_error
 
 
-def test_the_registry_lists_both_tools_and_refuses_a_duplicate() -> None:
-    assert [one["name"] for one in tools.tool_definitions()] == ["run_query", "propose_query"]
+def test_the_registry_lists_every_tool_and_refuses_a_duplicate() -> None:
+    assert [one["name"] for one in tools.tool_definitions()] == [
+        "run_query",
+        "propose_query",
+        "search_library",
+        "show_visualization",
+        "open_dashboard",
+    ]
     with pytest.raises(ValueError):
         tools.register_chat_tool(tools.RUN_QUERY)
     with pytest.raises(ValueError):
@@ -173,4 +179,76 @@ def test_the_system_prompt_carries_the_rules_and_the_catalog() -> None:
 def test_the_system_prompt_says_when_history_was_omitted_and_when_nothing_is_readable() -> None:
     blocks = chat_system((), omitted_history=True)
     assert blocks[-1]["text"] == HISTORY_OMITTED
-    assert "No tables are available" in blocks[1]["text"]
+    assert "No warehouse tables are available" in blocks[1]["text"]
+    assert "existing queries and dashboards" in blocks[1]["text"]
+
+
+def test_the_rules_send_the_model_to_the_library_first() -> None:
+    text = chat_system((SPEEDS,), omitted_history=False)[0]["text"]
+    assert "`search_library`" in text
+    assert "`show_visualization`" in text
+    assert "`open_dashboard`" in text
+
+
+async def test_a_library_search_goes_to_the_browser_with_both_kinds_by_default() -> None:
+    outcome = await prepare_call(call("search_library", text="  bikeshare "), context())
+    assert outcome == ClientCall(
+        call_id="call-1",
+        tool="search_library",
+        args={"text": "bikeshare", "kinds": ["query", "dashboard"], "tags": []},
+    )
+
+
+async def test_a_library_search_keeps_known_kinds_and_caps_tags() -> None:
+    tags = [f"tag-{index}" for index in range(8)] + ["", 3]
+    outcome = await prepare_call(
+        call("search_library", text="", kinds=["dashboard", "report", "dashboard"], tags=tags), context()
+    )
+    assert isinstance(outcome, ClientCall)
+    assert outcome.args == {"text": "", "kinds": ["dashboard"], "tags": tags[:5]}
+
+
+async def test_a_library_search_with_nothing_to_look_for_is_refused() -> None:
+    outcome = await prepare_call(call("search_library", text=" ", tags=[""]), context())
+    assert isinstance(outcome, Immediate) and outcome.is_error
+
+
+async def test_a_library_search_with_no_known_kind_is_refused() -> None:
+    outcome = await prepare_call(call("search_library", text="x", kinds=["report"]), context())
+    assert isinstance(outcome, Immediate) and outcome.is_error
+
+
+async def test_showing_a_visualization_passes_the_ids_through() -> None:
+    outcome = await prepare_call(call("show_visualization", queryId=12, visualizationId=31), context())
+    assert outcome == ClientCall(
+        call_id="call-1", tool="show_visualization", args={"queryId": 12, "visualizationId": 31}
+    )
+    bare = await prepare_call(call("show_visualization", queryId=12), context())
+    assert isinstance(bare, ClientCall) and bare.args == {"queryId": 12, "visualizationId": None}
+
+
+@pytest.mark.parametrize("query_id", [0, -1, True, "12", None, 1.5])
+async def test_showing_a_visualization_needs_a_real_query_id(query_id: Any) -> None:
+    outcome = await prepare_call(call("show_visualization", queryId=query_id), context())
+    assert isinstance(outcome, Immediate) and outcome.is_error
+
+
+async def test_a_bad_visualization_id_is_refused_rather_than_ignored() -> None:
+    outcome = await prepare_call(call("show_visualization", queryId=12, visualizationId="31"), context())
+    assert isinstance(outcome, Immediate) and outcome.is_error
+
+
+async def test_opening_a_dashboard_needs_a_real_id() -> None:
+    outcome = await prepare_call(call("open_dashboard", dashboardId=4), context())
+    assert outcome == ClientCall(call_id="call-1", tool="open_dashboard", args={"dashboardId": 4})
+    refused = await prepare_call(call("open_dashboard", dashboardId=False), context())
+    assert isinstance(refused, Immediate) and refused.is_error
+
+
+def test_each_browser_tool_names_the_result_it_expects() -> None:
+    assert tools.result_kind_for("run_query") == "query_result"
+    assert tools.result_kind_for("search_library") == "library"
+    assert tools.result_kind_for("show_visualization") == "saved_visualization"
+    assert tools.result_kind_for("open_dashboard") == "dashboard"
+    assert tools.result_kind_for("propose_query") is None
+    assert tools.result_kind_for("nope") is None

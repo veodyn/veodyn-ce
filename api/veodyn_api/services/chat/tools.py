@@ -6,11 +6,13 @@ from typing import Any
 from veodyn_api.errors import ApiError
 from veodyn_api.schemas.ai import AiDatasetIn
 from veodyn_api.schemas.catalog import DatasetOut
-from veodyn_api.services.ai_converse_prompt import text_of
+from veodyn_api.services.ai_converse_prompt import picked_id, text_of
 from veodyn_api.services.ai_sql import QUERYABLE_TABLE_RE, UngroundedSql, validate_sql
 from veodyn_api.services.ai_viz_choice import VIZ_FIELD_DESCRIPTION, viz_choice
 
 MAX_NAMED_TABLES = 20
+LIBRARY_KINDS = ("query", "dashboard")
+MAX_SEARCH_TAGS = 5
 SECOND_REFUSAL = (
     " This is the second refusal in this turn: stop writing SQL and tell the analyst what you could not do."
 )
@@ -49,6 +51,7 @@ class ChatTool:
     name: str
     definition: dict[str, Any]
     handler: Handler
+    result_kind: str | None = None
 
 
 _TOOLS: dict[str, ChatTool] = {}
@@ -60,6 +63,11 @@ def register_chat_tool(tool: ChatTool) -> None:
     if tool.definition.get("name") != tool.name:
         raise ValueError(f"the definition of {tool.name!r} names a different tool")
     _TOOLS[tool.name] = tool
+
+
+def result_kind_for(tool: str) -> str | None:
+    found = _TOOLS.get(tool)
+    return found.result_kind if found else None
 
 
 def tool_definitions() -> list[dict[str, Any]]:
@@ -150,8 +158,59 @@ async def _propose_query(call_id: str, arguments: dict[str, Any], ctx: ToolConte
     )
 
 
+def _positive_id(value: Any) -> int | None:
+    number = picked_id(value)
+    return number if number is not None and number > 0 else None
+
+
+def _strings(value: Any, limit: int) -> list[str]:
+    return (
+        [text_of(one, limit) for one in value if isinstance(one, str) and one.strip()]
+        if isinstance(value, list)
+        else []
+    )
+
+
+async def _search_library(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
+    text = text_of(arguments.get("text"), 200)
+    tags = _strings(arguments.get("tags"), 64)[:MAX_SEARCH_TAGS]
+    asked = arguments.get("kinds")
+    kinds = [kind for kind in LIBRARY_KINDS if not isinstance(asked, list) or kind in asked]
+    if not kinds:
+        return Immediate(f"kinds must name at least one of {', '.join(LIBRARY_KINDS)}", is_error=True)
+    if not text and not tags:
+        return Immediate("give some text or at least one tag to search for", is_error=True)
+    return ClientCall(call_id=call_id, tool="search_library", args={"text": text, "kinds": kinds, "tags": tags})
+
+
+async def _show_visualization(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
+    query_id = _positive_id(arguments.get("queryId"))
+    if query_id is None:
+        return Immediate("queryId must be the id of a query from a search result", is_error=True)
+    raw = arguments.get("visualizationId")
+    visualization_id = _positive_id(raw)
+    if raw is not None and visualization_id is None:
+        return Immediate("visualizationId must be the id of one of the query's visualizations", is_error=True)
+    return ClientCall(
+        call_id=call_id,
+        tool="show_visualization",
+        args={"queryId": query_id, "visualizationId": visualization_id},
+    )
+
+
+async def _open_dashboard(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
+    dashboard_id = _positive_id(arguments.get("dashboardId"))
+    if dashboard_id is None:
+        return Immediate("dashboardId must be the id of a dashboard from a search result", is_error=True)
+    return ClientCall(call_id=call_id, tool="open_dashboard", args={"dashboardId": dashboard_id})
+
+
 def _string(description: str) -> dict[str, str]:
     return {"type": "string", "description": description}
+
+
+def _integer(description: str) -> dict[str, str]:
+    return {"type": "integer", "description": description}
 
 
 RUN_QUERY = ChatTool(
@@ -175,6 +234,7 @@ RUN_QUERY = ChatTool(
         },
     },
     handler=_run_query,
+    result_kind="query_result",
 )
 
 PROPOSE_QUERY = ChatTool(
@@ -201,5 +261,78 @@ PROPOSE_QUERY = ChatTool(
     handler=_propose_query,
 )
 
-register_chat_tool(RUN_QUERY)
-register_chat_tool(PROPOSE_QUERY)
+SEARCH_LIBRARY = ChatTool(
+    name="search_library",
+    definition={
+        "name": "search_library",
+        "description": (
+            "Search the saved queries and dashboards the analyst can see, by text in their names and descriptions "
+            "and by tag. Returns at most 10 of each kind with ids, descriptions, tags and whether a query has a "
+            "stored result."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "text": _string("Words to look for. May be empty when tags are given."),
+                "kinds": {
+                    "type": "array",
+                    "items": {"type": "string", "enum": list(LIBRARY_KINDS)},
+                    "description": "Which kinds to search. Both when omitted.",
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Only items carrying all of these tags.",
+                },
+            },
+            "required": ["text"],
+        },
+    },
+    handler=_search_library,
+    result_kind="library",
+)
+
+SHOW_VISUALIZATION = ChatTool(
+    name="show_visualization",
+    definition={
+        "name": "show_visualization",
+        "description": (
+            "Show one of a saved query's visualizations to the analyst, drawn from the query's latest stored result. "
+            "It never runs the query. Returns the query's SQL, its visualizations, when the result was retrieved, "
+            "the row count, column statistics and at most 50 sample rows."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "queryId": _integer("The id of a query from a search result or a dashboard widget."),
+                "visualizationId": _integer(
+                    "The id of one of the query's visualizations. Omit to show its main chart."
+                ),
+            },
+            "required": ["queryId"],
+        },
+    },
+    handler=_show_visualization,
+    result_kind="saved_visualization",
+)
+
+OPEN_DASHBOARD = ChatTool(
+    name="open_dashboard",
+    definition={
+        "name": "open_dashboard",
+        "description": (
+            "Read a dashboard's widgets: each one's title, query and visualization. The analyst gets a link to the "
+            "dashboard. Use show_visualization to show a widget's chart."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"dashboardId": _integer("The id of a dashboard from a search result.")},
+            "required": ["dashboardId"],
+        },
+    },
+    handler=_open_dashboard,
+    result_kind="dashboard",
+)
+
+for _tool in (RUN_QUERY, PROPOSE_QUERY, SEARCH_LIBRARY, SHOW_VISUALIZATION, OPEN_DASHBOARD):
+    register_chat_tool(_tool)
