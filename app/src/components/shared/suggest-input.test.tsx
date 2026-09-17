@@ -51,6 +51,29 @@ describe('SuggestInput', () => {
     expect(screen.getByRole('combobox')).toHaveValue('pt-BR')
   })
 
+  it('puts the code you typed above the names that merely contain it', async () => {
+    // "es" is Spanish's whole code and also sits inside Avestan and Assamese,
+    // which alphabetical order would otherwise put first.
+    const user = userEvent.setup()
+    renderWithProviders(
+      <Harness
+        suggestions={[
+          { value: 'ae', label: 'Avestan' },
+          { value: 'as', label: 'Assamese' },
+          { value: 'eo', label: 'Esperanto' },
+          { value: 'es', label: 'Spanish' },
+        ]}
+      />
+    )
+
+    await user.click(screen.getByRole('combobox'))
+    await user.keyboard('es')
+
+    const offered = (await screen.findAllByRole('option')).map((option) => option.textContent)
+    expect(offered[0]).toContain('Spanish')
+    expect(offered[1]).toContain('Esperanto')
+  })
+
   it('offers nothing, and stays a plain field, when the vocabulary is empty', async () => {
     // What a capabilities read that failed or has not landed yet leaves behind.
     const user = userEvent.setup()

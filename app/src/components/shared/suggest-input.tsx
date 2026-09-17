@@ -20,6 +20,36 @@ interface SuggestInputProps {
   invalid?: boolean
 }
 
+const EXACT_CODE = 0
+const CODE_PREFIX = 1
+const NAME_WORD = 2
+const CODE_WORD = 3
+const ANYWHERE = 4
+const NO_MATCH = 5
+
+function wordsIn(text: string): string[] {
+  return text.split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+}
+
+function tierOf(suggestion: Suggestion, needle: string): number {
+  const code = suggestion.value.toLowerCase()
+  const name = suggestion.label?.toLowerCase() ?? ''
+  if (code === needle) return EXACT_CODE
+  if (code.startsWith(needle)) return CODE_PREFIX
+  if (wordsIn(name).some((word) => word.startsWith(needle))) return NAME_WORD
+  if (wordsIn(code).some((word) => word.startsWith(needle))) return CODE_WORD
+  if (code.includes(needle) || name.includes(needle)) return ANYWHERE
+  return NO_MATCH
+}
+
+function ranked(suggestions: Suggestion[], needle: string): Suggestion[] {
+  return suggestions
+    .map((suggestion) => ({ suggestion, tier: tierOf(suggestion, needle) }))
+    .filter((entry) => entry.tier !== NO_MATCH)
+    .sort((a, b) => a.tier - b.tier)
+    .map((entry) => entry.suggestion)
+}
+
 // The input and the list sit under one Command root: cmdk drives arrow keys and
 // Enter from the root's keydown, so a focused plain input inside it navigates
 // the list, and the input is the popover's ANCHOR rather than its trigger, for
@@ -42,18 +72,13 @@ export function SuggestInput({
   const [anchor, setAnchor] = useState<HTMLDivElement | null>(null)
 
   const needle = value.trim().toLowerCase()
-  const matches = suggestions.filter(
-    (suggestion) =>
-      !needle ||
-      suggestion.value.toLowerCase().includes(needle) ||
-      suggestion.label?.toLowerCase().includes(needle)
-  )
+  const matches = needle === '' ? suggestions : ranked(suggestions, needle)
 
   return (
     <Popover open={open && matches.length > 0}>
       <Command
         shouldFilter={false}
-        className="w-full overflow-visible rounded-none! border-none bg-transparent p-0!"
+        className="h-auto! w-full overflow-visible rounded-none! border-none bg-transparent p-0!"
       >
         <div ref={setAnchor}>
           <Input
