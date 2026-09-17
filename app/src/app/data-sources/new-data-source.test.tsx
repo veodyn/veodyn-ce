@@ -96,7 +96,7 @@ describe('the NTCIP 1203 DMS data source form', () => {
   it('blocks a save with malformed JSON in the devices field and names it', async () => {
     const user = await openNtcipForm()
 
-    await user.type(screen.getByLabelText('Name'), 'Test signs')
+    await user.type(screen.getByLabelText(/^Name/), 'Test signs')
     // Regex, not an exact string: both fields are required, so DynamicForm
     // appends a "*" to the label text and an exact match would miss it.
     await user.type(await screen.findByLabelText(/SNMP Community String/), 'public')
@@ -113,10 +113,27 @@ describe('the NTCIP 1203 DMS data source form', () => {
     expect(push).not.toHaveBeenCalled()
   })
 
+  it('marks the Name field and required schema fields, and leaves the optional one unmarked', async () => {
+    await openNtcipForm()
+
+    expect(screen.getByText('Name').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/^Name/)).toBeRequired()
+
+    const communityInput = await screen.findByLabelText(/SNMP Community String/)
+    expect(communityInput).toBeRequired()
+    expect(
+      screen.getByText('SNMP Community String').querySelector('[data-slot="required-marker"]')
+    ).not.toBeNull()
+
+    const versionInput = screen.getByLabelText('SNMP Version')
+    expect(versionInput).not.toBeRequired()
+    expect(screen.getByText('SNMP Version').querySelector('[data-slot="required-marker"]')).toBeNull()
+  })
+
   it('saves once the devices JSON is fixed', async () => {
     const user = await openNtcipForm()
 
-    await user.type(screen.getByLabelText('Name'), 'Test signs')
+    await user.type(screen.getByLabelText(/^Name/), 'Test signs')
     await user.type(await screen.findByLabelText(/SNMP Community String/), 'public')
     fireEvent.change(screen.getByLabelText(/Devices \(JSON\)/), {
       target: { value: '[{"name": "sign-1", "host": "10.0.0.1"}]' },

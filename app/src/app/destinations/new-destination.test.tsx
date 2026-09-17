@@ -147,6 +147,24 @@ describe('creating an alert destination', () => {
     expect(push).not.toHaveBeenCalled()
   })
 
+  it('marks the Name field and required schema fields, and leaves the optional one unmarked', async () => {
+    const user = userEvent.setup()
+    await pickType(user, 'Email')
+
+    expect(screen.getByText('Name').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/^Name/)).toBeRequired()
+
+    expect(
+      screen.getByText('Email Addresses (comma-separated)').querySelector('[data-slot="required-marker"]')
+    ).not.toBeNull()
+    expect(screen.getAllByRole('textbox')[1]).toBeRequired()
+
+    expect(
+      screen.getByText('Subject Template').querySelector('[data-slot="required-marker"]')
+    ).toBeNull()
+    expect(screen.getByLabelText('Subject Template')).not.toBeRequired()
+  })
+
   it('drops the values typed into the previous type when the type changes', async () => {
     const user = userEvent.setup()
     await pickType(user, 'Email')

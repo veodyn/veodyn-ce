@@ -50,6 +50,17 @@ describe('the data source edit form', () => {
     expect(screen.getByLabelText('Database Name')).toHaveValue(dataSource1Dbname)
   })
 
+  it('marks the required schema field and leaves an optional one unmarked', async () => {
+    await renderPage('1')
+    await screen.findByLabelText('Name')
+
+    expect(screen.getByText('URL').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/^URL/)).toBeRequired()
+
+    expect(screen.getByText('User').querySelector('[data-slot="required-marker"]')).toBeNull()
+    expect(screen.getByLabelText('User')).not.toBeRequired()
+  })
+
   it('says the data source is not found, instead of loading forever', async () => {
     await renderPage('9999')
 

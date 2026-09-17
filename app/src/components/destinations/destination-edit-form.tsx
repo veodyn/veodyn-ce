@@ -93,7 +93,7 @@ export function DestinationEditForm({
       />
       <Card className="p-6">
         <div>
-          <Label htmlFor={nameId} className="mb-1 block">
+          <Label htmlFor={nameId} className="mb-1 block" required>
             Name
           </Label>
           <Input
@@ -101,6 +101,8 @@ export function DestinationEditForm({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            required
+            aria-required="true"
           />
         </div>
         <DynamicForm fields={fields} values={values} onChange={setValues} />

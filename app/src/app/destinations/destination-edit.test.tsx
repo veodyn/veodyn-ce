@@ -109,7 +109,7 @@ async function renderPage() {
 }
 
 async function loadedNameInput(): Promise<HTMLElement> {
-  const input = await screen.findByLabelText('Name')
+  const input = await screen.findByLabelText(/^Name/)
   await waitFor(() => expect(input).toHaveValue('Ops mail'))
   return input
 }
@@ -202,6 +202,22 @@ describe('editing an alert destination', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Email Addresses (comma-separated)')
     expect(postCount).toBe(0)
     expect(toastSuccess).not.toHaveBeenCalled()
+  })
+
+  it('marks the Name field and the required schema field', async () => {
+    await renderPage()
+    await loadedNameInput()
+    await waitFor(() => expect(addressesInput()).toHaveValue('ops@example.com'))
+
+    expect(screen.getByText('Name').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/^Name/)).toBeRequired()
+
+    expect(
+      screen.getByText('Email Addresses (comma-separated)').querySelector('[data-slot="required-marker"]')
+    ).not.toBeNull()
+    expect(addressesInput()).toBeRequired()
+
+    expect(screen.getByText('API Key').querySelector('[data-slot="required-marker"]')).toBeNull()
   })
 
   it('says not found for a destination the backend does not have', async () => {

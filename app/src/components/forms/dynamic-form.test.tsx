@@ -108,22 +108,6 @@ describe('DynamicForm', () => {
     expect(box).toHaveAttribute('aria-checked', String(expected))
   })
 
-  it('shows the required marker without applying native validation', () => {
-    renderWithProviders(
-      <DynamicForm
-        fields={[
-          { name: 'title', title: 'Required title', type: 'text', required: true, placeholder: 'Title' },
-        ]}
-        values={{}}
-        onChange={() => {}}
-      />
-    )
-
-    expect(screen.getByText('*')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Title')).not.toBeRequired()
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
-  })
-
   it('passes valid edited values to onChange', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

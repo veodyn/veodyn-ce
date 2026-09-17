@@ -112,8 +112,16 @@ export default function NewDataSourcePage() {
       <PageHeader title={`New ${selectedTypeSchema?.name ?? ''} Data Source`} />
       <Card className="p-6">
         <div>
-          <Label htmlFor={nameId} className="mb-1 block">Name</Label>
-          <Input id={nameId} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Data source name" />
+          <Label htmlFor={nameId} className="mb-1 block" required>Name</Label>
+          <Input
+            id={nameId}
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Data source name"
+            required
+            aria-required="true"
+          />
         </div>
         <DynamicForm fields={fields} values={form.values} onChange={form.onChange} />
         {error && (

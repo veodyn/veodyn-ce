@@ -109,18 +109,10 @@ export function DynamicForm({ fields, values, onChange, className }: DynamicForm
         return (
           <div key={field.name}>
             {isBoolean ? (
-              // The real label for a boolean field is the one beside the
-              // checkbox below; this heading only repeats the field name, so
-              // it stays a div rather than a second label pointing at the
-              // same control.
-              <div className="block text-sm font-medium mb-1.5">
-                {field.title}
-                {field.required && <span className="text-destructive ml-1">*</span>}
-              </div>
+              <div className="block text-sm font-medium mb-1.5">{field.title}</div>
             ) : (
-              <Label htmlFor={fieldId} className="mb-1.5 block">
+              <Label htmlFor={fieldId} className="mb-1.5 block" required={field.required}>
                 {field.title}
-                {field.required && <span className="text-destructive ml-1">*</span>}
               </Label>
             )}
             {description}
@@ -131,8 +123,13 @@ export function DynamicForm({ fields, values, onChange, className }: DynamicForm
                   aria-describedby={descId}
                   checked={isChecked(values[field.name] ?? field.default)}
                   onCheckedChange={(checked) => handleChange(field.name, checked)}
+                  required={field.required}
                 />
-                <Label htmlFor={fieldId} className="cursor-pointer text-muted-foreground">
+                <Label
+                  htmlFor={fieldId}
+                  className="cursor-pointer text-muted-foreground"
+                  required={field.required}
+                >
                   {field.title}
                 </Label>
               </div>
@@ -141,6 +138,7 @@ export function DynamicForm({ fields, values, onChange, className }: DynamicForm
                 value={String(values[field.name] ?? field.default ?? '')}
                 onValueChange={(v) => handleChange(field.name, v)}
                 items={field.options}
+                required={field.required}
               >
                 <SelectTrigger id={fieldId} aria-describedby={descId} className="w-full">
                   <SelectValue />
@@ -163,6 +161,8 @@ export function DynamicForm({ fields, values, onChange, className }: DynamicForm
                   rows={4}
                   aria-describedby={describedBy}
                   aria-invalid={Boolean(jsonError)}
+                  required={field.required}
+                  aria-required={field.required || undefined}
                 />
                 {jsonError && (
                   <p id={errorId} role="alert" className="mt-1 text-sm text-destructive">
@@ -178,6 +178,8 @@ export function DynamicForm({ fields, values, onChange, className }: DynamicForm
                 placeholder={field.placeholder}
                 rows={4}
                 aria-describedby={descId}
+                required={field.required}
+                aria-required={field.required || undefined}
               />
             ) : (
               <Input
@@ -187,6 +189,8 @@ export function DynamicForm({ fields, values, onChange, className }: DynamicForm
                 onChange={(e) => handleChange(field.name, numberOrText(field.type, e.target.value))}
                 placeholder={field.placeholder}
                 aria-describedby={descId}
+                required={field.required}
+                aria-required={field.required || undefined}
               />
             )}
           </div>

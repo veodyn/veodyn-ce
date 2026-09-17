@@ -97,7 +97,7 @@ export default function NewDestinationPage() {
           <PageHeader title={`New ${typeSchema?.name ?? ''} Destination`} />
           <Card className="p-6">
             <div>
-              <Label htmlFor={nameId} className="mb-1 block">
+              <Label htmlFor={nameId} className="mb-1 block" required>
                 Name
               </Label>
               <Input
@@ -106,6 +106,8 @@ export default function NewDestinationPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Destination name"
+                required
+                aria-required="true"
               />
             </div>
             <DynamicForm fields={fields} values={form.values} onChange={form.onChange} />
