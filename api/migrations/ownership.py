@@ -68,7 +68,11 @@ CE_TABLES = frozenset(
         "capture_expectation",
         "published_feed",
         "publish_attempt",
-        "connector_configuration",
+        "ai_chat_thread",
+        "ai_chat_turn",
+        "ai_chat_draft",
+        "ai_chat_draft_version",
+        "ai_chat_draft_promotion",
     }
 )
 """Every table the community chain creates.

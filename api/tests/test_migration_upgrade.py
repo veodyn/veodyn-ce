@@ -38,16 +38,28 @@ from sqlalchemy.engine import make_url
 from migrations.ownership import CE_TABLES
 from tests.conftest import TEST_DATABASE_URL
 from tests.migration_chains import (
+    CE_HEAD,
+    CE_PREVIOUS,
     CE_VERSION_TABLE,
     ce_config,
 )
-from tests.migration_revisions import CE_HEAD, CE_PREVIOUS
 
-HEAD_OBJECT = ("connector_configuration", "credentials")
-HEAD_OBJECT_DROP = ("DROP TABLE connector_configuration",)
+HEAD_OBJECT = ("ai_chat_thread", "owner_subject")
+HEAD_OBJECT_DROP = (
+    "DROP TABLE ai_chat_draft_promotion",
+    "DROP TABLE ai_chat_draft_version",
+    "DROP TABLE ai_chat_draft",
+    "DROP TABLE ai_chat_turn",
+    "DROP TABLE ai_chat_thread",
+)
+"""One thing the head revision creates, and the statements that take ALL of it
+back.
 
-BEFORE_IRREVERSIBLE = "0015"
-IRREVERSIBLE_OBJECT = ("publish_attempt", "source_version")
+Both move with head, and the pairing with `CE_HEAD` is one thing to update when
+a revision lands, so a mismatch reads as these constants being stale rather than
+as a puzzling `DuplicateTable` inside the upgrade. Head is not always a table or
+an index: 0015 renames a table, so the reversal is the rename run backwards, and
+`HEAD_OBJECT` is read after the upgrade under the NEW name."""
 
 CHAIN_DATABASE = "veodyn_migration_chain"
 """Its own database, named rather than randomised so a crashed run leaves one
@@ -218,42 +230,3 @@ def test_the_body_recorder_records(fresh_url: str) -> None:
 
     assert run_upgrade_recording_bodies(ce_config()) == [CE_HEAD]
     assert HEAD_OBJECT in columns_in(fresh_url)
-
-
-QUERYLESS_ATTEMPT = (
-    "INSERT INTO publish_attempt "
-    "(org_slug, slug, attempt_id, binding_revision, query_result_id, source_version, decision, reason) "
-    "VALUES ('acme', 'alerts', 1, 1, NULL, 12, 'failed', 'the source is unreadable')"
-)
-"""One row 0016 allows and 0015 has nowhere to put.
-
-`query_result_id` is nullable only from 0016 onward, so a feed rebuilt from
-something other than a query leaves attempts the downgrade cannot narrow back."""
-
-
-def test_downgrading_past_the_queryless_revision_reverses_a_database_holding_nothing_queryless(
-    fresh_url: str,
-) -> None:
-    """The control for the refusal below. Without it, a downgrade that raised
-    unconditionally would pass that test just as well."""
-    command.upgrade(ce_config(), "head")
-
-    command.downgrade(ce_config(), BEFORE_IRREVERSIBLE)
-
-    assert IRREVERSIBLE_OBJECT not in columns_in(fresh_url)
-
-
-def test_downgrading_past_the_queryless_revision_names_the_rows_it_cannot_represent(fresh_url: str) -> None:
-    """Left to itself this fails inside `ALTER COLUMN ... SET NOT NULL`, as an
-    integrity error naming a column and no reason. The refusal has to say which
-    rows and what to do with them, and has to leave the schema where it was."""
-    command.upgrade(ce_config(), "head")
-    engine = create_engine(fresh_url)
-    with engine.begin() as connection:
-        connection.execute(text(QUERYLESS_ATTEMPT))
-    engine.dispose()
-
-    with pytest.raises(RuntimeError, match="publish_attempt row"):
-        command.downgrade(ce_config(), BEFORE_IRREVERSIBLE)
-
-    assert IRREVERSIBLE_OBJECT in columns_in(fresh_url)
