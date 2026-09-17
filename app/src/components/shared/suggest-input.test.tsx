@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test/utils'
 import { SuggestInput } from './suggest-input'
@@ -10,7 +10,10 @@ const ZONES = [{ value: 'America/Los_Angeles' }, { value: 'Europe/Berlin' }, { v
 function Harness({ suggestions = ZONES }: { suggestions?: { value: string; label?: string }[] }) {
   const [value, setValue] = useState('')
   return (
-    <SuggestInput id="zone" value={value} onChange={setValue} suggestions={suggestions} />
+    <div>
+      <p>somewhere else on the form</p>
+      <SuggestInput id="zone" value={value} onChange={setValue} suggestions={suggestions} />
+    </div>
   )
 }
 
@@ -72,6 +75,24 @@ describe('SuggestInput', () => {
     const offered = (await screen.findAllByRole('option')).map((option) => option.textContent)
     expect(offered[0]).toContain('Spanish')
     expect(offered[1]).toContain('Esperanto')
+  })
+
+  it('closes on an outside press even when the field keeps focus', async () => {
+    // The browser restores focus to this input when the popup closes, so blur
+    // cannot be what dismisses it: the list reopened on the restored focus and
+    // sat over the rest of the form. fireEvent presses without moving focus,
+    // which is the case user.click cannot reproduce under jsdom.
+    const user = userEvent.setup()
+    renderWithProviders(<Harness />)
+
+    await user.click(screen.getByRole('combobox'))
+    await user.keyboard('europe')
+    expect(await screen.findByText('Europe/Berlin')).toBeInTheDocument()
+
+    fireEvent.pointerDown(screen.getByText('somewhere else on the form'))
+
+    expect(screen.getByRole('combobox')).toHaveFocus()
+    expect(screen.queryByText('Europe/Berlin')).not.toBeInTheDocument()
   })
 
   it('offers nothing, and stays a plain field, when the vocabulary is empty', async () => {

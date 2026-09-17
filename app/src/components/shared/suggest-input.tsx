@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Command, CommandItem, CommandList } from '@/components/ui/command'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent } from '@/components/ui/popover'
@@ -74,6 +74,22 @@ export function SuggestInput({
   const needle = value.trim().toLowerCase()
   const matches = needle === '' ? suggestions : ranked(suggestions, needle)
 
+  // Blur alone does not close this. A press on a region that takes no focus
+  // leaves the input focused, so the list stayed open over the rest of the form
+  // until something focusable was clicked.
+  useEffect(() => {
+    if (!open) return
+    const closeUnlessInside = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null
+      if (!target) return
+      if (anchor?.contains(target)) return
+      if (target.closest('[data-slot="popover-content"]')) return
+      setOpen(false)
+    }
+    document.addEventListener('pointerdown', closeUnlessInside, true)
+    return () => document.removeEventListener('pointerdown', closeUnlessInside, true)
+  }, [open, anchor])
+
   return (
     <Popover open={open && matches.length > 0}>
       <Command
@@ -94,10 +110,11 @@ export function SuggestInput({
               onChange(event.target.value)
               setOpen(true)
             }}
-            onFocus={() => setOpen(true)}
+            onClick={() => setOpen(true)}
             onBlur={() => setOpen(false)}
             onKeyDown={(event) => {
               if (event.key === 'Escape') setOpen(false)
+              if (event.key === 'ArrowDown') setOpen(true)
             }}
           />
         </div>
