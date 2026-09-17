@@ -200,7 +200,12 @@ export default function FeedDetailPage({ params }: { params: Promise<{ slug: str
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}
         title={`Delete "${slug}"?`}
-        description={`Consumers of ${slug} start getting nothing at this address. A deleted slug is indistinguishable from one that never existed, and this cannot be undone.`}
+        description={
+          <>
+            {`Consumers of ${slug} start getting nothing at this address. A deleted slug is indistinguishable from one that never existed, and this cannot be undone.`}
+            <Slot id="publishedFeed.deleteNotice" props={{ slug }} fallback={null} />
+          </>
+        }
         isPending={deleteFeed.isPending}
         onConfirm={handleDelete}
       />

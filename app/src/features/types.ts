@@ -79,6 +79,7 @@ export type SingleSlotId =
   | 'publishedFeed.tokenPanel'
   | 'publishedFeed.blockedAttribution'
   | 'publishedFeed.schedule'
+  | 'publishedFeed.deleteNotice'
   | 'dataset.records'
   | 'dataset.headerActions'
 
@@ -148,6 +149,7 @@ export interface SlotProps {
    * honour one.
    */
   'publishedFeed.schedule': { slug: string }
+  'publishedFeed.deleteNotice': { slug: string }
   /**
    * No props: a favorites section reads the caller's own starred ids through
    * the community `useVeodynFavorites` and intersects them with its own list.
