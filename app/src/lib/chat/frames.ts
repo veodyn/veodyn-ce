@@ -67,6 +67,8 @@ export type ChatFrame = {
 
 export type ChatToolRequest = z.infer<(typeof frameData)['tool_request']>
 
+export const CHAT_EVENTS = Object.keys(frameData) as ChatEvent[]
+
 export const TERMINAL_EVENTS: ReadonlySet<ChatEvent> = new Set<ChatEvent>(['turn_done', 'error'])
 
 function isEvent(value: string): value is ChatEvent {
