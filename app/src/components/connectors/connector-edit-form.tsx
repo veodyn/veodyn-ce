@@ -84,10 +84,17 @@ export function ConnectorEditForm({
       <Card className="p-6">
         <p className="text-sm text-muted-foreground">{connectorHealthSentence(connector.health)}</p>
         <div>
-          <Label htmlFor={nameId} className="mb-1 block">
+          <Label htmlFor={nameId} className="mb-1 block" required>
             Name
           </Label>
-          <Input id={nameId} type="text" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input
+            id={nameId}
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            aria-required="true"
+          />
         </div>
         <p className="text-sm text-muted-foreground">
           Stored credentials are never read back. Say what should happen to each one: keep what this instance

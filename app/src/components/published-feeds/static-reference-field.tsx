@@ -14,7 +14,7 @@ export function StaticReferenceField({ control }: { control: StaticGtfsRefContro
 
   return (
     <div className="space-y-1">
-      <Label htmlFor={fieldId}>{LABEL}</Label>
+      <Label htmlFor={fieldId} required>{LABEL}</Label>
       {control.entering ? (
         <Input
           id={fieldId}
@@ -22,9 +22,11 @@ export function StaticReferenceField({ control }: { control: StaticGtfsRefContro
           value={control.value}
           onChange={(e) => control.enter(e.target.value)}
           placeholder="the static feed this realtime feed extends"
+          required
+          aria-required="true"
         />
       ) : (
-        <Select value={control.value} onValueChange={(v) => v && control.pick(v as string)}>
+        <Select value={control.value} onValueChange={(v) => v && control.pick(v as string)} required>
           <SelectTrigger id={fieldId} className="w-full font-mono text-sm">
             <SelectValue placeholder="Pick the static feed this realtime feed extends" />
           </SelectTrigger>

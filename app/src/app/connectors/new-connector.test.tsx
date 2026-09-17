@@ -168,6 +168,21 @@ describe('configuring a connector the registry declares', () => {
     expect((posted as { credentials: Record<string, unknown> }).credentials).toEqual({ loft_id: 'loft-4' })
   })
 
+  it('marks the Name field and required schema fields, and leaves the optional one unmarked', async () => {
+    const user = userEvent.setup()
+    await pick(user, 'Pigeon Post')
+
+    expect(screen.getByText('Name').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getAllByRole('textbox')[0]).toBeRequired()
+
+    expect(
+      screen.getByText('Loft identifier').querySelector('[data-slot="required-marker"]')
+    ).not.toBeNull()
+    expect(screen.getByLabelText(/^Loft identifier/)).toBeRequired()
+
+    expect(screen.getByText('Ring secret').querySelector('[data-slot="required-marker"]')).toBeNull()
+  })
+
   it('blocks a save that omits a required credential and names the field', async () => {
     const user = userEvent.setup()
     await pick(user, 'Town Crier')

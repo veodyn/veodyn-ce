@@ -47,7 +47,7 @@ export function QueryPicker({
             other branch and is not rendered once a query is picked, so the
             association would dangle. What is below is a name and a button, not
             a field. */}
-        <Label>Source query</Label>
+        <Label required>Source query</Label>
         <div className="flex items-center justify-between rounded-lg border border-input px-3 py-2">
           <span className="text-sm font-medium">{selected?.name ?? `query ${selectedQueryId}`}</span>
           <Button type="button" variant="ghost" size="sm" onClick={onClear}>
@@ -65,7 +65,9 @@ export function QueryPicker({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={searchId}>Source query</Label>
+      <Label htmlFor={searchId} required>
+        Source query
+      </Label>
       {sourceIsNotAQuery && (
         <p className="text-sm text-muted-foreground">
           This feed has no query behind it: whatever registered its producer rebuilds it. Picking a query

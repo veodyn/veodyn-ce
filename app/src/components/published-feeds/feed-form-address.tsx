@@ -33,7 +33,7 @@ export function AddressSection({
     <div className="space-y-3">
       <h2 className={SUBSECTION_HEADING}>Address</h2>
       <div className="space-y-1">
-        <Label htmlFor={slugId}>Slug</Label>
+        <Label htmlFor={slugId} required>Slug</Label>
         <Input
           id={slugId}
           type="text"
@@ -41,6 +41,8 @@ export function AddressSection({
           onChange={(event) => onSlugChange(event.target.value)}
           disabled={slugLocked}
           placeholder="vehicles-live"
+          required
+          aria-required="true"
         />
         {slugError && (
           <p role="alert" className="text-sm text-destructive">

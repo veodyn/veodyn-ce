@@ -76,7 +76,7 @@ describe('retire on failure', () => {
     await user.type(searchBox, 'Bike Share')
     await user.click(await screen.findByRole('button', { name: /Bike Share Station Availability/i }))
     await screen.findByRole('button', { name: 'Change' })
-    await user.type(screen.getByLabelText('Slug'), 'test-feed')
+    await user.type(screen.getByLabelText(/^Slug/), 'test-feed')
     for (const [field, column] of [
       ['vehicle_id', 'station_name'],
       ['latitude', 'lat'],

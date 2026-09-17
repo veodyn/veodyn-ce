@@ -3,7 +3,7 @@
 import { useId } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Label, RequiredMarker } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import type { FormField } from '@/components/forms/dynamic-form'
 import { blankValueFor, type CredentialAction, type CredentialEdits } from './connector-credentials'
@@ -50,7 +50,7 @@ function CredentialRow({
     <div className="space-y-2 border-t border-border pt-4 first:border-t-0 first:pt-0">
       <div className="text-sm font-medium">
         {field.title}
-        {field.required && <span className="ml-1 text-destructive">*</span>}
+        {field.required && <RequiredMarker />}
       </div>
       {field.description && <p className="text-sm text-muted-foreground">{field.description}</p>}
       {!forced && (
@@ -88,14 +88,15 @@ function CredentialRow({
               id={`${baseId}-value`}
               checked={Boolean(edit?.value)}
               onCheckedChange={(checked) => setValue(Boolean(checked))}
+              required={forced}
             />
-            <Label htmlFor={`${baseId}-value`} className="cursor-pointer font-normal">
+            <Label htmlFor={`${baseId}-value`} className="cursor-pointer font-normal" required={forced}>
               {field.title}
             </Label>
           </div>
         ) : (
           <>
-            <Label htmlFor={`${baseId}-value`} className="sr-only">
+            <Label htmlFor={`${baseId}-value`} className="sr-only" required={forced}>
               {field.title}
             </Label>
             <Input
@@ -104,6 +105,8 @@ function CredentialRow({
               value={String(edit?.value ?? '')}
               onChange={(e) => setValue(e.target.value)}
               placeholder={field.placeholder}
+              required={forced}
+              aria-required={forced || undefined}
             />
           </>
         ))}

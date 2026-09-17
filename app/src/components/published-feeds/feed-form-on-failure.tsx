@@ -102,7 +102,7 @@ export function OnFailureSection({
       </RadioGroup>
       {onError === 'last_good' && (
         <div className="space-y-1">
-          <Label htmlFor={ageId}>Maximum age (seconds)</Label>
+          <Label htmlFor={ageId} required>Maximum age (seconds)</Label>
           <Input
             id={ageId}
             type="number"
@@ -110,6 +110,8 @@ export function OnFailureSection({
             value={lastGoodMaxAgeSeconds}
             onChange={(e) => onLastGoodMaxAgeSecondsChange(e.target.value)}
             placeholder="300"
+            required
+            aria-required="true"
           />
           {ageError && (
             <p role="alert" className="text-sm text-destructive">

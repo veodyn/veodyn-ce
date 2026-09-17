@@ -117,7 +117,7 @@ describe('the static GTFS reference', () => {
     boundOn([aFeed('downtown', DOWNTOWN)])
     const onSubmit = renderForm()
 
-    await user.type(screen.getByLabelText('Slug'), 'second-feed')
+    await user.type(screen.getByLabelText(/^Slug/), 'second-feed')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ staticGtfsRef: DOWNTOWN }))
@@ -128,7 +128,7 @@ describe('the static GTFS reference', () => {
     boundOn([aFeed('downtown', DOWNTOWN), aFeed('harbor', HARBOR)])
     const onSubmit = renderForm()
 
-    await user.type(screen.getByLabelText('Slug'), 'third-feed')
+    await user.type(screen.getByLabelText(/^Slug/), 'third-feed')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).not.toHaveBeenCalled()
@@ -141,11 +141,28 @@ describe('the static GTFS reference', () => {
     const onSubmit = renderForm()
 
     expect(screen.queryByRole('combobox', { name: /static gtfs reference/i })).not.toBeInTheDocument()
-    await user.type(screen.getByLabelText('Static GTFS reference'), DOWNTOWN)
-    await user.type(screen.getByLabelText('Slug'), 'first-feed')
+    await user.type(screen.getByLabelText(/^Static GTFS reference/), DOWNTOWN)
+    await user.type(screen.getByLabelText(/^Slug/), 'first-feed')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ staticGtfsRef: DOWNTOWN }))
+  })
+
+  it('marks the static reference field as required, as free entry and as a picker', async () => {
+    boundOn([])
+    renderForm()
+
+    expect(
+      screen.getByText('Static GTFS reference').querySelector('[data-slot="required-marker"]')
+    ).not.toBeNull()
+    expect(screen.getByLabelText(/^Static GTFS reference/)).toBeRequired()
+  })
+
+  it('carries aria-required on the picker trigger once a reference is bound elsewhere', async () => {
+    boundOn([aFeed('downtown', DOWNTOWN), aFeed('harbor', HARBOR)])
+    renderForm()
+
+    expect(await theReferencePicker()).toHaveAttribute('aria-required', 'true')
   })
 
   it('keeps a second dataset reachable behind an explicit escape', async () => {
@@ -154,8 +171,8 @@ describe('the static GTFS reference', () => {
     const onSubmit = renderForm()
 
     await user.click(await theEscape())
-    await user.type(screen.getByLabelText('Static GTFS reference'), HARBOR)
-    await user.type(screen.getByLabelText('Slug'), 'harbor-feed')
+    await user.type(screen.getByLabelText(/^Static GTFS reference/), HARBOR)
+    await user.type(screen.getByLabelText(/^Slug/), 'harbor-feed')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ staticGtfsRef: HARBOR }))
@@ -167,7 +184,7 @@ describe('the static GTFS reference', () => {
     const onSubmit = renderForm()
 
     await user.click(await theEscape())
-    await user.type(screen.getByLabelText('Slug'), 'harbor-feed')
+    await user.type(screen.getByLabelText(/^Slug/), 'harbor-feed')
     await user.click(screen.getByRole('button', { name: 'Publish' }))
 
     expect(onSubmit).not.toHaveBeenCalled()

@@ -50,7 +50,7 @@ export function SystemInfoSection({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {systemFieldsFor(version).map((field) => (
           <div key={field} className="space-y-1">
-            <Label htmlFor={`${prefix}-${field}`} className="font-mono text-xs">
+            <Label htmlFor={`${prefix}-${field}`} className="font-mono text-xs" required>
               {field}
             </Label>
             {suggestions[field]?.length ? (
@@ -60,6 +60,7 @@ export function SystemInfoSection({
                 onChange={(next) => onChange(field, next)}
                 suggestions={suggestions[field]}
                 invalid={Boolean(errors[field])}
+                required
               />
             ) : (
               <Input
@@ -68,6 +69,8 @@ export function SystemInfoSection({
                 value={value[field] ?? ''}
                 aria-invalid={Boolean(errors[field])}
                 onChange={(event) => onChange(field, event.target.value)}
+                required
+                aria-required="true"
               />
             )}
             {errors[field] && (

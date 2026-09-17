@@ -107,6 +107,15 @@ describe('editing a gbfs binding', () => {
     expect(screen.queryByText('vehicle_id')).not.toBeInTheDocument()
   })
 
+  it('marks every system field required, since the version declares none optional', () => {
+    renderEdit()
+
+    for (const field of ['system_id', 'language', 'name', 'timezone']) {
+      expect(screen.getByText(field).querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    }
+    expect(screen.getByLabelText(/^name/)).toBeRequired()
+  })
+
   it('submits a vehicles binding under its own column map', async () => {
     // Both feeds are gbfs at 2.3, so the standard cannot be what picks the
     // vocabulary: read as stations, none of these fields would survive the
@@ -210,7 +219,7 @@ describe('editing a gbfs binding', () => {
   it('names a language subtag, and refuses one that is not the shape GBFS defines', async () => {
     const user = userEvent.setup()
     const onSubmit = renderEdit()
-    const language = screen.getByLabelText('language')
+    const language = screen.getByLabelText(/^language/)
 
     await user.clear(language)
     await user.type(language, 'English')

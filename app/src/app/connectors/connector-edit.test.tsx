@@ -245,6 +245,28 @@ describe('editing a configured connector', () => {
     await waitFor(() => expect(put).toEqual({ name: 'Agency crier', replace: { crier_repeats: 3 }, clear: [] }))
   })
 
+  it('marks required credential fields and leaves optional ones unmarked', async () => {
+    await render()
+
+    expect(screen.getByText('Crier API token').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByText('Room').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByText('Operator note').querySelector('[data-slot="required-marker"]')).toBeNull()
+    expect(screen.getByText('Ring the bell').querySelector('[data-slot="required-marker"]')).toBeNull()
+    expect(screen.getByText('Repeats').querySelector('[data-slot="required-marker"]')).toBeNull()
+  })
+
+  it('requires the value control only once a required credential has no stored value at all', async () => {
+    const user = userEvent.setup()
+    serve({ ...UNTESTED, configuredFields: ['crier_room'] })
+    await render()
+
+    expect(screen.getByLabelText(/^Crier API token/)).toBeRequired()
+    expect(screen.getByLabelText(/^Crier API token/)).toHaveAttribute('aria-required', 'true')
+
+    await choose(user, 'Room', /Replace it with a new value/)
+    expect(screen.getByLabelText(/^Room$/)).not.toBeRequired()
+  })
+
   it('demands a required credential that has never been configured', async () => {
     const user = userEvent.setup()
     serve({ ...UNTESTED, configuredFields: ['crier_room'] })

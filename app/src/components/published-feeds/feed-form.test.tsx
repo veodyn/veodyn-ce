@@ -152,6 +152,30 @@ describe('editing an existing binding', () => {
   })
 })
 
+describe('required field marking', () => {
+  it('marks the always-required fields, and leaves visibility unmarked', () => {
+    renderCreateForm()
+
+    expect(screen.getByText('Slug').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/^Slug/)).toBeRequired()
+
+    expect(screen.getByText('Source query').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByText('Visibility').querySelector('[data-slot="required-marker"]')).toBeNull()
+  })
+
+  it('requires the maximum age only once last known good is chosen', async () => {
+    const user = userEvent.setup()
+    renderCreateForm()
+
+    expect(screen.queryByLabelText(/maximum age/i)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('radio', { name: /last known good/i }))
+
+    expect(screen.getByText('Maximum age (seconds)').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/maximum age/i)).toBeRequired()
+  })
+})
+
 describe('the last-known-good age cap', () => {
   it('refuses to submit an empty cap rather than sending 0', async () => {
     const user = userEvent.setup()
@@ -161,7 +185,7 @@ describe('the last-known-good age cap', () => {
     await mapField(user, 'vehicle_id', 'station_name')
     await mapField(user, 'latitude', 'lat')
     await mapField(user, 'longitude', 'lon')
-    await user.type(screen.getByLabelText('Slug'), 'test-feed')
+    await user.type(screen.getByLabelText(/^Slug/), 'test-feed')
     await user.click(screen.getByRole('radio', { name: /last known good/i }))
 
     await user.click(screen.getByRole('button', { name: 'Publish' }))
@@ -180,7 +204,7 @@ describe('the last-known-good age cap', () => {
     await mapField(user, 'vehicle_id', 'station_name')
     await mapField(user, 'latitude', 'lat')
     await mapField(user, 'longitude', 'lon')
-    await user.type(screen.getByLabelText('Slug'), 'test-feed')
+    await user.type(screen.getByLabelText(/^Slug/), 'test-feed')
     await user.click(screen.getByRole('radio', { name: /last known good/i }))
     await user.type(screen.getByLabelText(/maximum age/i), '0')
 
@@ -198,7 +222,7 @@ describe('the last-known-good age cap', () => {
     await mapField(user, 'vehicle_id', 'station_name')
     await mapField(user, 'latitude', 'lat')
     await mapField(user, 'longitude', 'lon')
-    await user.type(screen.getByLabelText('Slug'), 'test-feed')
+    await user.type(screen.getByLabelText(/^Slug/), 'test-feed')
     await pickAStaticReference(user)
     await user.click(screen.getByRole('radio', { name: /last known good/i }))
     await user.type(screen.getByLabelText(/maximum age/i), '300')

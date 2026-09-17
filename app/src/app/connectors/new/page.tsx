@@ -98,7 +98,7 @@ export default function NewConnectorPage() {
           <PageHeader title={`New ${connectorType.displayName} Connector`} />
           <Card className="p-6">
             <div>
-              <Label htmlFor={nameId} className="mb-1 block">
+              <Label htmlFor={nameId} className="mb-1 block" required>
                 Name
               </Label>
               <Input
@@ -107,6 +107,8 @@ export default function NewConnectorPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Connector name"
+                required
+                aria-required="true"
               />
             </div>
             <DynamicForm fields={fields} values={form.values} onChange={form.onChange} />

@@ -18,6 +18,7 @@ interface SuggestInputProps {
   suggestions: Suggestion[]
   placeholder?: string
   invalid?: boolean
+  required?: boolean
 }
 
 const EXACT_CODE = 0
@@ -65,6 +66,7 @@ export function SuggestInput({
   suggestions,
   placeholder,
   invalid,
+  required,
 }: SuggestInputProps) {
   const [open, setOpen] = useState(false)
   // State-backed, not a ref: the positioner reads the anchor during its own
@@ -103,9 +105,11 @@ export function SuggestInput({
             role="combobox"
             aria-expanded={open && matches.length > 0}
             aria-invalid={invalid}
+            aria-required={required || undefined}
             autoComplete="off"
             value={value}
             placeholder={placeholder}
+            required={required}
             onChange={(event) => {
               onChange(event.target.value)
               setOpen(true)
