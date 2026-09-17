@@ -29,6 +29,20 @@ class DeliveryCode(StrEnum):
     UNSPECIFIED = "unspecified"
 
 
+PERMANENT_DELIVERY_CODES: frozenset[DeliveryCode] = frozenset(
+    {
+        DeliveryCode.REJECTED_BY_CHANNEL,
+        DeliveryCode.CREDENTIALS_REJECTED,
+        DeliveryCode.CONTENT_REJECTED,
+        DeliveryCode.RECALL_TARGET_GONE,
+    }
+)
+
+
+def is_permanent(code: DeliveryCode) -> bool:
+    return code in PERMANENT_DELIVERY_CODES
+
+
 WITHHELD = "<delivery handle withheld>"
 
 SUBCLASSING_REFUSED = (
@@ -143,4 +157,6 @@ class Connector(Protocol):
 
     def verify_credentials(self, credentials: Mapping[str, Any]) -> CredentialVerdict: ...
 
-    def deliver(self, rendering: Rendering, credentials: Mapping[str, Any]) -> DeliveryOutcome: ...
+    def deliver(
+        self, rendering: Rendering, credentials: Mapping[str, Any], idempotency_key: str
+    ) -> DeliveryOutcome: ...

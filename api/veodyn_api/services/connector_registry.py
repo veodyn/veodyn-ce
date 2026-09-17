@@ -35,8 +35,8 @@ class RegisteredConnector:
     def verify_credentials(self, credentials: Mapping[str, Any]) -> CredentialVerdict:
         return self.channel.verify_credentials(credentials)
 
-    def deliver(self, rendering: Rendering, credentials: Mapping[str, Any]) -> DeliveryOutcome:
-        return self.channel.deliver(rendering, credentials)
+    def deliver(self, rendering: Rendering, credentials: Mapping[str, Any], idempotency_key: str) -> DeliveryOutcome:
+        return self.channel.deliver(rendering, credentials, idempotency_key)
 
 
 class AlreadyRegistered(Exception):

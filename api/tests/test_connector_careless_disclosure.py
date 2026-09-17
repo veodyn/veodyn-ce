@@ -13,6 +13,7 @@ from tests.connector_stubs import (
     HANDLE_AS_CLASS_PROXY,
     HANDLE_AS_DECLARED_SECRET,
     HANDLE_AS_STRING,
+    KEY,
     ROOM,
     TOWN_CRIER_ID,
     CarelessConnector,
@@ -100,7 +101,7 @@ def test_a_careless_connector_cannot_write_the_token_into_a_stored_delivery_deta
     row = stored(db, leaking)
 
     with caplog.at_level(logging.DEBUG):
-        outcome = deliver_through(db, leaking, row, fits_the_contract())
+        outcome = deliver_through(db, leaking, row, fits_the_contract(), KEY)
 
     assert row.last_delivery_detail is not None
     assert GOOD_TOKEN not in row.last_delivery_detail
@@ -117,7 +118,7 @@ def test_a_connector_that_claims_success_still_records_our_own_sentence(
         row = stored(db, connector)
 
         with caplog.at_level(logging.DEBUG):
-            outcome = deliver_through(db, connector, row, fits_the_contract())
+            outcome = deliver_through(db, connector, row, fits_the_contract(), KEY)
 
         assert outcome.delivered is True
         assert outcome.code is DeliveryCode.DELIVERED
@@ -135,7 +136,7 @@ def test_a_handle_that_is_not_the_declared_secret_type_is_dropped_rather_than_ca
         row = stored(db, connector)
 
         with caplog.at_level(logging.DEBUG):
-            outcome = deliver_through(db, connector, row, fits_the_contract())
+            outcome = deliver_through(db, connector, row, fits_the_contract(), KEY)
 
         assert outcome.delivered is True
         assert outcome.reference is None
@@ -151,10 +152,10 @@ def test_a_handle_that_only_answers_isinstance_is_dropped_by_the_exact_type_chec
 ) -> None:
     for connector in careless(HANDLE_AS_CLASS_PROXY):
         row = stored(db, connector)
-        reported = connector.channel.deliver(fits_the_contract(), good_credentials())
+        reported = connector.channel.deliver(fits_the_contract(), good_credentials(), KEY)
 
         with caplog.at_level(logging.DEBUG):
-            outcome = deliver_through(db, connector, row, fits_the_contract())
+            outcome = deliver_through(db, connector, row, fits_the_contract(), KEY)
 
         assert isinstance(reported.reference, DeliveryHandle)
         assert type(reported.reference) is not DeliveryHandle
@@ -181,7 +182,7 @@ def test_a_handle_a_connector_carelessly_stuffed_with_its_own_token_renders_as_n
         row = stored(db, connector)
 
         with caplog.at_level(logging.DEBUG):
-            outcome = deliver_through(db, connector, row, fits_the_contract())
+            outcome = deliver_through(db, connector, row, fits_the_contract(), KEY)
             listed = api.get("/connectors", headers=auth())
             read = api.get(f"/connectors/{TOWN_CRIER_ID}", headers=auth())
 

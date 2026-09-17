@@ -15,14 +15,19 @@
 // server root layout through src/lib/theme-preference.ts, and this one imports
 // React and the error registry.
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
+import type { ClientConfig } from '@/lib/config-schema'
 import { AppError, ErrorIds } from '@/lib/errorIds'
 import type { AnyProposal, FeatureProposal } from '@/types/ai-create'
 import { FEATURES } from './generated-registry'
-import { featureList } from './index'
+import { enabledFeatures, featureList } from './index'
 import type { ProposalCardProps, ProposalContribution } from './proposal-types'
 import type { FeatureDescriptor } from './types'
 
 type Card = LazyExoticComponent<ComponentType<ProposalCardProps>>
+
+export function enabledProposalRegistry(config: ClientConfig): Record<string, FeatureDescriptor> {
+  return enabledFeatures(config, FEATURES)
+}
 
 /**
  * Lazy cards, keyed on the registry object and then the proposal kind.

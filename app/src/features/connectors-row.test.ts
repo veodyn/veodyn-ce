@@ -4,7 +4,7 @@ import { Radio } from 'lucide-react'
 import { describe, expect, it } from 'vitest'
 import { NEUTRAL_CONFIG, toClientConfig, type ClientConfig } from '@/lib/config-schema'
 import { buildSidebarSections, type SidebarModelInput } from '@/lib/sidebar-nav'
-import { enabledFeatures, featureNavRows, type FeatureDescriptor } from './index'
+import { enabledFeatures, featureNavRows, installsNoFeaturePackages, type FeatureDescriptor } from './index'
 
 const CONFIG = toClientConfig(NEUTRAL_CONFIG)
 
@@ -60,7 +60,10 @@ describe('the Admin Connectors row', () => {
     expect(existsSync(join(process.cwd(), 'src', 'app', 'connectors', 'page.tsx'))).toBe(true)
   })
 
-  it('is contributed by no package a stock community build installs', () => {
-    expect(featureNavRows('admin').map((row) => row.href)).not.toContain('/connectors')
-  })
+  it.skipIf(!installsNoFeaturePackages())(
+    'is contributed by no package a stock community build installs',
+    () => {
+      expect(featureNavRows('admin').map((row) => row.href)).not.toContain('/connectors')
+    }
+  )
 })

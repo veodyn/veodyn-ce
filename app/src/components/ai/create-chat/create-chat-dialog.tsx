@@ -15,6 +15,8 @@ import {
   InputGroupAddon,
   InputGroupTextarea,
 } from '@/components/ui/input-group'
+import { useConfig } from '@/components/config/config-provider'
+import { enabledProposalRegistry } from '@/features/proposals'
 import { Label } from '@/components/ui/label'
 import {
   MessageScroller,
@@ -60,7 +62,7 @@ export function CreateChatDialog({ kind, onClose, targetDashboardId }: CreateCha
   const composerRef = useRef<HTMLTextAreaElement>(null)
 
   const composer = composerState({ turns: chat.turns, sending: chat.sending, creating })
-  const manual = manualPath(kind)
+  const manual = manualPath(kind, enabledProposalRegistry(useConfig()))
 
   function requestClose() {
     // A create in flight is not cancellable: the objects it has written already

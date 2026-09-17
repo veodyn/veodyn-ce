@@ -13,7 +13,8 @@
 // half-drawn or thrown, because a community browser talking to a service that
 // has the pack is an ordinary state during a rolling deploy, not a fault.
 import { Suspense, type ReactElement, type ReactNode } from 'react'
-import { resolveContributedProposal } from '@/features/proposals'
+import { useConfig } from '@/components/config/config-provider'
+import { enabledProposalRegistry, resolveContributedProposal } from '@/features/proposals'
 import type { AnyProposal, FeatureProposal } from '@/types/ai-create'
 import { DashboardProposalCard } from './dashboard-proposal'
 import { DashboardEditProposalCard } from './dashboard-edit-proposal'
@@ -55,7 +56,7 @@ function ContributedCard({
   onCreated,
   onBusyChange,
 }: Handlers & { proposal: FeatureProposal }): ReactNode {
-  const resolved = resolveContributedProposal(proposal)
+  const resolved = resolveContributedProposal(proposal, enabledProposalRegistry(useConfig()))
   if (!resolved) return null
   const { Card } = resolved
   return (

@@ -161,4 +161,19 @@ describe('config-schema', () => {
     })
     expect(toClientConfig(veodynConfigSchema.parse({})).messages).toEqual({ enabled: false })
   })
+
+  it('refuses connectors.enabled without messages.enabled, because a connector carries a message', () => {
+    expect(() => veodynConfigSchema.parse({ connectors: { enabled: true } })).toThrow()
+    expect(() =>
+      veodynConfigSchema.parse({ messages: { enabled: false }, connectors: { enabled: true } })
+    ).toThrow()
+
+    const both = veodynConfigSchema.parse({
+      messages: { enabled: true },
+      connectors: { enabled: true },
+    })
+
+    expect([both.messages.enabled, both.connectors.enabled]).toEqual([true, true])
+    expect(veodynConfigSchema.parse({ messages: { enabled: true } }).connectors.enabled).toBe(false)
+  })
 })

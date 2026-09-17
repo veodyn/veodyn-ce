@@ -179,6 +179,11 @@ export const veodynConfigSchema = z.object({
     .default({}),
 })
   .strict()
+  .refine((config) => !config.connectors.enabled || config.messages.enabled, {
+    message:
+      'connectors.enabled requires messages.enabled: a connector is an outbound channel for a service message, and with messages off there is nothing to send through it',
+    path: ['connectors', 'enabled'],
+  })
 
 export type VeodynConfig = z.infer<typeof veodynConfigSchema>
 

@@ -36,6 +36,7 @@ BAD_TOKEN = "crier-expired-0000"
 ROOM = "market-square"
 NOTE = "rings the bell twice"
 REQUIRED_FOOTER = "Reply STOP to opt out."
+KEY = "default:8f3a2b0c4d1e"
 
 HANDLE_AS_STRING = "handle_string"
 HANDLE_AS_DECLARED_SECRET = "handle_secret"
@@ -85,6 +86,7 @@ class TownCrierConnector:
     recallable: bool = True
     verified_with: list[dict[str, Any]] = field(default_factory=list)
     delivered: list[Rendering] = field(default_factory=list)
+    idempotency_keys: list[str] = field(default_factory=list)
     raises_on_verify: bool = False
     raises_on_deliver: bool = False
     next_delivery_succeeds: bool = True
@@ -97,10 +99,11 @@ class TownCrierConnector:
             return CredentialVerdict(accepted=True)
         return CredentialVerdict(accepted=False, code=VerdictCode.REJECTED, fields=("crier_token",))
 
-    def deliver(self, rendering: Rendering, credentials: Mapping[str, Any]) -> DeliveryOutcome:
+    def deliver(self, rendering: Rendering, credentials: Mapping[str, Any], idempotency_key: str) -> DeliveryOutcome:
         if self.raises_on_deliver:
             raise RuntimeError(f"town crier exploded holding {credentials.get('crier_token')}")
         self.delivered.append(rendering)
+        self.idempotency_keys.append(idempotency_key)
         if not self.next_delivery_succeeds:
             return DeliveryOutcome(delivered=False, code=DeliveryCode.CHANNEL_UNAVAILABLE)
         return DeliveryOutcome(delivered=True, code=DeliveryCode.DELIVERED)
@@ -136,7 +139,7 @@ class CarelessConnector:
             fields=(token, f"crier_token={token}", "crier_token"),
         )
 
-    def deliver(self, rendering: Rendering, credentials: Mapping[str, Any]) -> DeliveryOutcome:
+    def deliver(self, rendering: Rendering, credentials: Mapping[str, Any], idempotency_key: str) -> DeliveryOutcome:
         token = self._remember(credentials)
         if self.mode == "raises":
             raise RuntimeError(f"the crier token is {token}")

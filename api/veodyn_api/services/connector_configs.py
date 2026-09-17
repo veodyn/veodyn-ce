@@ -168,7 +168,11 @@ def record_delivery(
 
 
 def deliver_through(
-    db: Session, connector: RegisteredConnector, row: ConnectorConfiguration, rendering: Rendering
+    db: Session,
+    connector: RegisteredConnector,
+    row: ConnectorConfiguration,
+    rendering: Rendering,
+    idempotency_key: str,
 ) -> DeliveryOutcome:
     violations = contract_violations(connector.content_contract, rendering)
     if violations:
@@ -176,7 +180,7 @@ def deliver_through(
             f"the rendering does not meet what {connector.connector_id} accepts: " + "; ".join(violations)
         )
     try:
-        reported: object = connector.deliver(rendering, row.credentials)
+        reported: object = connector.deliver(rendering, row.credentials, idempotency_key)
     except Exception:
         reported = None
     outcome = outcome_of(reported)

@@ -14,6 +14,8 @@ import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
+import { useConfig } from '@/components/config/config-provider'
+import { enabledProposalRegistry } from '@/features/proposals'
 import { cn } from '@/lib/utils'
 import type { CreateKind } from '@/types/ai-create'
 import { manualPath, openingPrompt, type ChatTurn } from './create-chat-model'
@@ -42,7 +44,7 @@ export function CreateChatTranscript({
   onAnswer,
   onRetry,
 }: CreateChatTranscriptProps) {
-  const manual = manualPath(kind)
+  const manual = manualPath(kind, enabledProposalRegistry(useConfig()))
   const lastSeq = turns[turns.length - 1]?.seq
 
   return (
