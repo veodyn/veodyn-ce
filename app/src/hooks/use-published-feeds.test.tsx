@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useMockDataStore } from '@/stores/mock-data-store'
-import { useAttempts, usePublishNow, usePublishedFeeds, useQueryResultColumns } from './use-published-feeds'
+import {
+  useAttempts,
+  usePublishNow,
+  usePublishedFeed,
+  usePublishedFeeds,
+  useQueryResultColumns,
+} from './use-published-feeds'
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -14,6 +20,31 @@ describe('published feed hooks in mock mode', () => {
     const { result } = renderHook(() => usePublishedFeeds(), { wrapper })
     await waitFor(() => expect(result.current.data).toBeDefined())
     expect(result.current.data?.[0].slug).toBe('vehicles-live')
+  })
+
+  it('lists a feed that reaches the store after the first read, as a contributed one does', async () => {
+    const { result } = renderHook(() => usePublishedFeeds(), { wrapper })
+    await waitFor(() => expect(result.current.data).toBeDefined())
+    const before = result.current.data?.length ?? 0
+
+    useMockDataStore.setState((s) => ({
+      publishedFeeds: [...s.publishedFeeds, { ...s.publishedFeeds[0], slug: 'arrives-late' }],
+    }))
+
+    await waitFor(() => expect(result.current.data?.length).toBe(before + 1))
+    expect(result.current.data?.some((feed) => feed.slug === 'arrives-late')).toBe(true)
+  })
+
+  it('reads by slug a feed that reaches the store after the first read', async () => {
+    const { result } = renderHook(() => usePublishedFeed('reaches-late'), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toBeNull()
+
+    useMockDataStore.setState((s) => ({
+      publishedFeeds: [...s.publishedFeeds, { ...s.publishedFeeds[0], slug: 'reaches-late' }],
+    }))
+
+    await waitFor(() => expect(result.current.data?.slug).toBe('reaches-late'))
   })
 
   it('reads a feed history newest first', async () => {

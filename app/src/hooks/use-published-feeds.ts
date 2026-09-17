@@ -52,10 +52,14 @@ export interface QueryResultColumns {
   columns: string[]
 }
 
+function keyThatFollowsTheStore(key: readonly unknown[], feeds: PublishedFeed[]): unknown[] {
+  return USE_REAL_API ? [...key] : [...key, feeds]
+}
+
 export function usePublishedFeeds() {
   const feeds = useMockDataStore((s) => s.publishedFeeds)
   return useQuery({
-    queryKey: LIST_KEY,
+    queryKey: keyThatFollowsTheStore(LIST_KEY, feeds),
     // The sidecar 503s until its URL is set, which is the agreed "not wired
     // yet" signal. Only a 503 falls back; a 4xx or 5xx from a configured
     // backend is a real failure and must surface.
@@ -67,7 +71,7 @@ export function usePublishedFeeds() {
 export function usePublishedFeed(slug: string | undefined) {
   const feeds = useMockDataStore((s) => s.publishedFeeds)
   return useQuery({
-    queryKey: feedKey(slug ?? ''),
+    queryKey: keyThatFollowsTheStore(feedKey(slug ?? ''), feeds),
     enabled: slug != null,
     queryFn: async ({ signal }): Promise<PublishedFeed | null> => {
       const fixture = () => feeds.find((f) => f.slug === slug) ?? null
