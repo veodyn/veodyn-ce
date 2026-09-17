@@ -1107,8 +1107,15 @@
             "type": "boolean"
           },
           "queryResultId": {
-            "title": "Queryresultid",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryresultid"
           },
           "reason": {
             "title": "Reason",
@@ -1282,8 +1289,15 @@
             "type": "string"
           },
           "queryId": {
-            "title": "Queryid",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryid"
           },
           "revision": {
             "title": "Revision",

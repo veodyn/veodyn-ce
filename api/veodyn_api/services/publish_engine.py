@@ -13,7 +13,19 @@ is a worker loop, so each returns an `AttemptResult` and leaves a row behind.
 **Fails closed.** `ValidatorUnavailable` and a verdict from zero enabled rules
 are both failed attempts, never passes: an empty finding list from a validator
 that never answered is indistinguishable from a clean feed. On any decision but
-`published` the pointer does not move.
+`published` the pointer does not move, unless the binding declares
+`retire_on_failure`, which is the one setting that takes a feed dark rather than
+leaving it serving what it last validated.
+
+**Ordering is a source version, not a query result id.** A query-backed feed
+fills it from the result id and behaves exactly as it always has; a feed built
+from an aggregate has no result id and supplies its own monotonic number.
+Never a clock: two attempts inside one tick would compare equal, and equal is
+what this guard refuses.
+
+**Production is a registration, not a branch.** An entity declares the producer
+that builds it, so widening the rail is a `register_producer` call rather than
+an edit here, and every producer reaches the same shared tail.
 
 **The pointer and the lineage are scoped differently.** The served pointer is
 per feed, because the partial unique index is on `(org_slug, slug)` alone.
@@ -22,24 +34,31 @@ the staleness comparison) is scoped to one revision, because a binding edit
 bumps the revision and changes what the compared numbers mean.
 """
 
-from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from veodyn_api.models.publish_attempt import PublishAttempt
 from veodyn_api.models.published_feed import PublishedFeed
-from veodyn_api.services.finding_json import findings_as_json
 from veodyn_api.services.publish_produce import (
     GbfsPublisher,
+    Production,
     Refused,
     Validate,
-    produce_gbfs,
-    produce_gtfs_rt,
+    anything_is_registered_under,
+    producer_for,
 )
-from veodyn_api.services.published_feed_validator import Finding, ValidationOutcome
+from veodyn_api.services.publish_record import (
+    AttemptResult,
+    AttemptSource,
+    current_artifact,
+    of_current_revision,
+    previous_artifact_of_revision,
+    published_high_water_mark,
+    record,
+    record_and_retire_if_the_binding_says_to,
+)
 
 __all__ = [
     "AttemptResult",
@@ -50,16 +69,6 @@ __all__ = [
     "run_attempt",
 ]
 
-_GBFS_STANDARD = "gbfs"
-
-# The entities each standard can publish in a community build. A pack widens the
-# binding vocabulary, and an entity this engine cannot serialize is a failed
-# attempt rather than an exception.
-_SUPPORTED_ENTITIES: dict[str, frozenset[str]] = {
-    "gtfs-rt": frozenset({"vehicle_positions"}),
-    _GBFS_STANDARD: frozenset({"stations", "vehicles"}),
-}
-
 # The partial unique index behind the served pointer. Matched by name because
 # only this one collision is an ordinary outcome; any other integrity error on
 # the publish path is a defect and has to keep raising.
@@ -69,107 +78,15 @@ SUPERSEDED_REASON = "superseded by a concurrent publish for this feed"
 BINDING_RETIRED_REASON = "the binding was retired while this attempt was running"
 
 
-@dataclass(frozen=True)
-class AttemptResult:
-    """What the attempt decided, why, and everything the validator said.
-
-    `findings` carries warnings on a published attempt too, so a slow drift into
-    non-conformance is visible before it becomes an error.
-    """
-
-    decision: str
-    reason: str
-    findings: tuple[Finding, ...]
-
-
-def current_artifact(db: Session, feed: PublishedFeed) -> PublishAttempt | None:
-    """The artifact the endpoint is serving, whatever revision produced it.
-
-    Not scoped to `feed.revision`: the partial unique index is on
-    `(org_slug, slug)`, so this is the row a publish has to clear even when a
-    binding edit since means it was built from a column map that no longer
-    exists. Scoping it to the current revision leaves the old row uncleared,
-    which is a unique violation on the next publish.
-
-    For anything that compares one artifact to the next, ask
-    `previous_artifact_of_revision` instead.
-    """
-    return db.execute(
-        select(PublishAttempt).where(
-            PublishAttempt.org_slug == feed.org_slug,
-            PublishAttempt.slug == feed.slug,
-            PublishAttempt.is_current.is_(True),
-        )
-    ).scalar_one_or_none()
-
-
-def previous_artifact_of_revision(db: Session, feed: PublishedFeed) -> PublishAttempt | None:
-    """The served artifact, but only when this binding revision produced it.
-
-    Two comparisons read this rather than `current_artifact`, and both are
-    meaningless across a revision boundary:
-
-    - The iteration rules (E017/E018) compare consecutive feeds, and two feeds
-      built from different column maps are not two versions of one feed.
-    - Staleness compares `query_result_id`s, which are row ids in one query's
-      result history, so ids from two lineages are unordered against each other.
-    """
-    return _of_current_revision(current_artifact(db, feed), feed)
-
-
-def _of_current_revision(artifact: PublishAttempt | None, feed: PublishedFeed) -> PublishAttempt | None:
-    if artifact is None or artifact.binding_revision != feed.revision:
-        return None
-    return artifact
-
-
-def _record(
-    db: Session,
-    feed: PublishedFeed,
-    query_result_id: int,
-    decision: str,
-    reason: str,
-    outcome: ValidationOutcome | None = None,
-    feed_bytes: bytes | None = None,
-    feed_timestamp: int | None = None,
-    feed_files: dict[str, Any] | None = None,
-) -> AttemptResult:
-    """Write the attempt down and answer with it.
-
-    The two artifact columns default to None and are passed only on the
-    publishing path, exactly one of them per standard. The database holds the
-    same line with a CHECK, because a blocked artifact carrying an artifact is
-    one query away from being served.
-    """
-    findings = outcome.findings if outcome is not None else ()
-    db.add(
-        PublishAttempt(
-            org_slug=feed.org_slug,
-            slug=feed.slug,
-            binding_revision=feed.revision,
-            query_result_id=query_result_id,
-            decision=decision,
-            reason=reason,
-            feed_bytes=feed_bytes,
-            feed_files=feed_files,
-            feed_timestamp=feed_timestamp,
-            findings=findings_as_json(findings),
-            enabled_rules=list(outcome.enabled_rules) if outcome is not None else [],
-            is_current=decision == "published",
-        )
-    )
-    db.commit()
-    return AttemptResult(decision=decision, reason=reason, findings=findings)
-
-
 def run_attempt(
     db: Session,
     feed: PublishedFeed,
     rows: list[dict[str, Any]],
-    query_result_id: int,
+    query_result_id: int | None,
     feed_timestamp: int,
     validate: Validate,
     *,
+    source_version: int | None = None,
     gbfs: GbfsPublisher | None = None,
 ) -> AttemptResult:
     """Serialize, validate, decide, record. Never raises for an expected failure.
@@ -178,61 +95,77 @@ def run_attempt(
     positionally from another repository. A gbfs feed reaching a worker that
     passed none is a failed attempt, not a crash.
 
-    Only the production step differs by standard. Everything from the verdict
-    onward is shared, so a second standard cannot quietly acquire a weaker
-    ordering guard or a looser pointer move.
+    `source_version` is keyword-only for the same reason, and defaults to
+    `query_result_id`, so a caller that has never heard of it orders exactly as
+    it always did. A caller with no query behind it passes None for the result
+    id and a monotonic number of its own here.
+
+    Only the production step differs by entity, and it is a registered producer
+    rather than a branch. Everything from the verdict onward is shared, so a
+    second standard cannot quietly acquire a weaker ordering guard or a looser
+    pointer move.
     """
-    supported = _SUPPORTED_ENTITIES.get(feed.standard)
-    if supported is None:
-        return _record(db, feed, query_result_id, "failed", f"standard {feed.standard!r} is not supported yet")
-    if feed.entity not in supported:
-        return _record(db, feed, query_result_id, "failed", f"entity {feed.entity!r} is not supported yet")
+    version = query_result_id if source_version is None else source_version
+    if version is None:
+        raise ValueError("an attempt orders on a query result id or an explicit source version, and got neither")
+    source = AttemptSource(version=version, query_result_id=query_result_id)
+
+    if not anything_is_registered_under(feed.standard):
+        reason = f"standard {feed.standard!r} is not supported yet"
+        return record_and_retire_if_the_binding_says_to(db, feed, source, "failed", reason)
+    producer = producer_for(feed.standard, feed.entity)
+    if producer is None:
+        reason = f"entity {feed.entity!r} is not supported yet"
+        return record_and_retire_if_the_binding_says_to(db, feed, source, "failed", reason)
 
     # Two rows, two questions. `served` is the row a publish must clear, whatever
     # revision built it; `previous` is the artifact this attempt succeeds, which
     # exists only within one revision.
     served = current_artifact(db, feed)
-    previous = _of_current_revision(served, feed)
+    previous = of_current_revision(served, feed)
 
-    if previous is not None and previous.query_result_id >= query_result_id:
-        # Attempts can finish out of order, and the endpoint must never serve an
-        # older result than the one already published. Only within one revision:
-        # these ids are one query's own row ids, so comparing across two lineages
-        # refuses valid results forever and wedges the feed.
-        return _record(
+    watermark = published_high_water_mark(db, feed)
+    if watermark is not None and watermark >= version:
+        return record(
             db,
             feed,
-            query_result_id,
+            source,
             "failed",
-            f"query result {query_result_id} is not newer than the published {previous.query_result_id}",
+            f"source version {version} is not newer than the published {watermark}",
         )
 
     try:
-        if feed.standard == _GBFS_STANDARD:
-            outcome, feed_bytes, feed_files = produce_gbfs(feed, rows, feed_timestamp, gbfs)
-        else:
-            outcome, feed_bytes, feed_files = produce_gtfs_rt(feed, rows, feed_timestamp, previous, validate)
+        outcome, feed_bytes, feed_files = producer(
+            Production(
+                feed=feed,
+                rows=rows,
+                feed_timestamp=feed_timestamp,
+                previous_artifact_of_this_revision=previous,
+                validate=validate,
+                gbfs=gbfs,
+            )
+        )
     except Refused as refusal:
-        return _record(db, feed, query_result_id, "failed", refusal.reason)
+        return record_and_retire_if_the_binding_says_to(db, feed, source, "failed", refusal.reason)
 
     if not outcome.enabled_rules:
         # No rule produced this verdict, so it is not evidence about the feed.
         # Recorded as failed rather than blocked because there is no finding to
         # blame. Re-checked here because `validate` is injected.
-        return _record(
+        return record_and_retire_if_the_binding_says_to(
             db,
             feed,
-            query_result_id,
+            source,
             "failed",
             "validator reported no enabled rules, so the verdict covers nothing",
             outcome,
         )
 
     if outcome.has_error:
-        return _record(
+        return record_and_retire_if_the_binding_says_to(
             db,
             feed,
-            query_result_id,
+            source,
             "blocked",
             f"{len(outcome.errors)} conformance error(s)",
             outcome,
@@ -246,7 +179,8 @@ def run_attempt(
     revision = db.execute(select(PublishedFeed.revision).where(*identity).with_for_update()).scalar_one_or_none()
     if revision != feed.revision:
         retired = "deleted" if revision is None else f"edited to revision {revision}"
-        return _record(db, feed, query_result_id, "failed", f"{BINDING_RETIRED_REASON} ({retired})")
+        reason = f"{BINDING_RETIRED_REASON} ({retired})"
+        return record(db, feed, source, "failed", reason)
 
     try:
         if served is not None:
@@ -257,10 +191,10 @@ def run_attempt(
             served.is_current = False
             db.flush()
 
-        return _record(
+        return record(
             db,
             feed,
-            query_result_id,
+            source,
             "published",
             "",
             outcome,
@@ -276,4 +210,4 @@ def run_attempt(
         # the index let exactly one replace it. The loser rolls its own clear back
         # and records the attempt, so the tick leaves a trace.
         db.rollback()
-        return _record(db, feed, query_result_id, "failed", SUPERSEDED_REASON)
+        return record(db, feed, source, "failed", SUPERSEDED_REASON)

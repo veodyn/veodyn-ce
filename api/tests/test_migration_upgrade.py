@@ -44,14 +44,12 @@ from tests.migration_chains import (
     ce_config,
 )
 
-HEAD_OBJECT = ("capture_expectation", "feed_id")
+HEAD_OBJECT = ("publish_attempt", "source_version")
 HEAD_OBJECT_DROP = (
-    # The model declares no check constraint, so create_all never makes one;
-    # it has to be added back before 0015 can rename it.
-    "ALTER TABLE capture_expectation ADD CONSTRAINT ck_feed_expectation_positive "
-    "CHECK (expected_interval_seconds > 0)",
-    "ALTER TABLE capture_expectation RENAME CONSTRAINT capture_expectation_pkey TO feed_expectation_pkey",
-    "ALTER TABLE capture_expectation RENAME TO feed_expectation",
+    "ALTER TABLE publish_attempt DROP COLUMN source_version",
+    "ALTER TABLE publish_attempt ALTER COLUMN query_result_id SET NOT NULL",
+    "ALTER TABLE published_feed DROP COLUMN retire_on_failure",
+    "ALTER TABLE published_feed ALTER COLUMN query_id SET NOT NULL",
 )
 """One thing the head revision creates, and the statements that take ALL of it
 back.
@@ -230,4 +228,41 @@ def test_the_body_recorder_records(fresh_url: str) -> None:
     engine.dispose()
 
     assert run_upgrade_recording_bodies(ce_config()) == [CE_HEAD]
+    assert HEAD_OBJECT in columns_in(fresh_url)
+
+
+QUERYLESS_ATTEMPT = (
+    "INSERT INTO publish_attempt "
+    "(org_slug, slug, attempt_id, binding_revision, query_result_id, source_version, decision, reason) "
+    "VALUES ('acme', 'alerts', 1, 1, NULL, 12, 'failed', 'the source is unreadable')"
+)
+"""One row 0016 allows and 0015 has nowhere to put.
+
+`query_result_id` is nullable only from 0016 onward, so a feed rebuilt from
+something other than a query leaves attempts the downgrade cannot narrow back."""
+
+
+def test_the_head_downgrade_reverses_a_database_holding_nothing_queryless(fresh_url: str) -> None:
+    """The control for the refusal below. Without it, a downgrade that raised
+    unconditionally would pass that test just as well."""
+    command.upgrade(ce_config(), "head")
+
+    command.downgrade(ce_config(), CE_PREVIOUS)
+
+    assert HEAD_OBJECT not in columns_in(fresh_url)
+
+
+def test_the_head_downgrade_names_the_rows_it_cannot_represent(fresh_url: str) -> None:
+    """Left to itself this fails inside `ALTER COLUMN ... SET NOT NULL`, as an
+    integrity error naming a column and no reason. The refusal has to say which
+    rows and what to do with them, and has to leave the schema where it was."""
+    command.upgrade(ce_config(), "head")
+    engine = create_engine(fresh_url)
+    with engine.begin() as connection:
+        connection.execute(text(QUERYLESS_ATTEMPT))
+    engine.dispose()
+
+    with pytest.raises(RuntimeError, match="publish_attempt row"):
+        command.downgrade(ce_config(), CE_PREVIOUS)
+
     assert HEAD_OBJECT in columns_in(fresh_url)

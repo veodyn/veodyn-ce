@@ -14,7 +14,8 @@ rule the bad bytes happen to trip. And every expected failure is a `Refused`
 carrying the sentence to record, never an exception the worker has to catch.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
 
@@ -44,6 +45,21 @@ class GbfsPublisher:
     validate: Callable[[dict[str, Any], str, str], ValidationOutcome]
 
 
+@dataclass(frozen=True)
+class Production:
+    feed: PublishedFeed
+    rows: list[dict[str, Any]]
+    feed_timestamp: int
+    previous_artifact_of_this_revision: PublishAttempt | None
+    validate: Validate
+    gbfs: GbfsPublisher | None
+
+
+Producer = Callable[[Production], Produced]
+
+_PRODUCERS: dict[str, dict[str, Producer]] = {}
+
+
 class Refused(Exception):
     """An expected failure carrying the sentence the attempt records."""
 
@@ -52,16 +68,44 @@ class Refused(Exception):
         self.reason = reason
 
 
-def produce_gtfs_rt(
-    feed: PublishedFeed,
-    rows: list[dict[str, Any]],
-    feed_timestamp: int,
-    previous: PublishAttempt | None,
-    validate: Validate,
-) -> Produced:
-    """One GTFS-Realtime message, validated against the binding's static schedule."""
+class AlreadyRegistered(Exception):
+    pass
+
+
+def register_producer(standard: str, entity: str, producer: Producer) -> None:
+    registered = _PRODUCERS.setdefault(standard, {})
+    if entity in registered:
+        raise AlreadyRegistered(
+            f"{standard} {entity} is already built by {registered[entity]!r}, and {producer!r} would replace it. "
+            "Two producers under one entity are two lineages of source version, "
+            "which the ordering guard would compare as one."
+        )
+    registered[entity] = producer
+
+
+def producer_for(standard: str, entity: str) -> Producer | None:
+    return _PRODUCERS.get(standard, {}).get(entity)
+
+
+def anything_is_registered_under(standard: str) -> bool:
+    return bool(_PRODUCERS.get(standard))
+
+
+@contextmanager
+def restored_producers() -> Iterator[None]:
+    saved = {standard: dict(producers) for standard, producers in _PRODUCERS.items()}
     try:
-        feed_bytes = serialize_vehicle_positions(rows, feed.column_map, feed_timestamp)
+        yield
+    finally:
+        _PRODUCERS.clear()
+        _PRODUCERS.update(saved)
+
+
+def produce_gtfs_rt(production: Production) -> Produced:
+    """One GTFS-Realtime message, validated against the binding's static schedule."""
+    feed = production.feed
+    try:
+        feed_bytes = serialize_vehicle_positions(production.rows, feed.column_map, production.feed_timestamp)
     except SerializationError as exc:
         raise Refused(exc.reason) from exc
 
@@ -70,28 +114,28 @@ def produce_gtfs_rt(
         # a refusal rather than an assert: a bad row must not take the worker down.
         raise Refused("this gtfs-rt binding carries no static GTFS reference")
 
+    previous = production.previous_artifact_of_this_revision
     try:
-        outcome = validate(feed_bytes, feed.static_gtfs_ref, previous.feed_bytes if previous is not None else None)
+        outcome = production.validate(
+            feed_bytes, feed.static_gtfs_ref, previous.feed_bytes if previous is not None else None
+        )
     except ValidatorUnavailable as exc:
         raise Refused(str(exc)) from exc
     return outcome, feed_bytes, None
 
 
-def produce_gbfs(
-    feed: PublishedFeed,
-    rows: list[dict[str, Any]],
-    feed_timestamp: int,
-    gbfs: GbfsPublisher | None,
-) -> Produced:
+def produce_gbfs(production: Production) -> Produced:
     """One GBFS file set, validated whole. No previous artifact is passed: GBFS
     has no iteration rules to compare one against."""
+    gbfs = production.gbfs
     if gbfs is None:
         # A worker that was never given a publisher. Recorded rather than raised,
         # so the tick leaves a trace and the feed stays off the air.
         raise Refused("this worker cannot publish gbfs feeds")
 
+    feed = production.feed
     try:
-        feed_files = gbfs.serialize(rows, feed, feed_timestamp)
+        feed_files = gbfs.serialize(production.rows, feed, production.feed_timestamp)
     except SerializationError as exc:
         raise Refused(exc.reason) from exc
 
@@ -106,3 +150,24 @@ def produce_gbfs(
     except ValidatorUnavailable as exc:
         raise Refused(str(exc)) from exc
     return outcome, None, feed_files
+
+
+_GBFS_STANDARD = "gbfs"
+
+# The entities each standard can publish in a community build. A pack widens the
+# binding vocabulary, and an entity nothing has registered a producer for is a
+# failed attempt rather than an exception.
+_SUPPORTED_ENTITIES: dict[str, frozenset[str]] = {
+    "gtfs-rt": frozenset({"vehicle_positions"}),
+    _GBFS_STANDARD: frozenset({"stations", "vehicles"}),
+}
+
+
+def _register_the_community_producers() -> None:
+    for standard, entities in _SUPPORTED_ENTITIES.items():
+        producer = produce_gbfs if standard == _GBFS_STANDARD else produce_gtfs_rt
+        for entity in entities:
+            register_producer(standard, entity, producer)
+
+
+_register_the_community_producers()

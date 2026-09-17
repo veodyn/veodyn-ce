@@ -877,7 +877,7 @@ export interface components {
             /** Iscurrent */
             isCurrent: boolean;
             /** Queryresultid */
-            queryResultId: number;
+            queryResultId: number | null;
             /** Reason */
             reason: string;
         };
@@ -946,7 +946,7 @@ export interface components {
             /** Onerror */
             onError: string;
             /** Queryid */
-            queryId: number;
+            queryId: number | null;
             /** Revision */
             revision: number;
             /** Slug */

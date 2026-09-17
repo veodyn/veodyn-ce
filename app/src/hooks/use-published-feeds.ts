@@ -156,12 +156,12 @@ export function useDeletePublishedFeed() {
  * currently serving, and reading it twice through two hooks would be two
  * reads of the same Redash pair.
  */
-export function useQueryResultColumns(queryId: number | undefined) {
+export function useQueryResultColumns(queryId: number | null | undefined) {
   const queries = useMockDataStore((s) => s.queries)
   const queryResults = useMockDataStore((s) => s.queryResults)
   return useQuery({
     queryKey: ['published-feeds', 'query-result-columns', queryId],
-    enabled: queryId !== undefined,
+    enabled: queryId != null,
     queryFn: async (): Promise<QueryResultColumns> => {
       if (!USE_REAL_API) {
         const query = queries.find((q) => q.id === queryId)

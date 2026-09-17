@@ -17,7 +17,7 @@ plural is how this table would become a hub table.
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Index, Integer, Text, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Index, Integer, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -84,7 +84,7 @@ class PublishedFeed(Base):
     # `compare_server_default`. Keep these equal to the migration by hand;
     # `CaptureExpectation.updated_at` is the same arrangement.
     revision: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
-    query_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    query_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     standard: Mapped[str] = mapped_column(Text, nullable=False)
     version: Mapped[str] = mapped_column(Text, nullable=False)
@@ -109,6 +109,8 @@ class PublishedFeed(Base):
 
     on_error: Mapped[str] = mapped_column(Text, nullable=False, server_default="block")
     last_good_max_age_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    retire_on_failure: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
 
     visibility: Mapped[str] = mapped_column(Text, nullable=False, server_default="private")
 

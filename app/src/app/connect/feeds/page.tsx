@@ -29,6 +29,11 @@ const ENTITY_LABEL: Record<PublishedFeed['entity'], string> = {
   stations: 'stations',
 }
 
+function sourceLabel(feed: PublishedFeed, queryNameById: Map<number, string>): string {
+  if (feed.queryId === null) return 'no query behind it'
+  return queryNameById.get(feed.queryId) ?? `query ${feed.queryId}`
+}
+
 // The address column is the slug plus what it is bound to, matching Feed
 // Health's Feed column (name over source). A slug on its own answers "what is
 // this called", not "where does its data come from"; the query name answers
@@ -42,9 +47,7 @@ function buildColumns(queryNameById: Map<number, string>): Column<PublishedFeed>
       render: (f) => (
         <div className="min-w-0">
           <div className="truncate font-medium">{f.slug}</div>
-          <div className="font-mono text-xs text-muted-foreground">
-            {queryNameById.get(f.queryId) ?? `query ${f.queryId}`}
-          </div>
+          <div className="font-mono text-xs text-muted-foreground">{sourceLabel(f, queryNameById)}</div>
         </div>
       ),
     },
@@ -97,7 +100,7 @@ export default function PublishedFeedsPage() {
   const visible = useMemo(
     () =>
       allFeeds.filter((f) =>
-        matchesSearch(search, [f.slug, queryNameById.get(f.queryId), f.visibility])
+        matchesSearch(search, [f.slug, sourceLabel(f, queryNameById), f.visibility])
       ),
     [allFeeds, search, queryNameById]
   )

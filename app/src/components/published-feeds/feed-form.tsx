@@ -94,7 +94,7 @@ export function FeedForm({
   // missing at the moment of the first attempt.
   const [attempted, setAttempted] = useState(false)
 
-  const { data: resultColumns } = useQueryResultColumns(selectedQueryId ?? undefined)
+  const { data: resultColumns } = useQueryResultColumns(selectedQueryId)
   const columns = resultColumns?.columns ?? []
   const ageError = attempted ? lastGoodAgeError(onError, lastGoodMaxAgeSeconds) : null
 
@@ -224,6 +224,7 @@ export function FeedForm({
             onSelect={handleSelectQuery}
             onClear={() => setSelectedQueryId(null)}
             error={fieldErrors.query}
+            sourceIsNotAQuery={initial?.queryId === null}
           />
         </div>
 

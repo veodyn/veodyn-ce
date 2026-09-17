@@ -137,7 +137,7 @@ def attempt_row(
     decision: str = "published",
     feed_bytes: bytes | None = b"\x01",
     is_current: bool = True,
-    query_result_id: int = 999,
+    query_result_id: int | None = 999,
     binding_revision: int | None = None,
     feed_timestamp: int | None = 1800,
 ) -> PublishAttempt:

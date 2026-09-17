@@ -148,7 +148,11 @@ class PublishedFeedIn(CamelModel):
 class PublishedFeedOut(CamelModel):
     slug: str
     revision: int
-    query_id: int
+    # Null for a binding with no query behind it. `PublishedFeedIn.query_id` is
+    # still required, because every entity this community build registers a
+    # producer for is built from a query result; a pack registering one that is
+    # not is what puts a null here.
+    query_id: int | None
     standard: str
     version: str
     entity: str
@@ -245,7 +249,10 @@ class PublishAttemptOut(CamelModel):
 
     attempt_id: int
     binding_revision: int
-    query_result_id: int
+    # Null when the feed has no query behind it. The number the engine actually
+    # orders on is the attempt's source version, which for a query-backed feed
+    # is this same value.
+    query_result_id: int | None
     # published | blocked | failed
     decision: str
     # Empty on a published attempt. A count on a blocked one, so the findings

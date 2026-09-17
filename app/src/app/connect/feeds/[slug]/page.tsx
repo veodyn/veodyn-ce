@@ -33,9 +33,13 @@ import { SECTION_HEADING } from '@/lib/section-heading'
  * attempt cannot succeed manufactures a failure rather than reporting one.
  */
 function publishHeldBack(
+  queryId: number | null,
   lookup: { isPending: boolean; isError: boolean; resultId: number | null | undefined },
-  servingResultId: number | undefined
+  servingResultId: number | null | undefined
 ): string | null {
+  if (queryId === null) {
+    return 'This feed has no query behind it. Whatever registered its producer rebuilds and publishes it, so there is nothing to run from here.'
+  }
   if (lookup.isPending) {
     return 'Checking whether this query has a result newer than the one being served.'
   }
@@ -120,6 +124,7 @@ export default function FeedDetailPage({ params }: { params: Promise<{ slug: str
   // The served artifact, if any: at most one attempt carries isCurrent.
   const currentAttempt = list.find((a) => a.isCurrent)
   const heldBack = publishHeldBack(
+    feed.queryId,
     {
       isPending: resultColumns.isPending,
       isError: resultColumns.isError,

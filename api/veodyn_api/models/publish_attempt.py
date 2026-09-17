@@ -27,7 +27,7 @@ make it structural.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import (
     Boolean,
@@ -42,9 +42,26 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.engine.default import DefaultExecutionContext
 from sqlalchemy.orm import Mapped, mapped_column
 
 from veodyn_api.models.base import Base
+
+
+class NoSourceVersion(Exception):
+    pass
+
+
+def source_version_of_a_query_backed_insert(context: DefaultExecutionContext) -> int:
+    parameters = context.get_current_parameters()  # type: ignore[no-untyped-call]
+    version = cast("int | None", parameters.get("query_result_id"))
+    if version is None:
+        raise NoSourceVersion(
+            "source_version has no default on an attempt with no query result id: pass it explicitly. "
+            "This default computes a value only for an INSERT carrying query_result_id, and is never "
+            "rerun on an UPDATE, a merge() or a raw-SQL write."
+        )
+    return version
 
 
 class PublishAttempt(Base):
@@ -86,7 +103,11 @@ class PublishAttempt(Base):
     attempt_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     binding_revision: Mapped[int] = mapped_column(Integer, nullable=False)
-    query_result_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    query_result_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    source_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=source_version_of_a_query_backed_insert
+    )
 
     # published | blocked | failed
     decision: Mapped[str] = mapped_column(Text, nullable=False)

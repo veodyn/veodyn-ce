@@ -27,7 +27,9 @@ export interface PublishFinding {
 export interface PublishAttempt {
   attemptId: number
   bindingRevision: number
-  queryResultId: number
+  // Null when the feed has no query behind it. What the engine orders attempts
+  // on is a source version, which for a query-backed feed is this same number.
+  queryResultId: number | null
   // A blocked attempt is the mapping or the data. A failed one is the
   // machinery, and carries a sentence instead of findings.
   decision: 'published' | 'blocked' | 'failed'
@@ -71,7 +73,8 @@ export interface PublishedFeedInput {
   visibility: 'private' | 'public'
 }
 
-export interface PublishedFeed extends PublishedFeedInput {
+export interface PublishedFeed extends Omit<PublishedFeedInput, 'queryId'> {
+  queryId: number | null
   revision: number
   // Only ever fresh in a write response. Both read paths hard-code `unknown`,
   // so no read path may render this as mapping validity.

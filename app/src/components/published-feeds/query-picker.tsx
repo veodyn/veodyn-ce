@@ -13,6 +13,7 @@ interface QueryPickerProps {
   onSelect: (queryId: number) => void
   onClear: () => void
   error?: string | null
+  sourceIsNotAQuery?: boolean
 }
 
 /**
@@ -24,7 +25,13 @@ interface QueryPickerProps {
  * "Change" control, so the rest of the form (mapping, on-failure) is not
  * competing with a long result list for screen space.
  */
-export function QueryPicker({ selectedQueryId, onSelect, onClear, error }: QueryPickerProps) {
+export function QueryPicker({
+  selectedQueryId,
+  onSelect,
+  onClear,
+  error,
+  sourceIsNotAQuery,
+}: QueryPickerProps) {
   const [search, setSearch] = useState('')
   const searchId = useId()
   // Read by id rather than trusting the list to still contain the selection:
@@ -59,6 +66,12 @@ export function QueryPicker({ selectedQueryId, onSelect, onClear, error }: Query
   return (
     <div className="space-y-2">
       <Label htmlFor={searchId}>Source query</Label>
+      {sourceIsNotAQuery && (
+        <p className="text-sm text-muted-foreground">
+          This feed has no query behind it: whatever registered its producer rebuilds it. Picking a query
+          here binds it to that query, and it publishes from the query from then on.
+        </p>
+      )}
       <InputGroup>
         <InputGroupAddon>
           <Search className="h-4 w-4" />

@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, defer
 
 from veodyn_api.auth import Identity, get_redash_client, require_identity
 from veodyn_api.db import get_db
+from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.models.publish_attempt import PublishAttempt
 from veodyn_api.routers.published_feeds import load_feed, require_admin
 from veodyn_api.schemas.published_feed import FindingOut, PublishAttemptOut
@@ -103,6 +104,17 @@ def publish_now(
     """
     require_admin(identity)
     feed = load_feed(db, identity.org_slug, slug)
+
+    if feed.query_id is None:
+        # This route publishes what a query last returned, and a binding with no
+        # query is rebuilt from its own source by whoever registered its
+        # producer. Refused rather than recorded as a failed attempt, for the
+        # same reason a missing cached result is.
+        raise ApiError(
+            ErrorId.PUBLISHED_FEED_NO_RESULT,
+            f"the feed at {slug!r} has no query behind it, so there is no query result to publish here",
+            status_code=422,
+        )
 
     # Before the engine, because a query with no cached result is not a failed
     # attempt: there were no bytes to judge, and recording one would put a

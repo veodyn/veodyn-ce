@@ -26,7 +26,7 @@ export function BindingSummary({ feed }: { feed: PublishedFeed }) {
       <CardContent className="space-y-4">
         <h2 className={SUBSECTION_HEADING}>Binding</h2>
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Detail label="Query" value={String(feed.queryId)} />
+          <Detail label="Query" value={feed.queryId === null ? 'none' : String(feed.queryId)} />
           <Detail label="Standard" value={`${feed.standard} ${feed.version}`} />
           <Detail label="Entity" value={feed.entity} />
           {/* Each standard carries one of these and never the other, so the row
