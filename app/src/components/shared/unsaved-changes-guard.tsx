@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
-import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
 
 interface UnsavedChangesGuardProps {
   isDirty: boolean
@@ -14,20 +13,6 @@ interface UnsavedChangesGuardProps {
   confirmLabel?: string
 }
 
-/**
- * Ask before leaving a screen with unsaved work, whichever way the person goes.
- * `beforeunload` covers only hard navigation; the sidebar is how people actually
- * move around this app.
- *
- * The in-app half is a capture-phase listener on the document, because the App
- * Router has no navigation blocker to hook. Capture is what makes it work: the
- * event is stopped before React's root listener and Next's Link handler see it,
- * so the navigation never starts.
- *
- * Narrow about what it intercepts: a modified click, a download, an external
- * host, a `target`, and a link back to this same page all pass through. It
- * cannot see a `router.push` from a button, since there is no DOM event.
- */
 export function UnsavedChangesGuard({
   isDirty,
   title = 'Leave without saving?',
@@ -36,8 +21,6 @@ export function UnsavedChangesGuard({
 }: UnsavedChangesGuardProps) {
   const router = useRouter()
   const [pendingHref, setPendingHref] = useState<string | null>(null)
-  // The hard-navigation half: reloads, the address bar, closing the tab.
-  useUnsavedChanges(isDirty)
 
   useEffect(() => {
     if (!isDirty) return

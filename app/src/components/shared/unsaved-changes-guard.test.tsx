@@ -34,6 +34,14 @@ function harness(isDirty: boolean, onNavigate = vi.fn(), href = '/dashboards') {
 }
 
 describe('UnsavedChangesGuard', () => {
+  it('leaves a reload alone, so the browser never raises its own Leave site prompt', () => {
+    const added = vi.spyOn(window, 'addEventListener')
+    harness(true)
+
+    expect(added.mock.calls.map(([type]) => type)).not.toContain('beforeunload')
+    added.mockRestore()
+  })
+
   it('stops a sidebar-style link and asks first', async () => {
     const user = userEvent.setup()
     push.mockClear()
