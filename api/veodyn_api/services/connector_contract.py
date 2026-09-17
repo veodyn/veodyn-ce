@@ -123,6 +123,7 @@ class ComposeRequirements:
     needs_entities: bool = False
     needs_classification: bool = False
     accepts_override: bool = False
+    carries_translations: bool = False
 
 
 NO_COMPOSE_REQUIREMENTS = ComposeRequirements()
