@@ -162,6 +162,49 @@ def zip_with_invalid_utf8_filename_bytes() -> bytes:
     return local_header + central_dir + eocd
 
 
+ENTITY_ARCHIVE_FILES = {
+    "agency.txt": (
+        "agency_id,agency_name,agency_url,agency_timezone\na1,Elmwood Transit,https://example.org,UTC\na2,,https://example.org,UTC\n"
+    ),
+    "routes.txt": (
+        "route_id,agency_id,route_short_name,route_long_name,route_type\n"
+        "9,a1,9,Elm Street,3\n"
+        "10,a1,,Riverside Loop,3\n"
+        "11,a1,11,,3\n"
+        "12,a1,,,3\n"
+    ),
+    "stops.txt": (
+        "stop_id,stop_name,stop_lat,stop_lon\n"
+        "s2,North Elm Depot,0.0,0.0\n"
+        "s1,Elm Street & Main,0.0,0.0\n"
+        "elm-3,Riverside Plaza,0.0,0.0\n"
+        "s4,Riverside Depot,0.0,0.0\n"
+        "s5,,0.0,0.0\n"
+    ),
+    "trips.txt": ("route_id,service_id,trip_id,trip_headsign\n9,sv1,t1,Elmwood\n9,sv1,t2,\n"),
+    "feed_info.txt": (
+        "feed_publisher_name,feed_publisher_url,feed_lang,feed_version\nElmwood Transit,https://example.org,en,2026-08-01\n"
+    ),
+}
+
+
+def entity_archive_bytes() -> bytes:
+    return _zip_bytes(ENTITY_ARCHIVE_FILES)
+
+
+def entity_archive_without_a_table_bytes(table: str) -> bytes:
+    files = dict(ENTITY_ARCHIVE_FILES)
+    del files[table]
+    return _zip_bytes(files)
+
+
+def entity_archive_with_generated_stops_bytes(count: int) -> bytes:
+    files = dict(ENTITY_ARCHIVE_FILES)
+    generated = "".join(f"g{number},Generated Stop {number},0.0,0.0\n" for number in range(count))
+    files["stops.txt"] = ENTITY_ARCHIVE_FILES["stops.txt"] + generated
+    return _zip_bytes(files)
+
+
 def _zip_bytes(files: dict[str, str]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:

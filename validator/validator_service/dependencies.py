@@ -13,10 +13,16 @@ from fastapi import Request as FastAPIRequest
 from gtfs_rt_validator.api import PreparedFeed
 
 from validator_service.cache import PreparedFeedCache
+from validator_service.entities import EntityIndex
 
 
 def get_cache(request: FastAPIRequest) -> PreparedFeedCache[PreparedFeed]:
     cache: PreparedFeedCache[PreparedFeed] = request.app.state.cache
+    return cache
+
+
+def get_entity_cache(request: FastAPIRequest) -> PreparedFeedCache[EntityIndex]:
+    cache: PreparedFeedCache[EntityIndex] = request.app.state.entity_cache
     return cache
 
 

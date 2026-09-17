@@ -122,6 +122,57 @@ instead of returning the report.
   502: reaching or trusting the archive is this service's problem, not the
   caller's request shape.
 
+**`GET /static-entities`**, the entity picker's backing query. A dispatcher
+composing a service message names the affected route, stop or trip by picking
+it, not by typing a raw GTFS id from memory.
+
+- `gtfs`: the archive URL, exactly the published feed's `static_gtfs_ref`.
+  Required, and must be `http` or `https`.
+- `kind`: one of `agency`, `route`, `stop`, `trip`. Required.
+- `q`: optional search term. Case-insensitive substring over both the id and
+  the label. Results that *start with* the term come before results that
+  merely contain it; within each group the archive's own order is kept.
+- `limit`: optional, default 20, clamped to 1..50. An out-of-range or
+  non-numeric value is clamped or falls back to the default rather than
+  answered with a 422.
+
+```json
+{
+  "feedVersion": "2026-08-01",
+  "entities": [{ "kind": "route", "id": "9", "label": "9 Elm Street" }]
+}
+```
+
+`feedVersion` is `feed_info.txt`'s `feed_version`, or `""` when the archive
+carries no `feed_info.txt`. Labels are `route_short_name` and
+`route_long_name` joined with a space and trimmed, `stop_name`, `trip_headsign`
+and `agency_name`; each falls back to the entity's own id when its name is
+blank. Nothing is ever invented: an id is a correct label.
+
+**Non-200**, same `{"error": "..."}` shape as the other endpoints.
+
+- **400**: `gtfs` is blank, `gtfs` is not an http(s) URL, or `kind` is absent
+  or not one of the four. Both required parameters are declared with defaults
+  and checked in the handler, so an absent one is a 400 in this service's own
+  error shape rather than FastAPI's 422 envelope.
+- **502**: the archive could not be fetched, or was fetched but could not be
+  read as GTFS.
+- **503**: an index for that `gtfs` URL is already being built. Same decision
+  as the prepared-feed cache below, for the same reason.
+
+The archive is fetched and parsed **once** into an index of all four kinds,
+which is cached; `q` and `limit` are then answered from memory, so a typeahead
+does not re-open the zip per keystroke. Only five tables are read
+(`agency.txt`, `routes.txt`, `stops.txt`, `trips.txt`, `feed_info.txt`), via
+`gtfs_validator.reading.open_raw_view`, and at most 100,000 entities per kind
+are kept (see `VALIDATOR_ENTITY_CACHE_SIZE` in `.env.example` for the measured
+memory that bound costs). Invalidation is TTL only, matching the sibling
+cache: an agency republishes to a stable URL whose contents change.
+
+This service fetches the archive because it is already the only component that
+dereferences an operator-supplied URL, and the only one with a bounded
+streaming download and a size cap.
+
 ### Resource bounds
 
 Both input paths are capped, since either hands this service bytes from
@@ -272,7 +323,8 @@ list with reasoning; in summary: `VALIDATOR_PORT` (bind port),
 `VALIDATOR_STATIC_FETCH_TIMEOUT_SECONDS`,
 `VALIDATOR_STATIC_ARCHIVE_MAX_COMPRESSED_BYTES`,
 `VALIDATOR_STATIC_ARCHIVE_MAX_UNCOMPRESSED_BYTES` (see "Resource bounds"
-above). No secrets: this service authenticates nobody.
+above), `VALIDATOR_ENTITY_CACHE_SIZE`, `VALIDATOR_ENTITY_CACHE_TTL_SECONDS`.
+No secrets: this service authenticates nobody.
 
 ## Development
 

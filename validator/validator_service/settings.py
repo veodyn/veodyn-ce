@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     #: README is 18 MB) while still bounding memory and disk per request.
     static_archive_max_compressed_bytes: int = 200_000_000
 
+    entity_cache_size: int = 1
+
+    entity_cache_ttl_seconds: float = 900.0
+
     #: Maximum bytes a static archive's zip central directory may declare as
     #: uncompressed, checked before validation runs. Rejects a zip bomb: a
     #: small compressed file whose central directory promises far more data

@@ -17,6 +17,8 @@ from gtfs_rt_validator.api import PreparedFeed
 from validator_service.body_size_limit import MaxBodySizeMiddleware
 from validator_service.cache import PreparedFeedCache
 from validator_service.dependencies import StaticLimits
+from validator_service.entities import EntityIndex
+from validator_service.entity_archive import fetch_entity_index
 from validator_service.fetch import fetch_and_prepare
 from validator_service.routes import router
 from validator_service.settings import Settings
@@ -35,6 +37,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ),
             max_size=resolved_settings.cache_size,
             ttl_seconds=resolved_settings.cache_ttl_seconds,
+        )
+        app.state.entity_cache = PreparedFeedCache[EntityIndex](
+            partial(
+                fetch_entity_index,
+                timeout=resolved_settings.static_fetch_timeout_seconds,
+                max_bytes=resolved_settings.static_archive_max_compressed_bytes,
+                max_uncompressed_bytes=resolved_settings.static_archive_max_uncompressed_bytes,
+            ),
+            max_size=resolved_settings.entity_cache_size,
+            ttl_seconds=resolved_settings.entity_cache_ttl_seconds,
         )
         app.state.static_limits = StaticLimits(
             fetch_timeout_seconds=resolved_settings.static_fetch_timeout_seconds,

@@ -1,14 +1,3 @@
-"""The three HTTP endpoints this service exposes. See README.md for the contract.
-
-Every blocking call (`cache.get_prepared`, which may run a ~48 second prepare;
-`run_validation`, which decodes and validates a realtime message; `download`,
-`write_capped`, `check_uncompressed_size` and `validate_static_archive`, which
-fetch, cap and walk a static archive) goes through `run_in_threadpool` rather
-than being awaited directly: neither the cached package nor the validators
-underneath them are async, and calling any of them inline would block the
-event loop for every other request the whole time.
-"""
-
 from __future__ import annotations
 
 import tempfile
@@ -23,12 +12,47 @@ from starlette.concurrency import run_in_threadpool
 
 from validator_service.archive_limits import ArchiveTooLarge, check_uncompressed_size, write_capped
 from validator_service.cache import PreparedFeedCache, PrepareInProgress
-from validator_service.dependencies import StaticLimits, get_cache, get_static_limits
+from validator_service.dependencies import StaticLimits, get_cache, get_entity_cache, get_static_limits
+from validator_service.entities import KINDS, EntityIndex, clamp_limit, search
+from validator_service.entity_archive import EntityIndexError, has_supported_scheme
 from validator_service.fetch import StaticFetchError, download
 from validator_service.static_validation import validate_static_archive
 from validator_service.validation import FeedDecodeError, run_validation
 
 router = APIRouter()
+
+
+@router.get("/static-entities")
+async def static_entities(
+    entity_cache: Annotated[PreparedFeedCache[EntityIndex], Depends(get_entity_cache)],
+    gtfs: str = "",
+    kind: str = "",
+    q: str = "",
+    limit: str | None = None,
+) -> JSONResponse:
+    gtfs_url = gtfs.strip()
+    if not gtfs_url:
+        return _error(400, "the gtfs query parameter is required")
+    if not has_supported_scheme(gtfs_url):
+        return _error(400, "the gtfs query parameter must be an http or https URL")
+
+    requested_kind = kind.strip().lower()
+    if requested_kind not in KINDS:
+        return _error(400, f"kind must be one of {', '.join(KINDS)}")
+
+    try:
+        index = await run_in_threadpool(entity_cache.get_prepared, gtfs_url)
+    except PrepareInProgress:
+        return _error(503, f"an entity index for {gtfs_url!r} is already being built; retry shortly")
+    except (StaticFetchError, EntityIndexError) as exc:
+        return _error(502, str(exc))
+
+    matches = search(index.of_kind(requested_kind), q=q, limit=clamp_limit(limit))
+    content: dict[str, Any] = {
+        "feedVersion": index.feed_version,
+        "entities": [{"kind": entity.kind, "id": entity.id, "label": entity.label} for entity in matches],
+    }
+    return JSONResponse(status_code=200, content=content)
 
 
 @router.get("/health")
