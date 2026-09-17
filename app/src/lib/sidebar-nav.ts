@@ -22,6 +22,7 @@ import {
   Home,
   LayoutDashboard,
   ListChecks,
+  MessagesSquare,
   Plane,
   Plug,
   Radio,
@@ -66,6 +67,7 @@ export interface SidebarModelInput {
   canViewInstanceAdmin: boolean
   /** Instance feature switches. A surface that is off has no row here. */
   features: ClientConfig['features']
+  aiChat?: boolean
 }
 
 // Curated subset of lucide names an operator is likely to tag a transport
@@ -90,7 +92,7 @@ export function resolveDomainIcon(name?: string): LucideIcon {
 }
 
 export function buildSidebarSections(
-  { domains, canAccessAdmin, canViewInstanceAdmin, features }: SidebarModelInput,
+  { domains, canAccessAdmin, canViewInstanceAdmin, features, aiChat = false }: SidebarModelInput,
   // The feature-row lookup as an explicit input, defaulting to the real
   // registry seam. Tests pass an explicitly empty lookup to prove no section
   // collapses without mocking @/features.
@@ -116,6 +118,7 @@ export function buildSidebarSections(
     items: [
       { label: 'Home', href: '/', icon: Home },
       { label: 'Search', href: '/search', icon: Search },
+      ...(aiChat ? [{ label: 'Data Chat', href: '/chat', icon: MessagesSquare }] : []),
       // Every label here is the destination page's own h1, verbatim. A nav
       // that says "Data" and lands on "Data Catalog" makes the reader check
       // whether they arrived somewhere else.
@@ -171,7 +174,7 @@ export function buildSidebarSections(
       label: 'ADMIN',
       items: [
         { label: 'Data Sources', href: '/data-sources', icon: Database },
-        { label: 'Alert Notifications', href: '/destinations', icon: Server },
+        { label: 'Alert Destinations', href: '/destinations', icon: Server },
         { label: 'Team', href: '/users', icon: Users },
         // Shared Links, if the reports feature directory is installed. Org
         // scoped like the rows above it: both backends behind it gate on org

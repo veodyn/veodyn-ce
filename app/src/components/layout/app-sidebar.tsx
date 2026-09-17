@@ -8,7 +8,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useToast } from '@/components/shared/toast-provider'
 import { useConfig } from '@/components/config/config-provider'
 import { buildSidebarSections } from '@/lib/sidebar-nav'
-import { enabledFeatures, featureNavRows } from '@/features'
+import { useAiChatEnabled } from '@/hooks/use-chat'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -26,10 +26,10 @@ export function AppSidebar() {
   const currentUser = useAuthStore((s) => s.currentUser)
   const logout = useAuthStore((s) => s.logout)
   const toast = useToast()
-  const config = useConfig()
-  const { brand, domains, features } = config
+  const { brand, domains, features } = useConfig()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, toggleCollapsed] = useSidebarCollapsed()
+  const aiChat = useAiChatEnabled()
 
   // Only the server can clear the httpOnly session cookie. If that request
   // fails the session is still live, so saying nothing and showing a sign-in
@@ -42,15 +42,13 @@ export function AppSidebar() {
 
   if (!currentUser) return null
 
-  const sections = buildSidebarSections(
-    {
-      domains,
-      canAccessAdmin: currentUser.isAdmin,
-      canViewInstanceAdmin: currentUser.hasPermission('super_admin'),
-      features,
-    },
-    (section) => featureNavRows(section, enabledFeatures(config))
-  )
+  const sections = buildSidebarSections({
+    domains,
+    canAccessAdmin: currentUser.isAdmin,
+    canViewInstanceAdmin: currentUser.hasPermission('super_admin'),
+    features,
+    aiChat,
+  })
 
   // `rail` is true only for the desktop shell. The drawer takes the same body
   // and never collapses it, and it never offers the toggle: a drawer you opened
