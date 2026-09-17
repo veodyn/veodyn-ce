@@ -18,7 +18,8 @@ import respx
 from fastapi.testclient import TestClient
 
 from tests.published_feed_route_stubs import ADMIN, MEMBER, as_user, auth
-from veodyn_api.services import gbfs_vocabulary, published_feed_registry
+from veodyn_api.services import gbfs_vocabulary, publish_produce, published_feed_registry
+from veodyn_api.services.publish_produce import Produced, Production
 
 
 @respx.mock
@@ -40,11 +41,67 @@ def test_capabilities_reports_what_is_registered(api: TestClient) -> None:
     # test pins.
     for entry in body["standards"]:
         entry.pop("timezones")
+        entry.pop("entityNeeds")
     assert body == {
         "standards": [
             {"standard": "gbfs", "versions": ["2.3", "3.0"], "entities": ["stations", "vehicles"]},
             {"standard": "gtfs-rt", "versions": ["2.0"], "entities": ["vehicle_positions"]},
         ]
+    }
+
+
+@respx.mock
+def test_every_community_entity_needs_a_query_and_a_column_map(api: TestClient) -> None:
+    as_user(ADMIN)
+
+    response = api.get("/published-feeds/capabilities", headers=auth())
+
+    by_standard = {entry["standard"]: entry for entry in response.json()["standards"]}
+    assert by_standard["gtfs-rt"]["entityNeeds"] == {
+        "vehicle_positions": {"query": True, "staticReference": True, "columnMap": True},
+    }
+    assert by_standard["gbfs"]["entityNeeds"] == {
+        "stations": {"query": True, "staticReference": False, "columnMap": True},
+        "vehicles": {"query": True, "staticReference": False, "columnMap": True},
+    }
+
+
+@respx.mock
+def test_an_entity_whose_producer_needs_no_query_reports_that(api: TestClient) -> None:
+    as_user(ADMIN)
+
+    def build_it_from_somewhere_else(production: Production) -> Produced:
+        raise AssertionError("this producer exists to be asked about, never to run")
+
+    with published_feed_registry.restored_entities(), publish_produce.restored_producers():
+        published_feed_registry.register_entity("bulletins")
+        publish_produce.register_producer(
+            "gtfs-rt",
+            "bulletins",
+            build_it_from_somewhere_else,
+            publish_produce.Needs(query=False, static_reference=True, column_map=False),
+        )
+        response = api.get("/published-feeds/capabilities", headers=auth())
+
+    by_standard = {entry["standard"]: entry for entry in response.json()["standards"]}
+    needs = by_standard["gtfs-rt"]["entityNeeds"]
+    assert needs["bulletins"] == {"query": False, "staticReference": True, "columnMap": False}
+    assert needs["vehicle_positions"] == {"query": True, "staticReference": True, "columnMap": True}
+
+
+@respx.mock
+def test_an_entity_with_no_producer_registered_still_reports_its_standard_default(api: TestClient) -> None:
+    as_user(ADMIN)
+
+    with published_feed_registry.restored_entities():
+        published_feed_registry.register_entity("trip_updates")
+        response = api.get("/published-feeds/capabilities", headers=auth())
+
+    by_standard = {entry["standard"]: entry for entry in response.json()["standards"]}
+    assert by_standard["gtfs-rt"]["entityNeeds"]["trip_updates"] == {
+        "query": True,
+        "staticReference": True,
+        "columnMap": True,
     }
 
 
@@ -115,6 +172,7 @@ def test_a_standard_only_a_pack_registers_appears_with_no_declared_versions(api:
         "standard": "gtfs-static",
         "versions": [],
         "entities": ["shapes"],
+        "entityNeeds": {"shapes": {"query": True, "staticReference": False, "columnMap": True}},
         "timezones": [],
     }
 

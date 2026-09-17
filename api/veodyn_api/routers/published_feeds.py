@@ -23,6 +23,7 @@ from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.models.published_feed import PublishedFeed
 from veodyn_api.schemas.published_feed import PublishedFeedIn, PublishedFeedOut
 from veodyn_api.services.ai_grounding import query_result_columns
+from veodyn_api.services.publish_produce import needs_for
 from veodyn_api.services.published_feed_binding_checks import check_column_map
 from veodyn_api.services.published_feed_lifecycle import take_the_feed_off_the_air
 from veodyn_api.services.published_feed_query_check import require_a_readable_query
@@ -38,6 +39,10 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 # What a read path reports instead of running the check. See PublishedFeedOut.
 UNKNOWN_STATE = "unknown"
+
+# What a write reports for an entity whose producer maps no columns: there is
+# no mapping that could be wrong, so the binding is as sound as it will get.
+NOTHING_TO_CHECK = "ok"
 
 # The partial unique index from migration 0013. Matched by name against the
 # integrity error, so a violation of some OTHER constraint is never reported as
@@ -107,6 +112,7 @@ def _out(feed: PublishedFeed, binding_state: str) -> PublishedFeedOut:
         column_map=feed.column_map,
         on_error=feed.on_error,
         last_good_max_age_seconds=feed.last_good_max_age_seconds,
+        retire_on_failure=feed.retire_on_failure,
         visibility=feed.visibility,
         binding_state=binding_state,
     )
@@ -118,11 +124,14 @@ def _check(redash: RedashClient, settings: Settings, body: PublishedFeedIn) -> s
     Run before anything is written, so a refused edit leaves the stored binding
     and the served artifact exactly as they were.
     """
-    # The service key, not the caller's, for both reads: require_admin has
-    # already proven this caller may publish, and both are metadata about a query
-    # the binding names rather than a row of its data.
-    require_a_readable_query(redash, settings, body.query_id)
-    columns = query_result_columns(redash, body.query_id, settings.redash_service_api_key)
+    needs = needs_for(body.standard, body.entity)
+    columns: tuple[str, ...] = ()
+    if body.query_id is not None:
+        require_a_readable_query(redash, settings, body.query_id)
+        if needs.column_map:
+            columns = query_result_columns(redash, body.query_id, settings.redash_service_api_key)
+    if not needs.column_map:
+        return NOTHING_TO_CHECK
     check = check_column_map(body.standard, body.entity, body.column_map, columns)
     if check.state == "invalid":
         # ApiError carries no structured extra, so the problems go in the
@@ -173,6 +182,7 @@ def create_feed(
         column_map=body.column_map,
         on_error=body.on_error,
         last_good_max_age_seconds=body.last_good_max_age_seconds,
+        retire_on_failure=body.retire_on_failure,
         visibility=body.visibility,
         created_by_user_id=identity.user_id,
     )
@@ -245,6 +255,7 @@ def update_feed(
     feed.column_map = body.column_map
     feed.on_error = body.on_error
     feed.last_good_max_age_seconds = body.last_good_max_age_seconds
+    feed.retire_on_failure = body.retire_on_failure
     feed.visibility = body.visibility
     # The revision is half an artifact's identity, so it moves with any edit and
     # no existing artifact can be mistaken for one of this binding.

@@ -84,6 +84,7 @@
     "schemas/favorite.py",
     "schemas/public_viz_options.py",
     "schemas/published_feed.py",
+    "schemas/published_feed_capabilities.py",
     "schemas/tag.py",
     "services/__init__.py",
     "services/ai_capture_semantics.py",

@@ -4,6 +4,7 @@ import { useId } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Switch } from '@/components/ui/switch'
 import { SUBSECTION_HEADING } from '@/lib/section-heading'
 import type { PublishedFeedInput } from '@/types/published-feed'
 
@@ -13,6 +14,14 @@ interface OnFailureSectionProps {
   lastGoodMaxAgeSeconds: string
   onLastGoodMaxAgeSecondsChange: (value: string) => void
   ageError?: string | null
+  retireOnFailure: boolean
+  onRetireOnFailureChange: (value: boolean) => void
+}
+
+function retirementConsequence(retireOnFailure: boolean): string {
+  return retireOnFailure
+    ? 'A failed publish attempt takes this feed dark: the artifact stops being served, and consumers get nothing until the next publish succeeds. What an alerts feed wants, where a stale artifact is a wrong answer.'
+    : 'A failed publish attempt is recorded and the artifact already serving stays up. What a vehicle-position feed usually wants, where slightly stale beats nothing at all.'
 }
 
 /**
@@ -53,10 +62,13 @@ export function OnFailureSection({
   lastGoodMaxAgeSeconds,
   onLastGoodMaxAgeSecondsChange,
   ageError,
+  retireOnFailure,
+  onRetireOnFailureChange,
 }: OnFailureSectionProps) {
   const blockId = useId()
   const lastGoodId = useId()
   const ageId = useId()
+  const retireId = useId()
 
   return (
     <div className="space-y-3">
@@ -96,6 +108,29 @@ export function OnFailureSection({
           )}
         </div>
       )}
+      <div className="space-y-1 border-t border-border pt-3">
+        {onError === 'last_good' ? (
+          <p className="text-sm text-muted-foreground">
+            Retiring the served artifact on failure is not offered in this mode: it would clear the
+            artifact the maximum age above promises to keep serving, so the two cannot both apply.
+            Choose Block to retire on failure instead.
+          </p>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <Switch
+                id={retireId}
+                checked={retireOnFailure}
+                onCheckedChange={(checked) => onRetireOnFailureChange(Boolean(checked))}
+              />
+              <Label htmlFor={retireId} className="font-normal">
+                Retire the served artifact when a publish fails
+              </Label>
+            </div>
+            <p className="text-sm text-muted-foreground">{retirementConsequence(retireOnFailure)}</p>
+          </>
+        )}
+      </div>
     </div>
   )
 }

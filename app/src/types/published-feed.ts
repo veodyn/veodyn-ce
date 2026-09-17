@@ -47,7 +47,13 @@ export type FeedStandard = 'gtfs-rt' | 'gbfs'
 /** What a write sends. Every field, every time: the endpoint is a PUT. */
 export interface PublishedFeedInput {
   slug: string
-  queryId: number
+  /**
+   * Null for an entity whose producer builds the feed from something other than
+   * a query result. Which entities those are is `EntityNeeds.query` below, and
+   * the API refuses a null for any entity that needs one, so this is never a
+   * silent fallback: it is either a real binding or a named refusal.
+   */
+  queryId: number | null
   standard: FeedStandard
   // Not a Literal: each standard's serializer owns its supported set, and the
   // API refuses a version outside it naming what it does support.
@@ -70,15 +76,33 @@ export interface PublishedFeedInput {
   columnMap: Record<string, string>
   onError: 'block' | 'last_good'
   lastGoodMaxAgeSeconds: number | null
+  /**
+   * Off leaves the last good artifact serving when a publish fails; on clears
+   * the served pointer, so the feed goes dark rather than serving something the
+   * latest validation did not cover.
+   */
+  retireOnFailure: boolean
   visibility: 'private' | 'public'
 }
 
-export interface PublishedFeed extends Omit<PublishedFeedInput, 'queryId'> {
-  queryId: number | null
+export interface PublishedFeed extends PublishedFeedInput {
   revision: number
   // Only ever fresh in a write response. Both read paths hard-code `unknown`,
   // so no read path may render this as mapping validity.
   bindingState: string
+}
+
+/**
+ * Which halves of a binding one entity's producer consumes, so the form asks
+ * for those and no others. A property of the producer, not of the standard:
+ * `publish_produce.py` is where a producer declares it, and an entity nothing
+ * has registered a producer for reports its standard's defaults rather than
+ * "needs nothing".
+ */
+export interface EntityNeeds {
+  query: boolean
+  staticReference: boolean
+  columnMap: boolean
 }
 
 /** One standard this deployment can publish, and what it offers under it. */
@@ -86,6 +110,8 @@ export interface StandardCapability {
   standard: string
   versions: string[]
   entities: string[]
+  /** Keyed by the names in `entities`. */
+  entityNeeds: Record<string, EntityNeeds>
   /**
    * The timezone names this standard's system declaration accepts, from the
    * enum in the schema the validator judges a publish against. Empty for a

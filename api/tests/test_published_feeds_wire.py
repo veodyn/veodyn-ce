@@ -5,12 +5,16 @@ field validators and cannot be reached one field at a time. Driven without HTTP
 because the router adds two Redash reads that say nothing about the shape.
 """
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 import pytest
 from pydantic import ValidationError
 
 from veodyn_api.schemas.published_feed import PublishedFeedIn
+from veodyn_api.services import publish_produce, published_feed_registry
+from veodyn_api.services.publish_produce import Produced, Production
 
 SYSTEM_23 = {
     "system_id": "city",
@@ -152,3 +156,113 @@ def test_a_two_three_binding_may_not_carry_the_three_zero_extras() -> None:
 def test_entity_is_validated_within_the_standard() -> None:
     with pytest.raises(ValidationError, match="stations"):
         PublishedFeedIn.model_validate(_body(entity="vehicle_positions"))
+
+
+def _never_runs(production: Production) -> Produced:
+    raise AssertionError("registered to be asked what it needs, never to run")
+
+
+AGGREGATE = publish_produce.Needs(query=False, static_reference=True, column_map=False)
+"""What a producer that reads no query result and maps no columns declares.
+
+`static_reference=True` is not decoration and is not the dataclass default: a
+gtfs-rt binding's static reference is the one part of `Needs` a producer does
+not choose, because `ck_published_feed_static_ref_matches_standard` holds
+`static_gtfs_ref` non-null for exactly that standard. `register_producer`
+refuses the other spelling outright, which is asserted below.
+"""
+
+
+@contextmanager
+def bulletins_registered(needs: publish_produce.Needs) -> Iterator[None]:
+    with published_feed_registry.restored_entities(), publish_produce.restored_producers():
+        published_feed_registry.register_entity("bulletins", "gtfs-rt")
+        publish_produce.register_producer("gtfs-rt", "bulletins", _never_runs, needs)
+        yield
+
+
+def test_an_entity_built_from_a_query_result_refuses_a_binding_with_no_query() -> None:
+    body = _gtfs_rt()
+    body.pop("queryId")
+
+    with pytest.raises(ValidationError, match="needs a query"):
+        PublishedFeedIn.model_validate(body)
+
+
+def test_an_entity_whose_producer_needs_no_query_is_accepted_without_one() -> None:
+    with bulletins_registered(AGGREGATE):
+        body = _gtfs_rt(entity="bulletins", columnMap={})
+        body.pop("queryId")
+        parsed = PublishedFeedIn.model_validate(body)
+
+    assert parsed.query_id is None
+
+
+def test_an_entity_whose_producer_needs_no_query_refuses_one() -> None:
+    """The direction the rule was missing. A binding storing a query id its
+    producer never reads is what hands `POST /attempts` Redash rows and a Redash
+    result version for a feed built from something else entirely."""
+    with bulletins_registered(AGGREGATE):
+        with pytest.raises(ValidationError, match="cannot name one"):
+            PublishedFeedIn.model_validate(_gtfs_rt(entity="bulletins", columnMap={}, queryId=9))
+
+
+def test_an_entity_whose_producer_maps_no_columns_refuses_a_column_map() -> None:
+    with bulletins_registered(AGGREGATE):
+        with pytest.raises(ValidationError, match="cannot carry a column map"):
+            PublishedFeedIn.model_validate(_gtfs_rt(entity="bulletins", columnMap={"junk": "x"}, queryId=None))
+
+
+def test_the_static_reference_is_read_off_the_producer_not_off_the_standard() -> None:
+    """The registry answers it, so an entity registered under gtfs-rt that
+    declares no producer of its own still gets the standard's default, and the
+    refusal names the entity rather than the standard."""
+    with bulletins_registered(AGGREGATE):
+        body = _gtfs_rt(entity="bulletins", columnMap={}, staticGtfsRef=None)
+        body.pop("queryId")
+
+        with pytest.raises(ValidationError, match="requires a static GTFS reference"):
+            PublishedFeedIn.model_validate(body)
+
+
+def test_a_producer_may_not_declare_a_static_reference_its_column_cannot_hold() -> None:
+    """Refused at the declaration, not at the request. Honoured by the validator
+    and refused by the CHECK constraint, the pairing would reach PostgreSQL as an
+    IntegrityError at COMMIT, which is a 500 naming no field."""
+    with published_feed_registry.restored_entities(), publish_produce.restored_producers():
+        published_feed_registry.register_entity("bulletins", "gtfs-rt")
+
+        with pytest.raises(publish_produce.UnstorableNeeds, match="static_reference=False"):
+            publish_produce.register_producer(
+                "gtfs-rt", "bulletins", _never_runs, publish_produce.Needs(query=False, column_map=False)
+            )
+
+
+def test_a_queryless_producer_does_not_excuse_the_entity_beside_it() -> None:
+    with bulletins_registered(AGGREGATE):
+        body = _gtfs_rt()
+        body.pop("queryId")
+
+        with pytest.raises(ValidationError, match="needs a query"):
+            PublishedFeedIn.model_validate(body)
+
+
+def test_retire_on_failure_is_off_unless_the_binding_asks_for_it() -> None:
+    assert PublishedFeedIn.model_validate(_gtfs_rt()).retire_on_failure is False
+    assert PublishedFeedIn.model_validate(_gtfs_rt(retireOnFailure=True)).retire_on_failure is True
+
+
+def test_last_good_refuses_to_be_paired_with_retirement() -> None:
+    """Retirement clears the pointer the age cap would serve from, so the two
+    stored together leave the cap unreachable and the binding saying one thing
+    and doing another."""
+    with pytest.raises(ValidationError, match="contradict each other"):
+        PublishedFeedIn.model_validate(_gtfs_rt(onError="last_good", lastGoodMaxAgeSeconds=300, retireOnFailure=True))
+
+
+def test_each_half_of_that_pairing_is_still_accepted_alone() -> None:
+    bounded = PublishedFeedIn.model_validate(_gtfs_rt(onError="last_good", lastGoodMaxAgeSeconds=300))
+    retiring = PublishedFeedIn.model_validate(_gtfs_rt(retireOnFailure=True))
+
+    assert bounded.retire_on_failure is False
+    assert retiring.on_error == "block"

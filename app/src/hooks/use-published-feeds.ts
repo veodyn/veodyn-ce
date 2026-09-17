@@ -33,15 +33,25 @@ const attemptsKey = (slug: string) => ['published-feeds', slug, 'attempts']
 // `timezones` is the one field a fixture cannot mirror: the real answer is the
 // 597-name enum the API reads out of the validator's schema, so this carries a
 // sample and the picker offers fewer names here than a wired session does.
+const QUERY_BACKED_GBFS = { query: true, staticReference: false, columnMap: true }
+const QUERY_BACKED_GTFS_RT = { query: true, staticReference: true, columnMap: true }
+
 const MOCK_CAPABILITIES: FeedCapabilities = {
   standards: [
     {
       standard: 'gbfs',
       versions: ['2.3', '3.0'],
       entities: ['stations', 'vehicles'],
+      entityNeeds: { stations: QUERY_BACKED_GBFS, vehicles: QUERY_BACKED_GBFS },
       timezones: ['America/Los_Angeles', 'America/New_York', 'Europe/Berlin', 'Europe/London', 'UTC'],
     },
-    { standard: 'gtfs-rt', versions: ['2.0'], entities: ['vehicle_positions'], timezones: [] },
+    {
+      standard: 'gtfs-rt',
+      versions: ['2.0'],
+      entities: ['vehicle_positions'],
+      entityNeeds: { vehicle_positions: QUERY_BACKED_GTFS_RT },
+      timezones: [],
+    },
   ],
 }
 

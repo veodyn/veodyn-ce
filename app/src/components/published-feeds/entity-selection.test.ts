@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_ENTITY_BY_STANDARD, resolveEntitySelection } from './entity-selection'
+import { DEFAULT_ENTITY_BY_STANDARD, resolveEntityNeeds, resolveEntitySelection } from './entity-selection'
 
 const GTFS_RT_DEFAULT = DEFAULT_ENTITY_BY_STANDARD['gtfs-rt']
 
@@ -85,5 +85,50 @@ describe('resolveEntitySelection', () => {
     const result = resolveEntitySelection(undefined, undefined, null, 'gbfs')
 
     expect(result).toEqual({ isPicker: false, entity: 'stations', options: ['stations'] })
+  })
+})
+
+describe('resolveEntityNeeds', () => {
+  const QUERYLESS = { query: false, staticReference: false, columnMap: false }
+
+  it('reports what the registry says for the entity, not what its standard usually needs', () => {
+    const needs = resolveEntityNeeds({ bulletins: QUERYLESS }, 'bulletins', 'gtfs-rt')
+
+    expect(needs).toEqual(QUERYLESS)
+  })
+
+  it('answers per entity, so one queryless entity does not excuse the one beside it', () => {
+    const registry = {
+      bulletins: QUERYLESS,
+      vehicle_positions: { query: true, staticReference: true, columnMap: true },
+    }
+
+    expect(resolveEntityNeeds(registry, 'vehicle_positions', 'gtfs-rt').query).toBe(true)
+  })
+
+  it('asks for everything while the capabilities lookup is unresolved', () => {
+    // Undefined is both "still loading" and "the request failed", the same as
+    // for the entity control. Reading either as "needs nothing" would offer a
+    // binding with no query behind it that no producer can publish.
+    expect(resolveEntityNeeds(undefined, 'vehicle_positions', 'gtfs-rt')).toEqual({
+      query: true,
+      staticReference: true,
+      columnMap: true,
+    })
+  })
+
+  it('asks for no static schedule under gbfs, which has nowhere to put one', () => {
+    expect(resolveEntityNeeds(undefined, 'stations', 'gbfs')).toEqual({
+      query: true,
+      staticReference: false,
+      columnMap: true,
+    })
+  })
+
+  it('falls back for an entity this deployment does not register, such as one an edit names', () => {
+    const needs = resolveEntityNeeds({ bulletins: QUERYLESS }, 'trip_updates', 'gtfs-rt')
+
+    expect(needs.query).toBe(true)
+    expect(needs.columnMap).toBe(true)
   })
 })

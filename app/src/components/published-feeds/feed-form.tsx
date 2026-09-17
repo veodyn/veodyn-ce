@@ -1,22 +1,20 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { fieldsFor } from '@/lib/gbfs-fields'
 import { missingRequired } from '@/lib/gtfs-fields'
 import { useFeedCapabilities, useQueryResultColumns } from '@/hooks/use-published-feeds'
 import { SUBSECTION_HEADING } from '@/lib/section-heading'
 import { QueryPicker } from './query-picker'
 import { AddressSection } from './feed-form-address'
-import { ColumnMapEditor } from './column-map-editor'
+import { MappingSection } from './feed-form-mapping'
 import { OnFailureSection, lastGoodAgeError } from './feed-form-on-failure'
 import { ShapeSection } from './feed-form-shape'
 import { SystemInfoSection } from './system-info-section'
 import { buildInput, submitError, systemFieldErrors, type FormValues } from './feed-form-submit'
-import { resolveEntitySelection } from './entity-selection'
+import { resolveEntityNeeds, resolveEntitySelection } from './entity-selection'
 import type { FeedStandard, PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
 
 interface FeedFormProps {
@@ -60,8 +58,6 @@ export function FeedForm({
   onSubmit,
   onCancel,
 }: FeedFormProps) {
-  const staticGtfsRefId = useId()
-
   const [standard, setStandard] = useState<FeedStandard>(initial?.standard ?? 'gtfs-rt')
   const [version, setVersion] = useState(initial?.version ?? DEFAULT_VERSION[standard])
   const [slug, setSlug] = useState(initial?.slug ?? '')
@@ -85,6 +81,7 @@ export function FeedForm({
   const [lastGoodMaxAgeSeconds, setLastGoodMaxAgeSeconds] = useState(
     initial?.lastGoodMaxAgeSeconds != null ? String(initial.lastGoodMaxAgeSeconds) : ''
   )
+  const [retireOnFailure, setRetireOnFailure] = useState(initial?.retireOnFailure ?? false)
   // Only meaningful once resolveEntitySelection says this is a picker; null
   // until the reader picks something of their own.
   const [pickedEntity, setPickedEntity] = useState<string | null>(null)
@@ -117,11 +114,16 @@ export function FeedForm({
     pickedEntity,
     standard
   )
+  // Which sections render at all. The registry answers it, not the standard:
+  // an entity's producer is what decides whether there is a query behind this
+  // feed, a static schedule to check it against, or a column map to build it
+  // from, and the answer differs between two entities of the same standard.
+  const needs = resolveEntityNeeds(capability?.entityNeeds, entitySelection.entity, standard)
 
   // After the entity is resolved: under gbfs the shape, not the standard, picks
   // the vocabulary.
   const fields = fieldsFor(standard, entitySelection.entity)
-  const missing = missingRequired(fields, selection)
+  const missing = needs.columnMap ? missingRequired(fields, selection) : []
 
   const mappingErrors: Record<string, string> = {}
   for (const field of fields) {
@@ -135,7 +137,8 @@ export function FeedForm({
 
   const values: FormValues = {
     slug,
-    queryId: selectedQueryId ?? 0,
+    queryId: selectedQueryId,
+    needs,
     standard,
     version,
     entity: entitySelection.entity,
@@ -144,6 +147,7 @@ export function FeedForm({
     selection,
     onError,
     lastGoodMaxAgeSeconds,
+    retireOnFailure,
     visibility,
   }
 
@@ -180,17 +184,13 @@ export function FeedForm({
 
   const handleSubmit = () => {
     setAttempted(true)
-    if (selectedQueryId == null) {
-      setLocalError('Pick a source query before publishing.')
-      return
-    }
     const problem = submitError(values) ?? lastGoodAgeError(onError, lastGoodMaxAgeSeconds)
     if (problem) {
       setLocalError(problem)
       return
     }
     setLocalError(null)
-    onSubmit(buildInput({ ...values, queryId: selectedQueryId }, initial))
+    onSubmit(buildInput(values, initial))
   }
 
   const shownError = localError ?? error
@@ -217,16 +217,18 @@ export function FeedForm({
           entityOptions={entitySelection.options}
         />
 
-        <div className="space-y-3">
-          <h2 className={SUBSECTION_HEADING}>Source</h2>
-          <QueryPicker
-            selectedQueryId={selectedQueryId}
-            onSelect={handleSelectQuery}
-            onClear={() => setSelectedQueryId(null)}
-            error={fieldErrors.query}
-            sourceIsNotAQuery={initial?.queryId === null}
-          />
-        </div>
+        {needs.query && (
+          <div className="space-y-3">
+            <h2 className={SUBSECTION_HEADING}>Source</h2>
+            <QueryPicker
+              selectedQueryId={selectedQueryId}
+              onSelect={handleSelectQuery}
+              onClear={() => setSelectedQueryId(null)}
+              error={fieldErrors.query}
+              sourceIsNotAQuery={initial?.queryId === null}
+            />
+          </div>
+        )}
 
         <AddressSection
           slug={slug}
@@ -247,28 +249,16 @@ export function FeedForm({
           />
         )}
 
-        <div className="space-y-3">
-          <h2 className={SUBSECTION_HEADING}>Mapping</h2>
-          {standard === 'gtfs-rt' && (
-            <div className="space-y-1">
-              <Label htmlFor={staticGtfsRefId}>Static GTFS reference</Label>
-              <Input
-                id={staticGtfsRefId}
-                type="text"
-                value={staticGtfsRef}
-                onChange={(e) => setStaticGtfsRef(e.target.value)}
-                placeholder="the static feed this realtime feed extends"
-              />
-            </div>
-          )}
-          <ColumnMapEditor
-            columns={columns}
-            fields={fields}
-            selection={selection}
-            onChange={(field, column) => setSelection((s) => ({ ...s, [field]: column }))}
-            fieldErrors={mappingErrors}
-          />
-        </div>
+        <MappingSection
+          needs={needs}
+          staticGtfsRef={staticGtfsRef}
+          onStaticGtfsRefChange={setStaticGtfsRef}
+          columns={columns}
+          fields={fields}
+          selection={selection}
+          onSelectionChange={(field, column) => setSelection((s) => ({ ...s, [field]: column }))}
+          fieldErrors={mappingErrors}
+        />
 
         <OnFailureSection
           onError={onError}
@@ -276,6 +266,8 @@ export function FeedForm({
           lastGoodMaxAgeSeconds={lastGoodMaxAgeSeconds}
           onLastGoodMaxAgeSecondsChange={setLastGoodMaxAgeSeconds}
           ageError={ageError}
+          retireOnFailure={retireOnFailure}
+          onRetireOnFailureChange={setRetireOnFailure}
         />
 
         {shownError && (

@@ -111,6 +111,7 @@ describe('editing an existing binding', () => {
     columnMap: { vehicle_id: 'station_name', latitude: 'lat', longitude: 'lon' },
     onError: 'block',
     lastGoodMaxAgeSeconds: null,
+    retireOnFailure: false,
     visibility: 'private',
     revision: 2,
     bindingState: 'unknown',

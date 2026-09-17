@@ -16,6 +16,7 @@ const FEED: PublishedFeed = {
   columnMap: { vehicle_id: 'bus', latitude: 'lat', longitude: 'lon' },
   onError: 'block',
   lastGoodMaxAgeSeconds: null,
+  retireOnFailure: false,
   visibility: 'public',
   bindingState: 'unknown',
 }

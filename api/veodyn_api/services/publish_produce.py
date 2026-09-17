@@ -57,7 +57,38 @@ class Production:
 
 Producer = Callable[[Production], Produced]
 
-_PRODUCERS: dict[str, dict[str, Producer]] = {}
+
+@dataclass(frozen=True)
+class Needs:
+    query: bool = True
+    static_reference: bool = False
+    column_map: bool = True
+
+
+@dataclass(frozen=True)
+class Registration:
+    producer: Producer
+    needs: Needs
+
+
+_PRODUCERS: dict[str, dict[str, Registration]] = {}
+
+_NEEDS_BY_STANDARD: dict[str, Needs] = {
+    "gtfs-rt": Needs(static_reference=True),
+    "gbfs": Needs(),
+}
+
+STANDARDS_WHOSE_BINDING_CAN_HOLD_A_STATIC_REFERENCE = frozenset({"gtfs-rt"})
+"""Which standards `published_feed.static_gtfs_ref` may be non-null for.
+
+`ck_published_feed_static_ref_matches_standard` reads
+`(standard = 'gtfs-rt') = (static_gtfs_ref IS NOT NULL)`, so this is the one
+part of `Needs` a producer is not free to choose: a declaration the column
+cannot hold would be honoured by the request validator and then refused by
+PostgreSQL at COMMIT, as a 500 naming no field. Held at registration instead,
+which is the declaration layer and the last point where the contradiction can
+still be reported to the person who wrote it.
+"""
 
 
 class Refused(Exception):
@@ -72,19 +103,47 @@ class AlreadyRegistered(Exception):
     pass
 
 
-def register_producer(standard: str, entity: str, producer: Producer) -> None:
+class UnstorableNeeds(Exception):
+    pass
+
+
+def _refuse_needs_the_table_cannot_hold(standard: str, entity: str, needs: Needs) -> None:
+    storable = standard in STANDARDS_WHOSE_BINDING_CAN_HOLD_A_STATIC_REFERENCE
+    if needs.static_reference == storable:
+        return
+    raise UnstorableNeeds(
+        f"{standard} {entity} declares static_reference={needs.static_reference}, and "
+        f"ck_published_feed_static_ref_matches_standard holds static_gtfs_ref non-null for {standard} exactly "
+        f"when it is {storable}. Every other field of Needs is the producer's to choose; this one is the "
+        "column's, and accepting the declaration would trade a 422 naming the field for an IntegrityError at COMMIT."
+    )
+
+
+def register_producer(standard: str, entity: str, producer: Producer, needs: Needs | None = None) -> None:
     registered = _PRODUCERS.setdefault(standard, {})
     if entity in registered:
         raise AlreadyRegistered(
-            f"{standard} {entity} is already built by {registered[entity]!r}, and {producer!r} would replace it. "
-            "Two producers under one entity are two lineages of source version, "
+            f"{standard} {entity} is already built by {registered[entity].producer!r}, and {producer!r} would "
+            "replace it. Two producers under one entity are two lineages of source version, "
             "which the ordering guard would compare as one."
         )
-    registered[entity] = producer
+    declared = needs if needs is not None else needs_of_standard(standard)
+    _refuse_needs_the_table_cannot_hold(standard, entity, declared)
+    registered[entity] = Registration(producer, declared)
 
 
 def producer_for(standard: str, entity: str) -> Producer | None:
-    return _PRODUCERS.get(standard, {}).get(entity)
+    registration = _PRODUCERS.get(standard, {}).get(entity)
+    return None if registration is None else registration.producer
+
+
+def needs_of_standard(standard: str) -> Needs:
+    return _NEEDS_BY_STANDARD.get(standard, Needs())
+
+
+def needs_for(standard: str, entity: str) -> Needs:
+    registration = _PRODUCERS.get(standard, {}).get(entity)
+    return needs_of_standard(standard) if registration is None else registration.needs
 
 
 def anything_is_registered_under(standard: str) -> bool:

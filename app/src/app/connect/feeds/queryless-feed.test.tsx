@@ -31,6 +31,7 @@ const QUERYLESS: PublishedFeed = {
   columnMap: {},
   onError: 'block',
   lastGoodMaxAgeSeconds: null,
+  retireOnFailure: false,
   visibility: 'private',
   revision: 1,
   bindingState: 'unknown',

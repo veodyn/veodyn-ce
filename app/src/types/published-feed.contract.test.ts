@@ -3,7 +3,14 @@
 // caveat is written out in generated/veodyn-api.contract.test.ts.
 import { describe, expectTypeOf, it } from 'vitest'
 import type { components } from './generated/veodyn-api'
-import type { FeedCapabilities, PublishAttempt, PublishedFeed, PublishedFeedInput } from './published-feed'
+import type {
+  EntityNeeds,
+  FeedCapabilities,
+  PublishAttempt,
+  PublishedFeed,
+  PublishedFeedInput,
+  StandardCapability,
+} from './published-feed'
 
 describe('published-feed contract', () => {
   // Asserted in this direction because the wire widens every enum to `string`,
@@ -48,5 +55,18 @@ describe('published-feed contract', () => {
     expectTypeOf<keyof FeedCapabilities>().toEqualTypeOf<
       keyof components['schemas']['FeedCapabilitiesOut']
     >()
+  })
+
+  // Keys both ways here too, because the form now reads this shape to decide
+  // which of its own sections to render: a field added to the wire and not to
+  // ours is a capability the form silently ignores.
+  it('a standard capability carries exactly the keys the wire does', () => {
+    expectTypeOf<keyof StandardCapability>().toEqualTypeOf<
+      keyof components['schemas']['StandardCapabilityOut']
+    >()
+  })
+
+  it('the entity needs carry exactly the keys the wire does', () => {
+    expectTypeOf<keyof EntityNeeds>().toEqualTypeOf<keyof components['schemas']['EntityNeedsOut']>()
   })
 })

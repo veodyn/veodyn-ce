@@ -6,11 +6,18 @@
 // getting that wrong is a 422 at best and a destroyed field at worst.
 import { fieldsFor, systemFieldsFor } from '@/lib/gbfs-fields'
 import { missingRequired, toColumnMap } from '@/lib/gtfs-fields'
-import type { FeedStandard, PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
+import type { EntityNeeds, FeedStandard, PublishedFeed, PublishedFeedInput } from '@/types/published-feed'
 
 export interface FormValues {
   slug: string
-  queryId: number
+  queryId: number | null
+  /**
+   * What this entity's producer consumes, from the capabilities read. Every
+   * rule below that used to test `standard` tests this instead: the standard
+   * decided the shape only because every entity registered under one standard
+   * happened to need the same halves of a binding.
+   */
+  needs: EntityNeeds
   standard: FeedStandard
   version: string
   entity: string
@@ -19,6 +26,7 @@ export interface FormValues {
   selection: Record<string, string | null>
   onError: PublishedFeedInput['onError']
   lastGoodMaxAgeSeconds: string
+  retireOnFailure: boolean
   visibility: PublishedFeedInput['visibility']
 }
 
@@ -51,12 +59,20 @@ export function systemFieldErrors(values: FormValues): Record<string, string> {
  * furthest up the form first rather than being sent back and forth.
  */
 export function submitError(values: FormValues): string | null {
-  const missing = missingRequired(fieldsFor(values.standard, values.entity), values.selection)
+  // First, and ahead of the mapping: this is the refusal feed-form.tsx used to
+  // make before calling in here at all, and the mapping is meaningless until
+  // there is a query whose columns it names.
+  if (values.needs.query && values.queryId == null) {
+    return 'Pick a source query before publishing.'
+  }
+  const missing = values.needs.columnMap
+    ? missingRequired(fieldsFor(values.standard, values.entity), values.selection)
+    : []
   if (missing.length > 0) {
     return `Map every required field before publishing: ${missing.join(', ')}.`
   }
   if (!values.slug.trim()) return 'Give this feed an address before publishing.'
-  if (values.standard === 'gtfs-rt' && !values.staticGtfsRef.trim()) {
+  if (values.needs.staticReference && !values.staticGtfsRef.trim()) {
     return 'A static GTFS reference is required.'
   }
   const missingSystem = missingSystemFields(values)
@@ -70,13 +86,18 @@ export function submitError(values: FormValues): string | null {
 }
 
 /**
- * The whole binding, shaped for the standard it names.
+ * The whole binding, shaped for what its entity's producer consumes.
  *
  * Each standard carries exactly one of `staticGtfsRef` and `systemInfo` and
  * NULLS the other, because the API refuses a binding carrying both and the
  * database has a CHECK for each. `sourceColumn` is carried through rather than
  * re-sent as null: the endpoint is a whole-binding PUT, so a hardcoded null
  * here silently throws away a field this form offers no editor for.
+ *
+ * `queryId` is sent as null, never as a stand-in number, for an entity whose
+ * producer needs no query: the API refuses a null for every entity that does
+ * need one, so a form bug surfaces as a named refusal rather than as a binding
+ * pointing at a query id nothing owns.
  */
 export function buildInput(values: FormValues, initial: PublishedFeed | undefined): PublishedFeedInput {
   const isGbfs = values.standard === 'gbfs'
@@ -89,17 +110,20 @@ export function buildInput(values: FormValues, initial: PublishedFeed | undefine
 
   return {
     slug: values.slug.trim(),
-    queryId: values.queryId,
+    queryId: values.needs.query ? values.queryId : null,
     standard: values.standard,
     version: values.version,
     entity: values.entity,
-    staticGtfsRef: isGbfs ? null : values.staticGtfsRef.trim(),
+    staticGtfsRef: values.needs.staticReference ? values.staticGtfsRef.trim() : null,
     systemInfo: isGbfs ? systemInfo : null,
     sourceColumn: initial?.sourceColumn ?? null,
-    columnMap: toColumnMap(fieldsFor(values.standard, values.entity), values.selection),
+    columnMap: values.needs.columnMap
+      ? toColumnMap(fieldsFor(values.standard, values.entity), values.selection)
+      : {},
     onError: values.onError,
     lastGoodMaxAgeSeconds:
       values.onError === 'last_good' ? Number(values.lastGoodMaxAgeSeconds) : null,
+    retireOnFailure: values.onError === 'last_good' ? false : values.retireOnFailure,
     visibility: values.visibility,
   }
 }

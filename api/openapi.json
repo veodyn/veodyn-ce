@@ -622,6 +622,29 @@
         "title": "DomainHubOut",
         "type": "object"
       },
+      "EntityNeedsOut": {
+        "properties": {
+          "columnMap": {
+            "title": "Columnmap",
+            "type": "boolean"
+          },
+          "query": {
+            "title": "Query",
+            "type": "boolean"
+          },
+          "staticReference": {
+            "title": "Staticreference",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query",
+          "staticReference",
+          "columnMap"
+        ],
+        "title": "EntityNeedsOut",
+        "type": "object"
+      },
       "ExpectationIn": {
         "description": "How often this capture should deliver, or null to stop expecting.\n\nNull rather than a second endpoint: clearing only returns the capture to\nits Redash schedule, and a DELETE beside a PUT would read as destructive.",
         "properties": {
@@ -655,7 +678,6 @@
         "type": "object"
       },
       "FeedCapabilitiesOut": {
-        "description": "What this deployment's feed registry actually holds, read at runtime\nrather than inferred from a values file or a matching image digest.\n\nRoot CLAUDE.md records that an installed layer is inert until a deployment\nnames it, and the deploy succeeds either way -- costing four releases before\nthis pattern got an interrogation endpoint. `standards`, and `entities`\nwithin each, are sorted so the response is stable across the registry's\nunordered sets.\n\nThe frontend's binding form renders `entity` as a stated fact when there is\nexactly one, and as a picker otherwise (design section 4's \"one\nconsequence\"); this is the response that decision reads.",
         "properties": {
           "standards": {
             "items": {
@@ -1174,10 +1196,22 @@
             "type": "string"
           },
           "queryId": {
-            "exclusiveMinimum": 0.0,
-            "maximum": 2147483647.0,
-            "title": "Queryid",
-            "type": "integer"
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 2147483647.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryid"
+          },
+          "retireOnFailure": {
+            "default": false,
+            "title": "Retireonfailure",
+            "type": "boolean"
           },
           "slug": {
             "maxLength": 64,
@@ -1247,7 +1281,6 @@
         },
         "required": [
           "slug",
-          "queryId",
           "standard",
           "version",
           "entity",
@@ -1298,6 +1331,10 @@
               }
             ],
             "title": "Queryid"
+          },
+          "retireOnFailure": {
+            "title": "Retireonfailure",
+            "type": "boolean"
           },
           "revision": {
             "title": "Revision",
@@ -1369,6 +1406,7 @@
           "columnMap",
           "onError",
           "lastGoodMaxAgeSeconds",
+          "retireOnFailure",
           "visibility",
           "bindingState"
         ],
@@ -1489,7 +1527,6 @@
         "type": "object"
       },
       "StandardCapabilityOut": {
-        "description": "One standard this deployment can bind a feed to, with the versions it can\npublish and the entities registered under it.\n\n`versions` comes from `published_feed_registry.VERSIONS_BY_STANDARD` and is empty for a\nstandard only a pack registers entities under.\n\n`timezones` is the closed vocabulary this standard's system declaration\naccepts, read from the validator's own schema by `gbfs_vocabulary.py`. Empty\nfor a standard that declares no timezone, and empty when that schema cannot\nbe read, which the form degrades to a text field.",
         "properties": {
           "entities": {
             "items": {
@@ -1497,6 +1534,13 @@
             },
             "title": "Entities",
             "type": "array"
+          },
+          "entityNeeds": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EntityNeedsOut"
+            },
+            "title": "Entityneeds",
+            "type": "object"
           },
           "standard": {
             "title": "Standard",
@@ -1521,6 +1565,7 @@
           "standard",
           "versions",
           "entities",
+          "entityNeeds",
           "timezones"
         ],
         "title": "StandardCapabilityOut",
@@ -2719,7 +2764,7 @@
     },
     "/published-feeds/capabilities": {
       "get": {
-        "description": "Name the standards, versions and feed entities this build can bind a feed\nto. A read open to any org member, the same authorization as listing feeds.",
+        "description": "Name the standards, versions and feed entities this build can bind a feed\nto, and what each entity's producer needs of a binding. A read open to any\norg member, the same authorization as listing feeds.",
         "operationId": "get_capabilities_published_feeds_capabilities_get",
         "parameters": [
           {

@@ -41,6 +41,7 @@ const PRIVATE_FEED: PublishedFeed = {
   columnMap: {},
   onError: 'block',
   lastGoodMaxAgeSeconds: null,
+  retireOnFailure: false,
   visibility: 'private',
   bindingState: 'unknown',
 }

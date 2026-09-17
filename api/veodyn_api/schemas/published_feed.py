@@ -10,7 +10,7 @@ from typing import Literal
 from pydantic import Field, field_validator, model_validator
 
 from veodyn_api.schemas.catalog import CamelModel
-from veodyn_api.services import published_feed_registry
+from veodyn_api.services import publish_produce, published_feed_registry
 from veodyn_api.services.gbfs_serializer import check_system_info
 
 # PostgreSQL `INTEGER`, which is the column type behind both of the integer
@@ -38,7 +38,7 @@ class PublishedFeedIn(CamelModel):
     """
 
     slug: str = Field(min_length=1, max_length=64, pattern=r"^[a-z0-9][a-z0-9-]*$")
-    query_id: int = Field(gt=0, le=PG_INT_MAX)
+    query_id: int | None = Field(default=None, gt=0, le=PG_INT_MAX)
     # A Literal, because both standards are community code rather than something
     # a pack adds, so the committed openapi may name them.
     standard: Literal["gtfs-rt", "gbfs"]
@@ -66,6 +66,7 @@ class PublishedFeedIn(CamelModel):
     column_map: dict[str, str]
     on_error: Literal["block", "last_good"] = "block"
     last_good_max_age_seconds: int | None = Field(default=None, gt=0, le=PG_INT_MAX)
+    retire_on_failure: bool = False
     visibility: Literal["private", "public"] = "private"
 
     @field_validator("slug")
@@ -117,14 +118,31 @@ class PublishedFeedIn(CamelModel):
                 f"{self.entity!r} is not a supported entity in this deployment for {self.standard}; "
                 f"this deployment supports: {supported}"
             )
+        needs = publish_produce.needs_for(self.standard, self.entity)
+        if needs.query != (self.query_id is not None):
+            raise ValueError(
+                f"{self.entity!r} is built from a query result under {self.standard}, so this binding needs a query"
+                if needs.query
+                else f"{self.entity!r} is not built from a query result under {self.standard}, "
+                "so this binding cannot name one"
+            )
+        if not needs.column_map and self.column_map:
+            raise ValueError(
+                f"{self.entity!r} maps no query columns under {self.standard}, so this binding cannot carry a "
+                "column map"
+            )
         # Blank collapses to None BEFORE the pairing is judged, and the collapsed
         # value is what gets stored. A blank kept as "" reads as absent here and
         # as NOT NULL to ck_published_feed_static_ref_matches_standard, which is
         # a 500 at COMMIT instead of the 422 below.
         if self.static_gtfs_ref is not None and not self.static_gtfs_ref.strip():
             self.static_gtfs_ref = None
-        if (self.standard == "gtfs-rt") != (self.static_gtfs_ref is not None):
-            raise ValueError("a gtfs-rt feed requires a static GTFS reference, and a gbfs feed cannot carry one")
+        if needs.static_reference != (self.static_gtfs_ref is not None):
+            raise ValueError(
+                f"{self.entity!r} under {self.standard} requires a static GTFS reference"
+                if needs.static_reference
+                else f"{self.entity!r} under {self.standard} cannot carry a static GTFS reference"
+            )
         if (self.standard == "gbfs") != (self.system_info is not None):
             raise ValueError("a gbfs feed requires system information, and a gtfs-rt feed cannot carry it")
         if self.system_info is not None:
@@ -144,14 +162,27 @@ class PublishedFeedIn(CamelModel):
             raise ValueError("last_good requires last_good_max_age_seconds, and block forbids it")
         return self
 
+    @model_validator(mode="after")
+    def _retirement_and_last_good_are_not_both_asked_for(self) -> "PublishedFeedIn":
+        """`last_good` promises to keep serving the last valid artifact for a
+        bounded age; `retire_on_failure` clears the served pointer on the very
+        failure that promise is about. Stored together, the retirement wins and
+        the cap can never be reached, so the binding says one thing and does
+        another. Refused rather than given a precedence, because a precedence is
+        a rule nothing on the surface states.
+        """
+        if self.on_error == "last_good" and self.retire_on_failure:
+            raise ValueError(
+                "last_good and retireOnFailure contradict each other: retiring the served artifact clears the "
+                "pointer the age cap would serve from, so nothing is left to serve for the bounded age. "
+                "Choose block with retireOnFailure, or last_good without it"
+            )
+        return self
+
 
 class PublishedFeedOut(CamelModel):
     slug: str
     revision: int
-    # Null for a binding with no query behind it. `PublishedFeedIn.query_id` is
-    # still required, because every entity this community build registers a
-    # producer for is built from a query result; a pack registering one that is
-    # not is what puts a null here.
     query_id: int | None
     standard: str
     version: str
@@ -162,6 +193,7 @@ class PublishedFeedOut(CamelModel):
     column_map: dict[str, str]
     on_error: str
     last_good_max_age_seconds: int | None
+    retire_on_failure: bool
     visibility: str
     # ok | unvalidated | unknown. Derived from the binding check rather than
     # stored, because a query gaining or losing a column changes this answer
@@ -175,43 +207,6 @@ class PublishedFeedOut(CamelModel):
     # never reaches this model at all -- a write carrying it is refused with a
     # 422, so no stored binding is known-invalid at the moment it is written.
     binding_state: str
-
-
-class StandardCapabilityOut(CamelModel):
-    """One standard this deployment can bind a feed to, with the versions it can
-    publish and the entities registered under it.
-
-    `versions` comes from `published_feed_registry.VERSIONS_BY_STANDARD` and is empty for a
-    standard only a pack registers entities under.
-
-    `timezones` is the closed vocabulary this standard's system declaration
-    accepts, read from the validator's own schema by `gbfs_vocabulary.py`. Empty
-    for a standard that declares no timezone, and empty when that schema cannot
-    be read, which the form degrades to a text field.
-    """
-
-    standard: str
-    versions: list[str]
-    entities: list[str]
-    timezones: list[str]
-
-
-class FeedCapabilitiesOut(CamelModel):
-    """What this deployment's feed registry actually holds, read at runtime
-    rather than inferred from a values file or a matching image digest.
-
-    Root CLAUDE.md records that an installed layer is inert until a deployment
-    names it, and the deploy succeeds either way -- costing four releases before
-    this pattern got an interrogation endpoint. `standards`, and `entities`
-    within each, are sorted so the response is stable across the registry's
-    unordered sets.
-
-    The frontend's binding form renders `entity` as a stated fact when there is
-    exactly one, and as a picker otherwise (design section 4's "one
-    consequence"); this is the response that decision reads.
-    """
-
-    standards: list[StandardCapabilityOut]
 
 
 class FindingOut(CamelModel):

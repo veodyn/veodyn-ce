@@ -37,6 +37,7 @@ const GBFS_FEED: PublishedFeed = {
   },
   onError: 'block',
   lastGoodMaxAgeSeconds: null,
+  retireOnFailure: false,
   visibility: 'private',
   bindingState: 'unknown',
 }

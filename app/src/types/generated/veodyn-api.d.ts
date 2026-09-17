@@ -336,7 +336,8 @@ export interface paths {
         /**
          * Get Capabilities
          * @description Name the standards, versions and feed entities this build can bind a feed
-         *     to. A read open to any org member, the same authorization as listing feeds.
+         *     to, and what each entity's producer needs of a binding. A read open to any
+         *     org member, the same authorization as listing feeds.
          */
         get: operations["get_capabilities_published_feeds_capabilities_get"];
         put?: never;
@@ -662,6 +663,15 @@ export interface components {
             /** Label */
             label: string;
         };
+        /** EntityNeedsOut */
+        EntityNeedsOut: {
+            /** Columnmap */
+            columnMap: boolean;
+            /** Query */
+            query: boolean;
+            /** Staticreference */
+            staticReference: boolean;
+        };
         /**
          * ExpectationIn
          * @description How often this capture should deliver, or null to stop expecting.
@@ -684,21 +694,7 @@ export interface components {
         FavoritesOut: {
             [key: string]: string[];
         };
-        /**
-         * FeedCapabilitiesOut
-         * @description What this deployment's feed registry actually holds, read at runtime
-         *     rather than inferred from a values file or a matching image digest.
-         *
-         *     Root CLAUDE.md records that an installed layer is inert until a deployment
-         *     names it, and the deploy succeeds either way -- costing four releases before
-         *     this pattern got an interrogation endpoint. `standards`, and `entities`
-         *     within each, are sorted so the response is stable across the registry's
-         *     unordered sets.
-         *
-         *     The frontend's binding form renders `entity` as a stated fact when there is
-         *     exactly one, and as a picker otherwise (design section 4's "one
-         *     consequence"); this is the response that decision reads.
-         */
+        /** FeedCapabilitiesOut */
         FeedCapabilitiesOut: {
             /** Standards */
             standards: components["schemas"]["StandardCapabilityOut"][];
@@ -906,7 +902,12 @@ export interface components {
              */
             onError: "block" | "last_good";
             /** Queryid */
-            queryId: number;
+            queryId?: number | null;
+            /**
+             * Retireonfailure
+             * @default false
+             */
+            retireOnFailure: boolean;
             /** Slug */
             slug: string;
             /** Sourcecolumn */
@@ -947,6 +948,8 @@ export interface components {
             onError: string;
             /** Queryid */
             queryId: number | null;
+            /** Retireonfailure */
+            retireOnFailure: boolean;
             /** Revision */
             revision: number;
             /** Slug */
@@ -1018,22 +1021,14 @@ export interface components {
             /** Trigger */
             trigger: string;
         };
-        /**
-         * StandardCapabilityOut
-         * @description One standard this deployment can bind a feed to, with the versions it can
-         *     publish and the entities registered under it.
-         *
-         *     `versions` comes from `published_feed_registry.VERSIONS_BY_STANDARD` and is empty for a
-         *     standard only a pack registers entities under.
-         *
-         *     `timezones` is the closed vocabulary this standard's system declaration
-         *     accepts, read from the validator's own schema by `gbfs_vocabulary.py`. Empty
-         *     for a standard that declares no timezone, and empty when that schema cannot
-         *     be read, which the form degrades to a text field.
-         */
+        /** StandardCapabilityOut */
         StandardCapabilityOut: {
             /** Entities */
             entities: string[];
+            /** Entityneeds */
+            entityNeeds: {
+                [key: string]: components["schemas"]["EntityNeedsOut"];
+            };
             /** Standard */
             standard: string;
             /** Timezones */

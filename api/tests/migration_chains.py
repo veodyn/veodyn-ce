@@ -34,6 +34,13 @@ EE_TABLES = frozenset(
         "managed_record",
         "published_feed_schedule",
         "published_feed_token",
+        "service_message",
+        "communication_channel",
+        "message_revision",
+        "message_rendering",
+        "message_publication_run",
+        "message_outbox_entry",
+        "message_delivery_attempt",
     }
 )
 """The enterprise chain's allowlist, restated rather than imported.
@@ -92,7 +99,7 @@ it is written out and `test_migration_chain.py` holds the chain to it.
 Add an id here only once a revision has actually shipped. Removing one is the
 error this guards."""
 
-EE_REVISIONS = ("0011", "0010", "0009", "0008", "0007", "0004", "0003", "0002", "0001")
+EE_REVISIONS = ("0015", "0014", "0013", "0012", "0011", "0010", "0009", "0008", "0007", "0004", "0003", "0002", "0001")
 """The enterprise chain, newest first."""
 
 Diff = tuple[object, ...]
