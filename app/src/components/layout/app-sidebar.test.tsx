@@ -7,10 +7,19 @@ import { BrandMark } from '@/components/layout/sidebar-body'
 import { ConfigProvider } from '@/components/config/config-provider'
 import { toClientConfig, NEUTRAL_CONFIG } from '@/lib/config-schema'
 import { useAuthStore, type CurrentUser, type Permission } from '@/stores/auth-store'
+import type { DeploymentScale } from '@/lib/edition'
 
 vi.mock('next/navigation', () => ({
   usePathname: vi.fn(() => '/queries'),
 }))
+
+vi.mock('@/lib/edition', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/lib/edition')>()
+  return {
+    ...real,
+    instanceEdition: (scale: DeploymentScale) => real.instanceEdition(scale, {}),
+  }
+})
 
 const permissions: Permission[] = ['view_query', 'list_dashboards', 'list_alerts']
 

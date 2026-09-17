@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { instanceEdition, warnOnHubWithoutEnterprise } from '@/lib/edition'
-import type { FeatureDescriptor } from '@/features'
+import { FEATURES, featureList, type FeatureDescriptor } from '@/features'
 
 const enterprise = { kpis: { id: 'kpis' } as FeatureDescriptor }
 const community = {}
@@ -25,7 +25,8 @@ describe('instanceEdition', () => {
   })
 
   it('reads the real registry when none is passed', () => {
-    expect(instanceEdition('node').code).toBe('CE')
+    expect(instanceEdition('node')).toEqual(instanceEdition('node', FEATURES))
+    expect(instanceEdition('node').code).toBe(featureList(FEATURES).length > 0 ? 'EE' : 'CE')
   })
 })
 
