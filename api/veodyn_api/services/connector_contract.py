@@ -118,7 +118,7 @@ class ContentContract:
     required_footer: str | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ComposeRequirements:
     needs_entities: bool = False
     needs_classification: bool = False

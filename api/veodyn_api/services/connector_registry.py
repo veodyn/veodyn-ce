@@ -168,17 +168,42 @@ def _refuse_a_contract_no_rendering_can_satisfy(connector_id: str, contract: Con
         )
 
 
+def _declares_compose_requirements(connector: Connector) -> bool:
+    owners = (connector, type(connector), *type(connector).__mro__)
+    return any("compose_requirements" in getattr(owner, "__dict__", {}) for owner in owners)
+
+
+def _settled(declared: object) -> ComposeRequirements | None:
+    if not isinstance(declared, ComposeRequirements):
+        return None
+    return ComposeRequirements(
+        needs_entities=bool(declared.needs_entities),
+        needs_classification=bool(declared.needs_classification),
+        accepts_override=bool(declared.accepts_override),
+    )
+
+
 def compose_requirements_of(connector: Connector, connector_id: str) -> ComposeRequirements:
-    declared = getattr(connector, "compose_requirements", None)
+    if not _declares_compose_requirements(connector):
+        return NO_COMPOSE_REQUIREMENTS
+    try:
+        declared = getattr(connector, "compose_requirements")  # noqa: B009
+        settled = _settled(declared)
+    except Exception as error:
+        raise UnreadableComposeRequirements(
+            f"{connector_id} declares compose requirements that cannot be read: asking for them raised "
+            f"{type(error).__name__}. The compose form would be built from the defaults instead, with nothing "
+            "to say the declaration was dropped."
+        ) from error
     if declared is None:
         return NO_COMPOSE_REQUIREMENTS
-    if not isinstance(declared, ComposeRequirements):
+    if settled is None:
         raise UnreadableComposeRequirements(
             f"{connector_id} declares compose requirements as {type(declared).__name__}, and the compose form "
             "would be built from the defaults instead with nothing to say the declaration was dropped. Declare a "
             "ComposeRequirements."
         )
-    return declared
+    return settled
 
 
 def register_connector(connector: Connector) -> None:
