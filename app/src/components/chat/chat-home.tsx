@@ -1,46 +1,28 @@
 'use client'
 
-import { MessagesSquare } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { Sparkles } from 'lucide-react'
 import { BigMessage } from '@/components/shared/big-message'
-import { createThread, postTurn } from '@/services/ai/chat-client'
+import { useStartChat } from '@/hooks/use-start-chat'
 import { ChatComposer } from './chat-composer'
+import { ChatStarters } from './chat-starters'
 
-export const START_FAILED_MESSAGE = 'The conversation could not be started. Try again.'
+export { START_FAILED_MESSAGE } from '@/hooks/use-start-chat'
+
+export const CHAT_INTRO =
+  'Questions about your data, and about the queries and dashboards already here, are answered in a conversation. ' +
+  'Queries run in your browser with your own permissions, and results worth keeping can be saved.'
 
 export function ChatHome() {
-  const router = useRouter()
-  const [starting, setStarting] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
-
-  const start = (text: string) => {
-    const trimmed = text.trim()
-    if (!trimmed || starting) return
-    setStarting(true)
-    setNotice(null)
-    createThread()
-      .then(async (thread) => {
-        await postTurn(thread.id, trimmed)
-        router.push(`/chat/${thread.id}`)
-      })
-      .catch(() => {
-        setNotice(START_FAILED_MESSAGE)
-        setStarting(false)
-      })
-  }
+  const { start, starting, notice } = useStartChat()
 
   return (
     <div className="flex h-full w-full max-w-3xl flex-col justify-center gap-6 px-6 py-10">
       <BigMessage
-        icon={<MessagesSquare className="size-10" aria-hidden="true" />}
+        icon={<Sparkles className="size-10" aria-hidden="true" />}
         message="Ask anything about your data"
         className="py-0"
       >
-        <p className="text-pretty text-sm text-muted-foreground">
-          Questions are answered by running read-only queries in your browser, with your own permissions. Results
-          you want to keep can be saved as queries.
-        </p>
+        <p className="text-pretty text-sm text-muted-foreground">{CHAT_INTRO}</p>
       </BigMessage>
       <ChatComposer
         onSend={start}
@@ -49,6 +31,7 @@ export function ChatHome() {
         notice={notice}
         placeholder="Which routes lost the most riders this month?"
       />
+      <ChatStarters onPick={start} disabled={starting} />
     </div>
   )
 }

@@ -7,6 +7,7 @@ import { useFavoriteDashboards } from '@/hooks/use-dashboards'
 import { TimeAgo } from '@/components/shared/time-ago'
 import { useConfig } from '@/components/config/config-provider'
 import { AssistantWidget } from '@/components/home/assistant-widget'
+import { HomeChatCard } from '@/components/home/home-chat-card'
 import { Slot } from '@/features/slots'
 import { HomeOmnisearch } from '@/components/home/home-omnisearch'
 import { NotableChangesStrip } from '@/components/home/notable-changes-strip'
@@ -79,6 +80,8 @@ export default function HomePage() {
         <HomeOmnisearch />
       </div>
 
+      <HomeChatCard />
+
       <NotableChangesStrip />
       {/* The AI digest is an enterprise surface and Home is not, so it arrives
           through the registry. Nothing installed means nothing here: the
@@ -86,7 +89,6 @@ export default function HomePage() {
           sections below close up the way they do when the digest has no items
           worth showing. */}
       <Slot id="home.aiDigest" props={{}} fallback={null} />
-      <Slot id="home.reviewQueue" props={{}} fallback={null} />
 
       {favoritesPending ? (
         // Two columns, which is what an instance with favourites shows and the
