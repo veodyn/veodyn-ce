@@ -95,9 +95,6 @@ export const ErrorIds = {
   // ── Published feeds (PUBFEED) ──────────────────────────────────────────────
   PUBLISHED_FEED_REQUEST_FAILED: 'E_PUBFEED_001',
 
-  // ── Channel connectors (CONNECTOR) ─────────────────────────────────────────
-  CONNECTOR_REQUEST_FAILED: 'E_CONNECTOR_001',
-
   // ── KPI object (KPI) ───────────────────────────────────────────────────────
   KPI_FETCH_FAILED: 'E_KPI_001',
 
@@ -155,6 +152,9 @@ export const ErrorIds = {
   // a second generation writes the SQL and picks its own aliases), so nothing
   // upstream makes them agree.
   AI_WRITTEN_QUERY_COLUMN_MISSING: 'E_AI_004',
+  AI_CHAT_UNAVAILABLE: 'E_AI_005',
+  AI_CHAT_STREAM_INVALID: 'E_AI_006',
+  AI_CHAT_QUERY_FAILED: 'E_AI_007',
 
   // Queries (QUERY)
   // An operation the fixtures cannot represent. Mock mode mints no per-query

@@ -79,7 +79,7 @@ export function providerHeaders(): Record<string, string> {
 
 // The caller's own app session cookie value, or null. Presence is the floor,
 // and in real mode requireSession validates it against Redash.
-function sessionCookieValue(cookieHeader: string | null): string | null {
+export function sessionCookieValue(cookieHeader: string | null): string | null {
   if (!cookieHeader) return null
   for (const part of cookieHeader.split(';')) {
     const eq = part.indexOf('=')
@@ -161,7 +161,12 @@ export interface AiRelay<TRequest, TResponse> {
   requestSchema: ZodType<TRequest> | null
   /** The 400 message for anything malformed about the request. */
   invalidMessage: string
-  responseSchema: ZodType<TResponse> | ((payload: TRequest) => ZodType<TResponse>)
+  /**
+   * The provider's success shape. Anything else (an empty 200, an error
+   * payload, a smuggled extra field) is refused, so only canonical fields ever
+   * reach the browser.
+   */
+  responseSchema: ZodType<TResponse>
   mock: (payload: TRequest) => unknown
 }
 
@@ -206,11 +211,7 @@ async function callProvider<TRequest, TResponse>(
     return errorResponse(providerFailed(), 502)
   }
 
-  const schema =
-    typeof relay.responseSchema === 'function'
-      ? relay.responseSchema(payload)
-      : relay.responseSchema
-  const result = schema.safeParse(parsed)
+  const result = relay.responseSchema.safeParse(parsed)
   if (!result.success) return errorResponse(providerFailed(), 502)
   return NextResponse.json(result.data)
 }

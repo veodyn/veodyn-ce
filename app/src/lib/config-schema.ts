@@ -44,12 +44,17 @@ const aiSchema = z
   .object({
     enabled: booleanish.default(false),
     endpoint: z.string().url().nullable().default(null),
+    chat: booleanish.default(false),
   })
   .strict()
   .default({})
   .refine((ai) => !ai.enabled || ai.endpoint !== null, {
     message: 'ai.endpoint is required when ai.enabled is true',
     path: ['endpoint'],
+  })
+  .refine((ai) => !ai.chat || ai.enabled, {
+    message: 'ai.chat needs ai.enabled',
+    path: ['chat'],
   })
 
 // The unbranded instance is Veodyn's own, so it ships Veodyn's mark.
@@ -127,6 +132,23 @@ export const veodynConfigSchema = z.object({
     })
     .strict()
     .default({}),
+  demo: z
+    .object({
+      personas: z
+        .array(
+          z
+            .object({
+              id: z.string().min(1),
+              label: z.string().min(1),
+              email: z.string().email(),
+              description: z.string().nullable().default(null),
+            })
+            .strict()
+        )
+        .default([]),
+    })
+    .strict()
+    .default({}),
   home: z
     .object({
       tagline: z.string().default('The data substrate for regional transportation.'),
@@ -165,34 +187,23 @@ export const veodynConfigSchema = z.object({
     })
     .strict()
     .default({}),
-  messages: z
-    .object({
-      enabled: booleanish.default(false),
-    })
-    .strict()
-    .default({}),
-  connectors: z
-    .object({
-      enabled: booleanish.default(false),
-    })
-    .strict()
-    .default({}),
 })
   .strict()
-  .refine((config) => !config.connectors.enabled || config.messages.enabled, {
-    message:
-      'connectors.enabled requires messages.enabled: a connector is an outbound channel for a service message, and with messages off there is nothing to send through it',
-    path: ['connectors', 'enabled'],
-  })
 
 export type VeodynConfig = z.infer<typeof veodynConfigSchema>
 
 // Client-safe subset: everything except server-only AI internals.
-export type ClientConfig = Omit<VeodynConfig, 'ai'> & { ai: { enabled: boolean } }
+export type ClientConfig = Omit<VeodynConfig, 'ai'> & { ai: { enabled: boolean; chat?: boolean } }
+
+export type DemoPersona = VeodynConfig['demo']['personas'][number]
+
+export function usesSharedDemoAccounts(config: Pick<ClientConfig, 'demo'>): boolean {
+  return config.demo.personas.length > 0
+}
 
 export function toClientConfig(config: VeodynConfig): ClientConfig {
   const { ai, ...rest } = config
-  return { ...rest, ai: { enabled: ai.enabled } }
+  return { ...rest, ai: { enabled: ai.enabled, chat: ai.chat } }
 }
 
 export const NEUTRAL_CONFIG: VeodynConfig = veodynConfigSchema.parse({})

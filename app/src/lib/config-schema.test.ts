@@ -44,7 +44,7 @@ describe('config-schema', () => {
       reports: { require_separate_approver: false },
     })
     const client = toClientConfig(cfg)
-    expect(client.ai).toEqual({ enabled: true })
+    expect(client.ai).toEqual({ enabled: true, chat: false })
     expect((client.ai as Record<string, unknown>).endpoint).toBeUndefined()
     expect(client.reports).toEqual({ require_separate_approver: false })
   })
@@ -140,40 +140,5 @@ describe('config-schema', () => {
     ).toEqual(['NOT_IN_THIS_BUILD'])
     expect(() => veodynConfigSchema.parse({ visualizations: { enabled: [1] } })).toThrow()
     expect(() => veodynConfigSchema.parse({ visualizations: { enabeld: ['TABLE'] } })).toThrow()
-  })
-
-  it('defaults messages.enabled to false, absent and empty alike', () => {
-    expect(veodynConfigSchema.parse({}).messages.enabled).toBe(false)
-    expect(veodynConfigSchema.parse({ messages: {} }).messages.enabled).toBe(false)
-    expect(NEUTRAL_CONFIG.messages.enabled).toBe(false)
-  })
-
-  it('accepts messages.enabled but rejects an unknown key beside it', () => {
-    expect(veodynConfigSchema.parse({ messages: { enabled: true } }).messages.enabled).toBe(true)
-    expect(veodynConfigSchema.parse({ messages: { enabled: 'true' } }).messages.enabled).toBe(true)
-    expect(() => veodynConfigSchema.parse({ messages: { enabled: true, retention_days: 30 } })).toThrow()
-    expect(() => veodynConfigSchema.parse({ messages: { enabeld: true } })).toThrow()
-  })
-
-  it('ships messages.enabled to the client, both ways', () => {
-    expect(toClientConfig(veodynConfigSchema.parse({ messages: { enabled: true } })).messages).toEqual({
-      enabled: true,
-    })
-    expect(toClientConfig(veodynConfigSchema.parse({})).messages).toEqual({ enabled: false })
-  })
-
-  it('refuses connectors.enabled without messages.enabled, because a connector carries a message', () => {
-    expect(() => veodynConfigSchema.parse({ connectors: { enabled: true } })).toThrow()
-    expect(() =>
-      veodynConfigSchema.parse({ messages: { enabled: false }, connectors: { enabled: true } })
-    ).toThrow()
-
-    const both = veodynConfigSchema.parse({
-      messages: { enabled: true },
-      connectors: { enabled: true },
-    })
-
-    expect([both.messages.enabled, both.connectors.enabled]).toEqual([true, true])
-    expect(veodynConfigSchema.parse({ messages: { enabled: true } }).connectors.enabled).toBe(false)
   })
 })

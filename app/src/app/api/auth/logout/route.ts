@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { REDASH_URL, redashFetch } from '@/lib/redash-server'
 import { COOKIE_SECURE } from '@/lib/cookie-attrs'
+import { clearAiTokenCookie } from '@/lib/ai-token'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,5 +28,6 @@ export async function POST(request: NextRequest) {
   res.cookies.set('session', '', { ...expire, httpOnly: true })
   res.cookies.set('csrf_token', '', { ...expire, httpOnly: false })
   res.cookies.set('redash_api_key', '', { ...expire, httpOnly: true })
+  clearAiTokenCookie(res)
   return res
 }

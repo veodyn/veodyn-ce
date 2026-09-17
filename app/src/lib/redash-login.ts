@@ -6,6 +6,8 @@ import {
   buildCookieHeader,
 } from '@/lib/redash-server'
 import { COOKIE_SECURE } from '@/lib/cookie-attrs'
+import { mintAiToken, setAiTokenCookie } from '@/lib/ai-token'
+import { env } from '@/lib/env'
 
 const CSRF_TOKEN_IN_LOGIN_FORM = /name="csrf_token"\s+value="([^"]+)"/
 const REDIRECT_MEANS_ACCEPTED = 302
@@ -103,6 +105,10 @@ export async function redashFormLogin(email: string, password: string): Promise<
     }
     if (userApiKey) {
       res.cookies.set('redash_api_key', userApiKey, persistentCookie)
+    }
+    const userId = sessionData?.user?.id
+    if (env.VEODYN_AI__TOKEN_SECRET && Number.isInteger(userId)) {
+      setAiTokenCookie(res, mintAiToken(userId, env.VEODYN_AI__TOKEN_SECRET))
     }
 
     return res

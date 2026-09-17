@@ -23,6 +23,7 @@ const envSchema = z.object({
 
   // ── Veodyn AI assistant (server-only secret; config.ts carries the rest) ──
   VEODYN_AI__KEY: z.string().default(''),
+  VEODYN_AI__TOKEN_SECRET: z.string().default(''),
 
   // ── Catalog backend (server-side proxy for /api/catalog + /api/domains) ────
   // Unset = the endpoints 503; mock mode never calls them (MVP spec section 4).
