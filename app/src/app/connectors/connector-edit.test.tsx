@@ -269,6 +269,10 @@ describe('editing a configured connector', () => {
 
     await choose(user, 'Operator note', /Replace it with a new value/)
     expect(screen.getByRole('textbox', { name: 'Operator note' })).toBeRequired()
+    const visibleHeading = screen
+      .getAllByText('Operator note')
+      .find((el) => el.closest('.sr-only') === null)
+    expect(visibleHeading?.querySelector('[data-slot="required-marker"]')).not.toBeNull()
   })
 
   it('demands a required credential that has never been configured', async () => {

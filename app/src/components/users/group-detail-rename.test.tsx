@@ -76,6 +76,12 @@ describe('GroupDetail rename', () => {
     expect(field).toBeRequired()
     expect(field).toHaveAttribute('aria-required', 'true')
     expect(screen.getByRole('textbox', { name: 'Group name' })).toBe(field)
+
+    const markers = Array.from(
+      field.parentElement?.querySelectorAll('[data-slot="required-marker"]') ?? []
+    )
+    const visibleMarker = markers.find((marker) => marker.closest('label') === null)
+    expect(visibleMarker).not.toBeUndefined()
   })
 
   it('does not offer Save for a name that is empty or only whitespace', async () => {

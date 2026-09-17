@@ -38,6 +38,8 @@ function CredentialRow({
   const edit = edits[field.name]
   const action: CredentialAction = edit?.action ?? 'replace'
   const forced = field.required && !configured
+  const valueRequired = field.type !== 'boolean' && action === 'replace'
+  const showRequiredMarker = field.type !== 'boolean' && (field.required || valueRequired)
 
   const setAction = (next: CredentialAction) => {
     onChange({ ...edits, [field.name]: { action: next, value: blankValueFor(field) } })
@@ -50,7 +52,7 @@ function CredentialRow({
     <div className="space-y-2 border-t border-border pt-4 first:border-t-0 first:pt-0">
       <div className="text-sm font-medium">
         {field.title}
-        {field.required && <RequiredMarker />}
+        {showRequiredMarker && <RequiredMarker />}
       </div>
       {field.description && <p className="text-sm text-muted-foreground">{field.description}</p>}
       {!forced && (

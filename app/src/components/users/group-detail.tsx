@@ -8,7 +8,7 @@ import { ApiError, redashApi } from '@/services/api-client'
 import { useToast } from '@/components/shared/toast-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Label, RequiredMarker } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GroupMembers } from './group-members'
 import { GroupDataSources } from './group-data-sources'
@@ -209,6 +209,7 @@ export function GroupDetail({ groupId, onBack }: GroupDetailProps) {
                     required
                     aria-required="true"
                   />
+                  <RequiredMarker />
                 </>
               ) : (
                 <h2 className="text-base font-semibold">{name}</h2>

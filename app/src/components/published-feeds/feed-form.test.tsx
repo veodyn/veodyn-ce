@@ -164,6 +164,19 @@ describe('required field marking', () => {
     expect(screen.getByText('Visibility').querySelector('[data-slot="required-marker"]')).toBeNull()
   })
 
+  it('names the query picker group "Source query" and puts no aria-required on it, before and after a pick', async () => {
+    const user = userEvent.setup()
+    renderCreateForm()
+
+    const unpickedGroup = screen.getByRole('group', { name: 'Source query' })
+    expect(unpickedGroup).not.toHaveAttribute('aria-required')
+
+    await pickQuery(user, 'Bike Share', /Bike Share Station Availability/i)
+
+    const pickedGroup = screen.getByRole('group', { name: 'Source query' })
+    expect(pickedGroup).not.toHaveAttribute('aria-required')
+  })
+
   it('requires the maximum age only once last known good is chosen', async () => {
     const user = userEvent.setup()
     renderCreateForm()
