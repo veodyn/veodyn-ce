@@ -64,17 +64,19 @@ export function SnippetProposalCard({
       onCreate={create}
     >
       <div className="space-y-2">
-        <Label htmlFor={triggerId}>Trigger</Label>
+        <Label htmlFor={triggerId} required>Trigger</Label>
         <Input
           id={triggerId}
           value={trigger}
           onChange={(event) => setTrigger(event.target.value)}
           disabled={commit.busy}
+          required
+          aria-required="true"
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor={bodyId}>Snippet</Label>
+        <Label htmlFor={bodyId} required>Snippet</Label>
         <Textarea
           id={bodyId}
           value={snippet}
@@ -82,6 +84,8 @@ export function SnippetProposalCard({
           onChange={(event) => setSnippet(event.target.value)}
           disabled={commit.busy}
           className="font-mono text-xs"
+          required
+          aria-required="true"
         />
       </div>
 

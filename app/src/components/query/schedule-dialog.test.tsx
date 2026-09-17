@@ -37,7 +37,7 @@ describe('ScheduleDialog', () => {
 
     expect(screen.getByLabelText(/at time/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/on day/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/until \(optional\)/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^until$/i)).toBeInTheDocument()
   })
 
   it('passes the selected schedule to onSave', async () => {

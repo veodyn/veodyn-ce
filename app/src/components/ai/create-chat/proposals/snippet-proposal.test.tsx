@@ -41,10 +41,10 @@ describe('SnippetProposalCard', () => {
     const user = userEvent.setup()
     const { onCreated } = renderCard()
 
-    const trigger = screen.getByLabelText('Trigger')
+    const trigger = screen.getByLabelText(/^Trigger/)
     await user.clear(trigger)
     await user.type(trigger, 'last30')
-    const body = screen.getByLabelText('Snippet')
+    const body = screen.getByLabelText(/^Snippet/)
     await user.clear(body)
     await user.type(body, 'WHERE ts >= now() - INTERVAL 30 DAY')
     const description = screen.getByLabelText('Description')
@@ -63,11 +63,21 @@ describe('SnippetProposalCard', () => {
     expect(onCreated).toHaveBeenCalledWith(null)
   })
 
+  it('marks Trigger and Snippet required, and leaves Description unmarked', () => {
+    renderCard()
+
+    expect(screen.getByText('Trigger').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/^Trigger/)).toBeRequired()
+    expect(screen.getByText('Snippet').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/^Snippet/)).toBeRequired()
+    expect(screen.getByText('Description').querySelector('[data-slot="required-marker"]')).toBeNull()
+  })
+
   it('will not create a snippet with no trigger to type', async () => {
     const user = userEvent.setup()
     const { onCreated } = renderCard()
 
-    await user.clear(screen.getByLabelText('Trigger'))
+    await user.clear(screen.getByLabelText(/^Trigger/))
 
     expect(screen.getByRole('button', { name: 'Create snippet' })).toBeDisabled()
     expect(onCreated).not.toHaveBeenCalled()

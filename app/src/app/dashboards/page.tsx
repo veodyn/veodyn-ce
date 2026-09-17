@@ -220,7 +220,7 @@ function DashboardsContent() {
             <DialogTitle>Create a New Dashboard</DialogTitle>
           </DialogHeader>
           <div className="max-h-[70vh] overflow-y-auto">
-            <Label htmlFor={newNameId} className="mb-1.5 block">Dashboard Name</Label>
+            <Label htmlFor={newNameId} className="mb-1.5 block" required>Dashboard Name</Label>
             <Input
               id={newNameId}
               type="text"
@@ -229,6 +229,8 @@ function DashboardsContent() {
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               placeholder="Enter dashboard name..."
               autoFocus
+              required
+              aria-required="true"
             />
           </div>
           <DialogFooter>

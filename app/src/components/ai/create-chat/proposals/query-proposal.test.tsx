@@ -75,11 +75,22 @@ describe('QueryProposalCard', () => {
     expect(created?.visualizations.map((viz) => viz.type)).toEqual(['TABLE'])
   })
 
+  it('marks the query name and data source required, and leaves description unmarked', async () => {
+    renderCard()
+
+    expect(screen.getByText('Query name').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/^Query name/)).toBeRequired()
+    expect(await screen.findByText('Data source')).toBeInTheDocument()
+    expect(screen.getByText('Data source').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByRole('combobox', { name: 'Data source' })).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByText('Description').querySelector('[data-slot="required-marker"]')).toBeNull()
+  })
+
   it('writes the edited name, description, data source and chart, not the proposed ones', async () => {
     const user = userEvent.setup()
     const { onCreated } = renderCard()
 
-    const name = screen.getByLabelText('Query name')
+    const name = screen.getByLabelText(/^Query name/)
     await user.clear(name)
     await user.type(name, 'Rail taps by station')
     const description = screen.getByLabelText('Description')
@@ -201,7 +212,7 @@ describe('QueryProposalCard', () => {
     })
     const { onCreated, onBusyChange } = renderCard()
 
-    const name = screen.getByLabelText('Query name')
+    const name = screen.getByLabelText(/^Query name/)
     await user.clear(name)
     await user.type(name, 'Rail taps by station')
     await user.click(screen.getByRole('button', { name: 'Create query' }))
@@ -211,7 +222,7 @@ describe('QueryProposalCard', () => {
     )
     // Nothing partial is left behind, the edit survives, and the shell is told
     // it can unlock its composer again.
-    expect(screen.getByLabelText('Query name')).toHaveValue('Rail taps by station')
+    expect(screen.getByLabelText(/^Query name/)).toHaveValue('Rail taps by station')
     expect(onCreated).not.toHaveBeenCalled()
     expect(onBusyChange.mock.calls).toEqual([[true], [false]])
     expect(useMockDataStore.getState().queries).toHaveLength(mockQueries.length)

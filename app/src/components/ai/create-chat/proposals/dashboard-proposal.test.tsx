@@ -75,11 +75,18 @@ beforeEach(() => {
 })
 
 describe('DashboardProposalCard', () => {
+  it('marks the dashboard name required', () => {
+    renderCard()
+
+    expect(screen.getByText('Dashboard name').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/^Dashboard name/)).toBeRequired()
+  })
+
   it('writes the edited name and only the panels that were kept', async () => {
     const user = userEvent.setup()
     const { onCreated } = renderCard()
 
-    const name = screen.getByLabelText('Dashboard name')
+    const name = screen.getByLabelText(/^Dashboard name/)
     await user.clear(name)
     await user.type(name, 'Transit health overview')
     await user.click(screen.getByRole('button', { name: 'Remove Air quality' }))

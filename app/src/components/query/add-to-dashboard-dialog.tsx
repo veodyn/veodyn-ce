@@ -207,7 +207,7 @@ export function AddToDashboardDialog({ open, onClose, queryId, visualizations }:
           ) : (
             <div className="space-y-3 border rounded-md p-4">
               <div className="space-y-2">
-                <Label htmlFor={nameId}>New dashboard name</Label>
+                <Label htmlFor={nameId} required>New dashboard name</Label>
                 <Input
                   id={nameId}
                   autoFocus
@@ -215,6 +215,8 @@ export function AddToDashboardDialog({ open, onClose, queryId, visualizations }:
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="Dashboard name"
                   disabled={busy}
+                  required
+                  aria-required="true"
                 />
               </div>
               <p className="text-xs text-muted-foreground">

@@ -101,8 +101,18 @@ describe('AnnotationDialog', () => {
     renderDialog()
 
     expect(screen.getByLabelText(/^start \(utc\)/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/^end \(utc, optional\)/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^end \(utc\)/i)).toBeInTheDocument()
     expect(screen.getByText(/times are utc, matching the chart axis/i)).toBeInTheDocument()
+  })
+
+  it('marks Label and Start required, and leaves End unmarked', () => {
+    renderDialog()
+
+    expect(screen.getByText('Label').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/label/i)).toBeRequired()
+    expect(screen.getByText('Start (UTC)').querySelector('[data-slot="required-marker"]')).not.toBeNull()
+    expect(screen.getByLabelText(/^start/i)).toBeRequired()
+    expect(screen.getByText('End (UTC)').querySelector('[data-slot="required-marker"]')).toBeNull()
   })
 
   it('deleting a listed annotation calls delete with its id', async () => {

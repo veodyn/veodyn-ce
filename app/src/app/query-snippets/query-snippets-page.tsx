@@ -141,13 +141,15 @@ export function QuerySnippetsPage() {
           </DialogHeader>
           <div className="max-h-[70vh] space-y-3 overflow-y-auto">
             <div>
-              <Label htmlFor={triggerId} className="mb-1 block">Trigger</Label>
+              <Label htmlFor={triggerId} className="mb-1 block" required>Trigger</Label>
               <Input
                 id={triggerId}
                 type="text"
                 value={trigger}
                 onChange={(e) => setTrigger(e.target.value)}
                 placeholder="e.g. last7d"
+                required
+                aria-required="true"
               />
             </div>
             <div>
@@ -160,13 +162,15 @@ export function QuerySnippetsPage() {
               />
             </div>
             <div>
-              <Label htmlFor={snippetId} className="mb-1 block">Snippet</Label>
+              <Label htmlFor={snippetId} className="mb-1 block" required>Snippet</Label>
               <Textarea
                 id={snippetId}
                 className="font-mono"
                 value={snippet}
                 onChange={(e) => setSnippet(e.target.value)}
                 rows={4}
+                required
+                aria-required="true"
               />
             </div>
           </div>

@@ -115,12 +115,14 @@ export function QueryProposalCard({
       onCreate={create}
     >
       <div className="space-y-2">
-        <Label htmlFor={nameId}>Query name</Label>
+        <Label htmlFor={nameId} required>Query name</Label>
         <Input
           id={nameId}
           value={name}
           onChange={(event) => setName(event.target.value)}
           disabled={commit.busy}
+          required
+          aria-required="true"
         />
       </div>
 
@@ -164,13 +166,14 @@ export function QueryProposalCard({
           choice, and the label below still says which one it will be. */}
       {sources.length > 1 && (
         <div className="space-y-2">
-          <Label htmlFor={sourceId}>Data source</Label>
+          <Label htmlFor={sourceId} required>Data source</Label>
           <Select
             value={dataSourceId == null ? undefined : String(dataSourceId)}
             onValueChange={(next) => {
               if (next != null) setChosenSource(Number(next))
             }}
             disabled={commit.busy}
+            required
           >
             <SelectTrigger id={sourceId} aria-label="Data source" className="w-full">
               <SelectValue />

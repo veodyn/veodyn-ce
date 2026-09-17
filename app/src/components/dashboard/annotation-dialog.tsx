@@ -94,7 +94,7 @@ export function AnnotationDialog({ open, onClose, dashboardId, widgetId }: Annot
         <div className="max-h-[70vh] space-y-5 overflow-y-auto">
           <div className="space-y-3">
             <div>
-              <Label htmlFor={labelId} className="mb-1 block">
+              <Label htmlFor={labelId} className="mb-1 block" required>
                 Label
               </Label>
               <Input
@@ -102,11 +102,13 @@ export function AnnotationDialog({ open, onClose, dashboardId, widgetId }: Annot
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 placeholder="What happened"
+                required
+                aria-required="true"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor={startId} className="mb-1 block">
+                <Label htmlFor={startId} className="mb-1 block" required>
                   Start (UTC)
                 </Label>
                 <Input
@@ -114,11 +116,13 @@ export function AnnotationDialog({ open, onClose, dashboardId, widgetId }: Annot
                   type="datetime-local"
                   value={start}
                   onChange={(e) => setStart(e.target.value)}
+                  required
+                  aria-required="true"
                 />
               </div>
               <div>
                 <Label htmlFor={endId} className="mb-1 block">
-                  End (UTC, optional)
+                  End (UTC)
                 </Label>
                 <Input
                   id={endId}

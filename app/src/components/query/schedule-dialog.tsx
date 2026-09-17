@@ -108,7 +108,7 @@ export function ScheduleDialog({ open, onClose, schedule, onSave }: ScheduleDial
           )}
           {interval > 0 && (
             <div>
-              <Label htmlFor={untilId} className="mb-1 block">Until (optional)</Label>
+              <Label htmlFor={untilId} className="mb-1 block">Until</Label>
               <Input
                 id={untilId}
                 type="date"

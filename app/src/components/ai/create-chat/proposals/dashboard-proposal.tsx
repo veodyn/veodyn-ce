@@ -129,12 +129,14 @@ export function DashboardProposalCard({
       onCreate={create}
     >
       <div className="space-y-2">
-        <Label htmlFor={nameId}>Dashboard name</Label>
+        <Label htmlFor={nameId} required>Dashboard name</Label>
         <Input
           id={nameId}
           value={name}
           onChange={(event) => setName(event.target.value)}
           disabled={commit.busy}
+          required
+          aria-required="true"
         />
       </div>
 
@@ -143,7 +145,7 @@ export function DashboardProposalCard({
           there would be asking about a decision that is not being made. */}
       {written > 0 && (
         <div className="space-y-2">
-          <Label htmlFor={sourceId}>Data source for the new queries</Label>
+          <Label htmlFor={sourceId} required>Data source for the new queries</Label>
           <Select
             value={dataSourceId == null ? '' : String(dataSourceId)}
             items={sources.map((source) => ({ label: source.name, value: String(source.id) }))}
@@ -151,6 +153,7 @@ export function DashboardProposalCard({
               if (value != null) setChosenSource(Number(value))
             }}
             disabled={commit.busy}
+            required
           >
             <SelectTrigger id={sourceId} className="w-full">
               <SelectValue placeholder="Select" />

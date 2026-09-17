@@ -138,6 +138,17 @@ describe('a dashboard proposal that writes a query', () => {
     expect(await screen.findByText(/Rows per hour/)).toBeInTheDocument()
   })
 
+  it('marks the data source picker required once a query is being written', async () => {
+    renderCard()
+
+    expect(
+      await screen.findByText('Data source for the new queries')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Data source for the new queries').querySelector('[data-slot="required-marker"]')
+    ).not.toBeNull()
+  })
+
   it('keeps the plain wording when nothing is being written', async () => {
     renderWithProviders(
       <DashboardProposalCard

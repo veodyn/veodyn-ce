@@ -48,7 +48,7 @@ export function LinkExpiryField({
   return (
     <div>
       <Label htmlFor={inputId} className="mb-1 block">
-        {label} <span className="text-muted-foreground font-normal">(optional)</span>
+        {label}
       </Label>
       <Input
         id={inputId}
