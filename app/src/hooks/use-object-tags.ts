@@ -43,6 +43,9 @@ const TOO_MANY_TAGS_MESSAGE =
 const REPORT_LOCKED_MESSAGE =
   'Editing is locked while this report is in review, so its tags were not saved.'
 
+const MESSAGE_LOCKED_MESSAGE =
+  'Editing is locked while this message is in review, so its tags were not saved.'
+
 /**
  * The backend's named cause is read BEFORE the status, because the status alone
  * does not identify the failure: veodyn-api answers 422 for a reserved `domain:`
@@ -58,6 +61,7 @@ function writeFailureMessage(objectType: TaggableObjectType, error: unknown): st
   if (cause === TagErrorCause.TAG_TOO_LONG) return TAG_TOO_LONG_MESSAGE
   if (cause === TagErrorCause.TOO_MANY_TAGS) return TOO_MANY_TAGS_MESSAGE
   if (cause === TagErrorCause.REPORT_EDIT_LOCKED) return REPORT_LOCKED_MESSAGE
+  if (cause === TagErrorCause.MESSAGE_EDIT_LOCKED) return MESSAGE_LOCKED_MESSAGE
 
   const status = isAppError(error) ? error.context.status : undefined
   if (status === 409) {

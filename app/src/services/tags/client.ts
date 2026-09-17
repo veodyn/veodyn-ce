@@ -31,6 +31,7 @@ export const TagErrorCause = {
   // Not a size violation: veodyn-api stopped answering the caps with this id.
   INVALID_REQUEST: 'VEODYN_INVALID_REQUEST',
   REPORT_EDIT_LOCKED: 'VEODYN_REPORT_EDIT_LOCKED',
+  MESSAGE_EDIT_LOCKED: 'VEODYN_MESSAGE_EDIT_LOCKED',
 } as const
 
 /** The backend's named cause for a failed write, when it gave one. */

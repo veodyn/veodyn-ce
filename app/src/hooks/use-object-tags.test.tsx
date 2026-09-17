@@ -216,6 +216,12 @@ describe('useObjectTags failure messages', () => {
     expect(message).toContain('review')
   })
 
+  it('reports a locked message as locked rather than telling the writer to reload', async () => {
+    const message = await refuseWith(errorBody('VEODYN_MESSAGE_EDIT_LOCKED', 'in review'), 409)
+    expect(message).toContain('review')
+    expect(message).not.toContain('Reload')
+  })
+
   it('reports an unconfigured backend from the proxy 503, which carries no cause', async () => {
     const message = await refuseWith({ error: 'veodyn-api not configured' }, 503)
     expect(message).toBe('Tagging is not configured on this server.')
