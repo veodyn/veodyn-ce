@@ -32,6 +32,7 @@ Add an id here only once a revision has actually shipped. Removing one is the
 error this guards."""
 
 EE_REVISIONS = (
+    "0023",
     "0022",
     "0021",
     "0020",
