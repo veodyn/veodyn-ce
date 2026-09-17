@@ -31,7 +31,7 @@ export function ChatHome() {
   }
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-3xl flex-col justify-center gap-6 px-6 py-10">
+    <div className="flex h-full w-full max-w-3xl flex-col justify-center gap-6 px-6 py-10">
       <BigMessage
         icon={<MessagesSquare className="size-10" aria-hidden="true" />}
         message="Ask anything about your data"

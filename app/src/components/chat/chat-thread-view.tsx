@@ -60,7 +60,7 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
         <MessageScrollerProvider autoScroll defaultScrollPosition="end">
           <MessageScroller className="min-h-0 grow">
             <MessageScrollerViewport aria-label="Conversation">
-              <MessageScrollerContent className="mx-auto w-full max-w-3xl gap-6 px-6 py-6">
+              <MessageScrollerContent className="w-full max-w-3xl gap-6 px-6 py-6">
                 {chat.loading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
                 <ChatTranscript
                   state={state}
@@ -80,7 +80,7 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
             <MessageScrollerButton />
           </MessageScroller>
         </MessageScrollerProvider>
-        <div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-6 pb-6">
+        <div className="flex w-full max-w-3xl items-end gap-2 px-6 pb-6">
           <ChatComposer
             onSend={chat.send}
             disabled={chat.busy || chat.loading}
