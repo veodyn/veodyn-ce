@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { QueryResultData } from '@/lib/mock-data'
-import { CELL_CHARS, DISTINCT_CAP, SAMPLE_BYTES, failedResult, shapeResult } from './shape-result'
+import { CELL_CHARS, DISTINCT_CAP, SAMPLE_BYTES, shapeResult } from './shape-result'
+import { failedResult } from './tool-results'
 
 function result(rows: Record<string, unknown>[], columns: [string, string][]): QueryResultData {
   return { columns: columns.map(([name, type]) => ({ name, type, friendly_name: name })), rows }
@@ -92,7 +93,11 @@ describe('shapeResult', () => {
 
 describe('failedResult', () => {
   it('carries a trimmed message', () => {
-    expect(failedResult(new Error('e'.repeat(900)))).toEqual({ ok: false, error: 'e'.repeat(500) })
-    expect(failedResult('')).toEqual({ ok: false, error: 'The query failed.' })
+    expect(failedResult('query_result', new Error('e'.repeat(900)))).toEqual({
+      kind: 'query_result',
+      ok: false,
+      error: 'e'.repeat(500),
+    })
+    expect(failedResult('library', '')).toEqual({ kind: 'library', ok: false, error: 'The request failed.' })
   })
 })

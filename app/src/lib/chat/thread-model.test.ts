@@ -10,6 +10,7 @@ import {
   isAfter,
   runningTurn,
   setRunError,
+  settleCall,
   startTurn,
 } from './thread-model'
 import type { ChatThreadDetail } from './wire'
@@ -215,5 +216,109 @@ describe('fromDetail', () => {
     expect(state.turns[1]).toMatchObject({ status: 'failed', errorMessage: FAILED_TURN_MESSAGE })
     expect(state.drafts[DRAFT].versions.map((one) => one.version)).toEqual([1])
     expect(state.drafts[DRAFT].promotions).toEqual([PROMOTION])
+  })
+})
+
+describe('library calls', () => {
+  const search: ChatFrame = {
+    event: 'tool_request',
+    id: '1-2',
+    data: { callId: 's1', tool: 'search_library', args: { text: 'bikeshare', kinds: ['query'], tags: [] } },
+  }
+  const show: ChatFrame = {
+    event: 'tool_request',
+    id: '1-3',
+    data: { callId: 'v1', tool: 'show_visualization', args: { queryId: 12, visualizationId: null } },
+  }
+  const library = {
+    kind: 'library' as const,
+    ok: true,
+    items: [{ type: 'query' as const, id: 12, name: 'Trips' }],
+    more: false,
+  }
+
+  it('adds a call item for each library request and settles it from the result', () => {
+    let state = frames(undefined, search, show)
+    expect(state.turns[0].items).toEqual([
+      { kind: 'call', callId: 's1' },
+      { kind: 'call', callId: 'v1' },
+    ])
+    expect(state.calls.s1).toMatchObject({ tool: 'search_library', status: 'running', target: null })
+    expect(state.calls.v1.target).toEqual({ queryId: 12, visualizationId: null })
+    state = settleCall(state, 's1', library)
+    expect(state.calls.s1).toMatchObject({ status: 'done', output: library, error: null })
+    state = frames(state, { event: 'tool_settled', id: '1-4', data: { callId: 's1', ok: false, durationMs: 3 } })
+    expect(state.calls.s1.status).toBe('done')
+    state = settleCall(state, 'v1', { kind: 'saved_visualization', ok: false, error: 'gone' })
+    expect(state.calls.v1).toMatchObject({ status: 'failed', error: 'gone' })
+    expect(settleCall(state, 'nope', library)).toBe(state)
+  })
+
+  it('takes the settled frame when no result arrived in this tab', () => {
+    const state = frames(undefined, search, {
+      event: 'tool_settled',
+      id: '1-3',
+      data: { callId: 's1', ok: false, durationMs: 120_000 },
+    })
+    expect(state.calls.s1).toMatchObject({ status: 'failed', output: null })
+  })
+
+  it('rebuilds calls from a stored turn', () => {
+    const detail = {
+      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '' },
+      drafts: [],
+      turns: [
+        {
+          id: TURN,
+          seq: 1,
+          status: 'done',
+          userText: 'bikeshare?',
+          stopReason: 'end_turn',
+          errorId: null,
+          createdAt: '',
+          finishedAt: '',
+          blocks: [
+            {
+              role: 'assistant',
+              content: [
+                { type: 'tool_use', id: 's1', name: 'search_library', input: { text: 'bikeshare' } },
+                { type: 'tool_use', id: 'v1', name: 'show_visualization', input: { queryId: 12, visualizationId: 31 } },
+                { type: 'tool_use', id: 'd1', name: 'open_dashboard', input: { dashboardId: 4 } },
+              ],
+            },
+            {
+              role: 'user',
+              content: [
+                { type: 'tool_result', tool_use_id: 's1', content: JSON.stringify(library) },
+                {
+                  type: 'tool_result',
+                  tool_use_id: 'v1',
+                  content: JSON.stringify({ kind: 'saved_visualization', ok: true, rowCount: 1 }),
+                },
+                {
+                  type: 'tool_result',
+                  tool_use_id: 'd1',
+                  content: JSON.stringify({ ok: false, error: 'The browser did not answer in time.' }),
+                  is_error: true,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    } as ChatThreadDetail
+    const state = fromDetail(detail)
+    expect(state.turns[0].items).toEqual([
+      { kind: 'call', callId: 's1' },
+      { kind: 'call', callId: 'v1' },
+      { kind: 'call', callId: 'd1' },
+    ])
+    expect(state.calls.s1).toMatchObject({ status: 'done', output: library })
+    expect(state.calls.v1).toMatchObject({ status: 'done', target: { queryId: 12, visualizationId: 31 } })
+    expect(state.calls.d1).toMatchObject({
+      status: 'failed',
+      output: null,
+      error: 'The browser did not answer in time.',
+    })
   })
 })

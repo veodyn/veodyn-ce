@@ -25,6 +25,7 @@ const RUN: RunView = {
 
 function state(overrides: Partial<ThreadState['turns'][number]> = {}): ThreadState {
   return {
+    calls: {},
     runs: { c1: RUN },
     drafts: {},
     turns: [

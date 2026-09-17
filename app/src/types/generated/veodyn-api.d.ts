@@ -645,6 +645,47 @@ export interface components {
             /** Accepted */
             accepted: boolean;
         };
+        /** ChatDashboardRefIn */
+        ChatDashboardRefIn: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Tags */
+            tags?: string[];
+            /** Updatedat */
+            updatedAt?: string | null;
+        };
+        /** ChatDashboardResultIn */
+        ChatDashboardResultIn: {
+            dashboard?: components["schemas"]["ChatDashboardRefIn"] | null;
+            /** Error */
+            error?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "dashboard";
+            /** Ok */
+            ok: boolean;
+            /** Textwidgets */
+            textWidgets?: number | null;
+            /** Widgets */
+            widgets?: components["schemas"]["ChatDashboardWidgetIn"][] | null;
+        };
+        /** ChatDashboardWidgetIn */
+        ChatDashboardWidgetIn: {
+            /** Queryid */
+            queryId: number;
+            /** Queryname */
+            queryName?: string | null;
+            /** Title */
+            title: string;
+            /** Visualizationid */
+            visualizationId: number;
+            /** Visualizationtype */
+            visualizationType: string;
+        };
         /** ChatDraftOut */
         ChatDraftOut: {
             /** Id */
@@ -671,6 +712,42 @@ export interface components {
             turnId: string;
             /** Version */
             version: number;
+        };
+        /** ChatLibraryItemIn */
+        ChatLibraryItemIn: {
+            /** Description */
+            description?: string | null;
+            /** Hasresult */
+            hasResult?: boolean | null;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Tags */
+            tags?: string[];
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "query" | "dashboard";
+            /** Updatedat */
+            updatedAt?: string | null;
+        };
+        /** ChatLibraryResultIn */
+        ChatLibraryResultIn: {
+            /** Error */
+            error?: string | null;
+            /** Items */
+            items?: components["schemas"]["ChatLibraryItemIn"][] | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "library";
+            /** More */
+            more?: boolean | null;
+            /** Ok */
+            ok: boolean;
         };
         /** ChatPromotionIn */
         ChatPromotionIn: {
@@ -704,6 +781,28 @@ export interface components {
             /** Targetversionatpromote */
             targetVersionAtPromote: number | null;
         };
+        /** ChatQueryResultIn */
+        ChatQueryResultIn: {
+            /** Columns */
+            columns?: components["schemas"]["ChatResultColumnIn"][] | null;
+            /** Error */
+            error?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "query_result";
+            /** Ok */
+            ok: boolean;
+            /** Rowcount */
+            rowCount?: number | null;
+            /** Sample */
+            sample?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Truncated */
+            truncated?: boolean | null;
+        };
         /** ChatResultColumnIn */
         ChatResultColumnIn: {
             /** Distinct */
@@ -727,6 +826,51 @@ export interface components {
             }[] | null;
             /** Type */
             type: string;
+        };
+        /** ChatSavedQueryIn */
+        ChatSavedQueryIn: {
+            /** Datasourceid */
+            dataSourceId?: number | null;
+            /** Description */
+            description?: string | null;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Parameters */
+            parameters?: string[];
+            /** Sql */
+            sql?: string | null;
+            /** Updatedat */
+            updatedAt?: string | null;
+        };
+        /** ChatSavedVisualizationResultIn */
+        ChatSavedVisualizationResultIn: {
+            /** Columns */
+            columns?: components["schemas"]["ChatResultColumnIn"][] | null;
+            /** Error */
+            error?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "saved_visualization";
+            /** Ok */
+            ok: boolean;
+            query?: components["schemas"]["ChatSavedQueryIn"] | null;
+            /** Retrievedat */
+            retrievedAt?: string | null;
+            /** Rowcount */
+            rowCount?: number | null;
+            /** Sample */
+            sample?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Truncated */
+            truncated?: boolean | null;
+            visualization?: components["schemas"]["ChatVisualizationRefIn"] | null;
+            /** Visualizations */
+            visualizations?: components["schemas"]["ChatVisualizationRefIn"][] | null;
         };
         /** ChatThreadDetailOut */
         ChatThreadDetailOut: {
@@ -774,28 +918,12 @@ export interface components {
             /** Title */
             title?: string | null;
         };
-        /** ChatToolResultIn */
-        ChatToolResultIn: {
-            /** Columns */
-            columns?: components["schemas"]["ChatResultColumnIn"][] | null;
-            /** Error */
-            error?: string | null;
-            /** Ok */
-            ok: boolean;
-            /** Rowcount */
-            rowCount?: number | null;
-            /** Sample */
-            sample?: {
-                [key: string]: unknown;
-            }[] | null;
-            /** Truncated */
-            truncated?: boolean | null;
-        };
         /** ChatToolResultPostIn */
         ChatToolResultPostIn: {
             /** Callid */
             callId: string;
-            result: components["schemas"]["ChatToolResultIn"];
+            /** Result */
+            result: components["schemas"]["ChatQueryResultIn"] | components["schemas"]["ChatLibraryResultIn"] | components["schemas"]["ChatSavedVisualizationResultIn"] | components["schemas"]["ChatDashboardResultIn"];
         };
         /** ChatTurnIn */
         ChatTurnIn: {
@@ -837,6 +965,15 @@ export interface components {
             seq: number;
             /** Turnid */
             turnId: string;
+        };
+        /** ChatVisualizationRefIn */
+        ChatVisualizationRefIn: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Type */
+            type: string;
         };
         /** ConverseIn */
         ConverseIn: {

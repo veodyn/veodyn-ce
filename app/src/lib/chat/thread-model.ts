@@ -1,8 +1,11 @@
 import { chatProposalSchema, type ChatFrame, type ChatProposal } from './frames'
+import { isLibraryTool, settledView, storedCall, type CallView, type RunStatus } from './thread-calls'
+import type { ChatToolResult } from './tool-results'
 import type { ChatPromotion, ChatThreadDetail } from './wire'
 
+export type { CallView, LibraryToolName, RunStatus } from './thread-calls'
+
 export type TurnStatus = 'running' | 'done' | 'failed'
-export type RunStatus = 'running' | 'done' | 'failed'
 
 export interface RunView {
   callId: string
@@ -18,6 +21,7 @@ export interface RunView {
 export type TurnItem =
   | { kind: 'text'; text: string }
   | { kind: 'run'; callId: string }
+  | { kind: 'call'; callId: string }
   | { kind: 'draft'; draftId: string; version: number }
 
 export interface TurnView {
@@ -41,13 +45,14 @@ export interface DraftView {
 export interface ThreadState {
   turns: TurnView[]
   runs: Record<string, RunView>
+  calls: Record<string, CallView>
   drafts: Record<string, DraftView>
 }
 
 export const FAILED_TURN_MESSAGE = 'This turn did not finish.'
 
 export function emptyThread(): ThreadState {
-  return { turns: [], runs: {}, drafts: {} }
+  return { turns: [], runs: {}, calls: {}, drafts: {} }
 }
 
 function streamOrder(id: string): [number, number] {
@@ -87,7 +92,11 @@ function withVersion(draft: DraftView | undefined, id: string, version: number, 
   return { ...base, versions: [...base.versions, { version, payload }].sort((a, b) => a.version - b.version) }
 }
 
-function storedTurn(turn: ChatThreadDetail['turns'][number], runs: Record<string, RunView>): TurnView {
+function storedTurn(
+  turn: ChatThreadDetail['turns'][number],
+  runs: Record<string, RunView>,
+  calls: Record<string, CallView>
+): TurnView {
   const results = new Map<string, Record<string, unknown>>()
   for (const message of turn.blocks) {
     for (const block of Array.isArray(message.content) ? message.content : []) {
@@ -119,6 +128,10 @@ function storedTurn(turn: ChatThreadDetail['turns'][number], runs: Record<string
         }
         items = [...items, { kind: 'run', callId }]
       }
+      if (isLibraryTool(item.name) && outcome) {
+        calls[callId] = storedCall(callId, item.name, input, content)
+        items = [...items, { kind: 'call', callId }]
+      }
       if (item.name === 'propose_query' && typeof content.draftId === 'string' && typeof content.version === 'number') {
         items = [...items, { kind: 'draft', draftId: content.draftId, version: content.version }]
       }
@@ -139,6 +152,7 @@ function storedTurn(turn: ChatThreadDetail['turns'][number], runs: Record<string
 
 export function fromDetail(detail: ChatThreadDetail): ThreadState {
   const runs: Record<string, RunView> = {}
+  const calls: Record<string, CallView> = {}
   const drafts: Record<string, DraftView> = {}
   for (const draft of detail.drafts) {
     let view: DraftView = { id: draft.id, versions: [], promotions: draft.promotions }
@@ -148,8 +162,8 @@ export function fromDetail(detail: ChatThreadDetail): ThreadState {
     }
     drafts[draft.id] = view
   }
-  const turns = detail.turns.map((turn) => storedTurn(turn, runs))
-  return { turns, runs, drafts }
+  const turns = detail.turns.map((turn) => storedTurn(turn, runs, calls))
+  return { turns, runs, calls, drafts }
 }
 
 export function startTurn(state: ThreadState, id: string, seq: number, userText: string): ThreadState {
@@ -190,7 +204,21 @@ export function applyFrame(state: ThreadState, turnId: string, frame: ChatFrame)
     case 'status':
       return seen(updateTurn(state, turnId, (one) => ({ ...one, phase: frame.data.phase })))
     case 'tool_request': {
-      const { callId, args } = frame.data
+      const request = frame.data
+      const { callId } = request
+      if (request.tool !== 'run_query') {
+        const call: CallView = {
+          callId,
+          tool: request.tool,
+          status: 'running',
+          target: request.tool === 'show_visualization' ? { ...request.args } : null,
+          output: null,
+          error: null,
+        }
+        const next = { ...state, calls: { ...state.calls, [callId]: state.calls[callId] ?? call } }
+        return seen(updateTurn(next, turnId, (one) => ({ ...one, items: [...one.items, { kind: 'call', callId }] })))
+      }
+      const { args } = request
       const run: RunView = {
         callId,
         purpose: args.purpose,
@@ -206,6 +234,11 @@ export function applyFrame(state: ThreadState, turnId: string, frame: ChatFrame)
     }
     case 'tool_settled': {
       const { callId, ok, rowCount, durationMs } = frame.data
+      const call = state.calls[callId]
+      if (call) {
+        const status = call.output ? call.status : ok ? 'done' : 'failed'
+        return seen({ ...state, calls: { ...state.calls, [callId]: { ...call, status } } })
+      }
       const current = state.runs[callId]
       return seen(
         updateRun(state, callId, {
@@ -237,6 +270,11 @@ export function failTurn(state: ThreadState, turnId: string, message: string): T
   return updateTurn(state, turnId, (turn) =>
     turn.status === 'running' ? { ...turn, status: 'failed', phase: null, errorMessage: message } : turn
   )
+}
+
+export function settleCall(state: ThreadState, callId: string, result: ChatToolResult): ThreadState {
+  const call = state.calls[callId]
+  return call ? { ...state, calls: { ...state.calls, [callId]: settledView(call, result) } } : state
 }
 
 export function setRunError(state: ThreadState, callId: string, error: string): ThreadState {

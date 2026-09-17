@@ -108,10 +108,40 @@ describe('chat JSON relay', () => {
     const { POST } = await import('@/app/api/ai/chat/turns/[id]/tool-results/route')
     const params = { params: Promise.resolve({ id: THREAD }) }
     const row = { text: 'x'.repeat(3_000) }
-    const fits = { callId: 'c', result: { ok: true, sample: Array.from({ length: 50 }, () => row) } }
+    const fits = {
+      callId: 'c',
+      result: { kind: 'query_result', ok: true, sample: Array.from({ length: 50 }, () => row) },
+    }
     expect((await POST(signedIn({ method: 'POST', body: JSON.stringify(fits) }), params)).status).toBe(202)
-    const big = { callId: 'c', result: { ok: true, sample: [{ text: 'x'.repeat(300_000) }] } }
+    const big = { callId: 'c', result: { kind: 'query_result', ok: true, sample: [{ text: 'x'.repeat(300_000) }] } }
     expect((await POST(signedIn({ method: 'POST', body: JSON.stringify(big) }), params)).status).toBe(400)
+  })
+
+  it('accepts each result kind and refuses one without a kind', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json({ accepted: true }, 202)))
+    mockChatModules()
+    const { POST } = await import('@/app/api/ai/chat/turns/[id]/tool-results/route')
+    const params = { params: Promise.resolve({ id: THREAD }) }
+    const post = (result: unknown) =>
+      POST(signedIn({ method: 'POST', body: JSON.stringify({ callId: 'c', result }) }), params)
+    const library = { kind: 'library', ok: true, items: [{ type: 'query', id: 1, name: 'Trips' }], more: false }
+    const saved = {
+      kind: 'saved_visualization',
+      ok: true,
+      query: { id: 1, name: 'Trips', sql: 'SELECT 1' },
+      visualization: { id: 2, name: 'Chart', type: 'CHART' },
+      retrievedAt: '2026-09-17T00:00:00Z',
+    }
+    const dashboard = {
+      kind: 'dashboard',
+      ok: true,
+      widgets: [{ title: 'Trips', queryId: 1, visualizationId: 2, visualizationType: 'CHART' }],
+    }
+    for (const result of [library, saved, dashboard, { kind: 'dashboard', ok: false, error: 'gone' }]) {
+      expect((await post(result)).status).toBe(202)
+    }
+    expect((await post({ ok: true })).status).toBe(400)
+    expect((await post({ kind: 'library', ok: true, items: [{ type: 'alert', id: 1, name: 'x' }] })).status).toBe(400)
   })
 
   it('passes a 204 through on delete', async () => {

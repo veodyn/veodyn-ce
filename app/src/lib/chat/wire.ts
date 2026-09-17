@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { components } from '@/types/generated/veodyn-api'
+import { toolResultSchema } from './tool-results'
 
 type Schemas = components['schemas']
 
@@ -11,8 +12,6 @@ export type ChatDraftRecord = Schemas['ChatDraftOut']
 export type ChatPromotion = Schemas['ChatPromotionOut']
 export type ChatTurnStarted = Schemas['ChatTurnStartedOut']
 export type ChatAccepted = Schemas['ChatAcceptedOut']
-export type ChatToolResult = Schemas['ChatToolResultIn']
-export type ChatResultColumn = Schemas['ChatResultColumnIn']
 
 const uuid = z.string().uuid()
 const timestamp = z.string().min(1).max(64)
@@ -90,33 +89,8 @@ export const patchThreadSchema = z
 
 export const turnRequestSchema = z.object({ text: z.string().min(1).max(4_000) }).strict()
 
-const columnSchema = z
-  .object({
-    name: z.string().max(255),
-    type: z.string().max(64),
-    nulls: z.number().int().nonnegative(),
-    distinct: z.number().int().nonnegative(),
-    distinctCapped: z.boolean(),
-    min: z.unknown().optional(),
-    max: z.unknown().optional(),
-    top: z.array(z.record(z.unknown())).max(3).optional(),
-  })
-  .strict()
-
 export const toolResultRequestSchema = z
-  .object({
-    callId: z.string().min(1).max(128),
-    result: z
-      .object({
-        ok: z.boolean(),
-        error: z.string().max(500).optional(),
-        rowCount: z.number().int().nonnegative().optional(),
-        truncated: z.boolean().optional(),
-        columns: z.array(columnSchema).max(500).optional(),
-        sample: z.array(z.record(z.unknown())).max(50).optional(),
-      })
-      .strict(),
-  })
+  .object({ callId: z.string().min(1).max(128), result: toolResultSchema })
   .strict()
 
 export const promotionRequestSchema = z

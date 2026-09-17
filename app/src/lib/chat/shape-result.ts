@@ -1,12 +1,11 @@
 import type { QueryResultData } from '@/lib/mock-data'
 import { isDateSqlType, isNumericSqlType } from '@/lib/sql-safety'
-import type { ChatResultColumn, ChatToolResult } from './wire'
+import type { ChatQueryResult, ChatResultColumn } from './tool-results'
 
 export const SAMPLE_ROWS = 50
 export const SAMPLE_BYTES = 32 * 1024
 export const CELL_CHARS = 200
 export const DISTINCT_CAP = 10_000
-export const ERROR_CHARS = 500
 const TOP_VALUES = 3
 
 function trimCell(value: unknown): unknown {
@@ -65,12 +64,13 @@ function trimRow(row: Record<string, unknown>, names: string[]): Record<string, 
   return Object.fromEntries(names.map((name) => [name, trimCell(row[name] ?? null)]))
 }
 
-export function shapeResult(data: QueryResultData): ChatToolResult {
+export type RowSummary = Pick<ChatQueryResult, 'rowCount' | 'truncated' | 'columns' | 'sample'>
+
+export function summarizeRows(data: QueryResultData): RowSummary {
   const names = data.columns.map((column) => column.name)
   const sample = data.rows.slice(0, SAMPLE_ROWS).map((row) => trimRow(row, names))
   while (sample.length > 0 && byteLength(sample) > SAMPLE_BYTES) sample.pop()
   return {
-    ok: true,
     rowCount: data.rows.length,
     truncated: sample.length < data.rows.length,
     columns: data.columns.map((column) => describeColumn(column.name, column.type, data.rows)),
@@ -78,7 +78,6 @@ export function shapeResult(data: QueryResultData): ChatToolResult {
   }
 }
 
-export function failedResult(error: unknown): ChatToolResult {
-  const message = error instanceof Error ? error.message : String(error)
-  return { ok: false, error: (message || 'The query failed.').slice(0, ERROR_CHARS) }
+export function shapeResult(data: QueryResultData): ChatQueryResult {
+  return { kind: 'query_result', ok: true, ...summarizeRows(data) }
 }

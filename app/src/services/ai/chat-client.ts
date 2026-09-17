@@ -5,9 +5,9 @@ import type {
   ChatThread,
   ChatThreadDetail,
   ChatThreadList,
-  ChatToolResult,
   ChatTurnStarted,
 } from '@/lib/chat/wire'
+import type { ChatToolResult } from '@/lib/chat/tool-results'
 
 const BASE = '/api/ai/chat'
 

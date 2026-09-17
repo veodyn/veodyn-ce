@@ -10,9 +10,11 @@ import {
   failTurn,
   fromDetail,
   runningTurn,
+  settleCall,
   startTurn,
   type ThreadState,
 } from '@/lib/chat/thread-model'
+import type { ChatToolResult } from '@/lib/chat/tool-results'
 import type { ChatPromotion } from '@/lib/chat/wire'
 import type { QueryResultData } from '@/lib/mock-data'
 import { cancelTurn, chatErrorStatus, getThread, postTurn } from '@/services/ai/chat-client'
@@ -48,13 +50,17 @@ export function useChatThread(threadId: string): ChatThreadController {
   const [sendError, setSendError] = useState<string | null>(null)
   const { results, errors, execute, rerun: rerunQuery } = useToolExecutor()
 
+  const onResult = useCallback((callId: string, result: ChatToolResult) => {
+    setState((current) => settleCall(current, callId, result))
+  }, [])
+
   const onFrame = useCallback(
     (turnId: string, frame: ChatFrame) => {
       setState((current) => applyFrame(current, turnId, frame))
-      if (frame.event === 'tool_request') execute(turnId, frame.data)
+      if (frame.event === 'tool_request') execute(turnId, frame.data, onResult)
       if (TERMINAL_EVENTS.has(frame.event)) void queryClient.invalidateQueries({ queryKey: CHAT_THREADS_KEY })
     },
-    [execute, queryClient]
+    [execute, onResult, queryClient]
   )
 
   const onLost = useCallback((turnId: string) => {

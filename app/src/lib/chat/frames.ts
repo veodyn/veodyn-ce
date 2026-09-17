@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 const id = z.string().min(1).max(128)
+const positive = z.number().int().positive()
 
 export const chatProposalSchema = z
   .object({
@@ -19,26 +20,56 @@ const frameData = {
   status: z
     .object({ phase: z.enum(['answering', 'validating', 'waiting_for_browser', 'reading_result']) })
     .strict(),
-  tool_request: z
-    .object({
-      callId: id,
-      tool: z.literal('run_query'),
-      args: z
-        .object({
-          dataSourceId: z.number().int().positive(),
-          sql: z.string().min(1).max(60_000),
-          purpose: z.string().max(500),
-          vizChoiceId: z.string().min(1).max(64),
-        })
-        .strict(),
-    })
-    .strict(),
+  tool_request: z.discriminatedUnion('tool', [
+    z
+      .object({
+        callId: id,
+        tool: z.literal('run_query'),
+        args: z
+          .object({
+            dataSourceId: positive,
+            sql: z.string().min(1).max(60_000),
+            purpose: z.string().max(500),
+            vizChoiceId: z.string().min(1).max(64),
+          })
+          .strict(),
+      })
+      .strict(),
+    z
+      .object({
+        callId: id,
+        tool: z.literal('search_library'),
+        args: z
+          .object({
+            text: z.string().max(200),
+            kinds: z.array(z.enum(['query', 'dashboard'])).min(1).max(2),
+            tags: z.array(z.string().min(1).max(64)).max(5),
+          })
+          .strict(),
+      })
+      .strict(),
+    z
+      .object({
+        callId: id,
+        tool: z.literal('show_visualization'),
+        args: z.object({ queryId: positive, visualizationId: positive.nullable() }).strict(),
+      })
+      .strict(),
+    z
+      .object({
+        callId: id,
+        tool: z.literal('open_dashboard'),
+        args: z.object({ dashboardId: positive }).strict(),
+      })
+      .strict(),
+  ]),
   tool_settled: z
     .object({
       callId: id,
       ok: z.boolean(),
       durationMs: z.number().int().nonnegative(),
       rowCount: z.number().int().nonnegative().optional(),
+      count: z.number().int().nonnegative().optional(),
     })
     .strict(),
   draft: z
@@ -66,6 +97,8 @@ export type ChatFrame = {
 }[ChatEvent]
 
 export type ChatToolRequest = z.infer<(typeof frameData)['tool_request']>
+export type ChatToolName = ChatToolRequest['tool']
+export type ChatToolRequestOf<T extends ChatToolName> = Extract<ChatToolRequest, { tool: T }>
 
 export const CHAT_EVENTS = Object.keys(frameData) as ChatEvent[]
 

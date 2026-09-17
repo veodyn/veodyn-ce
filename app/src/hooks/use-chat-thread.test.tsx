@@ -19,6 +19,8 @@ vi.mock('@/services/ai/chat-client', async (importOriginal) => ({
   ...client,
 }))
 vi.mock('@/services/redash/execution', () => execution)
+const queries = vi.hoisted(() => ({ search: vi.fn(), get: vi.fn() }))
+vi.mock('@/services/redash/queries', () => queries)
 
 const THREAD = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const TURN = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
@@ -68,6 +70,25 @@ afterEach(() => {
 })
 
 describe('useChatThread', () => {
+  it('runs a library search in the browser and shows its result', async () => {
+    queries.search.mockResolvedValue({
+      results: [{ id: 12, name: 'Trips', description: '', tags: [], is_archived: false, latest_query_data_id: 1 }],
+      count: 1,
+    })
+    const { result } = await mounted()
+    act(() => result.current.send('bikeshare?'))
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    const request = { callId: 's1', tool: 'search_library', args: { text: 'bikeshare', kinds: ['query'], tags: [] } }
+    act(() => FakeEventSource.latest().emit('tool_request', request, '1-1'))
+    await waitFor(() => expect(client.postToolResult).toHaveBeenCalledTimes(1))
+    const [, callId, posted] = client.postToolResult.mock.calls[0]
+    expect(callId).toBe('s1')
+    expect(posted).toMatchObject({ kind: 'library', ok: true, items: [{ type: 'query', id: 12, hasResult: true }] })
+    expect(result.current.state.calls.s1).toMatchObject({ status: 'done', output: posted })
+    expect(result.current.state.turns[0].items).toEqual([{ kind: 'call', callId: 's1' }])
+    expect(execution.executeAdhoc).not.toHaveBeenCalled()
+  })
+
   it('sends, streams, and runs a requested query once', async () => {
     const { result } = await mounted()
     act(() => result.current.send('  how fast?  '))
