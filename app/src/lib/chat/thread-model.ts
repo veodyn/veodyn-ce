@@ -1,9 +1,13 @@
-import { chatProposalSchema, type ChatFrame, type ChatProposal } from './frames'
-import { isLibraryTool, settledView, storedCall, type CallView, type RunStatus } from './thread-calls'
+import type { ChatFrame, ChatProposal } from './frames'
+import { settledView, type CallView, type RunStatus } from './thread-calls'
+import type { HelpLinkView } from './thread-help'
+import { appendText, withVersion } from './thread-stored'
 import type { ChatToolResult } from './tool-results'
-import type { ChatPromotion, ChatThreadDetail } from './wire'
+import type { ChatPromotion } from './wire'
 
 export type { CallView, LibraryToolName, RunStatus } from './thread-calls'
+export type { HelpLinkView } from './thread-help'
+export { FAILED_TURN_MESSAGE, fromDetail } from './thread-stored'
 
 export type TurnStatus = 'running' | 'done' | 'failed'
 
@@ -22,6 +26,7 @@ export type TurnItem =
   | { kind: 'text'; text: string }
   | { kind: 'run'; callId: string }
   | { kind: 'call'; callId: string }
+  | { kind: 'help'; callId: string }
   | { kind: 'draft'; draftId: string; version: number }
 
 export interface TurnView {
@@ -46,13 +51,12 @@ export interface ThreadState {
   turns: TurnView[]
   runs: Record<string, RunView>
   calls: Record<string, CallView>
+  helpLinks: Record<string, HelpLinkView>
   drafts: Record<string, DraftView>
 }
 
-export const FAILED_TURN_MESSAGE = 'This turn did not finish.'
-
 export function emptyThread(): ThreadState {
-  return { turns: [], runs: {}, calls: {}, drafts: {} }
+  return { turns: [], runs: {}, calls: {}, helpLinks: {}, drafts: {} }
 }
 
 function streamOrder(id: string): [number, number] {
@@ -65,105 +69,6 @@ export function isAfter(id: string, previous: string | null): boolean {
   const [a, b] = streamOrder(id)
   const [c, d] = streamOrder(previous)
   return a > c || (a === c && b > d)
-}
-
-function appendText(items: TurnItem[], text: string): TurnItem[] {
-  const last = items[items.length - 1]
-  if (last?.kind === 'text') return [...items.slice(0, -1), { kind: 'text', text: last.text + text }]
-  return [...items, { kind: 'text', text }]
-}
-
-function record(value: unknown): Record<string, unknown> {
-  return value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {}
-}
-
-function parseJson(value: unknown): Record<string, unknown> {
-  if (typeof value !== 'string') return {}
-  try {
-    return record(JSON.parse(value))
-  } catch {
-    return {}
-  }
-}
-
-function withVersion(draft: DraftView | undefined, id: string, version: number, payload: ChatProposal): DraftView {
-  const base = draft ?? { id, versions: [], promotions: [] }
-  if (base.versions.some((one) => one.version === version)) return base
-  return { ...base, versions: [...base.versions, { version, payload }].sort((a, b) => a.version - b.version) }
-}
-
-function storedTurn(
-  turn: ChatThreadDetail['turns'][number],
-  runs: Record<string, RunView>,
-  calls: Record<string, CallView>
-): TurnView {
-  const results = new Map<string, Record<string, unknown>>()
-  for (const message of turn.blocks) {
-    for (const block of Array.isArray(message.content) ? message.content : []) {
-      const item = record(block)
-      if (item.type === 'tool_result') results.set(String(item.tool_use_id), item)
-    }
-  }
-  let items: TurnItem[] = []
-  for (const message of turn.blocks) {
-    if (message.role !== 'assistant' || !Array.isArray(message.content)) continue
-    for (const block of message.content) {
-      const item = record(block)
-      if (item.type === 'text' && typeof item.text === 'string') items = appendText(items, item.text)
-      if (item.type !== 'tool_use') continue
-      const callId = String(item.id)
-      const input = record(item.input)
-      const outcome = results.get(callId)
-      const content = parseJson(outcome?.content)
-      if (item.name === 'run_query' && outcome && !outcome.is_error) {
-        runs[callId] = {
-          callId,
-          purpose: String(input.purpose ?? ''),
-          sql: String(input.sql ?? ''),
-          vizChoiceId: String(input.vizChoiceId ?? 'table'),
-          status: content.ok === true ? 'done' : 'failed',
-          rowCount: typeof content.rowCount === 'number' ? content.rowCount : null,
-          durationMs: null,
-          error: typeof content.error === 'string' ? content.error : null,
-        }
-        items = [...items, { kind: 'run', callId }]
-      }
-      if (isLibraryTool(item.name) && outcome) {
-        calls[callId] = storedCall(callId, item.name, input, content)
-        items = [...items, { kind: 'call', callId }]
-      }
-      if (item.name === 'propose_query' && typeof content.draftId === 'string' && typeof content.version === 'number') {
-        items = [...items, { kind: 'draft', draftId: content.draftId, version: content.version }]
-      }
-    }
-  }
-  return {
-    id: turn.id,
-    seq: turn.seq,
-    userText: turn.userText,
-    status: turn.status,
-    items,
-    phase: null,
-    stopReason: turn.stopReason,
-    errorMessage: turn.status === 'failed' ? FAILED_TURN_MESSAGE : null,
-    lastEventId: null,
-  }
-}
-
-export function fromDetail(detail: ChatThreadDetail): ThreadState {
-  const runs: Record<string, RunView> = {}
-  const calls: Record<string, CallView> = {}
-  const drafts: Record<string, DraftView> = {}
-  for (const draft of detail.drafts) {
-    let view: DraftView = { id: draft.id, versions: [], promotions: draft.promotions }
-    for (const version of draft.versions) {
-      const payload = chatProposalSchema.safeParse(version.payload)
-      if (payload.success) view = withVersion(view, draft.id, version.version, payload.data)
-    }
-    drafts[draft.id] = view
-  }
-  const turns = detail.turns.map((turn) => storedTurn(turn, runs, calls))
-  return { turns, runs, calls, drafts }
 }
 
 export function startTurn(state: ThreadState, id: string, seq: number, userText: string): ThreadState {
@@ -191,6 +96,10 @@ function updateRun(state: ThreadState, callId: string, change: Partial<RunView>)
   return run ? { ...state, runs: { ...state.runs, [callId]: { ...run, ...change } } } : state
 }
 
+function withItem(state: ThreadState, turnId: string, item: TurnItem): ThreadState {
+  return updateTurn(state, turnId, (one) => ({ ...one, items: [...one.items, item] }))
+}
+
 export function applyFrame(state: ThreadState, turnId: string, frame: ChatFrame): ThreadState {
   const turn = state.turns.find((one) => one.id === turnId)
   if (!turn || (frame.id !== null && !isAfter(frame.id, turn.lastEventId))) return state
@@ -216,7 +125,7 @@ export function applyFrame(state: ThreadState, turnId: string, frame: ChatFrame)
           error: null,
         }
         const next = { ...state, calls: { ...state.calls, [callId]: state.calls[callId] ?? call } }
-        return seen(updateTurn(next, turnId, (one) => ({ ...one, items: [...one.items, { kind: 'call', callId }] })))
+        return seen(withItem(next, turnId, { kind: 'call', callId }))
       }
       const { args } = request
       const run: RunView = {
@@ -230,7 +139,7 @@ export function applyFrame(state: ThreadState, turnId: string, frame: ChatFrame)
         error: null,
       }
       const next = { ...state, runs: { ...state.runs, [callId]: state.runs[callId] ?? run } }
-      return seen(updateTurn(next, turnId, (one) => ({ ...one, items: [...one.items, { kind: 'run', callId }] })))
+      return seen(withItem(next, turnId, { kind: 'run', callId }))
     }
     case 'tool_settled': {
       const { callId, ok, rowCount, durationMs } = frame.data
@@ -248,12 +157,15 @@ export function applyFrame(state: ThreadState, turnId: string, frame: ChatFrame)
         })
       )
     }
+    case 'help_link': {
+      const link = frame.data
+      const next = { ...state, helpLinks: { ...state.helpLinks, [link.callId]: link } }
+      return seen(withItem(next, turnId, { kind: 'help', callId: link.callId }))
+    }
     case 'draft': {
       const { draftId, version, payload } = frame.data
-      const next = { ...state, drafts: { ...state.drafts, [draftId]: withVersion(state.drafts[draftId], draftId, version, payload) } }
-      return seen(
-        updateTurn(next, turnId, (one) => ({ ...one, items: [...one.items, { kind: 'draft', draftId, version }] }))
-      )
+      const drafts = { ...state.drafts, [draftId]: withVersion(state.drafts[draftId], draftId, version, payload) }
+      return seen(withItem({ ...state, drafts }, turnId, { kind: 'draft', draftId, version }))
     }
     case 'turn_done':
       return seen(

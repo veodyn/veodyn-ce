@@ -8,6 +8,7 @@ import { MessageScrollerItem } from '@/components/ui/message-scroller'
 import type { ThreadState, TurnItem, TurnView } from '@/lib/chat/thread-model'
 import type { QueryResultData } from '@/lib/mock-data'
 import { DashboardCard } from './dashboard-card'
+import { HelpLinkCard } from './help-link-card'
 import { LibraryCard } from './library-card'
 import { RunCard } from './run-card'
 import { SavedVizCard } from './saved-viz-card'
@@ -51,7 +52,7 @@ export function ChatTranscript(props: ChatTranscriptProps) {
           <div className="max-w-[80%] self-end whitespace-pre-wrap rounded-lg bg-muted px-3 py-2 text-sm">
             {turn.userText}
           </div>
-          {turn.items.map((item, index) => (
+          {grouped(turn.items).map((item, index) => (
             <TranscriptItem key={`${turn.id}-${index}`} item={item} {...props} />
           ))}
           <TurnFooter turn={turn} isLast={turn === last} onRetry={props.onRetry} library={waitsOnLibrary(state, turn)} />
@@ -61,7 +62,23 @@ export function ChatTranscript(props: ChatTranscriptProps) {
   )
 }
 
-function TranscriptItem({ item, ...props }: ChatTranscriptProps & { item: TurnItem }) {
+type RenderedItem = Exclude<TurnItem, { kind: 'help' }> | { kind: 'help'; callIds: string[] }
+
+/** Help links the model asked for in one breath belong in one card, not three. */
+function grouped(items: TurnItem[]): RenderedItem[] {
+  return items.reduce<RenderedItem[]>((rendered, item) => {
+    const last = rendered[rendered.length - 1]
+    if (item.kind !== 'help') return [...rendered, item]
+    if (last?.kind === 'help') return [...rendered.slice(0, -1), { kind: 'help', callIds: [...last.callIds, item.callId] }]
+    return [...rendered, { kind: 'help', callIds: [item.callId] }]
+  }, [])
+}
+
+function TranscriptItem({ item, ...props }: ChatTranscriptProps & { item: RenderedItem }) {
+  if (item.kind === 'help') {
+    const links = item.callIds.map((callId) => props.state.helpLinks[callId]).filter((one) => one !== undefined)
+    return links.length > 0 ? <HelpLinkCard links={links} /> : null
+  }
   if (item.kind === 'text') {
     return <TextboxMarkdown text={item.text} className="text-sm" />
   }

@@ -322,3 +322,80 @@ describe('library calls', () => {
     })
   })
 })
+
+describe('help links', () => {
+  const card = {
+    callId: 'h1',
+    page: 'features/queries',
+    pageTitle: 'Queries',
+    anchor: 'parameters',
+    sectionTitle: 'Parameters',
+    reason: 'How to add a date filter',
+  }
+  const link: ChatFrame = { event: 'help_link', id: '1-2', data: card }
+
+  it('adds a help item and keeps the link beside the turn', () => {
+    const state = frames(undefined, link)
+    expect(state.turns[0].items).toEqual([{ kind: 'help', callId: 'h1' }])
+    expect(state.helpLinks.h1).toEqual(card)
+  })
+
+  it('rebuilds a help link from the stored call and skips a refused one', () => {
+    const detail = {
+      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '' },
+      drafts: [],
+      turns: [
+        {
+          id: TURN,
+          seq: 1,
+          status: 'done',
+          userText: 'how do I add a date filter?',
+          stopReason: 'end_turn',
+          errorId: null,
+          createdAt: '',
+          finishedAt: '',
+          blocks: [
+            {
+              role: 'assistant',
+              content: [
+                {
+                  type: 'tool_use',
+                  id: 'h1',
+                  name: 'link_help',
+                  input: { page: 'features/queries', section: 'parameters', reason: 'How to add a date filter' },
+                },
+                { type: 'tool_use', id: 'h2', name: 'link_help', input: { page: 'nowhere', reason: 'x' } },
+              ],
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'tool_result',
+                  tool_use_id: 'h1',
+                  content: JSON.stringify({
+                    linked: true,
+                    page: 'features/queries',
+                    section: 'parameters',
+                    pageTitle: 'Queries',
+                    sectionTitle: 'Parameters',
+                  }),
+                },
+                {
+                  type: 'tool_result',
+                  tool_use_id: 'h2',
+                  content: 'there is no documentation page',
+                  is_error: true,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    } as ChatThreadDetail
+    const state = fromDetail(detail)
+    expect(state.turns[0].items).toEqual([{ kind: 'help', callId: 'h1' }])
+    expect(state.helpLinks.h1).toEqual(card)
+    expect(state.helpLinks.h2).toBeUndefined()
+  })
+})

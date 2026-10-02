@@ -26,6 +26,7 @@ const RUN: RunView = {
 function state(overrides: Partial<ThreadState['turns'][number]> = {}): ThreadState {
   return {
     calls: {},
+    helpLinks: {},
     runs: { c1: RUN },
     drafts: {},
     turns: [
@@ -105,6 +106,59 @@ describe('ChatTranscript', () => {
   it('offers no rerun without a data source', () => {
     renderTranscript(state(), { canRerun: false })
     expect(screen.queryByRole('button', { name: 'Run again to draw the chart' })).not.toBeInTheDocument()
+  })
+})
+
+describe('help links in a turn', () => {
+  const link = (callId: string, pageTitle: string, sectionTitle: string | null) => ({
+    callId,
+    page: 'features/queries',
+    pageTitle,
+    anchor: sectionTitle ? 'parameters' : null,
+    sectionTitle,
+    reason: `Why ${callId}`,
+  })
+
+  function threadWithLinks(overrides: Record<string, unknown> = {}) {
+    const thread = state({
+      status: 'running',
+      phase: 'answering',
+      stopReason: null,
+      items: [
+        { kind: 'text', text: 'Here you go.' },
+        { kind: 'help', callId: 'h1' },
+        { kind: 'help', callId: 'h2' },
+      ],
+      ...overrides,
+    })
+    thread.helpLinks = { h1: link('h1', 'Queries', 'Parameters'), h2: link('h2', 'Schedules', null) }
+    return thread
+  }
+
+  it('draws consecutive links as one card and keeps the text before them', () => {
+    renderTranscript(threadWithLinks())
+    expect(screen.getByText('Here you go.')).toBeInTheDocument()
+    expect(screen.getAllByText('Documentation')).toHaveLength(1)
+    expect(screen.getByText('Queries › Parameters')).toBeInTheDocument()
+    expect(screen.getByText('Schedules')).toBeInTheDocument()
+  })
+
+  it('keeps the thinking label, because linking takes no browser round trip', () => {
+    renderTranscript(threadWithLinks())
+    expect(screen.getByRole('status')).toHaveTextContent(PHASE_LABELS.answering)
+  })
+
+  it('separates links that are not next to each other', () => {
+    renderTranscript(
+      threadWithLinks({
+        items: [
+          { kind: 'help', callId: 'h1' },
+          { kind: 'text', text: 'And also:' },
+          { kind: 'help', callId: 'h2' },
+        ],
+      })
+    )
+    expect(screen.getAllByText('Documentation')).toHaveLength(2)
   })
 })
 

@@ -72,6 +72,17 @@ const frameData = {
       count: z.number().int().nonnegative().optional(),
     })
     .strict(),
+  help_link: z
+    .object({
+      callId: id,
+      // The introduction page is the empty id, so `page` has no minimum.
+      page: z.string().max(200),
+      pageTitle: z.string().max(500),
+      anchor: z.string().min(1).max(200).nullable(),
+      sectionTitle: z.string().max(500).nullable(),
+      reason: z.string().max(500),
+    })
+    .strict(),
   draft: z
     .object({
       draftId: id,

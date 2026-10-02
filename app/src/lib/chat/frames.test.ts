@@ -28,6 +28,26 @@ describe('parseFrame tool requests', () => {
     ).toBeNull()
   })
 
+  it('accepts a help link and a whole-page link', () => {
+    const section = {
+      callId: 'h1',
+      page: 'features/queries',
+      pageTitle: 'Queries',
+      anchor: 'parameters',
+      sectionTitle: 'Parameters',
+      reason: 'How to add a date filter',
+    }
+    expect(parseFrame('help_link', section, '1-1')?.data).toEqual(section)
+    const page = { ...section, anchor: null, sectionTitle: null }
+    expect(parseFrame('help_link', page, '1-1')?.data).toEqual(page)
+  })
+
+  it('refuses a help link without a page or with an over-long anchor', () => {
+    const base = { callId: 'h1', pageTitle: 'Queries', anchor: null, sectionTitle: null, reason: 'x' }
+    expect(parseFrame('help_link', base, null)).toBeNull()
+    expect(parseFrame('help_link', { ...base, page: 'p', anchor: 'a'.repeat(201) }, null)).toBeNull()
+  })
+
   it('carries a settled count', () => {
     const settled = { callId: 'a', ok: true, durationMs: 5, count: 3 }
     expect(parseFrame('tool_settled', settled, null)?.data).toEqual(settled)
