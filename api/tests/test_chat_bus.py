@@ -3,8 +3,10 @@ from collections.abc import AsyncIterator
 
 import pytest
 from redis.asyncio import Redis
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
-from veodyn_api.services.chat.bus import PendingCall, TurnBus
+from veodyn_api.services.chat.bus import PendingCall, TurnBus, get_redis
 
 pytestmark = pytest.mark.anyio
 
@@ -86,3 +88,20 @@ async def test_sealing_puts_an_expiry_on_the_frame_log(bus: TurnBus, redis_url: 
     finally:
         await client.aclose()
     assert 0 < ttl <= 3600
+
+
+async def test_the_shared_client_retries_a_dropped_connection(redis_url: str) -> None:
+    # redis-py ships a Retry policy on every client but leaves it off by
+    # default (retry_on_timeout=False, retry_on_error=[]), so a connection
+    # blip during stream_turn's read loop used to surface as a live
+    # RedisError and fail the turn outright instead of being retried
+    # transparently. get_redis() must turn both on, or a blip is a turn
+    # failure again.
+    client = get_redis()
+    try:
+        kwargs = client.connection_pool.connection_kwargs
+        assert kwargs["retry_on_timeout"] is True
+        assert set(kwargs["retry_on_error"]) == {RedisConnectionError, RedisTimeoutError}
+        assert kwargs["health_check_interval"] > 0
+    finally:
+        await client.aclose()

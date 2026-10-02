@@ -4,6 +4,8 @@ from functools import lru_cache
 from typing import Any, cast
 
 from redis.asyncio import Redis
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from veodyn_api.settings import get_settings
 
@@ -11,6 +13,11 @@ FRAME_LOG_MAXLEN = 5000
 FRAME_LOG_TTL_SECONDS = 3600
 LEASE_TTL_SECONDS = 20
 KEY_TTL_SECONDS = 3600
+# A stream_turn GET blocks on bus.read() for up to STREAM_BLOCK_MS (5s) at a
+# time and can sit in that loop for as long as the turn runs, so an idle
+# connection in the pool needs to be checked well inside a single turn rather
+# than only rediscovered the next time something reaches for it.
+REDIS_HEALTH_CHECK_INTERVAL_SECONDS = 15
 
 
 def _key(turn_id: str, part: str) -> str:
@@ -102,4 +109,17 @@ class TurnBus:
 
 @lru_cache
 def get_redis() -> Redis:
-    return Redis.from_url(get_settings().redis_url)
+    # redis-py builds a client with retry logic already attached (10 attempts,
+    # exponential backoff) but leaves it OFF by default: retry_on_timeout is
+    # False and retry_on_error is empty, so a connection blip that used to work
+    # fine as a plain drop-and-reconnect-next-time now surfaces as a live
+    # RedisError straight out of stream_turn's read loop, which is what
+    # produces the "Chat is unavailable" frame on an otherwise healthy turn.
+    # Turning both on lets the client retry the one call transparently instead
+    # of every blip becoming a turn failure.
+    return Redis.from_url(
+        get_settings().redis_url,
+        retry_on_timeout=True,
+        retry_on_error=[RedisConnectionError, RedisTimeoutError],
+        health_check_interval=REDIS_HEALTH_CHECK_INTERVAL_SECONDS,
+    )
