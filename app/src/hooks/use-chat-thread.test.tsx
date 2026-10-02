@@ -205,13 +205,13 @@ describe('useChatThread', () => {
           finishedAt: 'x',
           blocks: [
             { role: 'assistant', content: [{ type: 'tool_use', id: 'c1', name: 'run_query', input: { sql: 'SELECT 2 FROM t' } }] },
-            { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'c1', content: '{"ok":true}' }] },
+            { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'c1', content: '{"ok":true,"dataSourceId":9}' }] },
           ],
         },
       ])
     )
     const { result } = await mounted()
-    act(() => result.current.rerun('c1', 9))
+    act(() => result.current.rerun('c1'))
     await waitFor(() => expect(result.current.results.c1).toEqual(DATA))
     expect(execution.executeAdhoc).toHaveBeenCalledWith(9, 'SELECT 2 FROM t', expect.anything())
     expect(client.postToolResult).not.toHaveBeenCalled()

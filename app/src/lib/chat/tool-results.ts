@@ -11,7 +11,18 @@ export type ChatSavedVisualizationResult = Schemas['ChatSavedVisualizationResult
 export type ChatVisualizationRef = Schemas['ChatVisualizationRefIn']
 export type ChatDashboardResult = Schemas['ChatDashboardResultIn']
 export type ChatDashboardWidget = Schemas['ChatDashboardWidgetIn']
-export type ChatToolResult = ChatQueryResult | ChatLibraryResult | ChatSavedVisualizationResult | ChatDashboardResult
+export type ChatDataSourceRef = Schemas['ChatDataSourceRefIn']
+export type ChatDataSourcesResult = Schemas['ChatDataSourcesResultIn']
+export type ChatDataSourceTable = Schemas['ChatDataSourceTableIn']
+export type ChatDataSourceResource = Schemas['ChatDataSourceResourceIn']
+export type ChatDataSourceSchemaResult = Schemas['ChatDataSourceSchemaResultIn']
+export type ChatToolResult =
+  | ChatQueryResult
+  | ChatLibraryResult
+  | ChatSavedVisualizationResult
+  | ChatDashboardResult
+  | ChatDataSourcesResult
+  | ChatDataSourceSchemaResult
 export type ChatResultKind = ChatToolResult['kind']
 
 const id = z.number().int().positive()
@@ -39,7 +50,9 @@ const rows = {
   sample: z.array(z.record(z.unknown())).max(50).optional(),
 }
 
-export const queryResultSchema = z.object({ ...base, ...rows, kind: z.literal('query_result') }).strict()
+export const queryResultSchema = z
+  .object({ ...base, ...rows, kind: z.literal('query_result'), dataSourceId: id.optional() })
+  .strict()
 
 export const libraryItemSchema = z
   .object({
@@ -108,7 +121,44 @@ export const dashboardResultSchema = z
       .strict()
       .optional(),
     widgets: z.array(dashboardWidgetSchema).max(50).optional(),
+    widgetCount: z.number().int().nonnegative().optional(),
     textWidgets: z.number().int().nonnegative().optional(),
+  })
+  .strict()
+
+export const dataSourceRefSchema = z
+  .object({ id, name: z.string().max(500), type: z.string().max(64), syntax: z.string().max(32), viewOnly: z.boolean() })
+  .strict()
+
+export const dataSourcesResultSchema = z
+  .object({
+    ...base,
+    kind: z.literal('data_sources'),
+    sources: z.array(dataSourceRefSchema).max(50).optional(),
+  })
+  .strict()
+
+export const dataSourceTableSchema = z
+  .object({ name: z.string().max(255), columns: z.array(z.string().max(255)).max(100) })
+  .strict()
+
+export const dataSourceResourceSchema = z
+  .object({
+    name: z.string().max(128),
+    params: z.array(z.string().max(128)).max(50),
+    returns: z.array(z.string().max(255)).max(50),
+    example: z.string().max(500).optional(),
+  })
+  .strict()
+
+export const dataSourceSchemaResultSchema = z
+  .object({
+    ...base,
+    kind: z.literal('data_source_schema'),
+    dataSourceId: id,
+    syntax: z.string().max(32).optional(),
+    tables: z.array(dataSourceTableSchema).max(200).optional(),
+    resources: z.array(dataSourceResourceSchema).max(50).optional(),
   })
   .strict()
 
@@ -117,11 +167,17 @@ export const toolResultSchema = z.discriminatedUnion('kind', [
   libraryResultSchema,
   savedVisualizationResultSchema,
   dashboardResultSchema,
+  dataSourcesResultSchema,
+  dataSourceSchemaResultSchema,
 ]) satisfies z.ZodType<ChatToolResult, z.ZodTypeDef, unknown>
 
 export const ERROR_CHARS = 500
 
-export function failedResult(kind: ChatResultKind, error: unknown): ChatToolResult {
+// data_source_schema is excluded: it always carries a dataSourceId, even on
+// failure (spec 3a section 4.2), so it goes through
+// library-results.ts's failedDataSourceSchemaResult instead of this minimal
+// {kind, ok: false, error} shape.
+export function failedResult(kind: Exclude<ChatResultKind, 'data_source_schema'>, error: unknown): ChatToolResult {
   const message = error instanceof Error ? error.message : String(error)
   return { kind, ok: false, error: (message || 'The request failed.').slice(0, ERROR_CHARS) }
 }

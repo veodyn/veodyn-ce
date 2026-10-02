@@ -8,9 +8,34 @@ export const chatProposalSchema = z
     name: z.string().min(1).max(500),
     description: z.string().max(10_000),
     sql: z.string().min(1).max(60_000),
-    datasetTable: z.string().min(1).max(255),
+    dataSourceId: positive,
+    // Present only when dataSourceId is the warehouse: the sidecar's cached
+    // catalog is the only place a table match happens (spec 3a section 5).
+    datasetTable: z.string().min(1).max(255).optional(),
     vizChoiceId: z.string().min(1).max(64),
     vizOptions: z.record(z.unknown()),
+  })
+  .strict()
+
+const dashboardItemSchema = z.discriminatedUnion('kind', [
+  z
+    .object({ kind: z.literal('draft'), queryDraftId: id, title: z.string().max(500).optional() })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('existing'),
+      queryId: positive,
+      visualizationId: positive,
+      title: z.string().max(500).optional(),
+    })
+    .strict(),
+])
+
+export const dashboardProposalSchema = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string().max(1_000),
+    items: z.array(dashboardItemSchema).min(1).max(12),
   })
   .strict()
 
@@ -28,11 +53,28 @@ const frameData = {
         args: z
           .object({
             dataSourceId: positive,
+            // Always the plain query text the data source's own run_query
+            // parses: real SQL, or a resourceCall already serialized to JSON
+            // by the sidecar (spec 3a section 5's implementation notes).
             sql: z.string().min(1).max(60_000),
             purpose: z.string().max(500),
             vizChoiceId: z.string().min(1).max(64),
           })
           .strict(),
+      })
+      .strict(),
+    z
+      .object({
+        callId: id,
+        tool: z.literal('list_data_sources'),
+        args: z.object({}).strict(),
+      })
+      .strict(),
+    z
+      .object({
+        callId: id,
+        tool: z.literal('describe_data_source'),
+        args: z.object({ dataSourceId: positive }).strict(),
       })
       .strict(),
     z
@@ -70,6 +112,7 @@ const frameData = {
       durationMs: z.number().int().nonnegative(),
       rowCount: z.number().int().nonnegative().optional(),
       count: z.number().int().nonnegative().optional(),
+      sourceCount: z.number().int().nonnegative().optional(),
     })
     .strict(),
   help_link: z
@@ -83,14 +126,24 @@ const frameData = {
       reason: z.string().max(500),
     })
     .strict(),
-  draft: z
-    .object({
-      draftId: id,
-      version: z.number().int().positive(),
-      kind: z.literal('query'),
-      payload: chatProposalSchema,
-    })
-    .strict(),
+  draft: z.discriminatedUnion('kind', [
+    z
+      .object({
+        draftId: id,
+        version: z.number().int().positive(),
+        kind: z.literal('query'),
+        payload: chatProposalSchema,
+      })
+      .strict(),
+    z
+      .object({
+        draftId: id,
+        version: z.number().int().positive(),
+        kind: z.literal('dashboard'),
+        payload: dashboardProposalSchema,
+      })
+      .strict(),
+  ]),
   turn_done: z
     .object({
       stopReason: z.string().max(64),
@@ -102,6 +155,9 @@ const frameData = {
 
 export type ChatEvent = keyof typeof frameData
 export type ChatProposal = z.infer<typeof chatProposalSchema>
+export type DashboardProposal = z.infer<typeof dashboardProposalSchema>
+export type DashboardProposalItem = DashboardProposal['items'][number]
+export type DraftFrame = z.infer<(typeof frameData)['draft']>
 
 export type ChatFrame = {
   [K in ChatEvent]: { event: K; id: string | null; data: z.infer<(typeof frameData)[K]> }

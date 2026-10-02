@@ -102,9 +102,12 @@ async def test_a_text_only_turn_streams_and_is_stored(db: Session, bus: TurnBus,
     assert [tool["name"] for tool in model.calls[0]["tools"]] == [
         "run_query",
         "propose_query",
+        "list_data_sources",
+        "describe_data_source",
         "search_library",
         "show_visualization",
         "open_dashboard",
+        "propose_dashboard",
         "link_help",
     ]
 
@@ -198,6 +201,124 @@ async def test_a_proposal_emits_a_draft_and_stores_it(db: Session, bus: TurnBus,
     assert draft["payload"]["sql"] == SQL
     detail = store.thread_detail(db, OWNER, turn.thread_id)
     assert str(detail["drafts"][0]["draft"].id) == draft["draftId"]
+
+
+async def test_a_dashboard_proposal_emits_a_draft_of_kind_dashboard(db: Session, bus: TurnBus, sessions: Any) -> None:
+    """save_draft's kind is no longer hardcoded to "query" two layers below
+    the tool schema (spec 3b section 1): the runner passes through whatever
+    the calling tool asked for."""
+    turn = new_turn(db)
+    dashboard = dict(
+        name="Bikeshare overview",
+        items=[{"kind": "existing", "queryId": 12, "visualizationId": 31}],
+    )
+    model = ScriptedChatModel(tool_turn("c1", "propose_dashboard", dashboard), text_turn("Here it is."))
+    await make_runner(model, bus, sessions).run(turn.id, turn.thread_id, 1, turn.user_text)
+    [draft] = [data for event, data in await frames(bus, turn) if event == "draft"]
+    assert draft["version"] == 1 and draft["kind"] == "dashboard"
+    assert draft["payload"]["name"] == "Bikeshare overview"
+    detail = store.thread_detail(db, OWNER, turn.thread_id)
+    assert detail["drafts"][0]["draft"].kind == "dashboard"
+    assert str(detail["drafts"][0]["draft"].id) == draft["draftId"]
+
+
+async def test_a_dashboard_draft_referencing_an_unknown_query_draft_is_refused(
+    db: Session, bus: TurnBus, sessions: Any
+) -> None:
+    turn = new_turn(db)
+    dashboard = dict(name="x", items=[{"kind": "draft", "queryDraftId": "not-a-real-draft"}])
+    model = ScriptedChatModel(tool_turn("c1", "propose_dashboard", dashboard), text_turn("Could not."))
+    await make_runner(model, bus, sessions).run(turn.id, turn.thread_id, 1, turn.user_text)
+    assert [event for event, _ in await frames(bus, turn) if event == "draft"] == []
+    [result] = model.calls[1]["messages"][2]["content"]
+    assert result["is_error"] is True and "queryDraftId" in result["content"]
+
+
+async def test_a_dashboard_can_reference_a_query_draft_proposed_earlier_in_the_thread(
+    db: Session, bus: TurnBus, sessions: Any
+) -> None:
+    """query_draft_exists checks the sidecar's own store (spec 3b section 4),
+    so a real query draft from an earlier turn in the SAME thread is usable,
+    unlike an existing Redash query/visualization id, which is never checked
+    server-side (B3)."""
+    turn = new_turn(db)
+    proposal = dict(name="Average speed", datasetTable="regional_speeds", sql=SQL, vizChoiceId="counter")
+    model = ScriptedChatModel(tool_turn("c1", "propose_query", proposal), text_turn("Saved."))
+    await make_runner(model, bus, sessions).run(turn.id, turn.thread_id, 1, turn.user_text)
+    [query_draft] = [data for event, data in await frames(bus, turn) if event == "draft"]
+
+    thread = store.thread_for_owner(db, OWNER, turn.thread_id)
+    next_turn = store.start_turn(db, thread, "and a dashboard of it")
+    dashboard = dict(name="Speeds", items=[{"kind": "draft", "queryDraftId": query_draft["draftId"]}])
+    model2 = ScriptedChatModel(tool_turn("c2", "propose_dashboard", dashboard), text_turn("Here it is."))
+    await make_runner(model2, bus, sessions).run(next_turn.id, next_turn.thread_id, next_turn.seq, next_turn.user_text)
+    [dashboard_draft] = [data for event, data in await frames(bus, next_turn) if event == "draft"]
+    assert dashboard_draft["kind"] == "dashboard"
+    assert dashboard_draft["payload"]["items"] == [{"kind": "draft", "queryDraftId": query_draft["draftId"]}]
+
+
+async def test_a_data_source_looked_up_this_turn_can_then_be_queried(db: Session, bus: TurnBus, sessions: Any) -> None:
+    """The sidecar has no cached list of data sources (spec 3a section 5): it
+    learns a dataSourceId's syntax and resource registry only from
+    list_data_sources/describe_data_source results already in this turn's
+    blocks, which is what this test exercises end to end."""
+    turn = new_turn(db)
+    run_query_call = {
+        "dataSourceId": 7,
+        "resourceCall": {"resource": "predictions", "params": {"stop_id": "80101"}},
+        "purpose": "predictions",
+        "vizChoiceId": "table",
+    }
+    model = ScriptedChatModel(
+        tool_turn("c1", "list_data_sources", {}),
+        tool_turn("c2", "describe_data_source", {"dataSourceId": 7}),
+        tool_turn("c3", "run_query", run_query_call),
+        text_turn("Here they are."),
+    )
+    run = asyncio.create_task(make_runner(model, bus, sessions).run(turn.id, turn.thread_id, 1, turn.user_text))
+    sources_result = {
+        "ok": True,
+        "kind": "data_sources",
+        "sources": [{"id": 7, "name": "MCA", "type": "metrocloudalliance", "syntax": "json", "viewOnly": False}],
+    }
+    schema_result = {
+        "ok": True,
+        "kind": "data_source_schema",
+        "dataSourceId": 7,
+        "syntax": "json",
+        "resources": [{"name": "predictions", "params": ["stop_id"], "returns": ["route"], "example": "{}"}],
+    }
+    requests = await browser(bus, turn, [sources_result, schema_result, dict(RESULT)])
+    await run
+
+    assert requests[0] == {"callId": "c1", "tool": "list_data_sources", "args": {}}
+    assert requests[1] == {"callId": "c2", "tool": "describe_data_source", "args": {"dataSourceId": 7}}
+    assert requests[2] == {
+        "callId": "c3",
+        "tool": "run_query",
+        "args": {
+            "dataSourceId": 7,
+            "sql": '{"resource":"predictions","params":{"stop_id":"80101"}}',
+            "purpose": "predictions",
+            "vizChoiceId": "table",
+        },
+    }
+    settled = [data for event, data in await frames(bus, turn) if event == "tool_settled"]
+    assert settled[0]["sourceCount"] == 1
+
+
+async def test_a_data_source_not_looked_up_this_turn_is_refused_before_the_browser(
+    db: Session, bus: TurnBus, sessions: Any
+) -> None:
+    turn = new_turn(db)
+    model = ScriptedChatModel(
+        tool_turn("c1", "run_query", {"dataSourceId": 9, "sql": "SELECT 1", "purpose": "x", "vizChoiceId": "table"}),
+        text_turn("I could not run that."),
+    )
+    await make_runner(model, bus, sessions).run(turn.id, turn.thread_id, 1, turn.user_text)
+    assert "tool_request" not in [event for event, _ in await frames(bus, turn)]
+    [result] = model.calls[1]["messages"][2]["content"]
+    assert result["is_error"] is True and "list_data_sources" in result["content"]
 
 
 async def test_the_hop_limit_ends_the_turn_with_a_note(

@@ -1,11 +1,11 @@
-import type { ChatFrame, ChatProposal } from './frames'
+import type { ChatFrame, ChatProposal, DashboardProposal } from './frames'
 import { settledView, type CallView, type RunStatus } from './thread-calls'
 import type { HelpLinkView } from './thread-help'
 import { appendText, withVersion } from './thread-stored'
 import type { ChatToolResult } from './tool-results'
 import type { ChatPromotion } from './wire'
 
-export type { CallView, LibraryToolName, RunStatus } from './thread-calls'
+export type { CallView, CardToolName, RunStatus } from './thread-calls'
 export type { HelpLinkView } from './thread-help'
 export { FAILED_TURN_MESSAGE, fromDetail } from './thread-stored'
 
@@ -13,6 +13,7 @@ export type TurnStatus = 'running' | 'done' | 'failed'
 
 export interface RunView {
   callId: string
+  dataSourceId: number
   purpose: string
   sql: string
   vizChoiceId: string
@@ -41,10 +42,25 @@ export interface TurnView {
   lastEventId: string | null
 }
 
-export interface DraftView {
+/** A proposed-but-not-yet-saved thing: the shape query and dashboard drafts
+ * share, differing only in what a version's payload is (spec 3b section 7). */
+export interface Draft<Payload> {
   id: string
-  versions: { version: number; payload: ChatProposal }[]
+  versions: { version: number; payload: Payload }[]
   promotions: ChatPromotion[]
+}
+
+export type DraftView = Draft<ChatProposal>
+export type DashboardDraftView = Draft<DashboardProposal>
+
+/** The dashboard the model most recently opened or created in this thread —
+ * not per-call state like `calls`/`runs`, but a single running pointer, since
+ * "add this to the dashboard from earlier" needs to keep resolving for the
+ * life of the thread (spec 3b section 7). */
+export interface ActiveDashboard {
+  id: number
+  name: string
+  widgetCount: number
 }
 
 export interface ThreadState {
@@ -53,10 +69,20 @@ export interface ThreadState {
   calls: Record<string, CallView>
   helpLinks: Record<string, HelpLinkView>
   drafts: Record<string, DraftView>
+  dashboardDrafts: Record<string, DashboardDraftView>
+  activeDashboard: ActiveDashboard | null
 }
 
 export function emptyThread(): ThreadState {
-  return { turns: [], runs: {}, calls: {}, helpLinks: {}, drafts: {} }
+  return {
+    turns: [],
+    runs: {},
+    calls: {},
+    helpLinks: {},
+    drafts: {},
+    dashboardDrafts: {},
+    activeDashboard: null,
+  }
 }
 
 function streamOrder(id: string): [number, number] {
@@ -130,6 +156,7 @@ export function applyFrame(state: ThreadState, turnId: string, frame: ChatFrame)
       const { args } = request
       const run: RunView = {
         callId,
+        dataSourceId: args.dataSourceId,
         purpose: args.purpose,
         sql: args.sql,
         vizChoiceId: args.vizChoiceId,
@@ -163,9 +190,21 @@ export function applyFrame(state: ThreadState, turnId: string, frame: ChatFrame)
       return seen(withItem(next, turnId, { kind: 'help', callId: link.callId }))
     }
     case 'draft': {
-      const { draftId, version, payload } = frame.data
-      const drafts = { ...state.drafts, [draftId]: withVersion(state.drafts[draftId], draftId, version, payload) }
-      return seen(withItem({ ...state, drafts }, turnId, { kind: 'draft', draftId, version }))
+      const { draftId, version, kind, payload } = frame.data
+      const next =
+        kind === 'dashboard'
+          ? {
+              ...state,
+              dashboardDrafts: {
+                ...state.dashboardDrafts,
+                [draftId]: withVersion(state.dashboardDrafts[draftId], draftId, version, payload),
+              },
+            }
+          : {
+              ...state,
+              drafts: { ...state.drafts, [draftId]: withVersion(state.drafts[draftId], draftId, version, payload) },
+            }
+      return seen(withItem(next, turnId, { kind: 'draft', draftId, version }))
     }
     case 'turn_done':
       return seen(
@@ -186,7 +225,18 @@ export function failTurn(state: ThreadState, turnId: string, message: string): T
 
 export function settleCall(state: ThreadState, callId: string, result: ChatToolResult): ThreadState {
   const call = state.calls[callId]
-  return call ? { ...state, calls: { ...state.calls, [callId]: settledView(call, result) } } : state
+  if (!call) return state
+  const next = { ...state, calls: { ...state.calls, [callId]: settledView(call, result) } }
+  // open_dashboard settling is also how the model "opens" a dashboard (spec 3b
+  // section 7): the analyst may then ask to add something to it.
+  if (call.tool === 'open_dashboard' && result.kind === 'dashboard' && result.ok && result.dashboard) {
+    return setActiveDashboard(next, {
+      id: result.dashboard.id,
+      name: result.dashboard.name,
+      widgetCount: result.widgetCount ?? result.widgets?.length ?? 0,
+    })
+  }
+  return next
 }
 
 export function setRunError(state: ThreadState, callId: string, error: string): ThreadState {
@@ -197,6 +247,19 @@ export function addPromotion(state: ThreadState, draftId: string, promotion: Cha
   const draft = state.drafts[draftId]
   if (!draft) return state
   return { ...state, drafts: { ...state.drafts, [draftId]: { ...draft, promotions: [...draft.promotions, promotion] } } }
+}
+
+export function addDashboardPromotion(state: ThreadState, draftId: string, promotion: ChatPromotion): ThreadState {
+  const draft = state.dashboardDrafts[draftId]
+  if (!draft) return state
+  return {
+    ...state,
+    dashboardDrafts: { ...state.dashboardDrafts, [draftId]: { ...draft, promotions: [...draft.promotions, promotion] } },
+  }
+}
+
+export function setActiveDashboard(state: ThreadState, dashboard: ActiveDashboard): ThreadState {
+  return { ...state, activeDashboard: dashboard }
 }
 
 export function runningTurn(state: ThreadState): TurnView | null {

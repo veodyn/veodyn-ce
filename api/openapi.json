@@ -251,6 +251,18 @@
             ],
             "title": "Textwidgets"
           },
+          "widgetCount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Widgetcount"
+          },
           "widgets": {
             "anyOf": [
               {
@@ -316,6 +328,235 @@
           "visualizationType"
         ],
         "title": "ChatDashboardWidgetIn",
+        "type": "object"
+      },
+      "ChatDataSourceRefIn": {
+        "properties": {
+          "id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          },
+          "syntax": {
+            "maxLength": 32,
+            "title": "Syntax",
+            "type": "string"
+          },
+          "type": {
+            "maxLength": 64,
+            "title": "Type",
+            "type": "string"
+          },
+          "viewOnly": {
+            "default": false,
+            "title": "Viewonly",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "syntax"
+        ],
+        "title": "ChatDataSourceRefIn",
+        "type": "object"
+      },
+      "ChatDataSourceResourceIn": {
+        "properties": {
+          "example": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Example"
+          },
+          "name": {
+            "maxLength": 128,
+            "title": "Name",
+            "type": "string"
+          },
+          "params": {
+            "items": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Params",
+            "type": "array"
+          },
+          "returns": {
+            "items": {
+              "maxLength": 255,
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Returns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ChatDataSourceResourceIn",
+        "type": "object"
+      },
+      "ChatDataSourceSchemaResultIn": {
+        "properties": {
+          "dataSourceId": {
+            "exclusiveMinimum": 0.0,
+            "title": "Datasourceid",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "const": "data_source_schema",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "resources": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatDataSourceResourceIn"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resources"
+          },
+          "syntax": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Syntax"
+          },
+          "tables": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatDataSourceTableIn"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tables"
+          }
+        },
+        "required": [
+          "ok",
+          "kind",
+          "dataSourceId"
+        ],
+        "title": "ChatDataSourceSchemaResultIn",
+        "type": "object"
+      },
+      "ChatDataSourceTableIn": {
+        "properties": {
+          "columns": {
+            "items": {
+              "maxLength": 255,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Columns",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 255,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ChatDataSourceTableIn",
+        "type": "object"
+      },
+      "ChatDataSourcesResultIn": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "const": "data_sources",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "sources": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatDataSourceRefIn"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sources"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatDataSourcesResultIn",
         "type": "object"
       },
       "ChatDraftOut": {
@@ -521,7 +762,10 @@
             "type": "string"
           },
           "targetType": {
-            "const": "query",
+            "enum": [
+              "query",
+              "dashboard"
+            ],
             "title": "Targettype",
             "type": "string"
           },
@@ -613,6 +857,18 @@
               }
             ],
             "title": "Columns"
+          },
+          "dataSourceId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datasourceid"
           },
           "error": {
             "anyOf": [
@@ -1089,6 +1345,8 @@
             "discriminator": {
               "mapping": {
                 "dashboard": "#/components/schemas/ChatDashboardResultIn",
+                "data_source_schema": "#/components/schemas/ChatDataSourceSchemaResultIn",
+                "data_sources": "#/components/schemas/ChatDataSourcesResultIn",
                 "library": "#/components/schemas/ChatLibraryResultIn",
                 "query_result": "#/components/schemas/ChatQueryResultIn",
                 "saved_visualization": "#/components/schemas/ChatSavedVisualizationResultIn"
@@ -1107,6 +1365,12 @@
               },
               {
                 "$ref": "#/components/schemas/ChatDashboardResultIn"
+              },
+              {
+                "$ref": "#/components/schemas/ChatDataSourcesResultIn"
+              },
+              {
+                "$ref": "#/components/schemas/ChatDataSourceSchemaResultIn"
               }
             ],
             "title": "Result"

@@ -47,14 +47,24 @@ describe('data source reads', () => {
     get.mockResolvedValue([SOURCE])
 
     await expect(listDataSources()).resolves.toEqual([SOURCE])
-    expect(get).toHaveBeenCalledWith('data_sources', undefined)
+    expect(get).toHaveBeenCalledWith('data_sources', { signal: undefined })
   })
 
   it('reads one source from its member path', async () => {
     get.mockResolvedValue(SOURCE)
 
     await expect(getDataSource(3)).resolves.toEqual(SOURCE)
-    expect(get).toHaveBeenCalledWith('data_sources/3', undefined)
+    expect(get).toHaveBeenCalledWith('data_sources/3', { signal: undefined })
+  })
+
+  it('threads an abort signal into both reads', async () => {
+    get.mockResolvedValue(SOURCE)
+    const controller = new AbortController()
+
+    await listDataSources(controller.signal)
+    expect(get).toHaveBeenCalledWith('data_sources', { signal: controller.signal })
+    await getDataSource(3, controller.signal)
+    expect(get).toHaveBeenCalledWith('data_sources/3', { signal: controller.signal })
   })
 
   it('answers null for a source that does not exist', async () => {

@@ -13,8 +13,10 @@ const COLUMNS: [string, string][] = [
   ['day', 'date'],
 ]
 
+const DATA_SOURCE_ID = 5
+
 describe('shapeResult', () => {
-  it('sends a small result whole', () => {
+  it('sends a small result whole, tagged with the data source it ran against', () => {
     const shaped = shapeResult(
       result(
         [
@@ -23,9 +25,11 @@ describe('shapeResult', () => {
           { route: 'A', riders: null, day: '2026-09-03' },
         ],
         COLUMNS
-      )
+      ),
+      DATA_SOURCE_ID
     )
     expect(shaped.ok).toBe(true)
+    expect(shaped.dataSourceId).toBe(DATA_SOURCE_ID)
     expect(shaped.rowCount).toBe(3)
     expect(shaped.truncated).toBe(false)
     expect(shaped.sample).toHaveLength(3)
@@ -48,7 +52,7 @@ describe('shapeResult', () => {
 
   it('samples fifty rows and computes statistics over all of them', () => {
     const rows = Array.from({ length: 12_400 }, (_, n) => ({ route: `R${n % 47}`, riders: n, day: '2026-09-01' }))
-    const shaped = shapeResult(result(rows, COLUMNS))
+    const shaped = shapeResult(result(rows, COLUMNS), DATA_SOURCE_ID)
     expect(shaped.rowCount).toBe(12_400)
     expect(shaped.truncated).toBe(true)
     expect(shaped.sample).toHaveLength(50)
@@ -59,7 +63,7 @@ describe('shapeResult', () => {
   it('keeps the sample under its byte budget', () => {
     const names = ['a', 'b', 'c', 'd', 'e']
     const rows = Array.from({ length: 50 }, () => Object.fromEntries(names.map((name) => [name, 'x'.repeat(190)])))
-    const shaped = shapeResult(result(rows, names.map((name) => [name, 'string'] as [string, string])))
+    const shaped = shapeResult(result(rows, names.map((name) => [name, 'string'] as [string, string])), DATA_SOURCE_ID)
     expect(new TextEncoder().encode(JSON.stringify(shaped.sample)).byteLength).toBeLessThanOrEqual(SAMPLE_BYTES)
     expect(shaped.sample?.length).toBeLessThan(50)
     expect(shaped.sample?.length).toBeGreaterThan(20)
@@ -67,7 +71,7 @@ describe('shapeResult', () => {
   })
 
   it('trims long cells', () => {
-    const shaped = shapeResult(result([{ note: 'n'.repeat(1_000) }], [['note', 'string']]))
+    const shaped = shapeResult(result([{ note: 'n'.repeat(1_000) }], [['note', 'string']]), DATA_SOURCE_ID)
     const cell = String(shaped.sample?.[0].note)
     expect(cell).toHaveLength(CELL_CHARS + 1)
     expect(cell.endsWith('…')).toBe(true)
@@ -76,18 +80,18 @@ describe('shapeResult', () => {
 
   it('caps the distinct count', () => {
     const rows = Array.from({ length: DISTINCT_CAP + 5 }, (_, n) => ({ id: `v${n}` }))
-    const [column] = shapeResult(result(rows, [['id', 'string']])).columns ?? []
+    const [column] = shapeResult(result(rows, [['id', 'string']]), DATA_SOURCE_ID).columns ?? []
     expect(column.distinct).toBe(DISTINCT_CAP)
     expect(column.distinctCapped).toBe(true)
   })
 
   it('only sends the result columns', () => {
-    const shaped = shapeResult(result([{ route: 'A', hidden: 'secret' }], [['route', 'string']]))
+    const shaped = shapeResult(result([{ route: 'A', hidden: 'secret' }], [['route', 'string']]), DATA_SOURCE_ID)
     expect(shaped.sample).toEqual([{ route: 'A' }])
   })
 
   it('handles an empty result', () => {
-    expect(shapeResult(result([], COLUMNS))).toMatchObject({ rowCount: 0, truncated: false, sample: [] })
+    expect(shapeResult(result([], COLUMNS), DATA_SOURCE_ID)).toMatchObject({ rowCount: 0, truncated: false, sample: [] })
   })
 })
 

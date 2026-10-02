@@ -61,7 +61,11 @@ export interface NewQueryProposal {
   name: string
   description: string
   sql: string
-  datasetTable: string
+  // Optional because a data-chat draft (ChatProposal, lib/chat/frames.ts) may
+  // target a data source other than the warehouse catalog, which has no
+  // datasetTable to name (spec 3a). write() (use-write-proposed-query.ts)
+  // never reads this field; it exists here for the callers that do have one.
+  datasetTable?: string
   vizChoiceId: string
   // As QueryProposal.vizOptions, and required for the same reason.
   vizOptions: Record<string, unknown>

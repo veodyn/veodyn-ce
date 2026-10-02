@@ -105,6 +105,13 @@ class _ChatRowsBase(_ChatResultBase):
 
 class ChatQueryResultIn(_ChatRowsBase):
     kind: Literal["query_result"]
+    # The data source the browser actually ran against, echoed back from the
+    # request (spec 3a): a stored thread has no other record of which one a
+    # given run_query call used, since blocks_json replays the model's raw
+    # tool_use input (datasetTable, not dataSourceId, for the warehouse) and
+    # never the sidecar-resolved ClientCall. Absent on a failure result, whose
+    # shape stays the minimal {ok: false, error} spec 1 section 11.1 describes.
+    data_source_id: int | None = Field(default=None, gt=0)
 
 
 class ChatLibraryItemIn(CamelModel):
@@ -166,11 +173,54 @@ class ChatDashboardResultIn(_ChatResultBase):
     kind: Literal["dashboard"]
     dashboard: ChatDashboardRefIn | None = None
     widgets: list[ChatDashboardWidgetIn] | None = Field(default=None, max_length=50)
+    # The true chart/table widget count, uncapped — unlike `widgets`, which is
+    # capped at 50 for display (spec 2a §3.3). A dashboard draft's append-mode
+    # drift check (spec 3b §6.3) needs the real count; the capped array would
+    # produce a false mismatch on any dashboard past the cap.
+    widget_count: int | None = Field(default=None, ge=0)
     text_widgets: int | None = Field(default=None, ge=0)
 
 
+class ChatDataSourceRefIn(CamelModel):
+    id: int = Field(gt=0)
+    name: str = Field(max_length=500)
+    type: str = Field(max_length=64)
+    syntax: str = Field(max_length=32)
+    view_only: bool = False
+
+
+class ChatDataSourcesResultIn(_ChatResultBase):
+    kind: Literal["data_sources"]
+    sources: list[ChatDataSourceRefIn] | None = Field(default=None, max_length=50)
+
+
+class ChatDataSourceTableIn(CamelModel):
+    name: str = Field(max_length=255)
+    columns: list[Annotated[str, Field(max_length=255)]] = Field(default_factory=list, max_length=100)
+
+
+class ChatDataSourceResourceIn(CamelModel):
+    name: str = Field(max_length=128)
+    params: list[Annotated[str, Field(max_length=128)]] = Field(default_factory=list, max_length=50)
+    returns: list[Annotated[str, Field(max_length=255)]] = Field(default_factory=list, max_length=50)
+    example: str | None = Field(default=None, max_length=500)
+
+
+class ChatDataSourceSchemaResultIn(_ChatResultBase):
+    kind: Literal["data_source_schema"]
+    data_source_id: int = Field(gt=0)
+    syntax: str | None = Field(default=None, max_length=32)
+    tables: list[ChatDataSourceTableIn] | None = Field(default=None, max_length=200)
+    resources: list[ChatDataSourceResourceIn] | None = Field(default=None, max_length=50)
+
+
 ChatToolResultIn = Annotated[
-    ChatQueryResultIn | ChatLibraryResultIn | ChatSavedVisualizationResultIn | ChatDashboardResultIn,
+    ChatQueryResultIn
+    | ChatLibraryResultIn
+    | ChatSavedVisualizationResultIn
+    | ChatDashboardResultIn
+    | ChatDataSourcesResultIn
+    | ChatDataSourceSchemaResultIn,
     Field(discriminator="kind"),
 ]
 
@@ -186,6 +236,6 @@ class ChatAcceptedOut(CamelModel):
 
 class ChatPromotionIn(CamelModel):
     version: int = Field(ge=1)
-    target_type: Literal["query"]
+    target_type: Literal["query", "dashboard"]
     target_id: str = Field(min_length=1, max_length=64)
     target_version_at_promote: int | None = Field(default=None, ge=0)

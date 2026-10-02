@@ -14,6 +14,7 @@ import { runStatusLabel } from './run-card'
 
 const RUN: RunView = {
   callId: 'c1',
+  dataSourceId: 5,
   purpose: 'Average speed',
   sql: 'SELECT 1 FROM t',
   vizChoiceId: 'counter',
@@ -23,12 +24,14 @@ const RUN: RunView = {
   error: null,
 }
 
-function state(overrides: Partial<ThreadState['turns'][number]> = {}): ThreadState {
+function state(overrides: Partial<ThreadState['turns'][number]> = {}, run: RunView = RUN): ThreadState {
   return {
     calls: {},
     helpLinks: {},
-    runs: { c1: RUN },
+    runs: { c1: run },
     drafts: {},
+    dashboardDrafts: {},
+    activeDashboard: null,
     turns: [
       {
         id: 't1',
@@ -56,7 +59,6 @@ function renderTranscript(thread: ThreadState, overrides: Record<string, unknown
     results: {},
     runErrors: {},
     selection: null,
-    canRerun: true,
     onSelect: vi.fn(),
     onRerun: vi.fn(),
     onRetry: vi.fn(),
@@ -103,8 +105,8 @@ describe('ChatTranscript', () => {
     expect(props.onRetry).toHaveBeenCalled()
   })
 
-  it('offers no rerun without a data source', () => {
-    renderTranscript(state(), { canRerun: false })
+  it('offers no rerun for a run whose data source is unknown', () => {
+    renderTranscript(state({}, { ...RUN, dataSourceId: 0 }))
     expect(screen.queryByRole('button', { name: 'Run again to draw the chart' })).not.toBeInTheDocument()
   })
 })

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ChatFrame } from './frames'
 import {
   FAILED_TURN_MESSAGE,
+  addDashboardPromotion,
   addPromotion,
   applyFrame,
   emptyThread,
@@ -9,6 +10,7 @@ import {
   fromDetail,
   isAfter,
   runningTurn,
+  setActiveDashboard,
   setRunError,
   settleCall,
   startTurn,
@@ -21,6 +23,7 @@ const PROPOSAL = {
   name: 'Average speed',
   description: '',
   sql: 'SELECT 1 FROM t',
+  dataSourceId: 5,
   datasetTable: 't',
   vizChoiceId: 'counter',
   vizOptions: {},
@@ -32,6 +35,12 @@ const PROMOTION = {
   promotedVersion: 1,
   targetVersionAtPromote: 2,
   createdAt: '2026-09-17T00:00:00Z',
+}
+const DASHBOARD_DRAFT = '55555555-5555-4555-8555-555555555555'
+const DASHBOARD_PROPOSAL = {
+  name: 'Bikeshare overview',
+  description: '',
+  items: [{ kind: 'existing' as const, queryId: 12, visualizationId: 31 }],
 }
 
 function running() {
@@ -79,7 +88,13 @@ describe('applyFrame', () => {
       data: { callId: 'c1', ok: true, rowCount: 12, durationMs: 4100 },
     })
     expect(state.turns[0].items).toEqual([{ kind: 'run', callId: 'c1' }])
-    expect(state.runs.c1).toMatchObject({ status: 'done', rowCount: 12, durationMs: 4100, sql: 'SELECT 1 FROM t' })
+    expect(state.runs.c1).toMatchObject({
+      status: 'done',
+      rowCount: 12,
+      durationMs: 4100,
+      sql: 'SELECT 1 FROM t',
+      dataSourceId: 5,
+    })
   })
 
   it('records a draft version once', () => {
@@ -216,6 +231,192 @@ describe('fromDetail', () => {
     expect(state.turns[1]).toMatchObject({ status: 'failed', errorMessage: FAILED_TURN_MESSAGE })
     expect(state.drafts[DRAFT].versions.map((one) => one.version)).toEqual([1])
     expect(state.drafts[DRAFT].promotions).toEqual([PROMOTION])
+  })
+
+  it('rebuilds a resourceCall run with the data source the result echoed back', () => {
+    const withResourceCall = {
+      ...detail,
+      turns: [
+        {
+          ...detail.turns[0],
+          blocks: [
+            {
+              role: 'assistant',
+              content: [
+                {
+                  type: 'tool_use',
+                  id: 'r1',
+                  name: 'run_query',
+                  input: { resourceCall: { resource: 'predictions', params: { stop_id: '80101' } }, purpose: 'p', vizChoiceId: 'table' },
+                },
+              ],
+            },
+            {
+              role: 'user',
+              content: [{ type: 'tool_result', tool_use_id: 'r1', content: '{"ok":true,"rowCount":2,"dataSourceId":7}' }],
+            },
+          ],
+        },
+        detail.turns[1],
+      ],
+    }
+    const state = fromDetail(withResourceCall)
+    expect(state.runs.r1).toMatchObject({
+      dataSourceId: 7,
+      sql: '{"resource":"predictions","params":{"stop_id":"80101"}}',
+    })
+  })
+})
+
+describe('dashboard drafts', () => {
+  const dashboardDraftFrame: ChatFrame = {
+    event: 'draft',
+    id: '1-4',
+    data: { draftId: DASHBOARD_DRAFT, version: 1, kind: 'dashboard', payload: DASHBOARD_PROPOSAL },
+  }
+  const openDashboard: ChatFrame = {
+    event: 'tool_request',
+    id: '1-2',
+    data: { callId: 'od1', tool: 'open_dashboard', args: { dashboardId: 4 } },
+  }
+  const dashboardResult = {
+    kind: 'dashboard' as const,
+    ok: true,
+    dashboard: { id: 4, name: 'Bikeshare overview' },
+    widgets: [],
+    widgetCount: 3,
+  }
+
+  it('routes a dashboard-kind draft frame into dashboardDrafts, not drafts', () => {
+    const state = frames(undefined, dashboardDraftFrame)
+    expect(state.dashboardDrafts[DASHBOARD_DRAFT].versions).toEqual([{ version: 1, payload: DASHBOARD_PROPOSAL }])
+    expect(state.drafts[DASHBOARD_DRAFT]).toBeUndefined()
+    expect(state.turns[0].items).toEqual([{ kind: 'draft', draftId: DASHBOARD_DRAFT, version: 1 }])
+  })
+
+  it('sets activeDashboard when an open_dashboard call settles', () => {
+    let state = frames(undefined, openDashboard)
+    expect(state.activeDashboard).toBeNull()
+    state = settleCall(state, 'od1', dashboardResult)
+    expect(state.activeDashboard).toEqual({ id: 4, name: 'Bikeshare overview', widgetCount: 3 })
+  })
+
+  it('falls back to the (capped) widgets array length when widgetCount is absent', () => {
+    const state = settleCall(
+      frames(undefined, openDashboard),
+      'od1',
+      { ...dashboardResult, widgetCount: undefined, widgets: [{}, {}] as never }
+    )
+    expect(state.activeDashboard?.widgetCount).toBe(2)
+  })
+
+  it('does not set activeDashboard for a failed open_dashboard', () => {
+    const state = settleCall(frames(undefined, openDashboard), 'od1', { kind: 'dashboard', ok: false, error: 'gone' })
+    expect(state.activeDashboard).toBeNull()
+  })
+
+  it('records a dashboard promotion against dashboardDrafts, and setActiveDashboard replaces the pointer', () => {
+    const state = frames(undefined, dashboardDraftFrame)
+    const promoted = addDashboardPromotion(state, DASHBOARD_DRAFT, PROMOTION)
+    expect(promoted.dashboardDrafts[DASHBOARD_DRAFT].promotions).toEqual([PROMOTION])
+    expect(addDashboardPromotion(state, 'nope', PROMOTION)).toBe(state)
+    const activated = setActiveDashboard(state, { id: 9, name: 'New', widgetCount: 1 })
+    expect(activated.activeDashboard).toEqual({ id: 9, name: 'New', widgetCount: 1 })
+  })
+
+  it('rebuilds a dashboard draft from a stored propose_dashboard call', () => {
+    const detail = {
+      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '' },
+      turns: [
+        {
+          id: TURN,
+          seq: 1,
+          status: 'done',
+          userText: 'dashboard please',
+          stopReason: 'end_turn',
+          errorId: null,
+          createdAt: '',
+          finishedAt: '',
+          blocks: [
+            {
+              role: 'assistant',
+              content: [{ type: 'tool_use', id: 'pd1', name: 'propose_dashboard', input: {} }],
+            },
+            {
+              role: 'user',
+              content: [
+                { type: 'tool_result', tool_use_id: 'pd1', content: `{"draftId":"${DASHBOARD_DRAFT}","version":1}` },
+              ],
+            },
+          ],
+        },
+      ],
+      drafts: [
+        {
+          id: DASHBOARD_DRAFT,
+          kind: 'dashboard',
+          versions: [{ version: 1, turnId: TURN, payload: DASHBOARD_PROPOSAL, createdAt: 'x' }],
+          promotions: [],
+        },
+      ],
+    } as ChatThreadDetail
+    const state = fromDetail(detail)
+    expect(state.turns[0].items).toEqual([{ kind: 'draft', draftId: DASHBOARD_DRAFT, version: 1 }])
+    expect(state.dashboardDrafts[DASHBOARD_DRAFT].versions).toEqual([{ version: 1, payload: DASHBOARD_PROPOSAL }])
+    expect(state.drafts[DASHBOARD_DRAFT]).toBeUndefined()
+  })
+
+  it('reconstructs activeDashboard as the latest of an open_dashboard call and a dashboard promotion', () => {
+    const detail = {
+      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '' },
+      turns: [
+        {
+          id: TURN,
+          seq: 1,
+          status: 'done',
+          userText: 'open it',
+          stopReason: 'end_turn',
+          errorId: null,
+          createdAt: '2026-09-17T00:00:00Z',
+          finishedAt: '2026-09-17T00:01:00Z',
+          blocks: [
+            { role: 'assistant', content: [{ type: 'tool_use', id: 'od1', name: 'open_dashboard', input: { dashboardId: 4 } }] },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'tool_result',
+                  tool_use_id: 'od1',
+                  content: JSON.stringify({ ok: true, dashboard: { id: 4, name: 'Older' }, widgets: [], widgetCount: 1 }),
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      drafts: [
+        {
+          id: DASHBOARD_DRAFT,
+          kind: 'dashboard',
+          versions: [{ version: 1, turnId: TURN, payload: DASHBOARD_PROPOSAL, createdAt: 'x' }],
+          promotions: [{ ...PROMOTION, targetType: 'dashboard', targetId: '9', targetVersionAtPromote: 3, createdAt: '2026-09-17T00:02:00Z' }],
+        },
+      ],
+    } as ChatThreadDetail
+    const state = fromDetail(detail)
+    // The promotion (00:02) is later than the turn the open_dashboard call ran
+    // in (finishedAt 00:01), so it wins even though open_dashboard appears
+    // later in this fixture's turns array.
+    expect(state.activeDashboard).toEqual({ id: 9, name: 'Bikeshare overview', widgetCount: 3 })
+  })
+
+  it('has no activeDashboard when neither an open_dashboard call nor a dashboard promotion exists', () => {
+    const empty = {
+      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '' },
+      turns: [],
+      drafts: [],
+    } as ChatThreadDetail
+    expect(fromDetail(empty).activeDashboard).toBeNull()
   })
 })
 

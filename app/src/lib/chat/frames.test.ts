@@ -12,6 +12,8 @@ describe('parseFrame tool requests', () => {
         tool: 'run_query',
         args: { dataSourceId: 5, sql: 'SELECT 1', purpose: 'x', vizChoiceId: 'table' },
       },
+      { callId: 'e', tool: 'list_data_sources', args: {} },
+      { callId: 'f', tool: 'describe_data_source', args: { dataSourceId: 7 } },
     ]
     for (const request of requests) {
       expect(parseFrame('tool_request', request, '1-1')?.data).toEqual(request)
@@ -50,6 +52,11 @@ describe('parseFrame tool requests', () => {
 
   it('carries a settled count', () => {
     const settled = { callId: 'a', ok: true, durationMs: 5, count: 3 }
+    expect(parseFrame('tool_settled', settled, null)?.data).toEqual(settled)
+  })
+
+  it('carries a settled source count', () => {
+    const settled = { callId: 'a', ok: true, durationMs: 5, sourceCount: 2 }
     expect(parseFrame('tool_settled', settled, null)?.data).toEqual(settled)
   })
 })

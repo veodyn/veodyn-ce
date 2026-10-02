@@ -181,6 +181,23 @@ def test_draft_versions_count_up_and_an_unknown_draft_starts_a_new_one(db: Sessi
     assert moved != draft_id
 
 
+def test_query_draft_exists_checks_thread_kind_and_a_version(db: Session) -> None:
+    thread = store.create_thread(db, OWNER)
+    turn = store.start_turn(db, thread, "a")
+    query_draft, _ = store.save_draft(db, thread.id, turn.id, None, "query", {"v": 1})
+    dashboard_draft, _ = store.save_draft(db, thread.id, turn.id, None, "dashboard", {"items": []})
+
+    assert store.query_draft_exists(db, thread.id, query_draft) is True
+    # Wrong kind: a dashboard draft is not a query draft, even in the right thread.
+    assert store.query_draft_exists(db, thread.id, dashboard_draft) is False
+    # Unknown id.
+    assert store.query_draft_exists(db, thread.id, uuid.uuid4()) is False
+
+    other = store.create_thread(db, OWNER)
+    # Right id and kind, wrong thread.
+    assert store.query_draft_exists(db, other.id, query_draft) is False
+
+
 def test_promotions_are_recorded_against_an_existing_version(db: Session) -> None:
     thread = store.create_thread(db, OWNER)
     turn = store.start_turn(db, thread, "a")

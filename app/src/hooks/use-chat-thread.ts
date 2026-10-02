@@ -4,14 +4,17 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { TERMINAL_EVENTS, type ChatFrame } from '@/lib/chat/frames'
 import {
+  addDashboardPromotion,
   addPromotion,
   applyFrame,
   emptyThread,
   failTurn,
   fromDetail,
   runningTurn,
+  setActiveDashboard,
   settleCall,
   startTurn,
+  type ActiveDashboard,
   type ThreadState,
 } from '@/lib/chat/thread-model'
 import type { ChatToolResult } from '@/lib/chat/tool-results'
@@ -37,8 +40,10 @@ export interface ChatThreadController {
   send: (text: string) => void
   stop: () => void
   retry: () => void
-  rerun: (callId: string, dataSourceId: number) => void
+  rerun: (callId: string) => void
   promoted: (draftId: string, promotion: ChatPromotion) => void
+  promotedDashboard: (draftId: string, promotion: ChatPromotion) => void
+  dashboardActive: (dashboard: ActiveDashboard) => void
 }
 
 export function useChatThread(threadId: string): ChatThreadController {
@@ -123,15 +128,23 @@ export function useChatThread(threadId: string): ChatThreadController {
   }, [state, send])
 
   const rerun = useCallback(
-    (callId: string, dataSourceId: number) => {
+    (callId: string) => {
       const run = state.runs[callId]
-      if (run) rerunQuery(callId, run.sql, dataSourceId)
+      if (run) rerunQuery(callId, run.sql, run.dataSourceId)
     },
     [state, rerunQuery]
   )
 
   const promoted = useCallback((draftId: string, promotion: ChatPromotion) => {
     setState((current) => addPromotion(current, draftId, promotion))
+  }, [])
+
+  const promotedDashboard = useCallback((draftId: string, promotion: ChatPromotion) => {
+    setState((current) => addDashboardPromotion(current, draftId, promotion))
+  }, [])
+
+  const dashboardActive = useCallback((dashboard: ActiveDashboard) => {
+    setState((current) => setActiveDashboard(current, dashboard))
   }, [])
 
   return {
@@ -147,5 +160,7 @@ export function useChatThread(threadId: string): ChatThreadController {
     retry,
     rerun,
     promoted,
+    promotedDashboard,
+    dashboardActive,
   }
 }

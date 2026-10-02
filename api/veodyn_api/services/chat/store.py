@@ -224,6 +224,23 @@ def save_draft(
     return draft.id, version
 
 
+def query_draft_exists(db: Session, thread_id: uuid.UUID, draft_id: uuid.UUID) -> bool:
+    """Whether `draft_id` is a query draft of this thread with at least one
+    version — the check propose_dashboard needs before it can point a
+    dashboard item at it (spec 3b section 4). Content the sidecar itself
+    wrote, unlike a `queryId`/`visualizationId` item, which it never checks
+    (spec 2a L2: no Redash content read as a service account)."""
+    draft = db.scalar(
+        select(AiChatDraft).where(
+            AiChatDraft.id == draft_id, AiChatDraft.thread_id == thread_id, AiChatDraft.kind == "query"
+        )
+    )
+    if draft is None:
+        return False
+    has_version = db.scalar(select(AiChatDraftVersion.version).where(AiChatDraftVersion.draft_id == draft.id).limit(1))
+    return has_version is not None
+
+
 def draft_for_owner(db: Session, owner: str, draft_id: uuid.UUID) -> AiChatDraft:
     draft = db.scalar(
         select(AiChatDraft)

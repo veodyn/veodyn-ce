@@ -30,6 +30,7 @@ const PAYLOAD = {
   name: 'Average speed',
   description: 'Mean.',
   sql: 'SELECT avg(speed) FROM t',
+  dataSourceId: 5,
   datasetTable: 't',
   vizChoiceId: 'chart-bar',
   vizOptions: {},
@@ -72,10 +73,10 @@ beforeEach(() => {
 describe('DraftActions', () => {
   it('saves a draft as a new query and records it', async () => {
     const onPromoted = vi.fn()
-    renderWithProviders(<DraftActions draft={draft()} dataSourceId={5} onPromoted={onPromoted} />)
+    renderWithProviders(<DraftActions draft={draft()} onPromoted={onPromoted} />)
     await userEvent.click(screen.getByRole('button', { name: 'Save as query' }))
     await waitFor(() => expect(onPromoted).toHaveBeenCalled())
-    expect(mocks.write).toHaveBeenCalledWith(PAYLOAD, 5)
+    expect(mocks.write).toHaveBeenCalledWith(PAYLOAD, PAYLOAD.dataSourceId)
     expect(mocks.recordPromotion).toHaveBeenCalledWith('d1', {
       version: 1,
       targetType: 'query',
@@ -84,20 +85,15 @@ describe('DraftActions', () => {
     })
   })
 
-  it('cannot save without a data source', () => {
-    renderWithProviders(<DraftActions draft={draft()} dataSourceId={null} onPromoted={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'Save as query' })).toBeDisabled()
-  })
-
   it('shows a saved draft as a link', () => {
-    renderWithProviders(<DraftActions draft={draft({ promotions: [PROMOTION] })} dataSourceId={5} onPromoted={vi.fn()} />)
+    renderWithProviders(<DraftActions draft={draft({ promotions: [PROMOTION] })} onPromoted={vi.fn()} />)
     expect(screen.getByRole('link', { name: 'Saved as query 44 · v1' })).toHaveAttribute('href', '/queries/44')
     expect(screen.queryByRole('button', { name: 'Save as query' })).not.toBeInTheDocument()
   })
 
   it('updates the saved query with a later version', async () => {
     const onPromoted = vi.fn()
-    renderWithProviders(<DraftActions draft={revised()} dataSourceId={5} onPromoted={onPromoted} />)
+    renderWithProviders(<DraftActions draft={revised()} onPromoted={onPromoted} />)
     await userEvent.click(screen.getByRole('button', { name: 'Update saved query' }))
     await waitFor(() => expect(onPromoted).toHaveBeenCalled())
     expect(mocks.updateQuery).toHaveBeenCalledWith({
@@ -113,7 +109,7 @@ describe('DraftActions', () => {
 
   it('asks before overwriting a query that changed since it was saved', async () => {
     mocks.get.mockResolvedValue(query(5))
-    renderWithProviders(<DraftActions draft={revised()} dataSourceId={5} onPromoted={vi.fn()} />)
+    renderWithProviders(<DraftActions draft={revised()} onPromoted={vi.fn()} />)
     await userEvent.click(screen.getByRole('button', { name: 'Update saved query' }))
     expect(await screen.findByText(CONFLICT_MESSAGE)).toBeInTheDocument()
     expect(mocks.updateQuery).not.toHaveBeenCalled()
@@ -127,14 +123,14 @@ describe('DraftActions', () => {
 
   it('says so when the saved query is gone', async () => {
     mocks.get.mockResolvedValue(null)
-    renderWithProviders(<DraftActions draft={revised()} dataSourceId={5} onPromoted={vi.fn()} />)
+    renderWithProviders(<DraftActions draft={revised()} onPromoted={vi.fn()} />)
     await userEvent.click(screen.getByRole('button', { name: 'Update saved query' }))
     expect(await screen.findByText(QUERY_GONE_MESSAGE)).toBeInTheDocument()
   })
 
   it('shows a failed save', async () => {
     mocks.write.mockRejectedValue(new Error('permission denied'))
-    renderWithProviders(<DraftActions draft={draft()} dataSourceId={5} onPromoted={vi.fn()} />)
+    renderWithProviders(<DraftActions draft={draft()} onPromoted={vi.fn()} />)
     await userEvent.click(screen.getByRole('button', { name: 'Save as query' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('permission denied')
     expect(mocks.recordPromotion).not.toHaveBeenCalled()

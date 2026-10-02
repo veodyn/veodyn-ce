@@ -11,12 +11,11 @@ export const CONFLICT_MESSAGE = 'This query was changed in Veodyn after it was s
 
 interface DraftActionsProps {
   draft: DraftView
-  dataSourceId: number | null
   onPromoted: (draftId: string, promotion: ChatPromotion) => void
 }
 
-export function DraftActions({ draft, dataSourceId, onPromoted }: DraftActionsProps) {
-  const promote = usePromoteDraft(draft, dataSourceId, onPromoted)
+export function DraftActions({ draft, onPromoted }: DraftActionsProps) {
+  const promote = usePromoteDraft(draft, onPromoted)
   const latest = draft.versions[draft.versions.length - 1]
   const promotion = draft.promotions[draft.promotions.length - 1]
   const saving = promote.status === 'saving'
@@ -41,7 +40,7 @@ export function DraftActions({ draft, dataSourceId, onPromoted }: DraftActionsPr
   return (
     <>
       {promotion === undefined ? (
-        <Button size="sm" onClick={promote.save} disabled={saving || dataSourceId === null}>
+        <Button size="sm" onClick={promote.save} disabled={saving}>
           {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
           Save as query
         </Button>

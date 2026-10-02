@@ -47,17 +47,34 @@ measures and which columns it reads. Never claim a result: you have not run it.
 # Word-boundary matched, so `created_at` and `update_time` are columns, not
 # keywords. Checked against SQL with comments and string literals removed,
 # because `-- drop the nulls` is a comment and `'DROP'` is a value.
-FORBIDDEN = (
-    "insert|update|delete|drop|alter|create|truncate|grant|revoke|attach|detach"
-    "|optimize|rename|system|kill|exchange|use|set|outfile|infile"
+#
+# Split in two: FORBIDDEN_BASE holds statement classes dangerous in any SQL
+# dialect a data source might speak (DDL/DML, privileges, session state, file
+# I/O), and FORBIDDEN_CLICKHOUSE adds the warehouse's own administrative
+# vocabulary. validate_sql (below) checks both, unchanged from before the
+# split. validate_generic_sql (for a second, non-warehouse SQL-syntax data
+# source; see services/chat/tools.py) checks the base list only: it has no
+# ClickHouse to protect, and a ClickHouse-only keyword could otherwise appear
+# as an ordinary identifier on another dialect. ATTACH/DETACH/PRAGMA are in
+# the base list, not the ClickHouse extras, because the first SQL-syntax data
+# source besides the warehouse this project runs against is `query_results`,
+# which is SQLite: ATTACH DATABASE opens an arbitrary file as a second schema
+# there, and PRAGMA can rewrite connection-wide settings.
+FORBIDDEN_BASE = (
+    "insert|update|delete|drop|alter|create|truncate|grant|revoke|attach|detach|pragma|use|set|outfile|infile"
+)
+# `replace` is absent because replace(haystack, needle, value) is an ordinary
+# string function. The DDL forms are caught by CREATE or by must-start-with-SELECT.
+FORBIDDEN_CLICKHOUSE = (
+    "optimize|rename|system|kill|exchange"
     # dictGet and its family read a configured external source from a SCALAR
     # position, so there is no table reference for the allowlist below to catch.
     "|dict[a-z_]*"
 )
-# `replace` is absent because replace(haystack, needle, value) is an ordinary
-# string function. The DDL forms are caught by CREATE or by must-start-with-SELECT.
+FORBIDDEN = f"{FORBIDDEN_BASE}|{FORBIDDEN_CLICKHOUSE}"
 
 FORBIDDEN_RE = re.compile(rf"\b({FORBIDDEN})\b", re.IGNORECASE)
+FORBIDDEN_BASE_RE = re.compile(rf"\b({FORBIDDEN_BASE})\b", re.IGNORECASE)
 # Where one FROM or JOIN clause's item list ends. Everything between the
 # keyword and the next of these is the thing being read.
 CLAUSE_END = (
@@ -258,6 +275,38 @@ def validate_sql(sql: str, dataset: AiDatasetIn) -> str:
         raise UngroundedSql(
             f"the statement read {sorted(unexpected)[0]}, but the only table it may read is {dataset.table}"
         )
+
+    return stripped
+
+
+def validate_generic_sql(sql: str) -> str:
+    """The generated SQL, or UngroundedSql with a reason, for a SQL-syntax data
+    source other than the warehouse.
+
+    Unlike validate_sql, this does not check which tables the statement reads:
+    it is not scoped to one catalog table the way the warehouse is, so a
+    legitimate statement here may join several tables (a `query_results`
+    source is meant to join more than one `query_<id>` result together) or
+    call a table-valued function (SQLite's `json_each`/`json_extract`, which
+    `query_results` chaining depends on). It still blocks the same
+    dialect-generic statement classes validate_sql does, using
+    FORBIDDEN_BASE rather than the full ClickHouse-specific list.
+    """
+    stripped = sql.strip().rstrip(";").strip()
+    if not stripped:
+        raise UngroundedSql("the statement was empty")
+
+    noise_free = _strip_noise(stripped)
+    if ";" in noise_free:
+        raise UngroundedSql("the answer contained more than one statement")
+
+    forbidden = FORBIDDEN_BASE_RE.search(noise_free)
+    if forbidden:
+        raise UngroundedSql(f"the statement used the forbidden keyword {forbidden.group(1).upper()}")
+
+    head = noise_free.lstrip().lower()
+    if not (head.startswith("select") or head.startswith("with")):
+        raise UngroundedSql("the statement did not start with SELECT or WITH")
 
     return stripped
 

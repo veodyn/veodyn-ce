@@ -50,10 +50,22 @@ def context() -> ToolContext:
     async def data_source_id() -> int:
         return 5
 
-    async def save_draft(draft_id: str | None, payload: dict[str, Any]) -> tuple[str, int]:
+    def data_source_info(source_id: int) -> None:
+        return None
+
+    async def save_draft(kind: str, draft_id: str | None, payload: dict[str, Any]) -> tuple[str, int]:
         return "d", 1
 
-    return ToolContext(datasets=(SPEEDS,), data_source_id=data_source_id, save_draft=save_draft)
+    async def query_draft_exists(draft_id: str) -> bool:
+        return False
+
+    return ToolContext(
+        datasets=(SPEEDS,),
+        data_source_id=data_source_id,
+        data_source_info=data_source_info,
+        save_draft=save_draft,
+        query_draft_exists=query_draft_exists,
+    )
 
 
 def link(call_id: str = "call-1", **arguments: Any) -> dict[str, Any]:

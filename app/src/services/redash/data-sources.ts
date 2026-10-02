@@ -34,13 +34,13 @@ export interface RedashDataSourceType {
   configuration_schema: Record<string, unknown>
 }
 
-export function listDataSources() {
-  return redashApi.get<RedashDataSource[]>('data_sources')
+export function listDataSources(signal?: AbortSignal) {
+  return redashApi.get<RedashDataSource[]>('data_sources', { signal })
 }
 
-export async function getDataSource(id: number): Promise<RedashDataSource | null> {
+export async function getDataSource(id: number, signal?: AbortSignal): Promise<RedashDataSource | null> {
   try {
-    return await redashApi.get<RedashDataSource>(`data_sources/${id}`)
+    return await redashApi.get<RedashDataSource>(`data_sources/${id}`, { signal })
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null
     throw err

@@ -8,6 +8,7 @@ import { MessageScrollerItem } from '@/components/ui/message-scroller'
 import type { ThreadState, TurnItem, TurnView } from '@/lib/chat/thread-model'
 import type { QueryResultData } from '@/lib/mock-data'
 import { DashboardCard } from './dashboard-card'
+import { DataSourcesCard } from './data-sources-card'
 import { HelpLinkCard } from './help-link-card'
 import { LibraryCard } from './library-card'
 import { RunCard } from './run-card'
@@ -31,7 +32,6 @@ interface ChatTranscriptProps {
   results: Record<string, QueryResultData>
   runErrors: Record<string, string>
   selection: Selection | null
-  canRerun: boolean
   onSelect: (selection: Selection) => void
   onRerun: (callId: string) => void
   onRetry: () => void
@@ -94,6 +94,10 @@ function TranscriptItem({ item, ...props }: ChatTranscriptProps & { item: Render
   if (item.kind === 'call') {
     const call = props.state.calls[item.callId]
     if (!call) return null
+    if (call.tool === 'list_data_sources') return <DataSourcesCard call={call} />
+    // describe_data_source is working context for the model, not something
+    // the analyst asked to see (spec 3a section 4.2): no card.
+    if (call.tool === 'describe_data_source') return null
     if (call.tool === 'search_library') return <LibraryCard call={call} />
     if (call.tool === 'open_dashboard') return <DashboardCard call={call} />
     return (
@@ -112,7 +116,6 @@ function TranscriptItem({ item, ...props }: ChatTranscriptProps & { item: Render
       data={props.results[item.callId]}
       error={props.runErrors[item.callId]}
       selected={isSelected(props.selection, 'run', item.callId)}
-      canRerun={props.canRerun}
       onSelect={() => props.onSelect({ kind: 'run', id: item.callId })}
       onRerun={() => props.onRerun(item.callId)}
     />

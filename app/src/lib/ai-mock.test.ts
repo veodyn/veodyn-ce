@@ -233,7 +233,7 @@ describe('mockConverse grounding: every id it proposes exists', () => {
       expect(widget.queryId).toBeNull()
       expect(widget.visualizationId).toBeNull()
       expect(widget.newQuery?.sql.length).toBeGreaterThan(0)
-      expect(widget.newQuery?.datasetTable.length).toBeGreaterThan(0)
+      expect(widget.newQuery?.datasetTable?.length).toBeGreaterThan(0)
     }
   })
 

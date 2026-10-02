@@ -8,8 +8,8 @@ import type { DraftView } from '@/lib/chat/thread-model'
 import type { ChatPromotion } from '@/lib/chat/wire'
 import { readQueryError } from '@/lib/query-error'
 import { DEFAULT_VIZ_ID, resolveVizChoice } from '@/lib/viz-choices'
-import { recordPromotion } from '@/services/ai/chat-client'
 import * as queriesService from '@/services/redash/queries'
+import { promoteQueryDraft, recordQueryPromotion } from './promote-query-draft'
 
 export const QUERY_GONE_MESSAGE = 'The saved query no longer exists. Save the draft as a new query instead.'
 
@@ -25,7 +25,7 @@ export interface DraftPromotion {
 
 type Promoted = (draftId: string, promotion: ChatPromotion) => void
 
-export function usePromoteDraft(draft: DraftView, dataSourceId: number | null, onPromoted: Promoted): DraftPromotion {
+export function usePromoteDraft(draft: DraftView, onPromoted: Promoted): DraftPromotion {
   const { write } = useWriteProposedQuery()
   const updateQuery = useUpdateQuery()
   const createVisualization = useCreateVisualization()
@@ -35,37 +35,22 @@ export function usePromoteDraft(draft: DraftView, dataSourceId: number | null, o
   const latest = draft.versions[draft.versions.length - 1]
   const promotion = draft.promotions[draft.promotions.length - 1]
 
-  const record = useCallback(
-    async (queryId: number, version: number | undefined) => {
-      if (!latest) return
-      const saved = await recordPromotion(draft.id, {
-        version: latest.version,
-        targetType: 'query',
-        targetId: String(queryId),
-        targetVersionAtPromote: version ?? null,
-      })
-      onPromoted(draft.id, saved)
-    },
-    [draft.id, latest, onPromoted]
-  )
-
   const fail = useCallback((cause: unknown) => {
     setError(readQueryError(cause).message)
     setStatus('idle')
   }, [])
 
   const save = useCallback(() => {
-    if (!latest || dataSourceId === null) return
+    if (!latest) return
     setStatus('saving')
     setError(null)
-    write(latest.payload, dataSourceId)
-      .then(async (written) => {
-        const stored = await queriesService.get(written.queryId)
-        await record(written.queryId, stored?.version)
+    promoteQueryDraft(write, draft)
+      .then((written) => {
+        onPromoted(draft.id, written.promotion)
         setStatus('idle')
       })
       .catch(fail)
-  }, [latest, dataSourceId, write, record, fail])
+  }, [latest, write, draft, onPromoted, fail])
 
   const update = useCallback(
     (overwrite: boolean) => {
@@ -110,12 +95,13 @@ export function usePromoteDraft(draft: DraftView, dataSourceId: number | null, o
             await createVisualization.mutateAsync({ queryId, type: choice.type, name: choice.label, options: choice.options })
           }
         }
-        await record(queryId, updated.version)
+        const saved = await recordQueryPromotion(draft, queryId, updated.version)
+        onPromoted(draft.id, saved)
         setStatus('idle')
       }
       run().catch(fail)
     },
-    [latest, promotion, updateQuery, updateVisualization, createVisualization, record, fail]
+    [latest, promotion, draft, updateQuery, updateVisualization, createVisualization, onPromoted, fail]
   )
 
   const keep = useCallback(() => setStatus('idle'), [])

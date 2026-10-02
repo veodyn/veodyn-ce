@@ -305,16 +305,27 @@ def test_a_draft_is_promoted_and_shown_in_the_thread(harness: Harness) -> None:
         headers=headers(),
     )
     assert promoted.status_code == 201, promoted.text
+    # "dashboard" is the other valid targetType (spec 3b); anything else still
+    # is not — the promotion endpoint takes no draft-kind-specific path.
+    dashboard_promotion = client.post(
+        f"/ai/chat/drafts/{draft['draftId']}/promotions",
+        json={"version": 1, "targetType": "dashboard", "targetId": "9"},
+        headers=headers(),
+    )
+    assert dashboard_promotion.status_code == 201, dashboard_promotion.text
     bad = client.post(
         f"/ai/chat/drafts/{draft['draftId']}/promotions",
-        json={"version": 1, "targetType": "dashboard", "targetId": "44"},
+        json={"version": 1, "targetType": "kpi", "targetId": "44"},
         headers=headers(),
     )
     assert bad.status_code == 422
     [entry] = client.get(f"/ai/chat/threads/{thread}", headers=headers()).json()["drafts"]
     assert entry["id"] == draft["draftId"]
     assert entry["versions"][0]["payload"]["sql"] == SQL
-    assert entry["promotions"][0]["targetId"] == "44"
+    assert [(one["targetType"], one["targetId"]) for one in entry["promotions"]] == [
+        ("query", "44"),
+        ("dashboard", "9"),
+    ]
     assert entry["promotions"][0]["targetVersionAtPromote"] == 2
 
 

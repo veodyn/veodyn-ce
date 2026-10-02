@@ -737,6 +737,8 @@ export interface components {
             ok: boolean;
             /** Textwidgets */
             textWidgets?: number | null;
+            /** Widgetcount */
+            widgetCount?: number | null;
             /** Widgets */
             widgets?: components["schemas"]["ChatDashboardWidgetIn"][] | null;
         };
@@ -752,6 +754,74 @@ export interface components {
             visualizationId: number;
             /** Visualizationtype */
             visualizationType: string;
+        };
+        /** ChatDataSourceRefIn */
+        ChatDataSourceRefIn: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Syntax */
+            syntax: string;
+            /** Type */
+            type: string;
+            /**
+             * Viewonly
+             * @default false
+             */
+            viewOnly: boolean;
+        };
+        /** ChatDataSourceResourceIn */
+        ChatDataSourceResourceIn: {
+            /** Example */
+            example?: string | null;
+            /** Name */
+            name: string;
+            /** Params */
+            params?: string[];
+            /** Returns */
+            returns?: string[];
+        };
+        /** ChatDataSourceSchemaResultIn */
+        ChatDataSourceSchemaResultIn: {
+            /** Datasourceid */
+            dataSourceId: number;
+            /** Error */
+            error?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "data_source_schema";
+            /** Ok */
+            ok: boolean;
+            /** Resources */
+            resources?: components["schemas"]["ChatDataSourceResourceIn"][] | null;
+            /** Syntax */
+            syntax?: string | null;
+            /** Tables */
+            tables?: components["schemas"]["ChatDataSourceTableIn"][] | null;
+        };
+        /** ChatDataSourceTableIn */
+        ChatDataSourceTableIn: {
+            /** Columns */
+            columns?: string[];
+            /** Name */
+            name: string;
+        };
+        /** ChatDataSourcesResultIn */
+        ChatDataSourcesResultIn: {
+            /** Error */
+            error?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "data_sources";
+            /** Ok */
+            ok: boolean;
+            /** Sources */
+            sources?: components["schemas"]["ChatDataSourceRefIn"][] | null;
         };
         /** ChatDraftOut */
         ChatDraftOut: {
@@ -822,9 +892,9 @@ export interface components {
             targetId: string;
             /**
              * Targettype
-             * @constant
+             * @enum {string}
              */
-            targetType: "query";
+            targetType: "query" | "dashboard";
             /** Targetversionatpromote */
             targetVersionAtPromote?: number | null;
             /** Version */
@@ -852,6 +922,8 @@ export interface components {
         ChatQueryResultIn: {
             /** Columns */
             columns?: components["schemas"]["ChatResultColumnIn"][] | null;
+            /** Datasourceid */
+            dataSourceId?: number | null;
             /** Error */
             error?: string | null;
             /**
@@ -990,7 +1062,7 @@ export interface components {
             /** Callid */
             callId: string;
             /** Result */
-            result: components["schemas"]["ChatQueryResultIn"] | components["schemas"]["ChatLibraryResultIn"] | components["schemas"]["ChatSavedVisualizationResultIn"] | components["schemas"]["ChatDashboardResultIn"];
+            result: components["schemas"]["ChatQueryResultIn"] | components["schemas"]["ChatLibraryResultIn"] | components["schemas"]["ChatSavedVisualizationResultIn"] | components["schemas"]["ChatDashboardResultIn"] | components["schemas"]["ChatDataSourcesResultIn"] | components["schemas"]["ChatDataSourceSchemaResultIn"];
         };
         /** ChatTurnIn */
         ChatTurnIn: {

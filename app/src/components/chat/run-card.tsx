@@ -24,13 +24,15 @@ interface RunCardProps {
   data?: QueryResultData
   error?: string
   selected: boolean
-  canRerun: boolean
   onSelect: () => void
   onRerun: () => void
 }
 
-export function RunCard({ run, data, error, selected, canRerun, onSelect, onRerun }: RunCardProps) {
+export function RunCard({ run, data, error, selected, onSelect, onRerun }: RunCardProps) {
   const message = error ?? run.error
+  // 0 means a stored turn whose result predates dataSourceId being echoed
+  // back (thread-stored.ts): there is nothing to rerun against.
+  const canRerun = run.dataSourceId > 0
   return (
     <Card size="sm" className={cn('w-full', selected && 'ring-2 ring-primary')}>
       <CardHeader>

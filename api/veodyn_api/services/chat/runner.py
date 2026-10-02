@@ -13,7 +13,14 @@ from veodyn_api.services.chat import store
 from veodyn_api.services.chat.bus import TurnBus
 from veodyn_api.services.chat.driver import ChatModel
 from veodyn_api.services.chat.prompt import chat_system
-from veodyn_api.services.chat.tools import ClientCall, Immediate, ToolContext, prepare_call, tool_definitions
+from veodyn_api.services.chat.tools import (
+    ClientCall,
+    DataSourceInfo,
+    Immediate,
+    ToolContext,
+    prepare_call,
+    tool_definitions,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +68,57 @@ def _parse_uuid(value: str | None) -> uuid.UUID | None:
         return uuid.UUID(value)
     except ValueError:
         return None
+
+
+def _tool_results_in(blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Every tool_result content block posted so far in this turn, parsed.
+
+    Scanned fresh on each call rather than cached: a turn's `blocks` list is
+    at most a few hops long (MAX_TOOL_HOPS), so re-walking it is cheap, and it
+    avoids keeping a second piece of state in step with `blocks`.
+    """
+    found: list[dict[str, Any]] = []
+    for message in blocks:
+        if message.get("role") != "user":
+            continue
+        for item in message.get("content") or []:
+            if not isinstance(item, dict) or item.get("type") != "tool_result":
+                continue
+            try:
+                parsed = json.loads(item.get("content") or "")
+            except (TypeError, ValueError):
+                continue
+            if isinstance(parsed, dict):
+                found.append(parsed)
+    return found
+
+
+def _scanned_data_source_info(blocks: list[dict[str, Any]], source_id: int) -> DataSourceInfo | None:
+    """What list_data_sources/describe_data_source have said about `source_id`
+    so far in this turn. Later results overwrite earlier ones for the fields
+    they carry; a field only one of the two tools reports is kept across both.
+    """
+    syntax = ""
+    view_only: bool | None = None
+    resources: dict[str, tuple[str, ...]] | None = None
+    for result in _tool_results_in(blocks):
+        kind = result.get("kind")
+        if kind == "data_sources":
+            for source in result.get("sources") or []:
+                if isinstance(source, dict) and source.get("id") == source_id:
+                    syntax = str(source.get("syntax") or syntax)
+                    view_only = bool(source.get("viewOnly"))
+        elif kind == "data_source_schema" and result.get("dataSourceId") == source_id:
+            syntax = str(result.get("syntax") or syntax)
+            if result.get("ok") and isinstance(result.get("resources"), list):
+                resources = {
+                    str(entry["name"]): tuple(str(one) for one in entry.get("params") or [])
+                    for entry in result["resources"]
+                    if isinstance(entry, dict) and entry.get("name")
+                }
+    if not syntax:
+        return None
+    return DataSourceInfo(syntax=syntax, view_only=view_only, resources=resources)
 
 
 class TurnRunner:
@@ -171,16 +229,29 @@ class TurnRunner:
         tools = tool_definitions()
         opening = [*history, {"role": "user", "content": [{"type": "text", "text": text}]}]
 
-        async def save_draft(draft_id: str | None, payload: dict[str, Any]) -> tuple[str, int]:
-            saved, version = await self._db(
-                store.save_draft, thread_id, turn_id, _parse_uuid(draft_id), "query", payload
-            )
+        async def save_draft(kind: str, draft_id: str | None, payload: dict[str, Any]) -> tuple[str, int]:
+            saved, version = await self._db(store.save_draft, thread_id, turn_id, _parse_uuid(draft_id), kind, payload)
             return str(saved), version
+
+        async def query_draft_exists(draft_id: str) -> bool:
+            parsed = _parse_uuid(draft_id)
+            if parsed is None:
+                return False
+            return await self._db(store.query_draft_exists, thread_id, parsed)
 
         async def on_text(delta: str) -> None:
             await self._bus.emit(key, "text_delta", {"text": delta})
 
-        ctx = ToolContext(datasets=datasets, data_source_id=self._data_source_id, save_draft=save_draft)
+        def data_source_info(source_id: int) -> DataSourceInfo | None:
+            return _scanned_data_source_info(blocks, source_id)
+
+        ctx = ToolContext(
+            datasets=datasets,
+            data_source_id=self._data_source_id,
+            data_source_info=data_source_info,
+            save_draft=save_draft,
+            query_draft_exists=query_draft_exists,
+        )
         for _ in range(MAX_TOOL_HOPS):
             if await self._bus.cancel_requested(key):
                 return "cancelled"
@@ -233,6 +304,9 @@ class TurnRunner:
         listed = result.get("items", result.get("widgets"))
         if isinstance(listed, list):
             settled["count"] = len(listed)
+        sources = result.get("sources")
+        if isinstance(sources, list):
+            settled["sourceCount"] = len(sources)
         await self._bus.emit(key, "status", {"phase": "reading_result"})
         await self._bus.emit(key, "tool_settled", settled)
         return _tool_result(request.call_id, json.dumps(result, separators=(",", ":")), not ok)

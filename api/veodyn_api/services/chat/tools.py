@@ -8,7 +8,7 @@ from veodyn_api.errors import ApiError
 from veodyn_api.schemas.ai import AiDatasetIn
 from veodyn_api.schemas.catalog import DatasetOut
 from veodyn_api.services.ai_converse_prompt import picked_id, text_of
-from veodyn_api.services.ai_sql import QUERYABLE_TABLE_RE, UngroundedSql, validate_sql
+from veodyn_api.services.ai_sql import QUERYABLE_TABLE_RE, UngroundedSql, validate_generic_sql, validate_sql
 from veodyn_api.services.ai_viz_choice import VIZ_FIELD_DESCRIPTION, viz_choice
 from veodyn_api.services.chat.help_index import load_index, shown_id
 
@@ -17,9 +17,11 @@ LIBRARY_KINDS = ("query", "dashboard")
 MAX_SEARCH_TAGS = 5
 MAX_HELP_LINKS = 3
 MAX_HELP_SUGGESTIONS = 5
+MAX_RESOURCE_CALL_CHARS = 4_000
 SECOND_REFUSAL = (
     " This is the second refusal in this turn: stop writing SQL and tell the analyst what you could not do."
 )
+CANNOT_QUERY_YET = "chat cannot query this data source yet"
 
 
 @dataclass(frozen=True)
@@ -37,14 +39,35 @@ class Immediate:
     frame: tuple[str, dict[str, Any]] | None = None
 
 
-SaveDraft = Callable[[str | None, dict[str, Any]], Awaitable[tuple[str, int]]]
+SaveDraft = Callable[[str, str | None, dict[str, Any]], Awaitable[tuple[str, int]]]
+
+
+@dataclass(frozen=True)
+class DataSourceInfo:
+    """What this turn's own tool calls have revealed about one data source.
+
+    Built by the runner from `list_data_sources`/`describe_data_source`
+    results already in this turn's blocks (services/chat/runner.py); never
+    fetched independently, so a `dataSourceId` the caller cannot see never
+    yields an answer here (see spec 3a section 5).
+    """
+
+    syntax: str
+    view_only: bool | None = None
+    # resource name -> the param names describe_data_source documented for it.
+    # None means describe_data_source was not called this turn, even if
+    # list_data_sources was: the registry, not just the syntax, is needed to
+    # validate a resourceCall.
+    resources: dict[str, tuple[str, ...]] | None = None
 
 
 @dataclass
 class ToolContext:
     datasets: tuple[DatasetOut, ...]
     data_source_id: Callable[[], Awaitable[int]]
+    data_source_info: Callable[[int], DataSourceInfo | None]
     save_draft: SaveDraft
+    query_draft_exists: Callable[[str], Awaitable[bool]]
     refusals: int = field(default=0)
     help_links: int = field(default=0)
 
@@ -111,23 +134,149 @@ def _checked_sql(ctx: ToolContext, arguments: dict[str, Any], dataset: DatasetOu
         return Immediate(message + (SECOND_REFUSAL if ctx.refusals >= 2 else ""), is_error=True)
 
 
-async def _run_query(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
-    dataset = _resolve(ctx, arguments)
-    if isinstance(dataset, Immediate):
-        return dataset
-    sql = _checked_sql(ctx, arguments, dataset)
-    if isinstance(sql, Immediate):
-        return sql
+@dataclass(frozen=True)
+class _Target:
+    """Which data source a run_query/propose_query call targets.
+
+    `dataset` is set only for the warehouse (the sidecar's cached catalog
+    covers that one source); `info` is set only for every other source,
+    carrying what this turn's own list_data_sources/describe_data_source
+    calls revealed about it (spec 3a section 5). Never both.
+    """
+
+    data_source_id: int
+    dataset: DatasetOut | None
+    info: DataSourceInfo | None
+
+
+async def _resolve_target(ctx: ToolContext, arguments: dict[str, Any]) -> _Target | Immediate:
+    dataset_table = arguments.get("datasetTable")
+    explicit_id = arguments.get("dataSourceId")
+    if isinstance(dataset_table, str) and dataset_table.strip():
+        if explicit_id is not None:
+            return Immediate(
+                "give either datasetTable (the warehouse catalog) or dataSourceId (another data source), not both",
+                is_error=True,
+            )
+        dataset = _resolve(ctx, arguments)
+        if isinstance(dataset, Immediate):
+            return dataset
+        try:
+            warehouse_id = await ctx.data_source_id()
+        except ApiError as unresolvable:
+            return Immediate(f"the query cannot run on this instance: {unresolvable.message}", is_error=True)
+        return _Target(data_source_id=warehouse_id, dataset=dataset, info=None)
+
+    source_id = _positive_id(explicit_id)
+    if source_id is None:
+        return Immediate(
+            "give datasetTable to query the warehouse catalog, or dataSourceId (from list_data_sources) for "
+            "another data source",
+            is_error=True,
+        )
+    # A dataSourceId that happens to equal the warehouse's own id must not
+    # take this branch: it would run the weaker, schema-less checks below
+    # against the one source that has a real catalog and a full validate_sql
+    # gate. `datasetTable` is the only door into that path.
     try:
-        data_source_id = await ctx.data_source_id()
-    except ApiError as unresolvable:
-        return Immediate(f"the query cannot run on this instance: {unresolvable.message}", is_error=True)
+        existing_warehouse_id: int | None = await ctx.data_source_id()
+    except ApiError:
+        existing_warehouse_id = None
+    if existing_warehouse_id is not None and source_id == existing_warehouse_id:
+        return Immediate("this id is the warehouse; give datasetTable to query it, not dataSourceId", is_error=True)
+    info = ctx.data_source_info(source_id)
+    if info is None or not info.syntax:
+        return Immediate(
+            "call list_data_sources first so this data source's kind is known before querying it", is_error=True
+        )
+    if info.view_only:
+        return Immediate(
+            "this data source is view-only for the analyst's account; ad-hoc queries cannot run against it",
+            is_error=True,
+        )
+    if info.syntax not in ("sql", "json"):
+        return Immediate(CANNOT_QUERY_YET, is_error=True)
+    return _Target(data_source_id=source_id, dataset=None, info=info)
+
+
+def _checked_body(ctx: ToolContext, arguments: dict[str, Any], target: _Target) -> str | Immediate:
+    """The query text to send to the browser: validated SQL, or a resourceCall
+    serialized to the JSON object its data source's run_query parses.
+
+    Collapsing resourceCall to a plain string here, rather than carrying it as
+    a separate shape to the browser, means nothing downstream (the ClientCall
+    sent over the wire, the run card, the saved draft, the eventual promotion)
+    needs to know which syntax produced a query: it is always "the query text
+    this data source's run_query will parse," which is exactly what
+    propose_query's payload already writes into the Redash query's own `sql`
+    field. See the implementation notes for the fuller rationale.
+    """
+    if target.dataset is not None:
+        if arguments.get("resourceCall") is not None:
+            return Immediate("this data source takes sql, not resourceCall", is_error=True)
+        return _checked_sql(ctx, arguments, target.dataset)
+
+    assert target.info is not None  # _resolve_target only returns info for a non-warehouse target
+    if target.info.syntax == "sql":
+        if arguments.get("resourceCall") is not None:
+            return Immediate("this data source takes sql, not resourceCall", is_error=True)
+        try:
+            return validate_generic_sql(text_of(arguments.get("sql"), 50_000))
+        except UngroundedSql as refused:
+            ctx.refusals += 1
+            message = f"the SQL was refused because {refused}. Rewrite it."
+            return Immediate(message + (SECOND_REFUSAL if ctx.refusals >= 2 else ""), is_error=True)
+
+    # syntax == "json": a resource-runner. _resolve_target refused every other syntax already.
+    if arguments.get("sql") is not None:
+        return Immediate("this data source takes resourceCall, not sql", is_error=True)
+    call = arguments.get("resourceCall")
+    if not isinstance(call, dict):
+        return Immediate("give resourceCall: {resource, params} for this data source", is_error=True)
+    resource = text_of(call.get("resource"), 128)
+    if not resource:
+        return Immediate("resourceCall.resource must name a resource this data source documents", is_error=True)
+    registry = target.info.resources
+    if registry is None:
+        return Immediate(
+            "call describe_data_source for this data source before writing a resourceCall; its resource names "
+            "are not known yet",
+            is_error=True,
+        )
+    if resource not in registry:
+        names = ", ".join(sorted(registry)) or "none"
+        message = f"there is no resource called {resource!r} on this data source. Available: {names}"
+        return Immediate(message, is_error=True)
+    params = call.get("params")
+    params = params if isinstance(params, dict) else {}
+    declared = registry[resource]
+    unexpected = sorted(set(params) - set(declared))
+    if unexpected:
+        allowed = ", ".join(declared) or "none"
+        return Immediate(
+            f"resourceCall.params named {unexpected[0]!r}, which this resource does not take. Allowed: {allowed}",
+            is_error=True,
+        )
+    serialized = json.dumps({"resource": resource, "params": params}, separators=(",", ":"))
+    if len(serialized) > MAX_RESOURCE_CALL_CHARS:
+        message = f"resourceCall is too large (over {MAX_RESOURCE_CALL_CHARS} characters); keep params small"
+        return Immediate(message, is_error=True)
+    return serialized
+
+
+async def _run_query(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
+    target = await _resolve_target(ctx, arguments)
+    if isinstance(target, Immediate):
+        return target
+    body = _checked_body(ctx, arguments, target)
+    if isinstance(body, Immediate):
+        return body
     return ClientCall(
         call_id=call_id,
         tool="run_query",
         args={
-            "dataSourceId": data_source_id,
-            "sql": sql,
+            "dataSourceId": target.data_source_id,
+            "sql": body,
             "purpose": text_of(arguments.get("purpose"), 200),
             "vizChoiceId": viz_choice(arguments.get("vizChoiceId")),
         },
@@ -135,21 +284,24 @@ async def _run_query(call_id: str, arguments: dict[str, Any], ctx: ToolContext) 
 
 
 async def _propose_query(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
-    dataset = _resolve(ctx, arguments)
-    if isinstance(dataset, Immediate):
-        return dataset
-    sql = _checked_sql(ctx, arguments, dataset)
-    if isinstance(sql, Immediate):
-        return sql
-    payload = {
-        "name": text_of(arguments.get("name"), 255) or dataset.name,
+    target = await _resolve_target(ctx, arguments)
+    if isinstance(target, Immediate):
+        return target
+    body = _checked_body(ctx, arguments, target)
+    if isinstance(body, Immediate):
+        return body
+    default_name = target.dataset.name if target.dataset is not None else f"data source {target.data_source_id}"
+    payload: dict[str, Any] = {
+        "name": text_of(arguments.get("name"), 255) or default_name,
         "description": text_of(arguments.get("description"), 4_000),
-        "sql": sql,
-        "datasetTable": dataset.id,
+        "sql": body,
+        "dataSourceId": target.data_source_id,
         "vizChoiceId": viz_choice(arguments.get("vizChoiceId")),
         "vizOptions": {},
     }
-    draft_id, version = await ctx.save_draft(text_of(arguments.get("draftId"), 64) or None, payload)
+    if target.dataset is not None:
+        payload["datasetTable"] = target.dataset.id
+    draft_id, version = await ctx.save_draft("query", text_of(arguments.get("draftId"), 64) or None, payload)
     return Immediate(
         json.dumps(
             {
@@ -162,6 +314,86 @@ async def _propose_query(call_id: str, arguments: dict[str, Any], ctx: ToolConte
         is_error=False,
         draft={"draftId": draft_id, "version": version, "kind": "query", "payload": payload},
     )
+
+
+MAX_DASHBOARD_ITEMS = 12
+MAX_DASHBOARD_NAME_CHARS = 200
+MAX_DASHBOARD_DESCRIPTION_CHARS = 1_000
+MAX_ITEM_TITLE_CHARS = 500
+
+
+async def _dashboard_item(raw: Any, ctx: ToolContext) -> dict[str, Any] | Immediate:
+    if not isinstance(raw, dict):
+        return Immediate("each item must be an object", is_error=True)
+    title = text_of(raw.get("title"), MAX_ITEM_TITLE_CHARS)
+    kind = raw.get("kind")
+    if kind == "draft":
+        draft_id = text_of(raw.get("queryDraftId"), 64)
+        if not draft_id or not await ctx.query_draft_exists(draft_id):
+            return Immediate(
+                "queryDraftId must be a query you proposed earlier in this conversation, with at least one version",
+                is_error=True,
+            )
+        item: dict[str, Any] = {"kind": "draft", "queryDraftId": draft_id}
+    elif kind == "existing":
+        query_id = _positive_id(raw.get("queryId"))
+        visualization_id = _positive_id(raw.get("visualizationId"))
+        if query_id is None or visualization_id is None:
+            return Immediate(
+                "an existing item needs queryId and visualizationId, both from a search result", is_error=True
+            )
+        item = {"kind": "existing", "queryId": query_id, "visualizationId": visualization_id}
+    else:
+        return Immediate('each item\'s kind must be "draft" or "existing"', is_error=True)
+    if title:
+        item["title"] = title
+    return item
+
+
+async def _propose_dashboard(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
+    name = text_of(arguments.get("name"), MAX_DASHBOARD_NAME_CHARS)
+    if not name:
+        return Immediate("name must be a short title for the dashboard", is_error=True)
+    raw_items = arguments.get("items")
+    if not isinstance(raw_items, list) or not raw_items:
+        return Immediate("items must list at least one query for the dashboard", is_error=True)
+    if len(raw_items) > MAX_DASHBOARD_ITEMS:
+        return Immediate(f"items may name at most {MAX_DASHBOARD_ITEMS} queries", is_error=True)
+    items: list[dict[str, Any]] = []
+    for raw in raw_items:
+        item = await _dashboard_item(raw, ctx)
+        if isinstance(item, Immediate):
+            return item
+        items.append(item)
+    payload = {
+        "name": name,
+        "description": text_of(arguments.get("description"), MAX_DASHBOARD_DESCRIPTION_CHARS),
+        "items": items,
+    }
+    draft_id, version = await ctx.save_draft("dashboard", text_of(arguments.get("draftId"), 64) or None, payload)
+    return Immediate(
+        json.dumps(
+            {
+                "draftId": draft_id,
+                "version": version,
+                "saved": False,
+                "note": "The analyst sees this as a card with a Save button. Nothing is saved until they click it.",
+            }
+        ),
+        is_error=False,
+        draft={"draftId": draft_id, "version": version, "kind": "dashboard", "payload": payload},
+    )
+
+
+async def _list_data_sources(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
+    return ClientCall(call_id=call_id, tool="list_data_sources", args={})
+
+
+async def _describe_data_source(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
+    source_id = _positive_id(arguments.get("dataSourceId"))
+    if source_id is None:
+        return Immediate("dataSourceId must be the id of a data source from list_data_sources", is_error=True)
+    return ClientCall(call_id=call_id, tool="describe_data_source", args={"dataSourceId": source_id})
 
 
 def _positive_id(value: Any) -> int | None:
@@ -275,24 +507,49 @@ def _integer(description: str) -> dict[str, str]:
     return {"type": "integer", "description": description}
 
 
+_SOURCE_TARGET_PROPERTIES: dict[str, Any] = {
+    "datasetTable": _string(
+        "The `table` of one catalog entry, copied exactly. Give this for the warehouse; omit it when giving "
+        "dataSourceId instead."
+    ),
+    "dataSourceId": _integer(
+        "The id of a data source from list_data_sources, for any source other than the warehouse. Omit when "
+        "giving datasetTable instead."
+    ),
+    "sql": _string(
+        "One SELECT statement (a leading WITH is fine). Required with datasetTable, or with a dataSourceId whose "
+        'syntax is "sql" (from list_data_sources/describe_data_source).'
+    ),
+    "resourceCall": {
+        "type": "object",
+        "description": (
+            '{resource, params} for a dataSourceId whose syntax is "json". resource and the allowed params '
+            "come from describe_data_source, called earlier in this turn."
+        ),
+        "properties": {
+            "resource": _string("A resource name describe_data_source listed for this data source."),
+            "params": {"type": "object", "description": "Only the params that resource documents."},
+        },
+    },
+}
+
 RUN_QUERY = ChatTool(
     name="run_query",
     definition={
         "name": "run_query",
         "description": (
-            "Run one read-only ClickHouse SELECT over one table from the catalog, in the analyst's browser under "
-            "their own permissions. Returns the row count, statistics over the full result and at most 50 sample "
-            "rows. The analyst sees the full result drawn with vizChoiceId."
+            "Run one read-only query in the analyst's browser under their own permissions, against the warehouse "
+            "catalog or another data source. Returns the row count, statistics over the full result and at most "
+            "50 sample rows. The analyst sees the full result drawn with vizChoiceId."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "datasetTable": _string("The `table` of one catalog entry, copied exactly."),
-                "sql": _string("One SELECT statement (a leading WITH is fine) that reads only that table."),
+                **_SOURCE_TARGET_PROPERTIES,
                 "purpose": _string("What this query finds out, in a few words the analyst will see."),
                 "vizChoiceId": _string(VIZ_FIELD_DESCRIPTION),
             },
-            "required": ["datasetTable", "sql", "purpose", "vizChoiceId"],
+            "required": ["purpose", "vizChoiceId"],
         },
     },
     handler=_run_query,
@@ -304,8 +561,9 @@ PROPOSE_QUERY = ChatTool(
     definition={
         "name": "propose_query",
         "description": (
-            "Offer a query the analyst can save to the platform. Nothing is saved until they click Save. Pass "
-            "draftId to revise a query you proposed earlier in this conversation."
+            "Offer a query the analyst can save to the platform, against the warehouse catalog or another data "
+            "source. Nothing is saved until they click Save. Pass draftId to revise a query you proposed earlier "
+            "in this conversation."
         ),
         "input_schema": {
             "type": "object",
@@ -313,14 +571,47 @@ PROPOSE_QUERY = ChatTool(
                 "draftId": _string("The draftId of an earlier proposal to revise. Omit for a new one."),
                 "name": _string("A short name for the saved query."),
                 "description": _string("One sentence on what the query answers."),
-                "datasetTable": _string("The `table` of one catalog entry, copied exactly."),
-                "sql": _string("One SELECT statement (a leading WITH is fine) that reads only that table."),
+                **_SOURCE_TARGET_PROPERTIES,
                 "vizChoiceId": _string(VIZ_FIELD_DESCRIPTION),
             },
-            "required": ["name", "datasetTable", "sql", "vizChoiceId"],
+            "required": ["name", "vizChoiceId"],
         },
     },
     handler=_propose_query,
+)
+
+LIST_DATA_SOURCES = ChatTool(
+    name="list_data_sources",
+    definition={
+        "name": "list_data_sources",
+        "description": (
+            'List the data sources the analyst can query: id, name, type, syntax ("sql" or "json"; chat '
+            "cannot query any other syntax yet) and whether the source is view-only for them. Call this before "
+            "querying anything outside the warehouse catalog."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    handler=_list_data_sources,
+    result_kind="data_sources",
+)
+
+DESCRIBE_DATA_SOURCE = ChatTool(
+    name="describe_data_source",
+    definition={
+        "name": "describe_data_source",
+        "description": (
+            'Learn how to query one data source from list_data_sources: its tables and columns for a "sql" '
+            'syntax source, or its named resources and their params for a "json" syntax source. Call this '
+            "before run_query or propose_query against that dataSourceId."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"dataSourceId": _integer("The id of a data source from list_data_sources.")},
+            "required": ["dataSourceId"],
+        },
+    },
+    handler=_describe_data_source,
+    result_kind="data_source_schema",
 )
 
 SEARCH_LIBRARY = ChatTool(
@@ -396,6 +687,52 @@ OPEN_DASHBOARD = ChatTool(
     result_kind="dashboard",
 )
 
+PROPOSE_DASHBOARD = ChatTool(
+    name="propose_dashboard",
+    definition={
+        "name": "propose_dashboard",
+        "description": (
+            "Offer a dashboard of charts the analyst can save to the platform. Nothing is saved until they click "
+            "Save. Each item is a query proposed earlier in this conversation (queryDraftId) or an already-saved "
+            "query and one of its visualizations (queryId, visualizationId). Pass draftId to revise a dashboard "
+            "you proposed earlier in this conversation."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "draftId": _string("The draftId of an earlier dashboard proposal to revise. Omit for a new one."),
+                "name": _string("A short name for the dashboard."),
+                "description": _string("One sentence on what the dashboard shows."),
+                "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": MAX_DASHBOARD_ITEMS,
+                    "description": "1 to 12 queries to put on the dashboard.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "kind": {"type": "string", "enum": ["draft", "existing"]},
+                            "queryDraftId": _string(
+                                "For kind draft: the draftId of a query you proposed earlier in this conversation."
+                            ),
+                            "queryId": _integer(
+                                "For kind existing: the id of an already-saved query, from a search result."
+                            ),
+                            "visualizationId": _integer("For kind existing: one of that query's visualization ids."),
+                            "title": _string(
+                                "A label for this item on the dashboard. Omit to use the query's own name."
+                            ),
+                        },
+                        "required": ["kind"],
+                    },
+                },
+            },
+            "required": ["name", "items"],
+        },
+    },
+    handler=_propose_dashboard,
+)
+
 LINK_HELP = ChatTool(
     name="link_help",
     definition={
@@ -417,5 +754,15 @@ LINK_HELP = ChatTool(
     handler=_link_help,
 )
 
-for _tool in (RUN_QUERY, PROPOSE_QUERY, SEARCH_LIBRARY, SHOW_VISUALIZATION, OPEN_DASHBOARD, LINK_HELP):
+for _tool in (
+    RUN_QUERY,
+    PROPOSE_QUERY,
+    LIST_DATA_SOURCES,
+    DESCRIBE_DATA_SOURCE,
+    SEARCH_LIBRARY,
+    SHOW_VISUALIZATION,
+    OPEN_DASHBOARD,
+    PROPOSE_DASHBOARD,
+    LINK_HELP,
+):
     register_chat_tool(_tool)

@@ -8,7 +8,7 @@ from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.schemas.catalog import DatasetOut
 from veodyn_api.services.chat import tools
 from veodyn_api.services.chat.prompt import HISTORY_OMITTED, chat_system
-from veodyn_api.services.chat.tools import ChatTool, ClientCall, Immediate, ToolContext, prepare_call
+from veodyn_api.services.chat.tools import ChatTool, ClientCall, DataSourceInfo, Immediate, ToolContext, prepare_call
 
 pytestmark = pytest.mark.anyio
 
@@ -19,18 +19,39 @@ GOOD_SQL = "SELECT avg(speed_mph) FROM regional_speeds"
 
 class Drafts:
     def __init__(self) -> None:
-        self.saved: list[tuple[str | None, dict[str, Any]]] = []
+        self.saved: list[tuple[str, str | None, dict[str, Any]]] = []
 
-    async def __call__(self, draft_id: str | None, payload: dict[str, Any]) -> tuple[str, int]:
-        self.saved.append((draft_id, payload))
+    async def __call__(self, kind: str, draft_id: str | None, payload: dict[str, Any]) -> tuple[str, int]:
+        self.saved.append((kind, draft_id, payload))
         return draft_id or "draft-1", len(self.saved)
 
 
-def context(drafts: Drafts | None = None, datasets: tuple[DatasetOut, ...] = (SPEEDS, BOARDINGS, DOCS)) -> ToolContext:
+def context(
+    drafts: Drafts | None = None,
+    datasets: tuple[DatasetOut, ...] = (SPEEDS, BOARDINGS, DOCS),
+    *,
+    warehouse_id: int | None = 5,
+    known_sources: dict[int, DataSourceInfo] | None = None,
+    known_query_drafts: set[str] | None = None,
+) -> ToolContext:
     async def data_source_id() -> int:
-        return 5
+        if warehouse_id is None:
+            raise ApiError(ErrorId.WAREHOUSE_SOURCE_UNRESOLVABLE, "there are 2 warehouses", 503)
+        return warehouse_id
 
-    return ToolContext(datasets=datasets, data_source_id=data_source_id, save_draft=drafts or Drafts())
+    def data_source_info(source_id: int) -> DataSourceInfo | None:
+        return (known_sources or {}).get(source_id)
+
+    async def query_draft_exists(draft_id: str) -> bool:
+        return draft_id in (known_query_drafts or set())
+
+    return ToolContext(
+        datasets=datasets,
+        data_source_id=data_source_id,
+        data_source_info=data_source_info,
+        save_draft=drafts or Drafts(),
+        query_draft_exists=query_draft_exists,
+    )
 
 
 def call(tool_name: str, /, **arguments: Any) -> dict[str, Any]:
@@ -109,11 +130,12 @@ async def test_propose_query_saves_a_draft_the_save_hook_can_write() -> None:
         "name": "Average speed",
         "description": "The mean speed.",
         "sql": GOOD_SQL,
-        "datasetTable": "regional_speeds",
+        "dataSourceId": 5,
         "vizChoiceId": "counter",
         "vizOptions": {},
+        "datasetTable": "regional_speeds",
     }
-    assert drafts.saved == [(None, payload)]
+    assert drafts.saved == [("query", None, payload)]
     assert isinstance(outcome, Immediate) and not outcome.is_error
     assert outcome.draft == {"draftId": "draft-1", "version": 1, "kind": "query", "payload": payload}
     assert json.loads(outcome.content)["saved"] is False
@@ -125,7 +147,8 @@ async def test_propose_query_revises_the_named_draft_and_defaults_the_name() -> 
         call("propose_query", draftId="d-9", datasetTable="regional_speeds", sql=GOOD_SQL, vizChoiceId="nope"),
         context(drafts),
     )
-    [(draft_id, payload)] = drafts.saved
+    [(kind, draft_id, payload)] = drafts.saved
+    assert kind == "query"
     assert draft_id == "d-9"
     assert payload["name"] == "Regional speeds"
     assert payload["vizChoiceId"] == "table"
@@ -155,9 +178,12 @@ def test_the_registry_lists_every_tool_and_refuses_a_duplicate() -> None:
     assert [one["name"] for one in tools.tool_definitions()] == [
         "run_query",
         "propose_query",
+        "list_data_sources",
+        "describe_data_source",
         "search_library",
         "show_visualization",
         "open_dashboard",
+        "propose_dashboard",
         "link_help",
     ]
     with pytest.raises(ValueError):
@@ -189,6 +215,7 @@ def test_the_rules_send_the_model_to_the_library_first() -> None:
     assert "`search_library`" in text
     assert "`show_visualization`" in text
     assert "`open_dashboard`" in text
+    assert "`propose_dashboard`" in text
 
 
 async def test_a_library_search_goes_to_the_browser_with_both_kinds_by_default() -> None:
@@ -248,9 +275,277 @@ async def test_opening_a_dashboard_needs_a_real_id() -> None:
 
 def test_each_browser_tool_names_the_result_it_expects() -> None:
     assert tools.result_kind_for("run_query") == "query_result"
+    assert tools.result_kind_for("list_data_sources") == "data_sources"
+    assert tools.result_kind_for("describe_data_source") == "data_source_schema"
     assert tools.result_kind_for("search_library") == "library"
     assert tools.result_kind_for("show_visualization") == "saved_visualization"
     assert tools.result_kind_for("open_dashboard") == "dashboard"
     assert tools.result_kind_for("propose_query") is None
+    assert tools.result_kind_for("propose_dashboard") is None
     assert tools.result_kind_for("link_help") is None
     assert tools.result_kind_for("nope") is None
+
+
+async def test_list_data_sources_goes_to_the_browser_with_no_arguments() -> None:
+    outcome = await prepare_call(call("list_data_sources"), context())
+    assert outcome == ClientCall(call_id="call-1", tool="list_data_sources", args={})
+
+
+async def test_describe_data_source_passes_the_id_through() -> None:
+    outcome = await prepare_call(call("describe_data_source", dataSourceId=7), context())
+    assert outcome == ClientCall(call_id="call-1", tool="describe_data_source", args={"dataSourceId": 7})
+
+
+async def test_describe_data_source_needs_a_real_id() -> None:
+    outcome = await prepare_call(call("describe_data_source", dataSourceId=0), context())
+    assert isinstance(outcome, Immediate) and outcome.is_error
+
+
+SQL_SOURCE = DataSourceInfo(syntax="sql")
+JSON_SOURCE = DataSourceInfo(syntax="json", resources={"predictions": ("stop_id",)})
+VIEW_ONLY_SOURCE = DataSourceInfo(syntax="sql", view_only=True)
+CUSTOM_SOURCE = DataSourceInfo(syntax="custom")
+
+
+async def test_run_query_against_an_unknown_data_source_is_refused_before_the_browser() -> None:
+    outcome = await prepare_call(
+        call("run_query", dataSourceId=9, sql="SELECT 1", purpose="x"),
+        context(known_sources={}),
+    )
+    assert isinstance(outcome, Immediate) and outcome.is_error
+    assert "list_data_sources" in outcome.content
+
+
+async def test_run_query_by_id_against_the_warehouse_itself_is_refused() -> None:
+    outcome = await prepare_call(
+        call("run_query", dataSourceId=5, sql="SELECT 1", purpose="x"),
+        context(known_sources={5: SQL_SOURCE}, warehouse_id=5),
+    )
+    assert isinstance(outcome, Immediate) and outcome.is_error
+    assert "datasetTable" in outcome.content
+
+
+async def test_giving_both_datasettable_and_datasourceid_is_refused() -> None:
+    outcome = await prepare_call(
+        call("run_query", datasetTable="regional_speeds", dataSourceId=9, sql=GOOD_SQL),
+        context(known_sources={9: SQL_SOURCE}),
+    )
+    assert isinstance(outcome, Immediate) and outcome.is_error
+
+
+async def test_run_query_against_a_second_sql_source_uses_the_generic_gate() -> None:
+    outcome = await prepare_call(
+        call("run_query", dataSourceId=9, sql="SELECT * FROM query_1 JOIN query_2 USING (stop_id)", purpose="x"),
+        context(known_sources={9: SQL_SOURCE}),
+    )
+    assert outcome == ClientCall(
+        call_id="call-1",
+        tool="run_query",
+        args={
+            "dataSourceId": 9,
+            "sql": "SELECT * FROM query_1 JOIN query_2 USING (stop_id)",
+            "purpose": "x",
+            "vizChoiceId": "table",
+        },
+    )
+
+
+async def test_the_generic_gate_still_blocks_dml_and_sqlite_admin_statements() -> None:
+    for sql in ("DELETE FROM query_1", "ATTACH DATABASE 'x' AS y", "PRAGMA table_info(query_1)"):
+        outcome = await prepare_call(
+            call("run_query", dataSourceId=9, sql=sql), context(known_sources={9: SQL_SOURCE})
+        )
+        assert isinstance(outcome, Immediate) and outcome.is_error, sql
+
+
+async def test_the_generic_gate_allows_a_comma_join_and_a_table_valued_function() -> None:
+    """Unlike the warehouse path, joining several tables and calling a
+    table-valued function (json_each) are exactly what a query_results-style
+    source is for, so neither is refused here."""
+    outcome = await prepare_call(
+        call("run_query", dataSourceId=9, sql="SELECT * FROM query_1, json_each(query_1.data)", purpose="x"),
+        context(known_sources={9: SQL_SOURCE}),
+    )
+    assert isinstance(outcome, ClientCall)
+
+
+async def test_run_query_against_a_json_source_sends_a_serialized_resource_call() -> None:
+    outcome = await prepare_call(
+        call(
+            "run_query",
+            dataSourceId=7,
+            resourceCall={"resource": "predictions", "params": {"stop_id": "80101"}},
+            purpose="x",
+        ),
+        context(known_sources={7: JSON_SOURCE}),
+    )
+    assert outcome == ClientCall(
+        call_id="call-1",
+        tool="run_query",
+        args={
+            "dataSourceId": 7,
+            "sql": '{"resource":"predictions","params":{"stop_id":"80101"}}',
+            "purpose": "x",
+            "vizChoiceId": "table",
+        },
+    )
+
+
+async def test_an_unknown_resource_is_refused_with_the_available_names() -> None:
+    outcome = await prepare_call(
+        call("run_query", dataSourceId=7, resourceCall={"resource": "nope"}), context(known_sources={7: JSON_SOURCE})
+    )
+    assert isinstance(outcome, Immediate) and outcome.is_error
+    assert "predictions" in outcome.content
+
+
+async def test_an_unexpected_param_is_refused() -> None:
+    outcome = await prepare_call(
+        call("run_query", dataSourceId=7, resourceCall={"resource": "predictions", "params": {"nope": 1}}),
+        context(known_sources={7: JSON_SOURCE}),
+    )
+    assert isinstance(outcome, Immediate) and outcome.is_error
+    assert "nope" in outcome.content
+
+
+async def test_a_resource_call_needs_the_registry_from_describe_data_source() -> None:
+    """syntax alone (from list_data_sources) is not enough: the resource names
+    and their params only come from describe_data_source, in this turn."""
+    syntax_only = DataSourceInfo(syntax="json", resources=None)
+    outcome = await prepare_call(
+        call("run_query", dataSourceId=7, resourceCall={"resource": "predictions"}),
+        context(known_sources={7: syntax_only}),
+    )
+    assert isinstance(outcome, Immediate) and outcome.is_error
+    assert "describe_data_source" in outcome.content
+
+
+async def test_sql_and_resource_call_are_refused_against_the_wrong_kind_of_source() -> None:
+    wrong_field_for_sql = await prepare_call(
+        call("run_query", dataSourceId=9, resourceCall={"resource": "x"}), context(known_sources={9: SQL_SOURCE})
+    )
+    wrong_field_for_json = await prepare_call(
+        call("run_query", dataSourceId=7, sql="SELECT 1"), context(known_sources={7: JSON_SOURCE})
+    )
+    assert isinstance(wrong_field_for_sql, Immediate) and wrong_field_for_sql.is_error
+    assert isinstance(wrong_field_for_json, Immediate) and wrong_field_for_json.is_error
+
+
+async def test_a_view_only_source_is_refused_before_the_browser() -> None:
+    outcome = await prepare_call(
+        call("run_query", dataSourceId=3, sql="SELECT 1"), context(known_sources={3: VIEW_ONLY_SOURCE})
+    )
+    assert isinstance(outcome, Immediate) and outcome.is_error
+    assert "view-only" in outcome.content
+
+
+async def test_an_unsupported_syntax_is_refused() -> None:
+    outcome = await prepare_call(
+        call("run_query", dataSourceId=12, sql="SELECT 1"), context(known_sources={12: CUSTOM_SOURCE})
+    )
+    assert isinstance(outcome, Immediate) and outcome.is_error
+    assert outcome.content == tools.CANNOT_QUERY_YET
+
+
+async def test_propose_query_against_another_data_source_omits_datasettable() -> None:
+    drafts = Drafts()
+    outcome = await prepare_call(
+        call("propose_query", name="Departures", dataSourceId=7, resourceCall={"resource": "predictions"}),
+        context(drafts, known_sources={7: JSON_SOURCE}),
+    )
+    [(kind, _, payload)] = drafts.saved
+    assert kind == "query"
+    assert payload["dataSourceId"] == 7
+    assert "datasetTable" not in payload
+    assert payload["sql"] == '{"resource":"predictions","params":{}}'
+    assert isinstance(outcome, Immediate) and not outcome.is_error
+
+
+async def test_propose_dashboard_saves_a_draft_with_mixed_items() -> None:
+    drafts = Drafts()
+    outcome = await prepare_call(
+        call(
+            "propose_dashboard",
+            name="Bikeshare overview",
+            description="Trips and rebalancing.",
+            items=[
+                {"kind": "draft", "queryDraftId": "d-1", "title": "Trips"},
+                {"kind": "existing", "queryId": 12, "visualizationId": 31},
+            ],
+        ),
+        context(drafts, known_query_drafts={"d-1"}),
+    )
+    payload = {
+        "name": "Bikeshare overview",
+        "description": "Trips and rebalancing.",
+        "items": [
+            {"kind": "draft", "queryDraftId": "d-1", "title": "Trips"},
+            {"kind": "existing", "queryId": 12, "visualizationId": 31},
+        ],
+    }
+    assert drafts.saved == [("dashboard", None, payload)]
+    assert isinstance(outcome, Immediate) and not outcome.is_error
+    assert outcome.draft == {"draftId": "draft-1", "version": 1, "kind": "dashboard", "payload": payload}
+    assert json.loads(outcome.content)["saved"] is False
+
+
+async def test_propose_dashboard_revises_the_named_draft() -> None:
+    drafts = Drafts()
+    await prepare_call(
+        call(
+            "propose_dashboard",
+            draftId="dd-1",
+            name="v2",
+            items=[{"kind": "existing", "queryId": 1, "visualizationId": 2}],
+        ),
+        context(drafts),
+    )
+    [(kind, draft_id, _)] = drafts.saved
+    assert kind == "dashboard"
+    assert draft_id == "dd-1"
+
+
+async def test_propose_dashboard_refuses_an_unknown_query_draft() -> None:
+    drafts = Drafts()
+    outcome = await prepare_call(
+        call("propose_dashboard", name="x", items=[{"kind": "draft", "queryDraftId": "nope"}]),
+        context(drafts, known_query_drafts={"d-1"}),
+    )
+    assert isinstance(outcome, Immediate) and outcome.is_error
+    assert "queryDraftId" in outcome.content
+    assert drafts.saved == []
+
+
+async def test_propose_dashboard_refuses_an_existing_item_missing_ids() -> None:
+    drafts = Drafts()
+    outcome = await prepare_call(
+        call("propose_dashboard", name="x", items=[{"kind": "existing", "queryId": 1}]),
+        context(drafts),
+    )
+    assert isinstance(outcome, Immediate) and outcome.is_error
+    assert drafts.saved == []
+
+
+async def test_propose_dashboard_refuses_an_unknown_item_kind() -> None:
+    outcome = await prepare_call(call("propose_dashboard", name="x", items=[{"kind": "nope"}]), context())
+    assert isinstance(outcome, Immediate) and outcome.is_error
+
+
+async def test_propose_dashboard_needs_at_least_one_item() -> None:
+    outcome = await prepare_call(call("propose_dashboard", name="x", items=[]), context())
+    assert isinstance(outcome, Immediate) and outcome.is_error
+
+
+async def test_propose_dashboard_caps_at_twelve_items() -> None:
+    items = [{"kind": "existing", "queryId": n, "visualizationId": n} for n in range(1, 14)]
+    outcome = await prepare_call(call("propose_dashboard", name="x", items=items), context())
+    assert isinstance(outcome, Immediate) and outcome.is_error
+    assert "12" in outcome.content
+
+
+async def test_propose_dashboard_needs_a_name() -> None:
+    outcome = await prepare_call(
+        call("propose_dashboard", name="  ", items=[{"kind": "existing", "queryId": 1, "visualizationId": 2}]),
+        context(),
+    )
+    assert isinstance(outcome, Immediate) and outcome.is_error

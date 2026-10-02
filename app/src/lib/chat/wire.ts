@@ -96,7 +96,7 @@ export const toolResultRequestSchema = z
 export const promotionRequestSchema = z
   .object({
     version: z.number().int().positive(),
-    targetType: z.literal('query'),
+    targetType: z.enum(['query', 'dashboard']),
     targetId: z.string().min(1).max(64),
     targetVersionAtPromote: z.number().int().nonnegative().nullable().optional(),
   })

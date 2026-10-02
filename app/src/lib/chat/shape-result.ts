@@ -78,6 +78,6 @@ export function summarizeRows(data: QueryResultData): RowSummary {
   }
 }
 
-export function shapeResult(data: QueryResultData): ChatQueryResult {
-  return { kind: 'query_result', ok: true, ...summarizeRows(data) }
+export function shapeResult(data: QueryResultData, dataSourceId: number): ChatQueryResult {
+  return { kind: 'query_result', ok: true, dataSourceId, ...summarizeRows(data) }
 }

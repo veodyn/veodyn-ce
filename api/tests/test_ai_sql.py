@@ -12,7 +12,7 @@ import pytest
 from tests.ai_stubs import FakeLlm
 from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.schemas.ai import AiDatasetColumnIn, AiDatasetIn, GenerateSqlIn
-from veodyn_api.services.ai_sql import UngroundedSql, generate_sql, validate_sql
+from veodyn_api.services.ai_sql import UngroundedSql, generate_sql, validate_generic_sql, validate_sql
 from veodyn_api.services.llm import LlmClient
 
 DATASET = AiDatasetIn(
@@ -345,3 +345,59 @@ def test_a_qualified_table_is_still_queryable() -> None:
     )
 
     assert result.sql == "SELECT lat FROM historical.stations"
+
+
+def test_validate_generic_sql_allows_joining_several_tables() -> None:
+    """Unlike validate_sql, this is not scoped to one dataset: a query_results
+    source is meant to join several query_<id> results together."""
+    sql = "SELECT a.stop_id FROM query_1 a JOIN query_2 b ON a.stop_id = b.stop_id"
+    assert validate_generic_sql(sql) == sql
+
+
+def test_validate_generic_sql_allows_a_comma_join_and_table_valued_functions() -> None:
+    """validate_sql refuses both, because it cannot see which table a comma
+    join's second item names. This validator does not scope to one table at
+    all, so neither restriction applies, and json_each is exactly what
+    query_results chaining is built on."""
+    sql = "SELECT * FROM query_1, json_each(query_1.predictions)"
+    assert validate_generic_sql(sql) == sql
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "DELETE FROM query_1",
+        "INSERT INTO query_1 VALUES (1)",
+        "DROP TABLE query_1",
+        "ATTACH DATABASE 'x.db' AS y",
+        "DETACH DATABASE y",
+        "PRAGMA table_info(query_1)",
+        "GRANT SELECT ON query_1 TO analyst",
+    ],
+)
+def test_validate_generic_sql_blocks_the_shared_forbidden_statements(sql: str) -> None:
+    with pytest.raises(UngroundedSql):
+        validate_generic_sql(sql)
+
+
+def test_validate_generic_sql_does_not_block_clickhouse_only_keywords() -> None:
+    """SYSTEM, OPTIMIZE, EXCHANGE and dictGet* are ClickHouse administrative
+    vocabulary. They are refused for the warehouse (validate_sql) but are not
+    part of the shared base list, so an identifier that happens to share a
+    name with one of them is not refused on a different dialect."""
+    sql = "SELECT system, optimize, exchange FROM query_1"
+    assert validate_generic_sql(sql) == sql
+
+
+def test_validate_generic_sql_rejects_empty_and_multi_statement_and_non_select() -> None:
+    with pytest.raises(UngroundedSql):
+        validate_generic_sql("   ")
+    with pytest.raises(UngroundedSql):
+        validate_generic_sql("SELECT 1; SELECT 2")
+    with pytest.raises(UngroundedSql):
+        validate_generic_sql("UPDATE query_1 SET x = 1")
+
+
+def test_validate_generic_sql_accepts_a_leading_with_clause() -> None:
+    sql = "WITH recent AS (SELECT * FROM query_1) SELECT * FROM recent"
+    assert validate_generic_sql(sql) == sql

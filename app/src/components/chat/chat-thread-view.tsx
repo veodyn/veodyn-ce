@@ -2,7 +2,6 @@
 
 import { Square } from 'lucide-react'
 import { useState } from 'react'
-import { defaultDataSourceId } from '@/components/ai/create-chat/proposals/proposal-model'
 import { IconButton } from '@/components/shared/icon-button'
 import {
   MessageScroller,
@@ -12,9 +11,10 @@ import {
   MessageScrollerViewport,
 } from '@/components/ui/message-scroller'
 import { useChatThread } from '@/hooks/use-chat-thread'
-import { useDataSources } from '@/hooks/use-data-sources'
 import { ChatComposer } from './chat-composer'
 import { ChatTranscript, type Selection } from './chat-transcript'
+import { DashboardDraftActions } from './dashboard-draft-actions'
+import { DashboardDraftCard } from './dashboard-draft-card'
 import { DetailPane } from './detail-pane'
 import { DraftActions } from './draft-actions'
 import { DraftCard } from './draft-card'
@@ -23,8 +23,6 @@ import { SavedVizPane } from './saved-viz-pane'
 
 export function ChatThreadView({ threadId }: { threadId: string }) {
   const chat = useChatThread(threadId)
-  const dataSources = useDataSources()
-  const dataSourceId = defaultDataSourceId(dataSources.data ?? [])
   const [selection, setSelection] = useState<Selection | null>(null)
   const { state, results } = chat
 
@@ -34,6 +32,26 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
   }
 
   const renderDraft = (draftId: string, version: number) => {
+    const dashboardDraft = state.dashboardDrafts[draftId]
+    if (dashboardDraft) {
+      return (
+        <DashboardDraftCard
+          draft={dashboardDraft}
+          version={version}
+          queryDrafts={state.drafts}
+          resultForSql={resultForSql}
+        >
+          <DashboardDraftActions
+            draft={dashboardDraft}
+            queryDrafts={state.drafts}
+            activeDashboard={state.activeDashboard}
+            onQueryPromoted={chat.promoted}
+            onDashboardPromoted={chat.promotedDashboard}
+            onDashboardActive={chat.dashboardActive}
+          />
+        </DashboardDraftCard>
+      )
+    }
     const draft = state.drafts[draftId]
     if (!draft) return null
     const latest = draft.versions[draft.versions.length - 1]
@@ -45,7 +63,7 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
         selected={selection?.kind === 'draft' && selection.id === draftId}
         onSelect={() => setSelection({ kind: 'draft', id: draftId })}
       >
-        <DraftActions draft={draft} dataSourceId={dataSourceId} onPromoted={chat.promoted} />
+        <DraftActions draft={draft} onPromoted={chat.promoted} />
       </DraftCard>
     )
   }
@@ -71,11 +89,8 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
                   results={results}
                   runErrors={chat.runErrors}
                   selection={selection}
-                  canRerun={dataSourceId !== null}
                   onSelect={setSelection}
-                  onRerun={(callId) => {
-                    if (dataSourceId !== null) chat.rerun(callId, dataSourceId)
-                  }}
+                  onRerun={chat.rerun}
                   onRetry={chat.retry}
                   renderDraft={renderDraft}
                 />

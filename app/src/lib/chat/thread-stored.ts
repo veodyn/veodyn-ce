@@ -1,7 +1,7 @@
-import { chatProposalSchema, type ChatProposal } from './frames'
+import { chatProposalSchema, dashboardProposalSchema } from './frames'
 import { storedHelpLink, type HelpLinkView } from './thread-help'
-import { isLibraryTool, storedCall, type CallView } from './thread-calls'
-import type { DraftView, RunView, ThreadState, TurnItem, TurnView } from './thread-model'
+import { isCardTool, storedCall, type CallView } from './thread-calls'
+import type { ActiveDashboard, DashboardDraftView, Draft, DraftView, RunView, ThreadState, TurnItem, TurnView } from './thread-model'
 import type { ChatThreadDetail } from './wire'
 
 export const FAILED_TURN_MESSAGE = 'This turn did not finish.'
@@ -19,27 +19,44 @@ function parseJson(value: unknown): Record<string, unknown> {
   }
 }
 
+/** The model's own run_query/propose_query input carries `sql` or
+ * `resourceCall`, never a pre-normalized query body (spec 3a's
+ * implementation notes: the sidecar collapses resourceCall to a JSON string
+ * only for the ClientCall/draft it builds, not for the tool_use block it
+ * stores). Rebuilding a stored turn has to redo that collapse itself. */
+function queryBodyFrom(input: Record<string, unknown>): string {
+  if (typeof input.sql === 'string') return input.sql
+  if (input.resourceCall && typeof input.resourceCall === 'object') return JSON.stringify(input.resourceCall)
+  return ''
+}
+
 export function appendText(items: TurnItem[], text: string): TurnItem[] {
   const last = items[items.length - 1]
   if (last?.kind === 'text') return [...items.slice(0, -1), { kind: 'text', text: last.text + text }]
   return [...items, { kind: 'text', text }]
 }
 
-export function withVersion(
-  draft: DraftView | undefined,
+export function withVersion<Payload>(
+  draft: Draft<Payload> | undefined,
   id: string,
   version: number,
-  payload: ChatProposal
-): DraftView {
+  payload: Payload
+): Draft<Payload> {
   const base = draft ?? { id, versions: [], promotions: [] }
   if (base.versions.some((one) => one.version === version)) return base
   return { ...base, versions: [...base.versions, { version, payload }].sort((a, b) => a.version - b.version) }
+}
+
+interface DashboardEvent {
+  at: string
+  dashboard: ActiveDashboard
 }
 
 interface Parts {
   runs: Record<string, RunView>
   calls: Record<string, CallView>
   helpLinks: Record<string, HelpLinkView>
+  dashboardEvents: DashboardEvent[]
 }
 
 function storedTurn(turn: ChatThreadDetail['turns'][number], parts: Parts): TurnView {
@@ -64,8 +81,9 @@ function storedTurn(turn: ChatThreadDetail['turns'][number], parts: Parts): Turn
       if (item.name === 'run_query' && outcome && !outcome.is_error) {
         parts.runs[callId] = {
           callId,
+          dataSourceId: typeof content.dataSourceId === 'number' ? content.dataSourceId : 0,
           purpose: String(input.purpose ?? ''),
-          sql: String(input.sql ?? ''),
+          sql: queryBodyFrom(input),
           vizChoiceId: String(input.vizChoiceId ?? 'table'),
           status: content.ok === true ? 'done' : 'failed',
           rowCount: typeof content.rowCount === 'number' ? content.rowCount : null,
@@ -74,9 +92,27 @@ function storedTurn(turn: ChatThreadDetail['turns'][number], parts: Parts): Turn
         }
         items = [...items, { kind: 'run', callId }]
       }
-      if (isLibraryTool(item.name) && outcome) {
+      if (isCardTool(item.name) && outcome) {
         parts.calls[callId] = storedCall(callId, item.name, input, content)
         items = [...items, { kind: 'call', callId }]
+      }
+      if (item.name === 'open_dashboard' && outcome && !outcome.is_error && content.ok === true) {
+        const dashboard = record(content.dashboard)
+        if (typeof dashboard.id === 'number') {
+          parts.dashboardEvents.push({
+            at: turn.finishedAt ?? turn.createdAt,
+            dashboard: {
+              id: dashboard.id,
+              name: String(dashboard.name ?? ''),
+              widgetCount:
+                typeof content.widgetCount === 'number'
+                  ? content.widgetCount
+                  : Array.isArray(content.widgets)
+                    ? content.widgets.length
+                    : 0,
+            },
+          })
+        }
       }
       if (item.name === 'link_help') {
         const link = storedHelpLink(callId, input, content)
@@ -85,7 +121,11 @@ function storedTurn(turn: ChatThreadDetail['turns'][number], parts: Parts): Turn
           items = [...items, { kind: 'help', callId }]
         }
       }
-      if (item.name === 'propose_query' && typeof content.draftId === 'string' && typeof content.version === 'number') {
+      if (
+        (item.name === 'propose_query' || item.name === 'propose_dashboard') &&
+        typeof content.draftId === 'string' &&
+        typeof content.version === 'number'
+      ) {
         items = [...items, { kind: 'draft', draftId: content.draftId, version: content.version }]
       }
     }
@@ -103,10 +143,43 @@ function storedTurn(turn: ChatThreadDetail['turns'][number], parts: Parts): Turn
   }
 }
 
+/** The most recently touched dashboard, reconstructing spec 3b's
+ * `activeDashboard` across a reload: open_dashboard calls (timestamped by
+ * their turn) and dashboard promotions (timestamped by the promotion itself)
+ * are both candidates, and ISO 8601 strings compare lexicographically, so the
+ * latest `at` is the latest event without parsing dates. */
+function latestDashboard(events: DashboardEvent[]): ActiveDashboard | null {
+  if (events.length === 0) return null
+  return events.reduce((latest, event) => (event.at > latest.at ? event : latest)).dashboard
+}
+
 export function fromDetail(detail: ChatThreadDetail): ThreadState {
-  const parts: Parts = { runs: {}, calls: {}, helpLinks: {} }
+  const parts: Parts = { runs: {}, calls: {}, helpLinks: {}, dashboardEvents: [] }
   const drafts: Record<string, DraftView> = {}
+  const dashboardDrafts: Record<string, DashboardDraftView> = {}
   for (const draft of detail.drafts) {
+    if (draft.kind === 'dashboard') {
+      let view: DashboardDraftView = { id: draft.id, versions: [], promotions: draft.promotions }
+      for (const version of draft.versions) {
+        const payload = dashboardProposalSchema.safeParse(version.payload)
+        if (payload.success) view = withVersion(view, draft.id, version.version, payload.data)
+      }
+      dashboardDrafts[draft.id] = view
+      for (const promotion of draft.promotions) {
+        if (promotion.targetType !== 'dashboard') continue
+        const version = view.versions.find((one) => one.version === promotion.promotedVersion)
+        if (!version) continue
+        parts.dashboardEvents.push({
+          at: promotion.createdAt,
+          dashboard: {
+            id: Number(promotion.targetId),
+            name: version.payload.name,
+            widgetCount: promotion.targetVersionAtPromote ?? 0,
+          },
+        })
+      }
+      continue
+    }
     let view: DraftView = { id: draft.id, versions: [], promotions: draft.promotions }
     for (const version of draft.versions) {
       const payload = chatProposalSchema.safeParse(version.payload)
@@ -115,5 +188,6 @@ export function fromDetail(detail: ChatThreadDetail): ThreadState {
     drafts[draft.id] = view
   }
   const turns = detail.turns.map((turn) => storedTurn(turn, parts))
-  return { turns, drafts, ...parts }
+  const { dashboardEvents, ...rest } = parts
+  return { turns, drafts, dashboardDrafts, activeDashboard: latestDashboard(dashboardEvents), ...rest }
 }

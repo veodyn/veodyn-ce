@@ -85,7 +85,12 @@ export function cancelTurn(turnId: string): Promise<ChatAccepted> {
 
 export function recordPromotion(
   draftId: string,
-  body: { version: number; targetType: 'query'; targetId: string; targetVersionAtPromote: number | null }
+  body: {
+    version: number
+    targetType: 'query' | 'dashboard'
+    targetId: string
+    targetVersionAtPromote: number | null
+  }
 ): Promise<ChatPromotion> {
   return call(`drafts/${encodeURIComponent(draftId)}/promotions`, { method: 'POST', body })
 }

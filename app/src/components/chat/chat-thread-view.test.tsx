@@ -8,14 +8,12 @@ import { ChatThreadView } from './chat-thread-view'
 
 const controller = vi.hoisted(() => ({ current: null as unknown }))
 vi.mock('@/hooks/use-chat-thread', () => ({ useChatThread: () => controller.current }))
-vi.mock('@/hooks/use-data-sources', () => ({
-  useDataSources: () => ({ data: [{ id: 4, name: 'Warehouse', type: 'clickhouse' }] }),
-}))
 
 const PROPOSAL = {
   name: 'Average speed',
   description: 'Mean speed.',
   sql: 'SELECT avg(speed) FROM t',
+  dataSourceId: 4,
   datasetTable: 't',
   vizChoiceId: 'counter',
   vizOptions: {},
@@ -27,6 +25,7 @@ function thread(): ThreadState {
     runs: {
       c1: {
         callId: 'c1',
+        dataSourceId: 4,
         purpose: 'Average speed',
         sql: PROPOSAL.sql,
         vizChoiceId: 'counter',
@@ -70,6 +69,8 @@ function make(overrides: Partial<ChatThreadController> = {}): ChatThreadControll
     retry: vi.fn(),
     rerun: vi.fn(),
     promoted: vi.fn(),
+    promotedDashboard: vi.fn(),
+    dashboardActive: vi.fn(),
     ...overrides,
   }
 }
@@ -92,14 +93,14 @@ describe('ChatThreadView', () => {
     expect(screen.getByRole('complementary', { name: 'Details: Average speed' })).toBeInTheDocument()
   })
 
-  it('stops a running reply and reruns with the default data source', async () => {
+  it('stops a running reply and reruns the run against its own data source', async () => {
     const current = make()
     controller.current = current
     renderWithProviders(<ChatThreadView threadId="x" />)
     await userEvent.click(screen.getByRole('button', { name: 'Stop' }))
     expect(current.stop).toHaveBeenCalled()
     await userEvent.click(screen.getByRole('button', { name: 'Run again to draw the chart' }))
-    expect(current.rerun).toHaveBeenCalledWith('c1', 4)
+    expect(current.rerun).toHaveBeenCalledWith('c1')
   })
 
   it('keeps the composer locked while a reply runs and shows send errors', () => {

@@ -64,7 +64,9 @@ export function useToolExecutor(): ToolExecutor {
         .then((outcome) => {
           if (outcome.aborted) return undefined
           const result =
-            'data' in outcome && outcome.data ? shapeResult(outcome.data) : failedResult('query_result', outcome.error)
+            'data' in outcome && outcome.data
+              ? shapeResult(outcome.data, request.args.dataSourceId)
+              : failedResult('query_result', outcome.error)
           return postToolResult(turnId, request.callId, result)
         })
         .catch(() => undefined)
