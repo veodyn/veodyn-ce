@@ -50,6 +50,12 @@ class TurnBus:
     async def seal(self, turn_id: str) -> None:
         await self._redis.expire(_key(turn_id, "frames"), FRAME_LOG_TTL_SECONDS)
 
+    async def last_id(self, turn_id: str) -> str | None:
+        entries = await self._redis.xrevrange(_key(turn_id, "frames"), count=1)
+        if not entries:
+            return None
+        return _text(entries[0][0])
+
     async def set_pending(self, turn_id: str, call_id: str, tool: str) -> None:
         value = json.dumps({"callId": call_id, "tool": tool}, separators=(",", ":"))
         await self._redis.set(_key(turn_id, "pending"), value, ex=KEY_TTL_SECONDS)

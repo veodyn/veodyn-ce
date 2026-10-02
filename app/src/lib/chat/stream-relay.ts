@@ -116,8 +116,8 @@ export async function relayChatStream(request: Request, turnId: string): Promise
   const gate = await chatGate(request)
   if (gate instanceof NextResponse) return gate
   const headers = chatHeaders(gate.subject, 'text/event-stream')
-  const lastEventId = request.headers.get('last-event-id')
-  if (lastEventId && LAST_EVENT_ID.test(lastEventId)) headers['last-event-id'] = lastEventId
+  const cursor = request.headers.get('last-event-id') ?? new URL(request.url).searchParams.get('after')
+  if (cursor && LAST_EVENT_ID.test(cursor)) headers['last-event-id'] = cursor
 
   let upstream: Response
   try {

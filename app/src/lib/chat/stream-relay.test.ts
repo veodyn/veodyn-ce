@@ -20,12 +20,12 @@ const STARTED = `id: 1-0\nevent: turn_started\ndata: {"turnId":"${THREAD}","seq"
 const DELTA = 'id: 1-1\nevent: text_delta\ndata: {"text":"Hello"}\n\n'
 const DONE = 'id: 1-2\nevent: turn_done\ndata: {"stopReason":"end_turn","usage":{"input_tokens":3}}\n\n'
 
-async function stream(upstream: Response, headers: Record<string, string> = {}) {
+async function stream(upstream: Response, headers: Record<string, string> = {}, url?: string) {
   const fetchMock = vi.fn(async () => upstream)
   vi.stubGlobal('fetch', fetchMock)
   mockChatModules()
   const { GET } = await import('@/app/api/ai/chat/turns/[id]/stream/route')
-  const response = await GET(signedIn({ headers }), { params: Promise.resolve({ id: THREAD }) })
+  const response = await GET(signedIn({ headers, url }), { params: Promise.resolve({ id: THREAD }) })
   return { response, fetchMock }
 }
 
@@ -51,6 +51,24 @@ describe('chat stream relay', () => {
     const { fetchMock } = await stream(sse(DONE), { 'last-event-id': '0-0; drop' })
     const headers = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].headers as Record<string, string>
     expect(headers['last-event-id']).toBeUndefined()
+  })
+
+  it('forwards a valid ?after cursor as the upstream last-event-id, since EventSource cannot set it', async () => {
+    const { fetchMock } = await stream(sse(DONE), {}, `http://localhost/api/ai/chat/turns/${THREAD}/stream?after=5-2`)
+    const headers = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].headers as Record<string, string>
+    expect(headers['last-event-id']).toBe('5-2')
+  })
+
+  it('drops a malformed ?after cursor', async () => {
+    const { fetchMock } = await stream(sse(DONE), {}, `http://localhost/api/ai/chat/turns/${THREAD}/stream?after=nope`)
+    const headers = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].headers as Record<string, string>
+    expect(headers['last-event-id']).toBeUndefined()
+  })
+
+  it('prefers a real reconnect last-event-id header over a stale ?after cursor', async () => {
+    const { fetchMock } = await stream(sse(DONE), { 'last-event-id': '9-9' }, `http://localhost/api/ai/chat/turns/${THREAD}/stream?after=5-2`)
+    const headers = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].headers as Record<string, string>
+    expect(headers['last-event-id']).toBe('9-9')
   })
 
   it.each([

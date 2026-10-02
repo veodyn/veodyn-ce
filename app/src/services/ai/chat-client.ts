@@ -47,8 +47,9 @@ export function chatErrorStatus(error: unknown): number | null {
   return typeof status === 'number' ? status : null
 }
 
-export function chatStreamUrl(turnId: string): string {
-  return `${BASE}/turns/${encodeURIComponent(turnId)}/stream`
+export function chatStreamUrl(turnId: string, after?: string | null): string {
+  const url = `${BASE}/turns/${encodeURIComponent(turnId)}/stream`
+  return after ? `${url}?after=${encodeURIComponent(after)}` : url
 }
 
 export function listThreads(offset = 0, signal?: AbortSignal): Promise<ChatThreadList> {

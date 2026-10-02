@@ -16,6 +16,7 @@ export type ChatAccepted = Schemas['ChatAcceptedOut']
 const uuid = z.string().uuid()
 const timestamp = z.string().min(1).max(64)
 const block = z.record(z.unknown())
+const frameId = z.string().regex(/^[0-9]+-[0-9]+$/)
 
 export const threadSchema: z.ZodType<ChatThread> = z.object({
   id: uuid,
@@ -56,6 +57,7 @@ export const threadDetailSchema: z.ZodType<ChatThreadDetail> = z.object({
         errorId: z.string().max(128).nullable(),
         createdAt: timestamp,
         finishedAt: timestamp.nullable(),
+        lastEventId: frameId.nullable(),
       })
     )
     .max(200),

@@ -130,7 +130,7 @@ def _visible(blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return visible
 
 
-def _turn_out(turn: AiChatTurn) -> ChatTurnOut:
+def _turn_out(turn: AiChatTurn, last_event_id: str | None = None) -> ChatTurnOut:
     return ChatTurnOut.model_validate(
         {
             "id": str(turn.id),
@@ -142,6 +142,7 @@ def _turn_out(turn: AiChatTurn) -> ChatTurnOut:
             "error_id": turn.error_id,
             "created_at": turn.created_at,
             "finished_at": turn.finished_at,
+            "last_event_id": last_event_id,
         }
     )
 
@@ -189,13 +190,20 @@ async def get_thread(
 ) -> ChatThreadDetailOut:
     thread = await run_in_threadpool(store.thread_for_owner, db, subject, thread_id)
     running = await run_in_threadpool(store.running_turn, db, thread.id)
-    if running is not None and not await _redis(bus.lease_alive(str(running.id))):
-        await _settle_lost(bus, sessions, running.id)
-        db.expire_all()
+    running_last_event_id: str | None = None
+    if running is not None:
+        if await _redis(bus.lease_alive(str(running.id))):
+            running_last_event_id = await _redis(bus.last_id(str(running.id)))
+        else:
+            await _settle_lost(bus, sessions, running.id)
+            db.expire_all()
     detail = await run_in_threadpool(store.thread_detail, db, subject, thread_id)
     return ChatThreadDetailOut(
         thread=_thread_out(detail["thread"]),
-        turns=[_turn_out(one) for one in detail["turns"]],
+        turns=[
+            _turn_out(one, running_last_event_id if running is not None and one.id == running.id else None)
+            for one in detail["turns"]
+        ],
         drafts=[
             ChatDraftOut(
                 id=str(entry["draft"].id),

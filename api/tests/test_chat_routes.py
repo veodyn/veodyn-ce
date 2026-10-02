@@ -237,6 +237,37 @@ def test_a_query_round_trip_through_the_routes(harness: Harness) -> None:
     assert late.status_code == 409
 
 
+def test_thread_detail_exposes_a_resumable_cursor_only_while_running(harness: Harness) -> None:
+    harness.model.turns.extend([tool_turn("call-1", "run_query", RUN), text_turn("31.5 mph.")])
+    thread = harness.thread()
+    turn = harness.turn(thread)
+    harness.wait_for(turn, "tool_request")
+    client = harness.client
+
+    running = client.get(f"/ai/chat/threads/{thread}", headers=headers()).json()["turns"][0]
+    assert running["status"] == "running"
+    last_frame_id, _ = harness.redis.xrevrange(f"chat:turn:{turn}:frames", count=1)[0]
+    assert running["lastEventId"] == last_frame_id.decode()
+
+    result = {
+        "ok": True,
+        "kind": "query_result",
+        "rowCount": 1,
+        "truncated": False,
+        "columns": [{"name": "avg", "type": "float", "nulls": 0, "distinct": 1, "min": 31.5, "max": 31.5}],
+        "sample": [{"avg": 31.5}],
+    }
+    accepted = client.post(
+        f"/ai/chat/turns/{turn}/tool-results", json={"callId": "call-1", "result": result}, headers=headers()
+    )
+    assert accepted.status_code == 202, accepted.text
+    harness.wait_for(turn, "turn_done")
+
+    finished = client.get(f"/ai/chat/threads/{thread}", headers=headers()).json()["turns"][0]
+    assert finished["status"] == "done"
+    assert finished["lastEventId"] is None
+
+
 def test_an_oversized_sample_is_refused(harness: Harness) -> None:
     harness.model.turns.append(tool_turn("call-1", "run_query", RUN))
     turn = harness.turn(harness.thread())

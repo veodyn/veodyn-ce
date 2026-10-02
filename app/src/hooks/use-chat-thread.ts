@@ -74,16 +74,22 @@ export function useChatThread(threadId: string): ChatThreadController {
 
   const { attach } = useTurnStream({ onFrame, onLost })
 
-  useEffect(() => {
-    const controller = new AbortController()
-    getThread(threadId, controller.signal).then(
-      (detail) => {
+  const resync = useCallback(
+    (signal?: AbortSignal) =>
+      getThread(threadId, signal).then((detail) => {
         const loaded = fromDetail(detail)
         setState(loaded)
-        setLoading(false)
         const active = runningTurn(loaded)
-        if (active) attach(active.id)
-      },
+        if (active) attach(active.id, active.lastEventId)
+        return loaded
+      }),
+    [threadId, attach]
+  )
+
+  useEffect(() => {
+    const controller = new AbortController()
+    resync(controller.signal).then(
+      () => setLoading(false),
       () => {
         if (controller.signal.aborted) return
         setLoadFailed(true)
@@ -91,7 +97,7 @@ export function useChatThread(threadId: string): ChatThreadController {
       }
     )
     return () => controller.abort()
-  }, [threadId, attach])
+  }, [resync])
 
   const busy = sending || runningTurn(state) !== null
 
@@ -124,8 +130,13 @@ export function useChatThread(threadId: string): ChatThreadController {
 
   const retry = useCallback(() => {
     const last = state.turns[state.turns.length - 1]
-    if (last?.status === 'failed') send(last.userText)
-  }, [state, send])
+    if (last?.status !== 'failed') return
+    if (last.errorMessage === LOST_TURN_MESSAGE) {
+      void resync().catch(() => undefined)
+      return
+    }
+    send(last.userText)
+  }, [state, send, resync])
 
   const rerun = useCallback(
     (callId: string) => {

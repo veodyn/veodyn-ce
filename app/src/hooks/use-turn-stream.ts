@@ -30,9 +30,9 @@ export function useTurnStream(handlers: TurnStreamHandlers) {
     source.current = null
   }, [])
 
-  const attach = useCallback((turnId: string) => {
+  const attach = useCallback((turnId: string, after?: string | null) => {
     source.current?.close()
-    const stream = new EventSource(chatStreamUrl(turnId))
+    const stream = new EventSource(chatStreamUrl(turnId, after))
     source.current = stream
     const end = (lost: boolean) => {
       stream.close()

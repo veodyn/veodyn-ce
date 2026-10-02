@@ -134,7 +134,7 @@ function storedTurn(turn: ChatThreadDetail['turns'][number], parts: Parts): Turn
     phase: null,
     stopReason: turn.stopReason,
     errorMessage: turn.status === 'failed' ? FAILED_TURN_MESSAGE : null,
-    lastEventId: null,
+    lastEventId: turn.lastEventId ?? null,
   }
 }
 

@@ -191,6 +191,36 @@ describe('useChatThread', () => {
     await waitFor(() => expect(client.postTurn).toHaveBeenLastCalledWith(THREAD, 'first'))
   })
 
+  it('resyncs and resumes a still-running turn after a lost connection, instead of resending it', async () => {
+    const { result } = await mounted()
+    act(() => result.current.send('go'))
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    act(() => FakeEventSource.latest().fail())
+    expect(result.current.state.turns[0]).toMatchObject({ status: 'failed', errorMessage: LOST_TURN_MESSAGE })
+
+    client.getThread.mockResolvedValue(
+      detail([
+        {
+          id: TURN,
+          seq: 1,
+          status: 'running',
+          userText: 'go',
+          blocks: [],
+          stopReason: null,
+          errorId: null,
+          createdAt: 'x',
+          finishedAt: null,
+          lastEventId: '5-2',
+        },
+      ])
+    )
+    act(() => result.current.retry())
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(2))
+    expect(client.postTurn).toHaveBeenCalledTimes(1)
+    expect(FakeEventSource.latest().url).toBe(`/api/ai/chat/turns/${TURN}/stream?after=5-2`)
+    expect(result.current.state.turns[0].status).toBe('running')
+  })
+
   it('reruns a stored query to draw it again', async () => {
     client.getThread.mockResolvedValue(
       detail([

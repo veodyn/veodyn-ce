@@ -850,130 +850,6 @@ export interface components {
             /** Version */
             version: number;
         };
-        /** ChatKpiEvaluationIn */
-        ChatKpiEvaluationIn: {
-            /** Asof */
-            asOf: string;
-            /** Delta */
-            delta?: number | null;
-            /** Stale */
-            stale: boolean;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "on-track" | "at-risk" | "breached" | "no-data";
-            /** Value */
-            value: number;
-        };
-        /** ChatKpiListItemIn */
-        ChatKpiListItemIn: {
-            /** Asof */
-            asOf?: string | null;
-            /** Delta */
-            delta?: number | null;
-            /** Domain */
-            domain?: string | null;
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Stale */
-            stale?: boolean | null;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "on-track" | "at-risk" | "breached" | "no-data";
-            /** Unit */
-            unit?: string | null;
-            /** Value */
-            value?: number | null;
-        };
-        /** ChatKpiListResultIn */
-        ChatKpiListResultIn: {
-            /** Error */
-            error?: string | null;
-            /** Items */
-            items?: components["schemas"]["ChatKpiListItemIn"][] | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "kpi_list";
-            /** More */
-            more?: boolean | null;
-            /** Ok */
-            ok: boolean;
-        };
-        /** ChatKpiPointIn */
-        ChatKpiPointIn: {
-            /** At */
-            at: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "on-track" | "at-risk" | "breached" | "no-data";
-            /** Value */
-            value: number;
-        };
-        /** ChatKpiRefIn */
-        ChatKpiRefIn: {
-            /** Cadence */
-            cadence?: ("hourly" | "daily" | "weekly") | null;
-            /** Description */
-            description?: string | null;
-            /** Domain */
-            domain?: string | null;
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Owner */
-            owner?: string | null;
-            target?: components["schemas"]["ChatKpiTargetIn"] | null;
-            thresholds?: components["schemas"]["ChatKpiThresholdsIn"] | null;
-            /** Unit */
-            unit?: string | null;
-        };
-        /** ChatKpiResultIn */
-        ChatKpiResultIn: {
-            /** Error */
-            error?: string | null;
-            evaluation?: components["schemas"]["ChatKpiEvaluationIn"] | null;
-            /** History */
-            history?: components["schemas"]["ChatKpiPointIn"][] | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "kpi";
-            kpi?: components["schemas"]["ChatKpiRefIn"] | null;
-            /** Lasterror */
-            lastError?: string | null;
-            /** Ok */
-            ok: boolean;
-            /** Retrievedat */
-            retrievedAt?: string | null;
-        };
-        /** ChatKpiTargetIn */
-        ChatKpiTargetIn: {
-            /**
-             * Direction
-             * @enum {string}
-             */
-            direction: "higher-is-better" | "lower-is-better";
-            /** Value */
-            value: number;
-        };
-        /** ChatKpiThresholdsIn */
-        ChatKpiThresholdsIn: {
-            /** Atrisk */
-            atRisk: number;
-            /** Breached */
-            breached: number;
-        };
         /** ChatLibraryItemIn */
         ChatLibraryItemIn: {
             /** Description */
@@ -1186,7 +1062,7 @@ export interface components {
             /** Callid */
             callId: string;
             /** Result */
-            result: components["schemas"]["ChatQueryResultIn"] | components["schemas"]["ChatLibraryResultIn"] | components["schemas"]["ChatSavedVisualizationResultIn"] | components["schemas"]["ChatDashboardResultIn"] | components["schemas"]["ChatDataSourcesResultIn"] | components["schemas"]["ChatDataSourceSchemaResultIn"] | components["schemas"]["ChatKpiResultIn"] | components["schemas"]["ChatKpiListResultIn"];
+            result: components["schemas"]["ChatQueryResultIn"] | components["schemas"]["ChatLibraryResultIn"] | components["schemas"]["ChatSavedVisualizationResultIn"] | components["schemas"]["ChatDashboardResultIn"] | components["schemas"]["ChatDataSourcesResultIn"] | components["schemas"]["ChatDataSourceSchemaResultIn"];
         };
         /** ChatTurnIn */
         ChatTurnIn: {
@@ -1210,6 +1086,8 @@ export interface components {
             finishedAt: string | null;
             /** Id */
             id: string;
+            /** Lasteventid */
+            lastEventId?: string | null;
             /** Seq */
             seq: number;
             /**
