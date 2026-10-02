@@ -147,8 +147,44 @@ describe('useChatThread', () => {
     const { result } = await mounted()
     expect(FakeEventSource.latest().url).toContain(TURN)
     expect(result.current.busy).toBe(true)
+  })
+
+  it('reconnects a still-running turn instead of declaring it lost when the stream drops', async () => {
+    client.getThread.mockResolvedValue(
+      detail([
+        {
+          id: TURN,
+          seq: 1,
+          status: 'running',
+          userText: 'q',
+          blocks: [],
+          stopReason: null,
+          errorId: null,
+          createdAt: 'x',
+          finishedAt: null,
+          lastEventId: '5-2',
+        },
+      ])
+    )
+    const { result } = await mounted()
+    expect(FakeEventSource.instances).toHaveLength(1)
     act(() => FakeEventSource.latest().fail())
-    expect(result.current.state.turns[0]).toMatchObject({ status: 'failed', errorMessage: LOST_TURN_MESSAGE })
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(2))
+    expect(client.getThread).toHaveBeenCalledTimes(2)
+    expect(FakeEventSource.latest().url).toBe(`/api/ai/chat/turns/${TURN}/stream?after=5-2`)
+    expect(result.current.state.turns[0].status).toBe('running')
+  })
+
+  it('shows the lost message only once the automatic resync itself fails', async () => {
+    const { result } = await mounted()
+    act(() => result.current.send('go'))
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    client.getThread.mockRejectedValueOnce(new Error('offline'))
+    act(() => FakeEventSource.latest().fail())
+    await waitFor(() =>
+      expect(result.current.state.turns[0]).toMatchObject({ status: 'failed', errorMessage: LOST_TURN_MESSAGE })
+    )
+    expect(FakeEventSource.instances).toHaveLength(1)
   })
 
   it('keeps a turn running through a dropped connection', async () => {
@@ -191,12 +227,15 @@ describe('useChatThread', () => {
     await waitFor(() => expect(client.postTurn).toHaveBeenLastCalledWith(THREAD, 'first'))
   })
 
-  it('resyncs and resumes a still-running turn after a lost connection, instead of resending it', async () => {
+  it('resyncs and resumes a still-running turn on retry, instead of resending it', async () => {
     const { result } = await mounted()
     act(() => result.current.send('go'))
     await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    client.getThread.mockRejectedValueOnce(new Error('offline'))
     act(() => FakeEventSource.latest().fail())
-    expect(result.current.state.turns[0]).toMatchObject({ status: 'failed', errorMessage: LOST_TURN_MESSAGE })
+    await waitFor(() =>
+      expect(result.current.state.turns[0]).toMatchObject({ status: 'failed', errorMessage: LOST_TURN_MESSAGE })
+    )
 
     client.getThread.mockResolvedValue(
       detail([

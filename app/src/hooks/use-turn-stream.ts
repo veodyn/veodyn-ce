@@ -6,7 +6,14 @@ import { chatStreamUrl } from '@/services/ai/chat-client'
 
 export interface TurnStreamHandlers {
   onFrame: (turnId: string, frame: ChatFrame) => void
-  onLost: (turnId: string) => void
+  /** The server sent something the wire schema refuses. A real protocol failure: not worth reconnecting over. */
+  onInvalid: (turnId: string) => void
+  /**
+   * The connection closed without a terminal frame. This is the common case for an
+   * idle long poll going quiet, not proof the turn is dead, so it is the caller's job
+   * to reconcile against the server before deciding whether to give up.
+   */
+  onDisconnected: (turnId: string) => void
 }
 
 function frameOf(event: string, message: MessageEvent): ChatFrame | null {
@@ -34,22 +41,23 @@ export function useTurnStream(handlers: TurnStreamHandlers) {
     source.current?.close()
     const stream = new EventSource(chatStreamUrl(turnId, after))
     source.current = stream
-    const end = (lost: boolean) => {
+    const end = (reason: 'invalid' | 'disconnected' | null) => {
       stream.close()
       if (source.current === stream) source.current = null
-      if (lost) latest.current.onLost(turnId)
+      if (reason === 'invalid') latest.current.onInvalid(turnId)
+      else if (reason === 'disconnected') latest.current.onDisconnected(turnId)
     }
     for (const event of CHAT_EVENTS) {
       stream.addEventListener(event, (message) => {
         if (!(message instanceof MessageEvent)) return
         const frame = frameOf(event, message)
-        if (frame === null) return end(true)
+        if (frame === null) return end('invalid')
         latest.current.onFrame(turnId, frame)
-        if (TERMINAL_EVENTS.has(frame.event)) end(false)
+        if (TERMINAL_EVENTS.has(frame.event)) end(null)
       })
     }
     stream.onerror = () => {
-      if (stream.readyState === EventSource.CLOSED) end(true)
+      if (stream.readyState === EventSource.CLOSED) end('disconnected')
     }
   }, [])
 

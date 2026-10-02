@@ -1,7 +1,7 @@
 'use client'
 
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { TERMINAL_EVENTS, type ChatFrame } from '@/lib/chat/frames'
 import {
   addDashboardPromotion,
@@ -68,11 +68,22 @@ export function useChatThread(threadId: string): ChatThreadController {
     [execute, onResult, queryClient]
   )
 
-  const onLost = useCallback((turnId: string) => {
+  const onInvalid = useCallback((turnId: string) => {
     setState((current) => failTurn(current, turnId, LOST_TURN_MESSAGE))
   }, [])
 
-  const { attach } = useTurnStream({ onFrame, onLost })
+  // A dropped EventSource is not proof the turn is dead: the server may still
+  // be thinking (or waiting on a browser-run query) minutes after the stream
+  // itself goes idle and closes. `getThread` is the one call that knows the
+  // truth, via the same lease-liveness check the initial mount already relies
+  // on, so a disconnect reconciles through it rather than declaring the turn
+  // lost on the client's own say-so. The indirection through a ref breaks the
+  // cycle: useTurnStream needs a stable onDisconnected before resync (which
+  // needs attach, returned by useTurnStream) exists.
+  const onDisconnectedRef = useRef<(turnId: string) => void>(() => undefined)
+  const onDisconnected = useCallback((turnId: string) => onDisconnectedRef.current(turnId), [])
+
+  const { attach } = useTurnStream({ onFrame, onInvalid, onDisconnected })
 
   const resync = useCallback(
     (signal?: AbortSignal) =>
@@ -85,6 +96,14 @@ export function useChatThread(threadId: string): ChatThreadController {
       }),
     [threadId, attach]
   )
+
+  useEffect(() => {
+    onDisconnectedRef.current = (turnId: string) => {
+      void resync().catch(() => {
+        setState((current) => failTurn(current, turnId, LOST_TURN_MESSAGE))
+      })
+    }
+  }, [resync])
 
   useEffect(() => {
     const controller = new AbortController()
