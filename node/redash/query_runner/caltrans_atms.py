@@ -9,8 +9,7 @@ district by URL alone, the same way `go511.py`/`socaltransport.py` are
 generalized by base URL rather than one hardcoded region.
 
 This connector makes no routing/geocoding calls and returns no `geometry`
-column: a prior, unfinished experiment (`riits_tiles` repo,
-`otv2-platform/caltrans-ingest`) called a routing engine per station on
+column: a prior, unfinished experiment called a routing engine per station on
 every poll and produced fabricated 2-point "segments". Real inter-station
 segment geometry is built offline, once, by
 `bin/build_caltrans_segment_geometry.py` against Caltrans' own State Highway

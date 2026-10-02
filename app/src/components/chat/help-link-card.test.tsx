@@ -5,7 +5,7 @@ import type { HelpLinkView } from '@/lib/chat/thread-model'
 import { renderWithProviders } from '@/test/utils'
 import { HelpLinkCard } from './help-link-card'
 
-const DOCS_URL = 'https://veodyn.onriits.net/docs'
+const DOCS_URL = 'https://docs.example.com/docs'
 
 const PARAMETERS: HelpLinkView = {
   callId: 'h1',

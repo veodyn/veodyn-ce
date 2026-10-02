@@ -12,13 +12,13 @@ const RESULT = {
 
 describe('helpLinkHref', () => {
   it('points at the page directory, because the docs site keeps trailing slashes', () => {
-    expect(helpLinkHref('https://veodyn.onriits.net/docs', 'features/queries', 'parameters')).toBe(
-      'https://veodyn.onriits.net/docs/features/queries/#parameters'
+    expect(helpLinkHref('https://docs.example.com/docs', 'features/queries', 'parameters')).toBe(
+      'https://docs.example.com/docs/features/queries/#parameters'
     )
   })
 
   it('takes the site root for the introduction and tolerates a trailing slash on the base', () => {
-    expect(helpLinkHref('https://veodyn.onriits.net/docs/', '', null)).toBe('https://veodyn.onriits.net/docs/')
+    expect(helpLinkHref('https://docs.example.com/docs/', '', null)).toBe('https://docs.example.com/docs/')
   })
 
   it('has no href without a configured docs site', () => {

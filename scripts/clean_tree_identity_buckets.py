@@ -161,7 +161,13 @@ OPEN_DECISION_BUCKETS = (
         "source residual",
         OPEN,
         "READ, site by site, and it is no longer a reading task. What is left is three things "
-        "and none of them is a question. Twelve are logo assets matched by FILENAME, and they "
+        "and none of them is a question, plus one arrival that belongs to a question already "
+        "closed: the freeway-speed connector's modules, its offline geometry builder under "
+        "node/bin/, its logo and the chat help index that carries the connectors page's anchors "
+        "all land here because their stems put a feed name after the service name, and the name "
+        "selector above asks for the service name alone. They are the public-connectors "
+        "disclosure, reached by a name that selector cannot see, and counted like the rest. "
+        "Twelve are logo assets matched by FILENAME, and they "
         "are NOT twelve of a kind: app/public/db-logos/README.md sorts them into nine deprecated "
         "type aliases each paired with a clean-named file, two that no rename covers because an "
         "operator resolves those rows by hand, and one owned by the private pack. Only the nine "

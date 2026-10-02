@@ -8,7 +8,7 @@ from veodyn_api.services.chat.tools import VIZ_CHOICE_FIELD, tool_definitions
 
 BOARD = {
     "id": "destination-board",
-    "type": "RIITS_DESTINATION_BOARD",
+    "type": "PACK_DESTINATION_BOARD",
     "label": "Destination Board",
     "guide": "Vehicle rows with latitude, longitude and a label column.",
 }
@@ -31,8 +31,8 @@ def test_anything_but_a_non_empty_list_falls_back_to_the_built_in_shapes(absent:
 def test_a_pack_type_the_api_has_never_heard_of_survives_intact() -> None:
     catalog = catalog_from([TABLE, BOARD])
     assert catalog.viz_choice("destination-board") == "destination-board"
-    assert catalog.type_for("destination-board") == "RIITS_DESTINATION_BOARD"
-    assert catalog.choice_id_for("RIITS_DESTINATION_BOARD") == "destination-board"
+    assert catalog.type_for("destination-board") == "PACK_DESTINATION_BOARD"
+    assert catalog.choice_id_for("PACK_DESTINATION_BOARD") == "destination-board"
 
 
 def test_a_shape_the_instance_does_not_offer_clamps_to_the_table() -> None:
@@ -74,7 +74,7 @@ def test_the_rules_list_every_shape_and_put_the_table_last() -> None:
 
 def test_a_shape_with_no_guide_is_listed_under_its_label_rather_than_hidden() -> None:
     rules = catalog_from(
-        [TABLE, {"id": "transit-lines", "type": "RIITS_TRANSIT_LINES", "label": "Transit Lines"}]
+        [TABLE, {"id": "transit-lines", "type": "PACK_TRANSIT_LINES", "label": "Transit Lines"}]
     ).rules
     assert "- `transit-lines`: Transit Lines" in rules
 
@@ -96,7 +96,7 @@ def test_a_repeated_id_keeps_the_first_and_drops_the_rest() -> None:
     second = {**BOARD, "type": "SOMETHING_ELSE"}
     catalog = catalog_from([BOARD, second])
     assert catalog.ids == ("destination-board",)
-    assert catalog.type_for("destination-board") == "RIITS_DESTINATION_BOARD"
+    assert catalog.type_for("destination-board") == "PACK_DESTINATION_BOARD"
 
 
 def test_a_runaway_catalog_is_capped_rather_than_sent_whole() -> None:
