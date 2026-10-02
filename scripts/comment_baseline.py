@@ -3,7 +3,6 @@ BASELINE = {
     ".github/workflows/helm-render-test.yml": 16,
     ".github/workflows/redash-test.yml": 138,
     ".github/workflows/tree-guards.yml": 64,
-    ".github/workflows/veodyn-api-test.yml": 28,
     "api/Dockerfile": 15,
     "api/alembic.ini": 2,
     "api/compose.local.yml": 9,
@@ -1331,7 +1330,6 @@ BASELINE = {
     "ci/init-prod.yaml": 26,
     "ci/redash-test.yaml": 234,
     "ci/scan-secrets.yaml": 153,
-    "ci/veodyn-api-test.yaml": 28,
     "ci/veodyn-de.yaml": 302,
     "compose.yaml": 205,
     "compose/fixtures/historical.sql": 28,
@@ -1727,6 +1725,6 @@ BASELINE = {
     "validator/validator_service/validation.py": 44,
 }
 
-FILES_WITH_COMMENTS = 1726
-COMMENT_LINES = 45638
-FILES_SCANNED = 2244
+FILES_WITH_COMMENTS = 1724
+COMMENT_LINES = 45582
+FILES_SCANNED = 2258

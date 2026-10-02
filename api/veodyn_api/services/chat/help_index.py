@@ -1,16 +1,3 @@
-"""An index of the Veodyn documentation for the data chat.
-
-The chat never sees the pages themselves, only their titles, descriptions and
-`##`/`###` headings, so it can send an analyst to the right section. The index
-is generated from `docs/docs` and committed beside this module; CI runs `check`
-so it cannot drift from the docs, the same way `openapi.json` cannot drift from
-the routes.
-
-    python -m veodyn_api.services.chat.help_index build ../docs/docs
-    python -m veodyn_api.services.chat.help_index check ../docs/docs
-    python -m veodyn_api.services.chat.help_index verify https://veodyn.onriits.net/docs
-"""
-
 import difflib
 import json
 import logging
@@ -70,8 +57,6 @@ class HelpIndex:
 
 
 def slugify(text: str) -> str:
-    """github-slugger, as Docusaurus uses it: lowercase, keep letters, marks,
-    digits, underscores, spaces and hyphens, then each space becomes a hyphen."""
     kept = (
         char
         for char in text.lower()
@@ -172,8 +157,6 @@ def _pretty(index: Any) -> list[str]:
 
 
 def drift(docs_dir: Path, index_path: Path) -> list[str]:
-    """Differences between the committed index and the one the docs produce,
-    as unified diff lines. Empty when they match."""
     expected = _pretty(json.loads(render(build_index(docs_dir))))
     try:
         committed = _pretty(json.loads(index_path.read_text()))

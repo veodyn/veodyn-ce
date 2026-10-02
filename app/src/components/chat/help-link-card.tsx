@@ -10,12 +10,6 @@ function label(link: HelpLinkView): string {
   return link.sectionTitle ? `${link.pageTitle} › ${link.sectionTitle}` : link.pageTitle
 }
 
-/**
- * The documentation sections the assistant pointed at. The model never writes a
- * URL: it names a page and an anchor the sidecar checked against its index, and
- * the host comes from this deployment's `brand.docs_url`. Without one the rows
- * are text, the same way the sidebar's Documentation row is simply absent.
- */
 export function HelpLinkCard({ links }: { links: HelpLinkView[] }) {
   const docsUrl = useConfig().brand.docs_url
   return (
