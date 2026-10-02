@@ -42,13 +42,13 @@ describe('HomeChatCard', () => {
     expect(screen.getByRole('link', { name: 'Open Chat' })).toHaveAttribute('href', '/chat')
     await userEvent.type(screen.getByRole('textbox', { name: 'Ask about your data' }), 'Which routes grew?{Enter}')
     await waitFor(() => expect(push).toHaveBeenCalledWith('/chat/new-thread'))
-    expect(client.postTurn).toHaveBeenCalledWith('new-thread', 'Which routes grew?')
+    expect(client.postTurn).toHaveBeenCalledWith('new-thread', 'Which routes grew?', expect.any(AbortSignal))
   })
 
   it('starts a conversation from a suggested question', async () => {
     renderWithProviders(<HomeChatCard />, { config: chatOn })
     await userEvent.click(screen.getByRole('button', { name: CHAT_STARTERS[0] }))
-    await waitFor(() => expect(client.postTurn).toHaveBeenCalledWith('new-thread', CHAT_STARTERS[0]))
+    await waitFor(() => expect(client.postTurn).toHaveBeenCalledWith('new-thread', CHAT_STARTERS[0], expect.any(AbortSignal)))
     expect(push).toHaveBeenCalledWith('/chat/new-thread')
   })
 

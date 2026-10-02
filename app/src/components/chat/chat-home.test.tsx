@@ -23,7 +23,7 @@ describe('ChatHome', () => {
     renderWithProviders(<ChatHome />)
     await userEvent.type(screen.getByLabelText('Ask about your data'), 'Which routes grew?{Enter}')
     await waitFor(() => expect(push).toHaveBeenCalledWith('/chat/new-thread'))
-    expect(client.postTurn).toHaveBeenCalledWith('new-thread', 'Which routes grew?')
+    expect(client.postTurn).toHaveBeenCalledWith('new-thread', 'Which routes grew?', expect.any(AbortSignal))
   })
 
   it('says so when the conversation cannot start', async () => {
