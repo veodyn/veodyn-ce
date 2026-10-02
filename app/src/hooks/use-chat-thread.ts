@@ -78,8 +78,8 @@ export function useChatThread(threadId: string): ChatThreadController {
   // truth, via the same lease-liveness check the initial mount already relies
   // on, so a disconnect reconciles through it rather than declaring the turn
   // lost on the client's own say-so. The indirection through a ref breaks the
-  // cycle: useTurnStream needs a stable onDisconnected before resync (which
-  // needs attach, returned by useTurnStream) exists.
+  // cycle: useTurnStream needs a stable onDisconnected before resync/reconnect
+  // (which need attach, returned by useTurnStream) exist.
   const onDisconnectedRef = useRef<(turnId: string) => void>(() => undefined)
   const onDisconnected = useCallback((turnId: string) => onDisconnectedRef.current(turnId), [])
 
@@ -97,13 +97,33 @@ export function useChatThread(threadId: string): ChatThreadController {
     [threadId, attach]
   )
 
+  // Deliberately narrower than resync(): a turn's `blocks` are only written
+  // once it finishes (services/chat/store.py's finish_turn), so a still-running
+  // turn's detail always reconstructs empty items. Replacing state with that
+  // via resync() would erase every card the live stream already rendered for
+  // it. Reattaching without touching state is correct whenever the server
+  // still calls the turn running; a full resync only happens once it has
+  // genuinely settled, when blocks — and the real outcome — are in hand.
+  const reconnect = useCallback(
+    (turnId: string) =>
+      getThread(threadId).then((detail) => {
+        const stillRunning = detail.turns.find((turn) => turn.id === turnId && turn.status === 'running')
+        if (stillRunning) {
+          attach(stillRunning.id, stillRunning.lastEventId)
+          return
+        }
+        setState(fromDetail(detail))
+      }),
+    [threadId, attach]
+  )
+
   useEffect(() => {
     onDisconnectedRef.current = (turnId: string) => {
-      void resync().catch(() => {
+      void reconnect(turnId).catch(() => {
         setState((current) => failTurn(current, turnId, LOST_TURN_MESSAGE))
       })
     }
-  }, [resync])
+  }, [reconnect])
 
   useEffect(() => {
     const controller = new AbortController()

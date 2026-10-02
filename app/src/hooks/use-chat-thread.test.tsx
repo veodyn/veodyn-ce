@@ -175,6 +175,41 @@ describe('useChatThread', () => {
     expect(result.current.state.turns[0].status).toBe('running')
   })
 
+  it('keeps cards already drawn from live frames when reconnecting a still-running turn', async () => {
+    // A running turn's `blocks` are only written server-side once it finishes
+    // (finish_turn), so getThread reconstructs empty items for it while it is
+    // still going. Reconnecting must not replace state with that snapshot, or
+    // every card the stream already drew disappears the moment the idle
+    // connection cycles.
+    const { result } = await mounted()
+    act(() => result.current.send('go'))
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    act(() => FakeEventSource.latest().emit('tool_request', REQUEST, '1-1'))
+    await waitFor(() => expect(client.postToolResult).toHaveBeenCalledTimes(1))
+    expect(result.current.state.turns[0].items).toEqual([{ kind: 'run', callId: 'c1' }])
+
+    client.getThread.mockResolvedValue(
+      detail([
+        {
+          id: TURN,
+          seq: 1,
+          status: 'running',
+          userText: 'go',
+          blocks: [],
+          stopReason: null,
+          errorId: null,
+          createdAt: 'x',
+          finishedAt: null,
+          lastEventId: '1-1',
+        },
+      ])
+    )
+    act(() => FakeEventSource.latest().fail())
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(2))
+    expect(result.current.state.turns[0].status).toBe('running')
+    expect(result.current.state.turns[0].items).toEqual([{ kind: 'run', callId: 'c1' }])
+  })
+
   it('shows the lost message only once the automatic resync itself fails', async () => {
     const { result } = await mounted()
     act(() => result.current.send('go'))
