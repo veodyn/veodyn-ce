@@ -82,6 +82,7 @@ export type SingleSlotId =
   | 'publishedFeed.deleteNotice'
   | 'dataset.records'
   | 'dataset.headerActions'
+  | 'chat.starters'
 
 export type NavRowBadgeSlotId = `nav.rowBadge:${string}`
 
@@ -169,6 +170,12 @@ export interface SlotProps {
    * which mounts a whole editor at the foot of the page.
    */
   'dataset.headerActions': { dataset: Dataset }
+  /**
+   * What the chat start screen offers under its composer. The contributor
+   * decides what text a pick sends, and the surface starts the conversation
+   * with it: the first turn is text and nothing else, so this is a string.
+   */
+  'chat.starters': { onPick: (text: string) => void; disabled: boolean }
   'home.reviewQueue': Record<string, never>
   [key: NavRowBadgeSlotId]: Record<string, never>
 }

@@ -159,6 +159,7 @@ const SINGLE_EMPTY: { [Id in SingleSlotId]: SlotProps[Id] } = {
   'publishedFeed.deleteNotice': { slug: 'vehicles-live' },
   'dataset.records': { dataset: DATASET },
   'dataset.headerActions': { dataset: DATASET },
+  'chat.starters': { onPick: () => undefined, disabled: false },
 }
 
 describe('a single slot with no contributor', () => {

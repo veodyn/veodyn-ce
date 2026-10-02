@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 export const CHAT_STARTERS = [
   'What dashboards do we have?',
-  'Which saved queries cover bikeshare?',
+  'Which saved queries changed recently?',
   'What data can I explore here?',
 ]
 

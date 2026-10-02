@@ -2,6 +2,7 @@
 
 import { Sparkles } from 'lucide-react'
 import { BigMessage } from '@/components/shared/big-message'
+import { Slot } from '@/features/slots'
 import { useStartChat } from '@/hooks/use-start-chat'
 import { ChatComposer } from './chat-composer'
 import { ChatStarters } from './chat-starters'
@@ -31,7 +32,11 @@ export function ChatHome() {
         notice={notice}
         placeholder="Which routes lost the most riders this month?"
       />
-      <ChatStarters onPick={start} disabled={starting} />
+      <Slot
+        id="chat.starters"
+        props={{ onPick: start, disabled: starting }}
+        fallback={<ChatStarters onPick={start} disabled={starting} />}
+      />
     </div>
   )
 }
