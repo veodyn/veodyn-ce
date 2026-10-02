@@ -21,6 +21,18 @@ export interface VisualizationRendererProps {
   visualization: MockVisualization
   data: QueryResultData
   annotations?: PlacedAnnotation[]
+  /**
+   * Present only while the visualization is being edited: the edit dialog
+   * hands its preview the same setter the editor column writes through, so a
+   * renderer can save what is done ON it (a map framed by dragging, a marker
+   * placed by clicking) as options. Every other surface leaves it unset, and
+   * a renderer that never reads it is unaffected.
+   *
+   * Additive, hence no PLUGIN_API_VERSION bump. Not an editing mode flag: its
+   * presence is the signal, so a renderer cannot be told it is editable and
+   * then find nowhere to write.
+   */
+  onOptionsChange?: (options: Record<string, unknown>) => void
 }
 
 export interface VisualizationEditorProps {

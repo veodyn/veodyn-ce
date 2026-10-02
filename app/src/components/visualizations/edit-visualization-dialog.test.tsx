@@ -5,6 +5,21 @@ import type { QueryResultData } from '@/lib/mock-data'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import { EditVisualizationDialog } from './edit-visualization-dialog'
 
+// A renderer that writes an option from inside the preview, the way a map
+// renderer saves the view an analyst framed by hand. Mocked at the module the
+// lazy registry imports, so the dialog's own preview path is what is driven.
+vi.mock('./counter-renderer', () => ({
+  CounterRenderer: ({
+    onOptionsChange,
+  }: {
+    onOptionsChange?: (options: Record<string, unknown>) => void
+  }) => (
+    <button type="button" onClick={() => onOptionsChange?.({ counterLabel: 'from preview' })}>
+      write from preview
+    </button>
+  ),
+}))
+
 const data: QueryResultData = {
   columns: [{ name: 'value', friendly_name: 'Value', type: 'integer' }],
   rows: [],
@@ -189,5 +204,31 @@ describe('EditVisualizationDialog chart column mapping', () => {
     await openChart(user)
 
     expect(screen.getByLabelText('Role for only')).toHaveTextContent('-- unused --')
+  })
+})
+
+// The preview is not read-only: a renderer that is handed the dialog's own
+// setter can write options the editor column then shows and Save persists.
+// Without this, framing a map in the preview would be lost on Save.
+describe('EditVisualizationDialog preview writes', () => {
+  it('saves an option the preview renderer wrote', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    renderWithProviders(
+      <EditVisualizationDialog
+        open
+        onClose={() => {}}
+        data={{ columns: [{ name: 'n', friendly_name: 'N', type: 'integer' }], rows: [{ n: 1 }] }}
+        onSave={onSave}
+      />
+    )
+    await user.click(screen.getByRole('combobox', { name: 'Type' }))
+    await user.click(await screen.findByRole('option', { name: 'Counter' }))
+    await user.click(await screen.findByRole('button', { name: 'write from preview' }))
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ options: expect.objectContaining({ counterLabel: 'from preview' }) })
+    )
   })
 })

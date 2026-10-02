@@ -263,8 +263,16 @@ export function EditVisualizationDialog({
                   a clip, but the floor still does not come back: a min-height that
                   yields when there is no room is not expressible. */}
               <div className="flex-1 overflow-auto">
+                {/* The preview writes through the same setter as the editor
+                    column, so a view framed by hand on the map, or a marker
+                    placed by clicking it, lands in the options Save persists
+                    and the column's fields show. */}
                 {previewData ? (
-                  <VisualizationRenderer visualization={previewViz} data={previewData} />
+                  <VisualizationRenderer
+                    visualization={previewViz}
+                    data={previewData}
+                    onOptionsChange={setOptions}
+                  />
                 ) : (
                   <>
                     {/* A result with columns but no rows still has everything

@@ -3,7 +3,22 @@ import { render, screen } from '@testing-library/react'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { renderWithProviders } from '@/test/utils'
 
-vi.mock('./choropleth-renderer', () => ({ ChoroplethRenderer: () => <div>choropleth-ok</div> }))
+// The choropleth stand-in also exposes the options callback, so the test
+// below can check the wrapper hands it through rather than swallowing it.
+vi.mock('./choropleth-renderer', () => ({
+  ChoroplethRenderer: ({
+    onOptionsChange,
+  }: {
+    onOptionsChange?: (options: Record<string, unknown>) => void
+  }) => (
+    <div>
+      choropleth-ok
+      <button type="button" onClick={() => onOptionsChange?.({ framed: true })}>
+        write options
+      </button>
+    </div>
+  ),
+}))
 vi.mock('./cohort-renderer', () => ({ CohortRenderer: () => <div>cohort-ok</div> }))
 vi.mock('./sunburst-renderer', () => ({ SunburstRenderer: () => <div>sunburst-ok</div> }))
 vi.mock('./word-cloud-renderer', () => ({ WordCloudRenderer: () => <div>word-cloud-ok</div> }))
@@ -29,6 +44,23 @@ describe('VisualizationRenderer dispatch (parity types)', () => {
   ])('routes %s to its renderer', async (type, text) => {
     render(<VisualizationRenderer visualization={viz(type)} data={data} />)
     expect(await screen.findByText(text)).toBeInTheDocument()
+  })
+
+  // The edit dialog's preview is the one place a renderer is handed a way to
+  // write options back (a map framed by hand, a marker placed by click). The
+  // wrapper must pass it on untouched: a renderer that only ever sees
+  // undefined cannot tell it is being edited.
+  it('hands the renderer the options callback, when one is given', async () => {
+    const onOptionsChange = vi.fn()
+    render(
+      <VisualizationRenderer
+        visualization={viz('CHOROPLETH')}
+        data={data}
+        onOptionsChange={onOptionsChange}
+      />
+    )
+    ;(await screen.findByRole('button', { name: 'write options' })).click()
+    expect(onOptionsChange).toHaveBeenCalledWith({ framed: true })
   })
 
   it('still shows the muted default for an unknown type', () => {

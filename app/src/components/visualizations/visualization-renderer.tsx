@@ -12,6 +12,8 @@ interface VisualizationRendererProps {
   visualization: MockVisualization
   data: QueryResultData
   annotations?: PlacedAnnotation[]
+  /** See the plugin contract: set by the edit dialog's preview alone. */
+  onOptionsChange?: (options: Record<string, unknown>) => void
 }
 
 /**
@@ -41,6 +43,7 @@ export function VisualizationRenderer({
   visualization,
   data,
   annotations,
+  onOptionsChange,
 }: VisualizationRendererProps) {
   const plugin = getVisualization(visualization.type)
 
@@ -70,7 +73,12 @@ export function VisualizationRenderer({
           previous renderer on screen while the next one loads. */}
       <VisualizationProblems problems={problems} />
       <Suspense key={visualization.type} fallback={<RendererFallback />}>
-        <Renderer visualization={visualization} data={data} annotations={annotations} />
+        <Renderer
+          visualization={visualization}
+          data={data}
+          annotations={annotations}
+          onOptionsChange={onOptionsChange}
+        />
       </Suspense>
     </WidgetThemeBoundary>
   )
