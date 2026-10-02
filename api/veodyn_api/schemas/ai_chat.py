@@ -204,13 +204,82 @@ class ChatDataSourceSchemaResultIn(_ChatResultBase):
     resources: list[ChatDataSourceResourceIn] | None = Field(default=None, max_length=50)
 
 
+KpiSlug = Annotated[str, Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9._~-]+$")]
+MetricStatusName = Literal["on-track", "at-risk", "breached", "no-data"]
+
+
+class ChatKpiTargetIn(CamelModel):
+    value: float
+    direction: Literal["higher-is-better", "lower-is-better"]
+
+
+class ChatKpiThresholdsIn(CamelModel):
+    at_risk: float
+    breached: float
+
+
+class ChatKpiRefIn(CamelModel):
+    id: KpiSlug
+    name: str = Field(max_length=500)
+    description: str | None = Field(default=None, max_length=2_000)
+    domain: str | None = Field(default=None, max_length=255)
+    unit: str | None = Field(default=None, max_length=32)
+    cadence: Literal["hourly", "daily", "weekly"] | None = None
+    owner: str | None = Field(default=None, max_length=255)
+    target: ChatKpiTargetIn | None = None
+    thresholds: ChatKpiThresholdsIn | None = None
+
+
+class ChatKpiEvaluationIn(CamelModel):
+    value: float
+    status: MetricStatusName
+    delta: float | None = None
+    as_of: str = Field(max_length=64)
+    stale: bool
+
+
+class ChatKpiPointIn(CamelModel):
+    at: str = Field(max_length=64)
+    value: float
+    status: MetricStatusName
+
+
+class ChatKpiResultIn(_ChatResultBase):
+    kind: Literal["kpi"]
+    kpi: ChatKpiRefIn | None = None
+    evaluation: ChatKpiEvaluationIn | None = None
+    history: list[ChatKpiPointIn] | None = Field(default=None, max_length=200)
+    last_error: str | None = Field(default=None, max_length=500)
+    retrieved_at: str | None = Field(default=None, max_length=64)
+
+
+class ChatKpiListItemIn(CamelModel):
+    id: KpiSlug
+    name: str = Field(max_length=500)
+    domain: str | None = Field(default=None, max_length=255)
+    unit: str | None = Field(default=None, max_length=32)
+    value: float | None = None
+    status: MetricStatusName
+    delta: float | None = None
+    as_of: str | None = Field(default=None, max_length=64)
+    stale: bool | None = None
+
+
+class ChatKpiListResultIn(_ChatResultBase):
+    kind: Literal["kpi_list"]
+    items: list[ChatKpiListItemIn] | None = Field(default=None, max_length=50)
+    more: bool | None = None
+
+
 ChatToolResultIn = Annotated[
     ChatQueryResultIn
     | ChatLibraryResultIn
     | ChatSavedVisualizationResultIn
     | ChatDashboardResultIn
     | ChatDataSourcesResultIn
-    | ChatDataSourceSchemaResultIn,
+    | ChatDataSourceSchemaResultIn
+    | ChatKpiResultIn
+    | ChatKpiListResultIn,
     Field(discriminator="kind"),
 ]
 
