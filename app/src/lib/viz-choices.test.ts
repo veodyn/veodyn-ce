@@ -3,7 +3,7 @@ import { getVisualization, listVisualizations } from '@/lib/visualizations'
 import { isRenderableComponent } from '@/test/component-shape'
 import {
   DEFAULT_VIZ_ID,
-  VIZ_CHOICES,
+  allVizChoices,
   adhocVizFor,
   resolveVizChoice,
   visibleVisualizations,
@@ -15,14 +15,14 @@ describe('viz choices', () => {
   // a choice is only ever a Redash type plus options, never a type of its own.
   it('resolves every choice to a real visualization type', () => {
     const types = new Set(listVisualizations().map((plugin) => plugin.type))
-    for (const choice of VIZ_CHOICES) {
+    for (const choice of allVizChoices()) {
       expect(types, `${choice.id} names an unknown type`).toContain(choice.type)
     }
   })
 
   it('offers the eleven types with the chart shapes broken out', () => {
-    expect(VIZ_CHOICES).toHaveLength(15)
-    const shapes = VIZ_CHOICES.filter((choice) => choice.type === 'CHART')
+    expect(allVizChoices()).toHaveLength(15)
+    const shapes = allVizChoices().filter((choice) => choice.type === 'CHART')
     expect(shapes.map((choice) => choice.options.globalSeriesType)).toEqual([
       'line',
       'bar',
@@ -33,8 +33,8 @@ describe('viz choices', () => {
   })
 
   it('gives every choice a distinct id and label', () => {
-    expect(new Set(VIZ_CHOICES.map((choice) => choice.id)).size).toBe(VIZ_CHOICES.length)
-    expect(new Set(VIZ_CHOICES.map((choice) => choice.label)).size).toBe(VIZ_CHOICES.length)
+    expect(new Set(allVizChoices().map((choice) => choice.id)).size).toBe(allVizChoices().length)
+    expect(new Set(allVizChoices().map((choice) => choice.label)).size).toBe(allVizChoices().length)
   })
 
   it('carries the chart shape as an option rather than as a type', () => {
@@ -61,9 +61,9 @@ describe('the instance allowlist', () => {
   afterEach(() => vi.restoreAllMocks())
 
   it('offers everything when no allowlist is configured', () => {
-    expect(visibleVizChoices(null)).toEqual(VIZ_CHOICES)
-    expect(visibleVizChoices(undefined)).toEqual(VIZ_CHOICES)
-    expect(visibleVizChoices({})).toEqual(VIZ_CHOICES)
+    expect(visibleVizChoices(null)).toEqual(allVizChoices())
+    expect(visibleVizChoices(undefined)).toEqual(allVizChoices())
+    expect(visibleVizChoices({})).toEqual(allVizChoices())
     expect(visibleVisualizations(null)).toEqual(listVisualizations())
   })
 

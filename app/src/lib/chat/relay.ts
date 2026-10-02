@@ -64,6 +64,16 @@ export interface ChatJsonRelay<TRequest, TResponse> {
   requestSchema?: ZodType<TRequest>
   responseSchema?: ZodType<TResponse>
   maxRequestBytes?: number
+  /**
+   * Fields the SERVER adds to the validated body before it is forwarded: what
+   * the sidecar needs and the browser must not be trusted to state. The turn
+   * route sends the visualization catalog this image can actually draw.
+   *
+   * Applied after the request schema, so a `.strict()` schema still rejects a
+   * client that tries to send these itself, and applied last, so a client
+   * cannot override one.
+   */
+  extend?: () => Record<string, unknown>
 }
 
 export async function relayChatJson<TRequest, TResponse>(
@@ -77,7 +87,7 @@ export async function relayChatJson<TRequest, TResponse>(
   if (relay.requestSchema) {
     try {
       const payload = await parseAiRequest(request, relay.requestSchema, 'Invalid chat request', relay.maxRequestBytes)
-      body = JSON.stringify(payload)
+      body = JSON.stringify({ ...payload, ...(relay.extend?.() ?? {}) })
     } catch (error) {
       const context = isAppError(error) ? error.context : {}
       return errorResponse(invalidRequest('Invalid chat request', context), 400)

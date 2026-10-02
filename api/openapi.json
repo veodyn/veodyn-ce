@@ -623,6 +623,477 @@
         "title": "ChatDraftVersionOut",
         "type": "object"
       },
+      "ChatKpiEvaluationIn": {
+        "properties": {
+          "asOf": {
+            "maxLength": 64,
+            "title": "Asof",
+            "type": "string"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "on-track",
+              "at-risk",
+              "breached",
+              "no-data"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "value",
+          "status",
+          "asOf",
+          "stale"
+        ],
+        "title": "ChatKpiEvaluationIn",
+        "type": "object"
+      },
+      "ChatKpiListItemIn": {
+        "properties": {
+          "asOf": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asof"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._~-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          },
+          "stale": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale"
+          },
+          "status": {
+            "enum": [
+              "on-track",
+              "at-risk",
+              "breached",
+              "no-data"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status"
+        ],
+        "title": "ChatKpiListItemIn",
+        "type": "object"
+      },
+      "ChatKpiListResultIn": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatKpiListItemIn"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items"
+          },
+          "kind": {
+            "const": "kpi_list",
+            "title": "Kind",
+            "type": "string"
+          },
+          "more": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "More"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatKpiListResultIn",
+        "type": "object"
+      },
+      "ChatKpiPointIn": {
+        "properties": {
+          "at": {
+            "maxLength": 64,
+            "title": "At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "on-track",
+              "at-risk",
+              "breached",
+              "no-data"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "at",
+          "value",
+          "status"
+        ],
+        "title": "ChatKpiPointIn",
+        "type": "object"
+      },
+      "ChatKpiRefIn": {
+        "properties": {
+          "cadence": {
+            "anyOf": [
+              {
+                "enum": [
+                  "hourly",
+                  "daily",
+                  "weekly"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cadence"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._~-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatKpiTargetIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "thresholds": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatKpiThresholdsIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ChatKpiRefIn",
+        "type": "object"
+      },
+      "ChatKpiResultIn": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "evaluation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatKpiEvaluationIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatKpiPointIn"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History"
+          },
+          "kind": {
+            "const": "kpi",
+            "title": "Kind",
+            "type": "string"
+          },
+          "kpi": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatKpiRefIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastError": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lasterror"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "retrievedAt": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrievedat"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatKpiResultIn",
+        "type": "object"
+      },
+      "ChatKpiTargetIn": {
+        "properties": {
+          "direction": {
+            "enum": [
+              "higher-is-better",
+              "lower-is-better"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "value",
+          "direction"
+        ],
+        "title": "ChatKpiTargetIn",
+        "type": "object"
+      },
+      "ChatKpiThresholdsIn": {
+        "properties": {
+          "atRisk": {
+            "title": "Atrisk",
+            "type": "number"
+          },
+          "breached": {
+            "title": "Breached",
+            "type": "number"
+          }
+        },
+        "required": [
+          "atRisk",
+          "breached"
+        ],
+        "title": "ChatKpiThresholdsIn",
+        "type": "object"
+      },
       "ChatLibraryItemIn": {
         "properties": {
           "description": {
@@ -1347,6 +1818,8 @@
                 "dashboard": "#/components/schemas/ChatDashboardResultIn",
                 "data_source_schema": "#/components/schemas/ChatDataSourceSchemaResultIn",
                 "data_sources": "#/components/schemas/ChatDataSourcesResultIn",
+                "kpi": "#/components/schemas/ChatKpiResultIn",
+                "kpi_list": "#/components/schemas/ChatKpiListResultIn",
                 "library": "#/components/schemas/ChatLibraryResultIn",
                 "query_result": "#/components/schemas/ChatQueryResultIn",
                 "saved_visualization": "#/components/schemas/ChatSavedVisualizationResultIn"
@@ -1371,6 +1844,12 @@
               },
               {
                 "$ref": "#/components/schemas/ChatDataSourceSchemaResultIn"
+              },
+              {
+                "$ref": "#/components/schemas/ChatKpiResultIn"
+              },
+              {
+                "$ref": "#/components/schemas/ChatKpiListResultIn"
               }
             ],
             "title": "Result"
@@ -1390,6 +1869,21 @@
             "minLength": 1,
             "title": "Text",
             "type": "string"
+          },
+          "vizCatalog": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatVizShapeIn"
+                },
+                "maxItems": 60,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vizcatalog"
           }
         },
         "required": [
@@ -1536,6 +2030,45 @@
           "type"
         ],
         "title": "ChatVisualizationRefIn",
+        "type": "object"
+      },
+      "ChatVizShapeIn": {
+        "description": "One shape the app reports this image can draw.\n\n`type` is deliberately unconstrained beyond its length: a pack's Redash type\n(`RIITS_DESTINATION_BOARD`) is a name this service has never heard of, and\nletting the model name it is the entire point. Nothing here is read as\ninstructions; it becomes a list of ids and a bulleted guide.",
+        "properties": {
+          "guide": {
+            "anyOf": [
+              {
+                "maxLength": 400,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guide"
+          },
+          "id": {
+            "maxLength": 64,
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 80,
+            "title": "Label",
+            "type": "string"
+          },
+          "type": {
+            "maxLength": 64,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "label"
+        ],
+        "title": "ChatVizShapeIn",
         "type": "object"
       },
       "ComposeContractOut": {

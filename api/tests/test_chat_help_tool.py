@@ -167,16 +167,23 @@ def test_the_prompt_carries_the_docs_index_between_the_rules_and_the_catalog(doc
     blocks = chat_system((SPEEDS,), omitted_history=False)
     texts = [block["text"] for block in blocks]
     [docs] = [index for index, text in enumerate(texts) if text.startswith("Veodyn documentation")]
-    assert docs == 1
-    assert "regional_speeds" in texts[2]
-    assert "features/queries | Queries | Write and schedule SQL." in texts[1]
-    assert "    #date-ranges Date ranges" in texts[1]
+    # The shape guide sits between the rules and the docs. It used to be
+    # concatenated onto CHAT_RULES in block 0, and it is its own block now
+    # because it is per instance: the packs an image installs decide which
+    # shapes it lists, so sharing a block with CHAT_RULES would make the longest
+    # prefix every deployment has in common differ for no reason.
+    assert texts[1].startswith("How to show the result")
+    assert docs == 2
+    assert "regional_speeds" in texts[3]
+    assert "features/queries | Queries | Write and schedule SQL." in texts[2]
+    assert "    #date-ranges Date ranges" in texts[2]
 
 
 def test_the_prompt_leaves_the_docs_out_when_the_index_is_missing(no_index: None) -> None:
     texts = [block["text"] for block in chat_system((SPEEDS,), omitted_history=False)]
     assert not any(text.startswith("Veodyn documentation") for text in texts)
-    assert len(texts) == 2
+    # The rules, the shape guide, and the tables.
+    assert len(texts) == 3
 
 
 def test_the_rules_send_how_to_questions_to_the_docs() -> None:

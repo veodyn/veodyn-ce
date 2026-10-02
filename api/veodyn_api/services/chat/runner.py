@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.schemas.catalog import DatasetOut
+from veodyn_api.services.ai_viz_catalog import DEFAULT_CATALOG, VizCatalog
 from veodyn_api.services.chat import store
 from veodyn_api.services.chat.bus import TurnBus
 from veodyn_api.services.chat.driver import ChatModel
@@ -142,7 +143,14 @@ class TurnRunner:
             except Exception:
                 logger.warning("a chat turn could not refresh its lease", exc_info=True)
 
-    async def run(self, turn_id: uuid.UUID, thread_id: uuid.UUID, seq: int, text: str) -> None:
+    async def run(
+        self,
+        turn_id: uuid.UUID,
+        thread_id: uuid.UUID,
+        seq: int,
+        text: str,
+        catalog: VizCatalog = DEFAULT_CATALOG,
+    ) -> None:
         key = str(turn_id)
         blocks: list[dict[str, Any]] = []
         usage: dict[str, Any] = {}
@@ -151,7 +159,7 @@ class TurnRunner:
         try:
             await self._bus.emit(key, "turn_started", {"turnId": key, "seq": seq})
             async with asyncio.timeout(TURN_SECONDS):
-                stop_reason = await self._loop(key, turn_id, thread_id, seq, text, blocks, usage)
+                stop_reason = await self._loop(key, turn_id, thread_id, seq, text, blocks, usage, catalog)
             await self._db(
                 store.finish_turn,
                 turn_id,
@@ -212,11 +220,12 @@ class TurnRunner:
         text: str,
         blocks: list[dict[str, Any]],
         usage: dict[str, Any],
+        catalog: VizCatalog,
     ) -> str:
         history, omitted = await self._db(store.replay, thread_id, seq, HISTORY_BUDGET)
         datasets = await self._datasets()
-        system = chat_system(datasets, omitted_history=omitted)
-        tools = tool_definitions()
+        system = chat_system(datasets, omitted_history=omitted, catalog=catalog)
+        tools = tool_definitions(catalog)
         opening = [*history, {"role": "user", "content": [{"type": "text", "text": text}]}]
 
         async def save_draft(kind: str, draft_id: str | None, payload: dict[str, Any]) -> tuple[str, int]:
@@ -241,6 +250,7 @@ class TurnRunner:
             data_source_info=data_source_info,
             save_draft=save_draft,
             query_draft_exists=query_draft_exists,
+            catalog=catalog,
         )
         for _ in range(MAX_TOOL_HOPS):
             if await self._bus.cancel_requested(key):
@@ -316,9 +326,14 @@ class TurnRunner:
 
 
 def spawn_turn(
-    runner: TurnRunner, turn_id: uuid.UUID, thread_id: uuid.UUID, seq: int, text: str
+    runner: TurnRunner,
+    turn_id: uuid.UUID,
+    thread_id: uuid.UUID,
+    seq: int,
+    text: str,
+    catalog: VizCatalog = DEFAULT_CATALOG,
 ) -> asyncio.Task[None]:
-    task = asyncio.create_task(runner.run(turn_id, thread_id, seq, text))
+    task = asyncio.create_task(runner.run(turn_id, thread_id, seq, text, catalog))
     _RUNNING.add(task)
     task.add_done_callback(_RUNNING.discard)
     return task

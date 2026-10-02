@@ -850,6 +850,130 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** ChatKpiEvaluationIn */
+        ChatKpiEvaluationIn: {
+            /** Asof */
+            asOf: string;
+            /** Delta */
+            delta?: number | null;
+            /** Stale */
+            stale: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "on-track" | "at-risk" | "breached" | "no-data";
+            /** Value */
+            value: number;
+        };
+        /** ChatKpiListItemIn */
+        ChatKpiListItemIn: {
+            /** Asof */
+            asOf?: string | null;
+            /** Delta */
+            delta?: number | null;
+            /** Domain */
+            domain?: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Stale */
+            stale?: boolean | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "on-track" | "at-risk" | "breached" | "no-data";
+            /** Unit */
+            unit?: string | null;
+            /** Value */
+            value?: number | null;
+        };
+        /** ChatKpiListResultIn */
+        ChatKpiListResultIn: {
+            /** Error */
+            error?: string | null;
+            /** Items */
+            items?: components["schemas"]["ChatKpiListItemIn"][] | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "kpi_list";
+            /** More */
+            more?: boolean | null;
+            /** Ok */
+            ok: boolean;
+        };
+        /** ChatKpiPointIn */
+        ChatKpiPointIn: {
+            /** At */
+            at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "on-track" | "at-risk" | "breached" | "no-data";
+            /** Value */
+            value: number;
+        };
+        /** ChatKpiRefIn */
+        ChatKpiRefIn: {
+            /** Cadence */
+            cadence?: ("hourly" | "daily" | "weekly") | null;
+            /** Description */
+            description?: string | null;
+            /** Domain */
+            domain?: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Owner */
+            owner?: string | null;
+            target?: components["schemas"]["ChatKpiTargetIn"] | null;
+            thresholds?: components["schemas"]["ChatKpiThresholdsIn"] | null;
+            /** Unit */
+            unit?: string | null;
+        };
+        /** ChatKpiResultIn */
+        ChatKpiResultIn: {
+            /** Error */
+            error?: string | null;
+            evaluation?: components["schemas"]["ChatKpiEvaluationIn"] | null;
+            /** History */
+            history?: components["schemas"]["ChatKpiPointIn"][] | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "kpi";
+            kpi?: components["schemas"]["ChatKpiRefIn"] | null;
+            /** Lasterror */
+            lastError?: string | null;
+            /** Ok */
+            ok: boolean;
+            /** Retrievedat */
+            retrievedAt?: string | null;
+        };
+        /** ChatKpiTargetIn */
+        ChatKpiTargetIn: {
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "higher-is-better" | "lower-is-better";
+            /** Value */
+            value: number;
+        };
+        /** ChatKpiThresholdsIn */
+        ChatKpiThresholdsIn: {
+            /** Atrisk */
+            atRisk: number;
+            /** Breached */
+            breached: number;
+        };
         /** ChatLibraryItemIn */
         ChatLibraryItemIn: {
             /** Description */
@@ -1062,12 +1186,14 @@ export interface components {
             /** Callid */
             callId: string;
             /** Result */
-            result: components["schemas"]["ChatQueryResultIn"] | components["schemas"]["ChatLibraryResultIn"] | components["schemas"]["ChatSavedVisualizationResultIn"] | components["schemas"]["ChatDashboardResultIn"] | components["schemas"]["ChatDataSourcesResultIn"] | components["schemas"]["ChatDataSourceSchemaResultIn"];
+            result: components["schemas"]["ChatQueryResultIn"] | components["schemas"]["ChatLibraryResultIn"] | components["schemas"]["ChatSavedVisualizationResultIn"] | components["schemas"]["ChatDashboardResultIn"] | components["schemas"]["ChatDataSourcesResultIn"] | components["schemas"]["ChatDataSourceSchemaResultIn"] | components["schemas"]["ChatKpiResultIn"] | components["schemas"]["ChatKpiListResultIn"];
         };
         /** ChatTurnIn */
         ChatTurnIn: {
             /** Text */
             text: string;
+            /** Vizcatalog */
+            vizCatalog?: components["schemas"]["ChatVizShapeIn"][] | null;
         };
         /** ChatTurnOut */
         ChatTurnOut: {
@@ -1113,6 +1239,25 @@ export interface components {
             id: number;
             /** Name */
             name: string;
+            /** Type */
+            type: string;
+        };
+        /**
+         * ChatVizShapeIn
+         * @description One shape the app reports this image can draw.
+         *
+         *     `type` is deliberately unconstrained beyond its length: a pack's Redash type
+         *     (`RIITS_DESTINATION_BOARD`) is a name this service has never heard of, and
+         *     letting the model name it is the entire point. Nothing here is read as
+         *     instructions; it becomes a list of ids and a bulleted guide.
+         */
+        ChatVizShapeIn: {
+            /** Guide */
+            guide?: string | null;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
             /** Type */
             type: string;
         };

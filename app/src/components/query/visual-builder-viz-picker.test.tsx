@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test/utils'
-import { VIZ_CHOICES } from '@/lib/viz-choices'
+import { allVizChoices } from '@/lib/viz-choices'
 import { VisualBuilderVizPicker } from './visual-builder-viz-picker'
 
 function renderPicker(value = 'table', enabled: string[] | null = null) {
@@ -19,7 +19,7 @@ describe('VisualBuilderVizPicker', () => {
   it('offers every choice as a tile, exactly one of them checked', () => {
     renderPicker('chart-bar')
 
-    expect(screen.getAllByRole('radio')).toHaveLength(VIZ_CHOICES.length)
+    expect(screen.getAllByRole('radio')).toHaveLength(allVizChoices().length)
     expect(screen.getByRole('radio', { name: 'Bar' })).toBeChecked()
     expect(screen.getAllByRole('radio').filter((tile) => tile.getAttribute('aria-checked') === 'true'))
       .toHaveLength(1)
@@ -29,7 +29,7 @@ describe('VisualBuilderVizPicker', () => {
   it('draws each choice rather than only naming it', () => {
     renderPicker()
 
-    for (const choice of VIZ_CHOICES) {
+    for (const choice of allVizChoices()) {
       const tile = screen.getByRole('radio', { name: choice.label })
       expect(tile.querySelector('svg'), `${choice.label} has no drawing`).toBeInTheDocument()
     }
@@ -89,7 +89,7 @@ describe('VisualBuilderVizPicker instance allowlist', () => {
   it('offers every tile when the instance names no allowlist', () => {
     renderPicker('table', null)
 
-    expect(screen.getAllByRole('radio')).toHaveLength(VIZ_CHOICES.length)
+    expect(screen.getAllByRole('radio')).toHaveLength(allVizChoices().length)
   })
 
   // An operator rolling back to an image without a plugin gets a smaller

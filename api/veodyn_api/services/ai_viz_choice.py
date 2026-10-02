@@ -14,12 +14,18 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# The closed list of visualization shapes, restated from
+# The CORE list of visualization shapes, restated from
 # app/src/lib/viz-choices.ts, which is its source. A chart shape is a
 # Redash *option* rather than a type, so the model names a shape and
 # resolveVizChoice turns it into {type, options} on the frontend. Restated
-# rather than derived because this service cannot import TypeScript: if that
-# file gains a choice, add it here too.
+# rather than derived because this service cannot import TypeScript.
+#
+# No longer the closed list the chat path uses. A chat turn carries the catalog
+# the running image actually registered, packs included, and ai_viz_catalog.py
+# renders the model's instructions from that. This is the fallback: the converse
+# and outline paths, which have no turn to carry a catalog, and a turn from an
+# app too old to send one. A core shape added over there should be added here
+# too, for those paths; a PACK shape should not, and cannot be.
 CHOICE_IDS = (
     "table",
     "chart-line",
@@ -129,39 +135,76 @@ _ALIASES = {
 # the only thing the model knows at this point. It has just described an intent;
 # no SQL has run and no row exists. Naming the shape of the RESULT is a
 # question it can answer from its own intent, where "pick a nice chart" is not.
-VIZ_RULES = """How to show the result (`vizChoiceId`):
+#
+# Split into head, bullets and tail so that ai_viz_catalog.py can render the
+# same prose over a DIFFERENT set of shapes. The head and the tail are about how
+# to choose and hold for any catalog; only the bullets are per shape.
+RULES_HEAD = """How to show the result (`vizChoiceId`):
 
 Work from the shape of the result your intent will produce, then name the id.
+"""
 
-- `counter`: one row, one number. Any aggregate with no GROUP BY.
-- `chart-line`: a time column plus one or more measures. The default for anything over time.
-- `chart-area`: as line, when the measures stack into a total worth seeing.
-- `chart-bar`: one grouping column plus one measure, at most about 25 groups. This is the shape for a
-  ranking, a top-N, or a per-category comparison.
-- `chart-pie`: one grouping column plus one measure that are parts of a whole, at most about 8 groups.
-- `chart-scatter`: two measures, one point per row, to show how they relate.
-- `heatmap`: TWO grouping columns plus one measure, e.g. one row per station per hour. Order the SELECT
-  so the two grouping columns come first and the measure last.
-- `pivot`: the same shape as heatmap, when the reader needs to read the numbers rather than see a pattern.
-- `map`: latitude and longitude columns.
-- `funnel`: ordered stages, one count each, each stage a subset of the one before.
-- `boxplot`: a distribution: many observations per category.
-- `sankey`: flow between two node columns, with a weight.
-- `details`: a single row read as a list of fields.
-- `table`: the LAST resort, for a result no shape above fits: many columns of mixed types, or rows a
-  reader must scan one by one.
-
+RULES_TAIL = """
 Two things to get right, because neither is recoverable afterwards:
 - Do not fall back to `table` for a result that has a shape. A query that groups by something and
   returns a number is a chart. Hundreds of rows in a table is not something anyone reads.
 - Copy the id EXACTLY as written above. An id we do not recognize is shown as a table."""
+
+# What each core shape is FOR.
+#
+# These are a FALLBACK copy. The live source is
+# app/src/lib/visualizations/choice-guides.ts, which travels to this service in
+# the per-turn catalog (see ai_viz_catalog.py), because only the app knows which
+# shapes the running image actually registers. This copy is what the converse
+# and outline paths use, since they have no catalog, and what chat falls back to
+# when an older app sends no vizCatalog. Edit the TypeScript first; keep this in
+# step for the paths that cannot read it.
+DEFAULT_GUIDES: dict[str, str] = {
+    "counter": "one row, one number. Any aggregate with no GROUP BY.",
+    "chart-line": "a time column plus one or more measures. The default for anything over time.",
+    "chart-area": "as line, when the measures stack into a total worth seeing.",
+    "chart-bar": (
+        "one grouping column plus one measure, at most about 25 groups. This is the shape for a "
+        "ranking, a top-N, or a per-category comparison."
+    ),
+    "chart-pie": "one grouping column plus one measure that are parts of a whole, at most about 8 groups.",
+    "chart-scatter": "two measures, one point per row, to show how they relate.",
+    "heatmap": (
+        "TWO grouping columns plus one measure, e.g. one row per station per hour. Order the SELECT "
+        "so the two grouping columns come first and the measure last."
+    ),
+    "pivot": "the same shape as heatmap, when the reader needs to read the numbers rather than see a pattern.",
+    "map": "latitude and longitude columns. Alias them exactly `lat` and `lon` in the SELECT.",
+    "funnel": "ordered stages, one count each, each stage a subset of the one before.",
+    "boxplot": "a distribution: many observations per category.",
+    "sankey": "flow between two node columns, with a weight.",
+    "details": "a single row read as a list of fields.",
+    "table": (
+        "the LAST resort, for a result no shape above fits: many columns of mixed types, or rows a "
+        "reader must scan one by one."
+    ),
+}
+
+
+def rules_for(guides: list[tuple[str, str]]) -> str:
+    """The shape guide as prose, over whichever shapes are on offer."""
+    bullets = "\n".join(f"- `{choice_id}`: {guide}" for choice_id, guide in guides)
+    return f"{RULES_HEAD}\n{bullets}\n{RULES_TAIL}"
+
+
+# In DEFAULT_GUIDES' own order, NOT in CHOICE_IDS order. The bullets are an
+# argument, not an index: they run from the most specific shape to the least, so
+# that "the LAST resort, for a result no shape above fits" and "copy the id
+# EXACTLY as written above" both have something above them to refer to.
+# CHOICE_IDS starts with `table`, which would put the last resort first.
+VIZ_RULES = rules_for(list(DEFAULT_GUIDES.items()))
 
 # The field description stays short and points at the guide, so the two cannot
 # drift into saying different things.
 VIZ_FIELD_DESCRIPTION = f"How to show the result. One of: {', '.join(CHOICE_IDS)}. See the shape guide."
 
 
-def _normalized(value: str) -> str:
+def normalized(value: str) -> str:
     """Lowercased, with any separator run reduced to a single "-"."""
     out: list[str] = []
     for char in value.strip().lower():
@@ -183,7 +226,7 @@ def viz_choice(value: object) -> str:
     because the silent version of this is unfalsifiable: a dashboard of tables
     looks exactly the same whether the model chose them or misnamed them.
     """
-    picked = _normalized(str(value or ""))[:64]
+    picked = normalized(str(value or ""))[:64]
     if picked in CHOICE_IDS:
         return picked
     aliased = _ALIASES.get(picked)

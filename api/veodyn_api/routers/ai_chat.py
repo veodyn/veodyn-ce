@@ -33,6 +33,7 @@ from veodyn_api.schemas.ai_chat import (
 )
 from veodyn_api.schemas.catalog import DatasetOut
 from veodyn_api.services.ai_converse_grounding import build_grounding
+from veodyn_api.services.ai_viz_catalog import catalog_from
 from veodyn_api.services.chat import store
 from veodyn_api.services.chat.bus import TurnBus, get_redis
 from veodyn_api.services.chat.driver import get_chat_model
@@ -260,7 +261,12 @@ async def post_turn(
     except (RedisError, OSError) as exc:
         await run_in_threadpool(store.fail_turn, db, turn.id, ErrorId.AI_CHAT_UNAVAILABLE.value)
         raise _unavailable() from exc
-    spawn_turn(runner, turn.id, thread.id, turn.seq, payload.text)
+    # The shapes this instance can draw, as its app reported them. Read off the
+    # payload rather than held on the thread: a turn is answered by the image
+    # serving it, and a conversation outlives a deploy that adds or drops a
+    # visualization. A payload without one falls back to the core shapes.
+    catalog = catalog_from([shape.model_dump() for shape in payload.viz_catalog] if payload.viz_catalog else None)
+    spawn_turn(runner, turn.id, thread.id, turn.seq, payload.text, catalog)
     return ChatTurnStartedOut(turn_id=str(turn.id), seq=turn.seq)
 
 

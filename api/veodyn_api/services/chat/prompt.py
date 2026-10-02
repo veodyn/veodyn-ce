@@ -2,6 +2,7 @@ from typing import Any
 
 from veodyn_api.schemas.catalog import DatasetOut
 from veodyn_api.services.ai_capture_semantics import CAPTURE_SEMANTICS
+from veodyn_api.services.ai_viz_catalog import VizCatalog
 from veodyn_api.services.ai_viz_choice import VIZ_RULES
 from veodyn_api.services.chat.help_index import load_index, prompt_block
 from veodyn_api.services.llm import compact_json
@@ -76,14 +77,23 @@ def _dataset_row(dataset: DatasetOut) -> dict[str, Any]:
     return row
 
 
-def chat_system(datasets: tuple[DatasetOut, ...], *, omitted_history: bool) -> list[dict[str, Any]]:
-    blocks: list[dict[str, Any]] = [{"type": "text", "text": f"{CHAT_RULES}\n\n{VIZ_RULES}"}]
+def chat_system(
+    datasets: tuple[DatasetOut, ...], *, omitted_history: bool, catalog: VizCatalog | None = None
+) -> list[dict[str, Any]]:
+    # CHAT_RULES and the shape guide used to share one block. They are split
+    # because the guide is now per instance: an instance whose packs add two
+    # shapes gets different prose, and concatenating it onto CHAT_RULES would
+    # make the first block — the longest stable prefix every turn on every
+    # instance shares — differ per deployment for no reason. CHAT_RULES first
+    # and alone; the catalog after it.
+    blocks: list[dict[str, Any]] = [{"type": "text", "text": CHAT_RULES}]
+    blocks.append({"type": "text", "text": catalog.rules if catalog is not None else VIZ_RULES})
     docs = load_index()
     if docs is not None:
         blocks.append({"type": "text", "text": prompt_block(docs)})
     if datasets:
-        catalog = compact_json([_dataset_row(one) for one in datasets])
-        blocks.append({"type": "text", "text": f"Tables you may read: {catalog}\n\n{CAPTURE_SEMANTICS}"})
+        tables = compact_json([_dataset_row(one) for one in datasets])
+        blocks.append({"type": "text", "text": f"Tables you may read: {tables}\n\n{CAPTURE_SEMANTICS}"})
     else:
         blocks.append(
             {

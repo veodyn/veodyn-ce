@@ -67,6 +67,24 @@ export interface VisualizationChoice {
   /** Layered over the plugin's defaultOptions. */
   options: Record<string, unknown>
   Thumbnail: VizThumbnail
+  /**
+   * One sentence telling the chat model when to pick this shape. Read only by
+   * the catalog the chat route sends upstream (lib/chat/viz-catalog.ts); no
+   * rendering surface shows it.
+   *
+   * Optional, and a choice without one is still offered — it arrives in the
+   * catalog unexplained, which is what a plugin choice would have done before
+   * this field existed. Additive, hence no PLUGIN_API_VERSION bump. The core
+   * types' guides live in ./choice-guides.ts rather than here; see that file.
+   *
+   * Phrase it from the SHAPE OF THE RESULT ("two grouping columns plus one
+   * measure"), never from subject matter ("for transit data"). The model
+   * chooses before any SQL has run, so the shape is the only thing it can
+   * reason about, and a guide written about a topic gets picked by topic — a
+   * board of vehicles is not the right answer to a question about vehicles
+   * that returns one number.
+   */
+  guide?: string
 }
 
 /**

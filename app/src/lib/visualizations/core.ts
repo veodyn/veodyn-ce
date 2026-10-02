@@ -14,6 +14,7 @@ import {
   PivotThumbnail, SankeyThumbnail, ScatterThumbnail, TableThumbnail,
 } from '@/components/visualizations/viz-thumbnails'
 import { inferHeatmapColumnMapping } from '@/components/visualizations/heatmap-column-mapping'
+import { mapCoordinateOptions } from '@/components/visualizations/map-column-mapping'
 // Every Renderer and Editor below is loaded on demand. The thumbnails, icons
 // and inference helpers above stay eager because they are what the type
 // selector and the Visual builder draw before anything is chosen, and they are
@@ -142,6 +143,7 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     Renderer: MapRenderer,
     Editor: MapEditor,
     validate: (options, data) => missingNamedColumns(options, NAMED_COLUMNS.MAP, data),
+    inferOptions: mapCoordinateOptions,
     choices: [{ id: 'map', label: 'Map', options: {}, Thumbnail: MapThumbnail }],
   },
   {

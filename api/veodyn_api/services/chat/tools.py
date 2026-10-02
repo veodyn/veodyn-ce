@@ -9,7 +9,8 @@ from veodyn_api.schemas.ai import AiDatasetIn
 from veodyn_api.schemas.catalog import DatasetOut
 from veodyn_api.services.ai_converse_prompt import picked_id, text_of
 from veodyn_api.services.ai_sql import QUERYABLE_TABLE_RE, UngroundedSql, validate_generic_sql, validate_sql
-from veodyn_api.services.ai_viz_choice import VIZ_FIELD_DESCRIPTION, viz_choice
+from veodyn_api.services.ai_viz_catalog import DEFAULT_CATALOG, VizCatalog
+from veodyn_api.services.ai_viz_choice import VIZ_FIELD_DESCRIPTION
 from veodyn_api.services.chat.help_index import load_index, shown_id
 
 MAX_NAMED_TABLES = 20
@@ -56,6 +57,10 @@ class ToolContext:
     data_source_info: Callable[[int], DataSourceInfo | None]
     save_draft: SaveDraft
     query_draft_exists: Callable[[str], Awaitable[bool]]
+    # The shapes this instance offers. Defaulted so a caller that does not care
+    # about visualizations (every test of the SQL guards, among others) is
+    # unaffected, and so an older app sending no catalog gets today's list.
+    catalog: VizCatalog = DEFAULT_CATALOG
     refusals: int = field(default=0)
     help_links: int = field(default=0)
 
@@ -87,8 +92,36 @@ def result_kind_for(tool: str) -> str | None:
     return found.result_kind if found else None
 
 
-def tool_definitions() -> list[dict[str, Any]]:
-    return [dict(tool.definition) for tool in _TOOLS.values()]
+VIZ_CHOICE_FIELD = "vizChoiceId"
+
+
+def _with_shapes(definition: dict[str, Any], catalog: VizCatalog) -> dict[str, Any]:
+    """One tool definition, with the shape field closed over this catalog.
+
+    `vizChoiceId` was a free string, so a shape the model invented arrived as a
+    warning in a log and a table on the analyst's screen. An enum makes it
+    unsayable instead. It is applied per turn rather than baked into the
+    definition because the list of shapes is per instance now.
+
+    Every layer this touches is copied rather than edited. The definitions are
+    module-level constants shared by every turn in the process, so patching one
+    in place would pin the first caller's catalog onto all of them.
+    """
+    schema = definition.get("input_schema")
+    if not isinstance(schema, dict):
+        return dict(definition)
+    properties = schema.get("properties")
+    if not isinstance(properties, dict) or VIZ_CHOICE_FIELD not in properties:
+        return dict(definition)
+    shape_field = {"type": "string", "enum": list(catalog.ids), "description": catalog.field_description}
+    return {
+        **definition,
+        "input_schema": {**schema, "properties": {**properties, VIZ_CHOICE_FIELD: shape_field}},
+    }
+
+
+def tool_definitions(catalog: VizCatalog | None = None) -> list[dict[str, Any]]:
+    return [_with_shapes(tool.definition, catalog or DEFAULT_CATALOG) for tool in _TOOLS.values()]
 
 
 async def prepare_call(block: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
@@ -242,7 +275,7 @@ async def _run_query(call_id: str, arguments: dict[str, Any], ctx: ToolContext) 
             "dataSourceId": target.data_source_id,
             "sql": body,
             "purpose": text_of(arguments.get("purpose"), 200),
-            "vizChoiceId": viz_choice(arguments.get("vizChoiceId")),
+            "vizChoiceId": ctx.catalog.viz_choice(arguments.get("vizChoiceId")),
         },
     )
 
@@ -260,7 +293,7 @@ async def _propose_query(call_id: str, arguments: dict[str, Any], ctx: ToolConte
         "description": text_of(arguments.get("description"), 4_000),
         "sql": body,
         "dataSourceId": target.data_source_id,
-        "vizChoiceId": viz_choice(arguments.get("vizChoiceId")),
+        "vizChoiceId": ctx.catalog.viz_choice(arguments.get("vizChoiceId")),
         "vizOptions": {},
     }
     if target.dataset is not None:
