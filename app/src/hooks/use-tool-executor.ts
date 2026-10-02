@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { isContributedTool, runContributedTool, type ContributedToolRequest } from '@/features/chat-tools'
 import type { ChatToolRequest, ChatToolRequestOf } from '@/lib/chat/frames'
 import { runLibraryTool, type LibraryToolRequest } from '@/lib/chat/library-tools'
 import { shapeResult } from '@/lib/chat/shape-result'
@@ -86,14 +87,28 @@ export function useToolExecutor(): ToolExecutor {
       .finally(() => controllers.current.delete(controller))
   }, [])
 
+  const executeContributed = useCallback((turnId: string, request: ContributedToolRequest, onResult: ResultSink) => {
+    const controller = new AbortController()
+    controllers.current.add(controller)
+    void runContributedTool(request, controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) return undefined
+        onResult(request.callId, result)
+        return postToolResult(turnId, request.callId, result)
+      })
+      .catch(() => undefined)
+      .finally(() => controllers.current.delete(controller))
+  }, [])
+
   const execute = useCallback(
     (turnId: string, request: ChatToolRequest, onResult: ResultSink) => {
       if (started.current.has(request.callId)) return
       started.current.add(request.callId)
       if (request.tool === 'run_query') executeQuery(turnId, request)
-      else executeLibrary(turnId, request, onResult)
+      else if (isContributedTool(request.tool)) executeContributed(turnId, request as ContributedToolRequest, onResult)
+      else executeLibrary(turnId, request as LibraryToolRequest, onResult)
     },
-    [executeQuery, executeLibrary]
+    [executeQuery, executeLibrary, executeContributed]
   )
 
   const rerun = useCallback(

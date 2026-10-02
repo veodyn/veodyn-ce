@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { components } from '@/types/generated/veodyn-api'
+import { KPI_SLUG } from './frames'
 
 type Schemas = components['schemas']
 
@@ -16,6 +17,10 @@ export type ChatDataSourcesResult = Schemas['ChatDataSourcesResultIn']
 export type ChatDataSourceTable = Schemas['ChatDataSourceTableIn']
 export type ChatDataSourceResource = Schemas['ChatDataSourceResourceIn']
 export type ChatDataSourceSchemaResult = Schemas['ChatDataSourceSchemaResultIn']
+export type ChatKpiResult = Schemas['ChatKpiResultIn']
+export type ChatKpiListResult = Schemas['ChatKpiListResultIn']
+export type ChatKpiListItem = Schemas['ChatKpiListItemIn']
+export type ChatKpiPoint = Schemas['ChatKpiPointIn']
 export type ChatToolResult =
   | ChatQueryResult
   | ChatLibraryResult
@@ -23,6 +28,8 @@ export type ChatToolResult =
   | ChatDashboardResult
   | ChatDataSourcesResult
   | ChatDataSourceSchemaResult
+  | ChatKpiResult
+  | ChatKpiListResult
 export type ChatResultKind = ChatToolResult['kind']
 
 const id = z.number().int().positive()
@@ -162,6 +169,73 @@ export const dataSourceSchemaResultSchema = z
   })
   .strict()
 
+const kpiId = z.string().min(1).max(255).regex(KPI_SLUG)
+const metricStatus = z.enum(['on-track', 'at-risk', 'breached', 'no-data'])
+const shortText = z.string().max(255).nullish()
+const unit = z.string().max(32).nullish()
+
+export const kpiPointSchema = z.object({ at: z.string().max(64), value: z.number(), status: metricStatus }).strict()
+
+export const kpiResultSchema = z
+  .object({
+    ...base,
+    kind: z.literal('kpi'),
+    kpi: z
+      .object({
+        id: kpiId,
+        name: z.string().max(500),
+        description: z.string().max(2_000).nullish(),
+        domain: shortText,
+        unit,
+        cadence: z.enum(['hourly', 'daily', 'weekly']).nullish(),
+        owner: shortText,
+        target: z
+          .object({ value: z.number(), direction: z.enum(['higher-is-better', 'lower-is-better']) })
+          .strict()
+          .nullish(),
+        thresholds: z.object({ atRisk: z.number(), breached: z.number() }).strict().nullish(),
+      })
+      .strict()
+      .optional(),
+    evaluation: z
+      .object({
+        value: z.number(),
+        status: metricStatus,
+        delta: z.number().nullish(),
+        asOf: z.string().max(64),
+        stale: z.boolean(),
+      })
+      .strict()
+      .optional(),
+    history: z.array(kpiPointSchema).max(200).optional(),
+    lastError: z.string().max(500).nullish(),
+    retrievedAt: stamp,
+  })
+  .strict()
+
+export const kpiListItemSchema = z
+  .object({
+    id: kpiId,
+    name: z.string().max(500),
+    domain: shortText,
+    unit,
+    value: z.number().nullish(),
+    status: metricStatus,
+    delta: z.number().nullish(),
+    asOf: z.string().max(64).nullish(),
+    stale: z.boolean().nullish(),
+  })
+  .strict()
+
+export const kpiListResultSchema = z
+  .object({
+    ...base,
+    kind: z.literal('kpi_list'),
+    items: z.array(kpiListItemSchema).max(50).optional(),
+    more: z.boolean().optional(),
+  })
+  .strict()
+
 export const toolResultSchema = z.discriminatedUnion('kind', [
   queryResultSchema,
   libraryResultSchema,
@@ -169,6 +243,8 @@ export const toolResultSchema = z.discriminatedUnion('kind', [
   dashboardResultSchema,
   dataSourcesResultSchema,
   dataSourceSchemaResultSchema,
+  kpiResultSchema,
+  kpiListResultSchema,
 ]) satisfies z.ZodType<ChatToolResult, z.ZodTypeDef, unknown>
 
 export const ERROR_CHARS = 500

@@ -37,6 +37,9 @@ export const dashboardProposalSchema = z
   })
   .strict()
 
+export const KPI_SLUG = /^[A-Za-z0-9._~-]+$/
+const kpiSlug = z.string().min(1).max(255).regex(KPI_SLUG)
+
 const frameData = {
   turn_started: z.object({ turnId: id, seq: z.number().int().positive() }).strict(),
   text_delta: z.object({ text: z.string().max(20_000) }).strict(),
@@ -97,6 +100,20 @@ const frameData = {
         callId: id,
         tool: z.literal('open_dashboard'),
         args: z.object({ dashboardId: positive }).strict(),
+      })
+      .strict(),
+    z
+      .object({
+        callId: id,
+        tool: z.literal('show_kpi'),
+        args: z.object({ kpiId: kpiSlug }).strict(),
+      })
+      .strict(),
+    z
+      .object({
+        callId: id,
+        tool: z.literal('list_kpis'),
+        args: z.object({}).strict(),
       })
       .strict(),
   ]),

@@ -5,8 +5,10 @@ import type { ReactNode } from 'react'
 import { TextboxMarkdown } from '@/components/dashboard/textbox-markdown'
 import { Button } from '@/components/ui/button'
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
+import { chatToolContributionFor, isContributedTool } from '@/features/chat-tools'
 import type { ThreadState, TurnItem, TurnView } from '@/lib/chat/thread-model'
 import type { QueryResultData } from '@/lib/mock-data'
+import { ContributedCallCard } from './contributed-call-card'
 import { DashboardCard } from './dashboard-card'
 import { DataSourcesCard } from './data-sources-card'
 import { HelpLinkCard } from './help-link-card'
@@ -59,7 +61,7 @@ export function ChatTranscript(props: ChatTranscriptProps) {
             turn={turn}
             isLast={turn === last}
             onRetry={props.onRetry}
-            library={waitsOnLibrary(state, turn)}
+            browserWait={browserWaitLabel(state, turn)}
             linking={turn.items[turn.items.length - 1]?.kind === 'help'}
           />
         </MessageScrollerItem>
@@ -93,6 +95,7 @@ function TranscriptItem({ item, ...props }: ChatTranscriptProps & { item: Render
   if (item.kind === 'call') {
     const call = props.state.calls[item.callId]
     if (!call) return null
+    if (isContributedTool(call.tool)) return <ContributedCallCard call={call} />
     if (call.tool === 'list_data_sources') return <DataSourcesCard call={call} />
     if (call.tool === 'describe_data_source') return null
     if (call.tool === 'search_library') return <LibraryCard call={call} />
@@ -119,26 +122,28 @@ function TranscriptItem({ item, ...props }: ChatTranscriptProps & { item: Render
   )
 }
 
-function waitsOnLibrary(state: ThreadState, turn: TurnView): boolean {
+function browserWaitLabel(state: ThreadState, turn: TurnView): string | undefined {
   const last = turn.items[turn.items.length - 1]
-  return last?.kind === 'call' && state.calls[last.callId]?.status === 'running'
+  const call = last?.kind === 'call' ? state.calls[last.callId] : undefined
+  if (call?.status !== 'running') return undefined
+  return chatToolContributionFor(call.tool)?.phaseLabel ?? LIBRARY_PHASE_LABELS.waiting_for_browser
 }
 
 interface TurnFooterProps {
   turn: TurnView
   isLast: boolean
-  library: boolean
+  browserWait: string | undefined
   linking: boolean
   onRetry: () => void
 }
 
-function TurnFooter({ turn, isLast, library, linking, onRetry }: TurnFooterProps) {
+function TurnFooter({ turn, isLast, browserWait, linking, onRetry }: TurnFooterProps) {
   if (turn.status === 'running') {
     const phase = linking ? 'answering' : (turn.phase ?? '')
     return (
       <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
         <Loader2 className="size-3 animate-spin" aria-hidden="true" />
-        {(library ? LIBRARY_PHASE_LABELS[phase] : undefined) ?? PHASE_LABELS[phase] ?? 'Working…'}
+        {(phase === 'waiting_for_browser' ? browserWait : undefined) ?? PHASE_LABELS[phase] ?? 'Working…'}
       </p>
     )
   }

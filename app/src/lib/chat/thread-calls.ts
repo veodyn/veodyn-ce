@@ -20,6 +20,8 @@ const CARD_TOOLS: ReadonlySet<string> = new Set<CardToolName>([
   'search_library',
   'show_visualization',
   'open_dashboard',
+  'show_kpi',
+  'list_kpis',
 ])
 
 export function isCardTool(name: unknown): name is CardToolName {

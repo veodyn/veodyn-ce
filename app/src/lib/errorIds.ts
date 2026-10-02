@@ -81,6 +81,12 @@ export const ErrorIds = {
   // SLOT_UNAVAILABLE: the registry promised something this build cannot supply.
   PROPOSAL_CARD_UNAVAILABLE: 'E_PROPOSAL_002',
 
+  // ── Data chat tools (CHATTOOL) ─────────────────────────────────────────────
+  // A feature contributes the card for a chat tool, and the card could not be
+  // loaded. Same shape as SLOT_UNAVAILABLE: the call is not drawn, and the rest
+  // of the transcript is.
+  CHAT_TOOL_CARD_UNAVAILABLE: 'E_CHATTOOL_001',
+
   // ── Mock-mode fixtures (MOCK) ──────────────────────────────────────────────
   // A feature's mock collections could not be loaded, so mock mode starts with
   // that feature's collections empty rather than with its fixtures. The same
