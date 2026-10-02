@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { isContributedTool, runContributedTool, type ContributedToolRequest } from '@/features/chat-tools'
+import { isContributedRequest, runContributedTool, type ContributedToolRequest } from '@/features/chat-tools'
 import type { ChatToolRequest, ChatToolRequestOf } from '@/lib/chat/frames'
 import { runLibraryTool, type LibraryToolRequest } from '@/lib/chat/library-tools'
 import { shapeResult } from '@/lib/chat/shape-result'
@@ -105,8 +105,8 @@ export function useToolExecutor(): ToolExecutor {
       if (started.current.has(request.callId)) return
       started.current.add(request.callId)
       if (request.tool === 'run_query') executeQuery(turnId, request)
-      else if (isContributedTool(request.tool)) executeContributed(turnId, request as ContributedToolRequest, onResult)
-      else executeLibrary(turnId, request as LibraryToolRequest, onResult)
+      else if (isContributedRequest(request)) executeContributed(turnId, request, onResult)
+      else executeLibrary(turnId, request, onResult)
     },
     [executeQuery, executeLibrary, executeContributed]
   )

@@ -2,7 +2,7 @@
 // shape of each tool is community (see chat-tool-types.ts); this finds the
 // feature behind one, runs it, and hands back its card.
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
-import type { ChatToolRequestOf } from '@/lib/chat/frames'
+import type { ChatToolRequest, ChatToolRequestOf } from '@/lib/chat/frames'
 import { failedResult, toolResultSchema, type ChatResultKind, type ChatToolResult } from '@/lib/chat/tool-results'
 import { AppError, ErrorIds } from '@/lib/errorIds'
 import type { ChatToolCardProps, ChatToolContribution, ContributedChatTool } from './chat-tool-types'
@@ -25,6 +25,10 @@ export const UNREADABLE_RESULT_MESSAGE = 'The result could not be read.'
 
 export function isContributedTool(tool: string): tool is ContributedChatTool {
   return Object.hasOwn(CONTRIBUTED_RESULT_KIND, tool)
+}
+
+export function isContributedRequest(request: ChatToolRequest): request is ContributedToolRequest {
+  return isContributedTool(request.tool)
 }
 
 export function chatToolContributionFor(tool: string, registry: Registry = FEATURES): ChatToolContribution | undefined {
