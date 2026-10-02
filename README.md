@@ -1,64 +1,104 @@
 # Veodyn
 
-The data substrate for regional transportation hubs and agencies.
+**One source of truth for a region's transportation operations.** Veodyn pulls
+from the systems an agency already runs, normalizes what arrives, stores it
+locally, serves it over an API, and draws it. This repository is the community
+node: open source, self-hosted, and complete on its own.
 
-**A node is a complete Veodyn instance scoped to one agency.** It pulls from the
-systems that agency already runs, normalizes what arrives, stores it locally,
-serves it over an API, and draws it. Five surfaces: adapters, normalization, a
-local warehouse, APIs, and visualization. It is open source, self-hosted, and it
-works standing alone.
+[Website](https://veodyn.com) ·
+[Documentation](https://docs.veodyn.com) ·
+[Live demo](https://demo.veodyn.com) ·
+[Getting started](https://docs.veodyn.com/getting-started/) ·
+[Connectors](https://docs.veodyn.com/connectors/) ·
+[Editions](https://docs.veodyn.com/editions/)
 
-A **hub** runs those same five surfaces over its own data, and adds a federation
-layer that aggregates across the nodes registered with it. That layer is
-commercial and is not part of this repository.
+[![frontend-test](https://github.com/veodyn/veodyn-ce/actions/workflows/frontend-test.yml/badge.svg)](https://github.com/veodyn/veodyn-ce/actions/workflows/frontend-test.yml)
+[![veodyn-api-test](https://github.com/veodyn/veodyn-ce/actions/workflows/veodyn-api-test.yml/badge.svg)](https://github.com/veodyn/veodyn-ce/actions/workflows/veodyn-api-test.yml)
+[![redash-test](https://github.com/veodyn/veodyn-ce/actions/workflows/redash-test.yml/badge.svg)](https://github.com/veodyn/veodyn-ce/actions/workflows/redash-test.yml)
+[![helm-render-test](https://github.com/veodyn/veodyn-ce/actions/workflows/helm-render-test.yml/badge.svg)](https://github.com/veodyn/veodyn-ce/actions/workflows/helm-render-test.yml)
+[![tree-guards](https://github.com/veodyn/veodyn-ce/actions/workflows/tree-guards.yml/badge.svg)](https://github.com/veodyn/veodyn-ce/actions/workflows/tree-guards.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+
+| | |
+|---|---|
+| ![Home: feed freshness, favorites and recent queries](docs/static/img/screenshots/home.png) | ![A dashboard of live transit and traffic widgets](docs/static/img/screenshots/dashboard-view.png) |
+| ![The SQL editor with schema browser and live preview](docs/static/img/screenshots/query-editor.png) | ![Create with AI drafting a query from a question](docs/static/img/screenshots/ai-create-chat.png) |
+
+More captures of every screen are in [`docs/static/img/screenshots/`](docs/static/img/screenshots/),
+and the [documentation](https://docs.veodyn.com) walks through each one.
+
+## Nodes, hubs and editions
+
+**A node is a complete Veodyn instance scoped to one agency.** Five surfaces:
+adapters for the feeds and systems it already has, normalization into typed
+columns, a local warehouse, an API, and visualization. A **hub** runs those
+same five surfaces over its own data and adds a federation layer that
+aggregates across the nodes registered with it. The hub layer is commercial
+and is not part of this repository.
 
 Veodyn is white-label by design. Brand name, logo, accent colour, chart
 palette, fonts, domains and feature flags all come from one YAML file, so an
 instance can carry someone else's name without carrying a fork.
 
-This repository is a **community node**, in full. A separate enterprise pack
-adds the management layer on top (KPIs, governed reports, the alerts surface,
-wall and presentation modes, shared-link governance, enterprise SSO, the AI
-digest). There is no license key and no entitlement runtime anywhere in Veodyn:
-a community build simply does not contain that code, and nothing in it
-advertises a feature you cannot use. See
-[Editions](docs/docs/editions.md).
+This tree is the **community node, in full**. Veodyn Enterprise adds a
+management layer on top (KPIs, governed reports, alerts, wall and presentation
+modes, shared-link governance, rider messaging, enterprise SSO, the AI digest)
+and is licensed commercially. There is no license key and no entitlement
+runtime anywhere in Veodyn: a community build simply does not contain that
+code, and nothing in it advertises a feature you cannot use. The full matrix is
+on the [Editions](https://docs.veodyn.com/editions/) page.
+
+To see the product running without installing anything, open the
+[live demo](https://demo.veodyn.com). It is an Enterprise node, so it shows
+the management layer too. Pick one of the demo personas on the sign-in page;
+the demo accounts are shared and reset regularly.
 
 ## What is in it
 
+- **Connectors** for the sources an agency already runs: GTFS-Realtime, static
+  GTFS, GBFS bikeshare, GOFS on-demand, TODS, WZDx work zones, Waze, AirNow,
+  OpenWeatherMap, TrafficLand cameras, Geotab fleet, MetroCloudAlliance,
+  NTCIP 1203 dynamic message signs, TMDD center-to-center, freeway detector
+  stations, regional traveler-information feeds and static GeoJSON, beside the
+  usual SQL and warehouse sources. A query against a feed connector is a JSON endpoint
+  descriptor rather than SQL, and the rows come back as typed columns.
+  [Connectors](https://docs.veodyn.com/connectors/)
+- **Historical capture** of any feed into ClickHouse on a cadence you declare,
+  so a realtime source becomes a queryable history.
+  [Captures](https://docs.veodyn.com/features/captures/)
 - **Queries**: a SQL editor with a schema browser, parameters, schedules,
-  forking and per-query permissions, plus a no-code visual builder that
-  composes SQL from field picks.
-- **Dashboards**: results on a drag-and-drop grid, with auto-refresh,
-  dashboard-level parameters, annotations, and revocable public links.
+  forking, snippets and per-query permissions, plus a no-code visual builder
+  that composes SQL from field picks.
+  [Queries](https://docs.veodyn.com/features/queries/)
 - **Visualizations**: 15 core types (table, chart, counter, pivot, funnel, map,
   heatmap, sankey, choropleth, cohort, sunburst, word cloud and more), each
-  with a live-preview editor. An instance can allowlist types and install
-  visualization plugins of its own.
+  with a live-preview editor, and visualization plugins an instance can
+  install. [Visualizations](https://docs.veodyn.com/features/visualizations/)
+- **Dashboards**: results on a drag-and-drop grid, with auto-refresh,
+  dashboard-level parameters, annotations, and revocable public links and
+  embeds. [Dashboards](https://docs.veodyn.com/features/dashboards/)
 - **Data catalog**: browsable datasets with schema, coverage and freshness,
-  grouped into domains the instance defines, each with its own domain page.
+  grouped into domains the instance defines, each with its own page.
+  [Data catalog](https://docs.veodyn.com/features/data-catalog/)
 - **Feed health**: whether each upstream feed is current, judged against a
   cadence you declare rather than taken on the feed's word, beside the page
   that says whether scheduled queries are keeping up.
-- **Create with AI**: a chat that drafts queries, dashboards and snippets,
-  grounded in what the instance actually holds, plus SQL generation in the
-  editor. The model writes the words, code assigns the ids, so a suggestion
-  cannot cite something that does not exist. Every flow AI assists also has a
-  manual path, and with AI off the affordances are absent rather than greyed
-  out.
-- **Connectors**: the usual SQL and warehouse sources, plus connectors for
-  transit, traffic, weather and fleet APIs (GTFS-Realtime, GBFS, TMDD
-  Center-to-Center, NTCIP 1203 DMS, Waze, AirNow, OpenWeatherMap, TrafficLand,
-  Geotab, MetroCloudAlliance, static GeoJSON), where a query is a JSON endpoint
-  descriptor rather than SQL.
-
-The product documentation is a Docusaurus site under
-[`docs/`](docs/docs/intro.md): [Getting Started](docs/docs/getting-started.md),
-[Editions](docs/docs/editions.md),
-[Architecture](docs/docs/architecture.md),
-[Configuration](docs/docs/configuration.md),
-[Connectors](docs/docs/connectors.md),
-[Deployment](docs/docs/operations/deployment.md).
+  [Connect](https://docs.veodyn.com/features/connect/)
+- **Published feeds**: declare a GBFS or GTFS-Realtime feed over your own
+  data, validate it, and serve it publicly.
+  [Published feeds](https://docs.veodyn.com/features/published-feeds/)
+- **AI**: a chat that drafts queries, dashboards and snippets, grounded in what
+  the instance actually holds, plus SQL generation and editing in the editor.
+  The model writes the words and code assigns the ids, so a suggestion cannot
+  cite something that does not exist. Every flow AI assists also has a manual
+  path, and with AI off the affordances are absent rather than greyed out.
+  [AI](https://docs.veodyn.com/features/ai/)
+- **Interfaces**: a REST API with per-query API keys, and an MCP endpoint so
+  an agent of your own can ask the node questions.
+  [API](https://docs.veodyn.com/api/)
+- **Governance**: users, groups, data-source permissions, system status, email
+  and webhook destinations, password and Google sign-in.
+  [Settings](https://docs.veodyn.com/features/settings/)
 
 ## Quick start
 
@@ -104,8 +144,8 @@ Set `VEODYN_ADMIN_PASSWORD` before the first `up` to choose one yourself, in
 which case nothing is printed.
 
 The stack is ten long-running containers and three one-shot bootstrap steps.
-Seven of the ten declare a healthcheck and everything downstream waits on them,
-so a `docker compose up` that returns is a running stack rather than a started
+Healthchecks are declared on seven of the ten, and everything downstream waits
+on them, so a `docker compose up` that returns is a running stack rather than a started
 one. To prove that from nothing:
 
 ```bash
@@ -124,6 +164,10 @@ so it checks that too.
 If you only want to look at the interface, the frontend runs standalone on
 bundled demo fixtures with no backend and no database at all: `cd app && pnpm
 install && pnpm dev`, leaving `NEXT_PUBLIC_REDASH_URL` unset.
+
+[Getting started](https://docs.veodyn.com/getting-started/) covers the same
+stack piece by piece: the frontend in mock mode, the query service on its own,
+the sidecar, AI, and live transit data.
 
 ## How it fits together
 
@@ -146,9 +190,7 @@ so backend URLs and credentials never reach the client.
   the AI provider. It stores no users. Every request's identity is resolved by
   forwarding the caller's credential to the query service, so permissions stay
   in one place. Where there is no caller to borrow a credential from it acts as
-  a dedicated service account. It runs no background worker: the only
-  recurring job it has ever had is enterprise, and so is the package holding
-  it.
+  a dedicated service account.
 
 Behind them: PostgreSQL (a database for the query service, another for the
 sidecar), Redis (shared, one database index per consumer), and ClickHouse as
@@ -157,8 +199,9 @@ and read by the catalog. The frontend never talks to ClickHouse directly.
 
 Identity is the query service's, everywhere. Because query reads ride the
 user's own session, a user cannot read a result their groups do not allow, no
-matter which service asked. [Architecture](docs/docs/architecture.md) has the
-diagram, the route-to-credential table, and the two deliberate exceptions.
+matter which service asked. [Architecture](https://docs.veodyn.com/architecture/)
+has the diagram, the route-to-credential table, and the two deliberate
+exceptions.
 
 ## Repository layout
 
@@ -167,11 +210,11 @@ diagram, the route-to-credential table, and the two deliberate exceptions.
 | `app/` | The Next.js frontend (pnpm, TypeScript). Has its own `Dockerfile`. |
 | `api/` | The FastAPI sidecar (uv, Python 3.11). Has its own `Dockerfile`. |
 | `node/` | The query service (Poetry, Python 3.13), headless. Keeps its own conventions: Black at 119 columns and ruff, not this repository's formatting. |
-| `docs/` | The Docusaurus documentation site, plus engineering notes beside it. |
+| `docs/` | The Docusaurus site published at [docs.veodyn.com](https://docs.veodyn.com), and the screenshots it uses. |
 | `compose.yaml`, `compose/` | The local stack above, its bootstrap scripts and its smoke test. |
 | `helm/charts/` | A chart per service, each with example values files beside it. |
 | `ci/` | Pipeline manifests. The test and build jobs live here; the deploy jobs belong to whichever tree carries a particular deployment. |
-| `scripts/` | Repository-wide guards (a credential scan, a public-tree check) and development utilities. |
+| `scripts/` | Repository-wide guards (a credential scan, a public-tree check, a de-branding check) and development utilities. |
 
 ## Working on it
 
@@ -184,8 +227,8 @@ The frontend and the sidecar share committed API contracts (`api/openapi.json`
 and the generated TypeScript types), and CI diffs them, so contract drift is
 caught before an image is built. Lint runs with zero warnings tolerated, and
 the frontend's test command does not type-check, so run `tsc --noEmit`
-separately. [Development](docs/docs/operations/development.md) has the full set
-of commands and the conventions each half keeps.
+separately. [Development](https://docs.veodyn.com/operations/development/) has
+the full set of commands and the conventions each half keeps.
 
 ## Deploying it
 
@@ -197,61 +240,12 @@ produces before writing any values of your own.
 What is deliberately not in this repository is any particular deployment. The
 per-environment values, the provisioning scripts, the cluster credentials and
 the pipeline that pushes releases belong wherever that deployment lives.
-[Deployment](docs/docs/operations/deployment.md) is written for someone
-installing their own, and covers the three releases, the datastores, how secrets
-are referenced rather than written into values, ingress, and a first-deploy
-checklist whose order matters.
-
-### Composing a deployment from packs
-
-A deployment is not always this tree alone. It can be this tree plus one or more
-**packs**: separate repositories, each holding a distribution that extends the
-community product without forking it. The enterprise management layer is one
-such pack, and a tenant's own connectors, visualizations and layer data can be
-another.
-
-The three halves of the product compose by two different mechanisms, and the
-difference decides what a release can change:
-
-- **The frontend composes at source.** A pack's overlay lays its code into the
-  tree and regenerates the feature and plugin registries **before** `pnpm build`
-  runs, because the bundler has to see the code to include it. An overlay
-  applied to a built image does nothing.
-- **The two Python services compose as image layers.** Each pack's distribution
-  is installed on top of the base image, and the interpreter imports it at
-  runtime. A layer can be added without rebuilding what is underneath.
-
-A build therefore starts by assembling sources: clone the community tree and
-each pack, run the overlays in order, and hand the composed directory to
-`docker build` as its context. The community tree is cloned at a commit **pinned
-by each pack's own manifest**, so a pack always declares which core it was built
-against, and two packs that disagree fail the build rather than producing a tree
-neither was tested on. It also means core changes reach a composed deployment
-when a pack is re-cut, not when the core moves.
-
-### Installing a pack does not enable it
-
-The single most expensive mistake in this model: **an installed layer is inert
-until a deployment names it**, and the deploy reports success either way. There
-is no discovery step and no entitlement runtime that could compensate.
-
-Naming is per surface: the query service imports exactly the query runners and
-destinations its two environment variables list, the sidecar imports exactly
-the modules its extra-modules variable lists, a worker runs whatever command
-its deployment gives it, and the enterprise schema advances only if migrations
-are switched on for it. Miss one and the symptom is a missing feature on a
-healthy-looking pod, not an error.
-
-Two consequences worth designing around. Enterprise migrations run on their own
-Alembic version table, independent of the community chain, so a database that
-acquired those tables some other way needs stamping before the chain will run.
-And the frontend's `NEXT_PUBLIC_*` flags are inlined at build time, so which
-plugins an image carries is a property of the build, not something a running pod
-can be reconfigured into.
-
-Verify a composed deployment at the destination: ask the running process what it
-registered. A green deploy job, a correct values file and a matching image
-digest are each individually consistent with a feature that never loaded.
+[Deployment](https://docs.veodyn.com/operations/deployment/) is written for
+someone installing their own, and covers the three releases, the datastores,
+how secrets are referenced rather than written into values, ingress, and a
+first-deploy checklist whose order matters. It also covers how Veodyn
+Enterprise and an agency's own extensions are overlaid onto this tree at build
+time.
 
 ## Contributing, security, licensing
 
@@ -264,7 +258,7 @@ digest are each individually consistent with a feature that never loaded.
   network is satisfied by pointing at this repository; modify it and offer that
   over a network, and the modified source goes with it. If those terms do not
   suit what you are building, the maintainers can license this code to you on
-  other terms, which is also how the enterprise pack is sold. Ask.
+  other terms, which is also how Veodyn Enterprise is sold. Ask.
 - [NOTICE](NOTICE): the copyright notice, and the two directories that began as
   another project's code (`node/`, and the Helm chart under
   `helm/charts/flow/`). Both keep the license file they were obtained under,
