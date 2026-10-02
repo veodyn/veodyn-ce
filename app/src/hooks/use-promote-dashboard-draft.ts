@@ -17,9 +17,6 @@ export type DashboardPromoteStatus = 'idle' | 'saving' | 'conflict'
 export interface DashboardPromotion {
   status: DashboardPromoteStatus
   error: string | null
-  /** Titles of items dropped because a referenced existing query or
-   * visualization no longer exists (spec 3b section 10) — reported, not
-   * fatal, unlike a nested draft's own promotion failing (B7). */
   skipped: string[]
   save: () => void
   append: (overwrite: boolean) => void
@@ -30,9 +27,6 @@ type QueryPromoted = (draftId: string, promotion: ChatPromotion) => void
 type DashboardPromoted = (draftId: string, promotion: ChatPromotion) => void
 type DashboardActivated = (dashboard: ActiveDashboard) => void
 
-// A dashboard draft has no manual layout (spec 3b section 2): each widget
-// gets a full-width row, in the order given, at this fixed size — the same
-// fallback size normalizeWidget already assumes for a widget with no position.
 const WIDGET_SIZE = { sizeX: 3, sizeY: 8 }
 
 interface ResolvedItem {
@@ -40,13 +34,6 @@ interface ResolvedItem {
   title?: string
 }
 
-/**
- * Promote one query draft, or reuse the query it was already promoted to —
- * either way returning the visualization to point a dashboard widget at.
- * `null` means the item could not be resolved and should be skipped
- * (section 10): the query draft is gone, or the query it names has nothing
- * to show.
- */
 async function resolveDraftItem(
   write: ReturnType<typeof useWriteProposedQuery>['write'],
   queryDraft: DraftView | undefined,
@@ -90,10 +77,6 @@ export function usePromoteDashboardDraft(
     setStatus('idle')
   }, [])
 
-  // Every draft item is resolved to a widget before the dashboard itself is
-  // touched (B7): a nested draft promotes here, in order, one at a time —
-  // this is exactly the loop a hook cannot be, which is why promoteQueryDraft
-  // is a plain function (see its own module comment).
   const resolveItems = useCallback(async () => {
     const widgets: ResolvedItem[] = []
     const skippedTitles: string[] = []
@@ -108,9 +91,6 @@ export function usePromoteDashboardDraft(
     return { widgets, skippedTitles }
   }, [latest, queryDrafts, write, onQueryPromoted])
 
-  // `startIndex` counts widgets, not grid rows: each row is WIDGET_SIZE.sizeY
-  // grid units tall, so appending after N existing widgets starts at row
-  // N * sizeY, not row N.
   const writeWidgets = useCallback(async (dashboardId: number, startIndex: number, widgets: ResolvedItem[]) => {
     let created = 0
     for (const widget of widgets) {

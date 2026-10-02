@@ -42,8 +42,6 @@ export interface TurnView {
   lastEventId: string | null
 }
 
-/** A proposed-but-not-yet-saved thing: the shape query and dashboard drafts
- * share, differing only in what a version's payload is (spec 3b section 7). */
 export interface Draft<Payload> {
   id: string
   versions: { version: number; payload: Payload }[]
@@ -53,10 +51,6 @@ export interface Draft<Payload> {
 export type DraftView = Draft<ChatProposal>
 export type DashboardDraftView = Draft<DashboardProposal>
 
-/** The dashboard the model most recently opened or created in this thread —
- * not per-call state like `calls`/`runs`, but a single running pointer, since
- * "add this to the dashboard from earlier" needs to keep resolving for the
- * life of the thread (spec 3b section 7). */
 export interface ActiveDashboard {
   id: number
   name: string
@@ -227,8 +221,6 @@ export function settleCall(state: ThreadState, callId: string, result: ChatToolR
   const call = state.calls[callId]
   if (!call) return state
   const next = { ...state, calls: { ...state.calls, [callId]: settledView(call, result) } }
-  // open_dashboard settling is also how the model "opens" a dashboard (spec 3b
-  // section 7): the analyst may then ask to add something to it.
   if (call.tool === 'open_dashboard' && result.kind === 'dashboard' && result.ok && result.dashboard) {
     return setActiveDashboard(next, {
       id: result.dashboard.id,

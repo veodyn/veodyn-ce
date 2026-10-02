@@ -305,8 +305,6 @@ def test_a_draft_is_promoted_and_shown_in_the_thread(harness: Harness) -> None:
         headers=headers(),
     )
     assert promoted.status_code == 201, promoted.text
-    # "dashboard" is the other valid targetType (spec 3b); anything else still
-    # is not — the promotion endpoint takes no draft-kind-specific path.
     dashboard_promotion = client.post(
         f"/ai/chat/drafts/{draft['draftId']}/promotions",
         json={"version": 1, "targetType": "dashboard", "targetId": "9"},

@@ -173,10 +173,6 @@ export const toolResultSchema = z.discriminatedUnion('kind', [
 
 export const ERROR_CHARS = 500
 
-// data_source_schema is excluded: it always carries a dataSourceId, even on
-// failure (spec 3a section 4.2), so it goes through
-// library-results.ts's failedDataSourceSchemaResult instead of this minimal
-// {kind, ok: false, error} shape.
 export function failedResult(kind: Exclude<ChatResultKind, 'data_source_schema'>, error: unknown): ChatToolResult {
   const message = error instanceof Error ? error.message : String(error)
   return { kind, ok: false, error: (message || 'The request failed.').slice(0, ERROR_CHARS) }

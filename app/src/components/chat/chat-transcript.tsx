@@ -70,7 +70,6 @@ export function ChatTranscript(props: ChatTranscriptProps) {
 
 type RenderedItem = Exclude<TurnItem, { kind: 'help' }> | { kind: 'help'; callIds: string[] }
 
-/** Help links the model asked for in one breath belong in one card, not three. */
 function grouped(items: TurnItem[]): RenderedItem[] {
   return items.reduce<RenderedItem[]>((rendered, item) => {
     const last = rendered[rendered.length - 1]
@@ -95,8 +94,6 @@ function TranscriptItem({ item, ...props }: ChatTranscriptProps & { item: Render
     const call = props.state.calls[item.callId]
     if (!call) return null
     if (call.tool === 'list_data_sources') return <DataSourcesCard call={call} />
-    // describe_data_source is working context for the model, not something
-    // the analyst asked to see (spec 3a section 4.2): no card.
     if (call.tool === 'describe_data_source') return null
     if (call.tool === 'search_library') return <LibraryCard call={call} />
     if (call.tool === 'open_dashboard') return <DashboardCard call={call} />
@@ -131,9 +128,6 @@ interface TurnFooterProps {
   turn: TurnView
   isLast: boolean
   library: boolean
-  /** The turn's last item is a help link: `link_help` answers from the index
-   * without a browser round trip, so the phases about SQL and the browser say
-   * the wrong thing about what is happening. */
   linking: boolean
   onRetry: () => void
 }

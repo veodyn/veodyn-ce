@@ -404,9 +404,6 @@ describe('dashboard drafts', () => {
       ],
     } as ChatThreadDetail
     const state = fromDetail(detail)
-    // The promotion (00:02) is later than the turn the open_dashboard call ran
-    // in (finishedAt 00:01), so it wins even though open_dashboard appears
-    // later in this fixture's turns array.
     expect(state.activeDashboard).toEqual({ id: 9, name: 'Bikeshare overview', widgetCount: 3 })
   })
 

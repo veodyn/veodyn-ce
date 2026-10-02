@@ -348,17 +348,11 @@ def test_a_qualified_table_is_still_queryable() -> None:
 
 
 def test_validate_generic_sql_allows_joining_several_tables() -> None:
-    """Unlike validate_sql, this is not scoped to one dataset: a query_results
-    source is meant to join several query_<id> results together."""
     sql = "SELECT a.stop_id FROM query_1 a JOIN query_2 b ON a.stop_id = b.stop_id"
     assert validate_generic_sql(sql) == sql
 
 
 def test_validate_generic_sql_allows_a_comma_join_and_table_valued_functions() -> None:
-    """validate_sql refuses both, because it cannot see which table a comma
-    join's second item names. This validator does not scope to one table at
-    all, so neither restriction applies, and json_each is exactly what
-    query_results chaining is built on."""
     sql = "SELECT * FROM query_1, json_each(query_1.predictions)"
     assert validate_generic_sql(sql) == sql
 
@@ -381,10 +375,6 @@ def test_validate_generic_sql_blocks_the_shared_forbidden_statements(sql: str) -
 
 
 def test_validate_generic_sql_does_not_block_clickhouse_only_keywords() -> None:
-    """SYSTEM, OPTIMIZE, EXCHANGE and dictGet* are ClickHouse administrative
-    vocabulary. They are refused for the warehouse (validate_sql) but are not
-    part of the shared base list, so an identifier that happens to share a
-    name with one of them is not refused on a different dialect."""
     sql = "SELECT system, optimize, exchange FROM query_1"
     assert validate_generic_sql(sql) == sql
 

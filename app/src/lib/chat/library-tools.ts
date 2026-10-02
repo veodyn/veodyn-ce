@@ -24,11 +24,6 @@ export type LibraryToolRequest = ChatToolRequestOf<
   'list_data_sources' | 'describe_data_source' | 'search_library' | 'show_visualization' | 'open_dashboard'
 >
 
-// A literal per-key type (not Record<K, V>, which would erase the
-// correlation between a tool and its own result kind) so that narrowing
-// LibraryToolRequest['tool'] at a call site — excluding 'describe_data_source'
-// before the fallback in runLibraryTool below — also narrows the value this
-// indexes to, away from 'data_source_schema'.
 export const LIBRARY_RESULT_KIND = {
   list_data_sources: 'data_sources',
   describe_data_source: 'data_source_schema',
@@ -37,10 +32,6 @@ export const LIBRARY_RESULT_KIND = {
   open_dashboard: 'dashboard',
 } as const satisfies Record<LibraryToolRequest['tool'], ChatResultKind>
 
-// A "results" (query_results) data source's get_schema() has nothing to
-// return — node itself raises NotSupported (spec 3a section 4.2) — so its
-// type is checked and short-circuited before any schema round trip, rather
-// than interpreting node's schema-job error envelope.
 const RESULTS_SOURCE_TYPE = 'results'
 
 function refusal(error: unknown): string {
@@ -118,9 +109,6 @@ export async function runLibraryTool(request: LibraryToolRequest, signal: AbortS
     return await dispatch(request, signal)
   } catch (error) {
     if (signal.aborted) throw error
-    // data_source_schema is the one result kind that always carries an id
-    // (spec 3a section 4.2), so a mid-flight failure needs it too, unlike
-    // every other kind's minimal {kind, ok: false, error}.
     if (request.tool === 'describe_data_source') {
       return failedDataSourceSchemaResult(request.args.dataSourceId, refusal(error))
     }

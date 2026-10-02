@@ -117,8 +117,6 @@ async def test_the_root_page_and_a_leading_hash_are_accepted(docs_index: Path) -
 
 
 async def test_a_missing_page_is_an_error_rather_than_a_link_to_the_introduction(docs_index: Path) -> None:
-    # The introduction is the empty page id, so a dropped `page` argument would
-    # otherwise resolve to it and look like a deliberate link.
     outcome = await linked(context(), reason="x")
     assert outcome.is_error and outcome.frame is None
     assert "page" in outcome.content

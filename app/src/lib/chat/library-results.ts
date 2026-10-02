@@ -152,10 +152,6 @@ function visibleWidgets(dashboard: MockDashboard) {
     })
 }
 
-/** The chart/table widget count a dashboard draft's drift check (spec 3b
- * section 6.3) compares against: hidden and text widgets excluded, and — the
- * whole reason this is its own function rather than `widgets.length` on a
- * shaped result — never capped at WIDGET_LIMIT the way that array is. */
 export function visibleWidgetCount(dashboard: MockDashboard): number {
   return visibleWidgets(dashboard).filter((widget) => widget.visualization).length
 }
@@ -199,9 +195,6 @@ const DATA_SOURCE_SYNTAX_CHARS = 32
 const RESOURCE_NAME_CHARS = 128
 const EXAMPLE_CHARS = 500
 
-/** Chat can query "sql" and "json" syntax sources; every other syntax
- * (custom, yaml, ...) is listed so the model can say it exists, but
- * describe_data_source and run_query both refuse it (spec 3a section 2). */
 export const UNSUPPORTED_SYNTAX = 'chat cannot query this data source yet'
 export const NO_RESULTS_SCHEMA =
   'this data source has no static schema; it exposes other saved queries as query_<id> tables — call ' +
@@ -230,13 +223,6 @@ function sqlSchemaResult(dataSourceId: number, tables: SchemaTable[]): ChatDataS
   return { kind: 'data_source_schema', ok: true, dataSourceId, syntax: 'sql', tables: shaped }
 }
 
-// BaseResourceRunner.get_schema() (node/redash/query_runner/connector_base.py)
-// returns one "<n>. <name> > params" table per resource, an optional sibling
-// "<n>. <name> > returns", and a trailing "__ Query Examples __" table whose
-// columns are each resource's example string, in the same order. Every
-// doc_params entry is free-text documentation ("stop_id (optional): string -
-// predictions for one stop"), not a bare param name, so the actual param name
-// is the identifier before the first "(".
 const RESOURCE_SECTION_RE = /^(\d+)\.\s+(.+?)\s+>\s+(params|returns)$/
 const PARAM_NAME_RE = /^([A-Za-z_][A-Za-z0-9_]*)\s*\(/
 const EXAMPLES_TABLE_NAME = '__ Query Examples __'

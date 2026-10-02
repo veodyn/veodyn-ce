@@ -9,8 +9,6 @@ export const chatProposalSchema = z
     description: z.string().max(10_000),
     sql: z.string().min(1).max(60_000),
     dataSourceId: positive,
-    // Present only when dataSourceId is the warehouse: the sidecar's cached
-    // catalog is the only place a table match happens (spec 3a section 5).
     datasetTable: z.string().min(1).max(255).optional(),
     vizChoiceId: z.string().min(1).max(64),
     vizOptions: z.record(z.unknown()),
@@ -53,9 +51,6 @@ const frameData = {
         args: z
           .object({
             dataSourceId: positive,
-            // Always the plain query text the data source's own run_query
-            // parses: real SQL, or a resourceCall already serialized to JSON
-            // by the sidecar (spec 3a section 5's implementation notes).
             sql: z.string().min(1).max(60_000),
             purpose: z.string().max(500),
             vizChoiceId: z.string().min(1).max(64),
@@ -118,7 +113,6 @@ const frameData = {
   help_link: z
     .object({
       callId: id,
-      // The introduction page is the empty id, so `page` has no minimum.
       page: z.string().max(200),
       pageTitle: z.string().max(500),
       anchor: z.string().min(1).max(200).nullable(),

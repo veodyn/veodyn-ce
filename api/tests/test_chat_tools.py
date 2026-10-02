@@ -359,9 +359,6 @@ async def test_the_generic_gate_still_blocks_dml_and_sqlite_admin_statements() -
 
 
 async def test_the_generic_gate_allows_a_comma_join_and_a_table_valued_function() -> None:
-    """Unlike the warehouse path, joining several tables and calling a
-    table-valued function (json_each) are exactly what a query_results-style
-    source is for, so neither is refused here."""
     outcome = await prepare_call(
         call("run_query", dataSourceId=9, sql="SELECT * FROM query_1, json_each(query_1.data)", purpose="x"),
         context(known_sources={9: SQL_SOURCE}),
@@ -409,8 +406,6 @@ async def test_an_unexpected_param_is_refused() -> None:
 
 
 async def test_a_resource_call_needs_the_registry_from_describe_data_source() -> None:
-    """syntax alone (from list_data_sources) is not enough: the resource names
-    and their params only come from describe_data_source, in this turn."""
     syntax_only = DataSourceInfo(syntax="json", resources=None)
     outcome = await prepare_call(
         call("run_query", dataSourceId=7, resourceCall={"resource": "predictions"}),

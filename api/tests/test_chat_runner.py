@@ -204,9 +204,6 @@ async def test_a_proposal_emits_a_draft_and_stores_it(db: Session, bus: TurnBus,
 
 
 async def test_a_dashboard_proposal_emits_a_draft_of_kind_dashboard(db: Session, bus: TurnBus, sessions: Any) -> None:
-    """save_draft's kind is no longer hardcoded to "query" two layers below
-    the tool schema (spec 3b section 1): the runner passes through whatever
-    the calling tool asked for."""
     turn = new_turn(db)
     dashboard = dict(
         name="Bikeshare overview",
@@ -237,10 +234,6 @@ async def test_a_dashboard_draft_referencing_an_unknown_query_draft_is_refused(
 async def test_a_dashboard_can_reference_a_query_draft_proposed_earlier_in_the_thread(
     db: Session, bus: TurnBus, sessions: Any
 ) -> None:
-    """query_draft_exists checks the sidecar's own store (spec 3b section 4),
-    so a real query draft from an earlier turn in the SAME thread is usable,
-    unlike an existing Redash query/visualization id, which is never checked
-    server-side (B3)."""
     turn = new_turn(db)
     proposal = dict(name="Average speed", datasetTable="regional_speeds", sql=SQL, vizChoiceId="counter")
     model = ScriptedChatModel(tool_turn("c1", "propose_query", proposal), text_turn("Saved."))
@@ -258,10 +251,6 @@ async def test_a_dashboard_can_reference_a_query_draft_proposed_earlier_in_the_t
 
 
 async def test_a_data_source_looked_up_this_turn_can_then_be_queried(db: Session, bus: TurnBus, sessions: Any) -> None:
-    """The sidecar has no cached list of data sources (spec 3a section 5): it
-    learns a dataSourceId's syntax and resource registry only from
-    list_data_sources/describe_data_source results already in this turn's
-    blocks, which is what this test exercises end to end."""
     turn = new_turn(db)
     run_query_call = {
         "dataSourceId": 7,
@@ -458,8 +447,6 @@ async def test_a_dashboard_result_settles_with_its_widget_count(db: Session, bus
 
 @pytest.fixture
 def docs_index(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    """A two-heading index of its own, so an edit to the real docs cannot fail
-    this test with a message about the runner."""
     root = tmp_path / "docs" / "features"
     root.mkdir(parents=True)
     (root / "queries.md").write_text("---\ntitle: Queries\ndescription: SQL.\n---\n\n## Running it again\n")

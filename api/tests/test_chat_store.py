@@ -188,13 +188,10 @@ def test_query_draft_exists_checks_thread_kind_and_a_version(db: Session) -> Non
     dashboard_draft, _ = store.save_draft(db, thread.id, turn.id, None, "dashboard", {"items": []})
 
     assert store.query_draft_exists(db, thread.id, query_draft) is True
-    # Wrong kind: a dashboard draft is not a query draft, even in the right thread.
     assert store.query_draft_exists(db, thread.id, dashboard_draft) is False
-    # Unknown id.
     assert store.query_draft_exists(db, thread.id, uuid.uuid4()) is False
 
     other = store.create_thread(db, OWNER)
-    # Right id and kind, wrong thread.
     assert store.query_draft_exists(db, other.id, query_draft) is False
 
 

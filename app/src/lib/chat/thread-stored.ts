@@ -19,11 +19,6 @@ function parseJson(value: unknown): Record<string, unknown> {
   }
 }
 
-/** The model's own run_query/propose_query input carries `sql` or
- * `resourceCall`, never a pre-normalized query body (spec 3a's
- * implementation notes: the sidecar collapses resourceCall to a JSON string
- * only for the ClientCall/draft it builds, not for the tool_use block it
- * stores). Rebuilding a stored turn has to redo that collapse itself. */
 function queryBodyFrom(input: Record<string, unknown>): string {
   if (typeof input.sql === 'string') return input.sql
   if (input.resourceCall && typeof input.resourceCall === 'object') return JSON.stringify(input.resourceCall)
@@ -143,11 +138,6 @@ function storedTurn(turn: ChatThreadDetail['turns'][number], parts: Parts): Turn
   }
 }
 
-/** The most recently touched dashboard, reconstructing spec 3b's
- * `activeDashboard` across a reload: open_dashboard calls (timestamped by
- * their turn) and dashboard promotions (timestamped by the promotion itself)
- * are both candidates, and ISO 8601 strings compare lexicographically, so the
- * latest `at` is the latest event without parsing dates. */
 function latestDashboard(events: DashboardEvent[]): ActiveDashboard | null {
   if (events.length === 0) return null
   return events.reduce((latest, event) => (event.at > latest.at ? event : latest)).dashboard

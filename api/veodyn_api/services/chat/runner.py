@@ -71,12 +71,6 @@ def _parse_uuid(value: str | None) -> uuid.UUID | None:
 
 
 def _tool_results_in(blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Every tool_result content block posted so far in this turn, parsed.
-
-    Scanned fresh on each call rather than cached: a turn's `blocks` list is
-    at most a few hops long (MAX_TOOL_HOPS), so re-walking it is cheap, and it
-    avoids keeping a second piece of state in step with `blocks`.
-    """
     found: list[dict[str, Any]] = []
     for message in blocks:
         if message.get("role") != "user":
@@ -94,10 +88,6 @@ def _tool_results_in(blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _scanned_data_source_info(blocks: list[dict[str, Any]], source_id: int) -> DataSourceInfo | None:
-    """What list_data_sources/describe_data_source have said about `source_id`
-    so far in this turn. Later results overwrite earlier ones for the fields
-    they carry; a field only one of the two tools reports is kept across both.
-    """
     syntax = ""
     view_only: bool | None = None
     resources: dict[str, tuple[str, ...]] | None = None

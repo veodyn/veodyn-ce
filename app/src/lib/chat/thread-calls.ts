@@ -3,10 +3,6 @@ import { toolResultSchema, type ChatToolResult } from './tool-results'
 
 export type RunStatus = 'running' | 'done' | 'failed'
 
-/** Every client-executed tool that renders as a generic call card, i.e. every
- * tool but run_query (which gets its own RunView/RunCard). Not "library"
- * specific any more: list_data_sources and describe_data_source render this
- * way too, even though neither reaches the library. */
 export type CardToolName = Exclude<ChatToolName, 'run_query'>
 
 export interface CallView {

@@ -44,20 +44,8 @@ SaveDraft = Callable[[str, str | None, dict[str, Any]], Awaitable[tuple[str, int
 
 @dataclass(frozen=True)
 class DataSourceInfo:
-    """What this turn's own tool calls have revealed about one data source.
-
-    Built by the runner from `list_data_sources`/`describe_data_source`
-    results already in this turn's blocks (services/chat/runner.py); never
-    fetched independently, so a `dataSourceId` the caller cannot see never
-    yields an answer here (see spec 3a section 5).
-    """
-
     syntax: str
     view_only: bool | None = None
-    # resource name -> the param names describe_data_source documented for it.
-    # None means describe_data_source was not called this turn, even if
-    # list_data_sources was: the registry, not just the syntax, is needed to
-    # validate a resourceCall.
     resources: dict[str, tuple[str, ...]] | None = None
 
 
@@ -136,14 +124,6 @@ def _checked_sql(ctx: ToolContext, arguments: dict[str, Any], dataset: DatasetOu
 
 @dataclass(frozen=True)
 class _Target:
-    """Which data source a run_query/propose_query call targets.
-
-    `dataset` is set only for the warehouse (the sidecar's cached catalog
-    covers that one source); `info` is set only for every other source,
-    carrying what this turn's own list_data_sources/describe_data_source
-    calls revealed about it (spec 3a section 5). Never both.
-    """
-
     data_source_id: int
     dataset: DatasetOut | None
     info: DataSourceInfo | None
@@ -174,10 +154,6 @@ async def _resolve_target(ctx: ToolContext, arguments: dict[str, Any]) -> _Targe
             "another data source",
             is_error=True,
         )
-    # A dataSourceId that happens to equal the warehouse's own id must not
-    # take this branch: it would run the weaker, schema-less checks below
-    # against the one source that has a real catalog and a full validate_sql
-    # gate. `datasetTable` is the only door into that path.
     try:
         existing_warehouse_id: int | None = await ctx.data_source_id()
     except ApiError:
@@ -200,23 +176,12 @@ async def _resolve_target(ctx: ToolContext, arguments: dict[str, Any]) -> _Targe
 
 
 def _checked_body(ctx: ToolContext, arguments: dict[str, Any], target: _Target) -> str | Immediate:
-    """The query text to send to the browser: validated SQL, or a resourceCall
-    serialized to the JSON object its data source's run_query parses.
-
-    Collapsing resourceCall to a plain string here, rather than carrying it as
-    a separate shape to the browser, means nothing downstream (the ClientCall
-    sent over the wire, the run card, the saved draft, the eventual promotion)
-    needs to know which syntax produced a query: it is always "the query text
-    this data source's run_query will parse," which is exactly what
-    propose_query's payload already writes into the Redash query's own `sql`
-    field. See the implementation notes for the fuller rationale.
-    """
     if target.dataset is not None:
         if arguments.get("resourceCall") is not None:
             return Immediate("this data source takes sql, not resourceCall", is_error=True)
         return _checked_sql(ctx, arguments, target.dataset)
 
-    assert target.info is not None  # _resolve_target only returns info for a non-warehouse target
+    assert target.info is not None
     if target.info.syntax == "sql":
         if arguments.get("resourceCall") is not None:
             return Immediate("this data source takes sql, not resourceCall", is_error=True)
@@ -227,7 +192,6 @@ def _checked_body(ctx: ToolContext, arguments: dict[str, Any], target: _Target) 
             message = f"the SQL was refused because {refused}. Rewrite it."
             return Immediate(message + (SECOND_REFUSAL if ctx.refusals >= 2 else ""), is_error=True)
 
-    # syntax == "json": a resource-runner. _resolve_target refused every other syntax already.
     if arguments.get("sql") is not None:
         return Immediate("this data source takes resourceCall, not sql", is_error=True)
     call = arguments.get("resourceCall")
