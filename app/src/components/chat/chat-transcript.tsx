@@ -55,7 +55,13 @@ export function ChatTranscript(props: ChatTranscriptProps) {
           {grouped(turn.items).map((item, index) => (
             <TranscriptItem key={`${turn.id}-${index}`} item={item} {...props} />
           ))}
-          <TurnFooter turn={turn} isLast={turn === last} onRetry={props.onRetry} library={waitsOnLibrary(state, turn)} />
+          <TurnFooter
+            turn={turn}
+            isLast={turn === last}
+            onRetry={props.onRetry}
+            library={waitsOnLibrary(state, turn)}
+            linking={turn.items[turn.items.length - 1]?.kind === 'help'}
+          />
         </MessageScrollerItem>
       ))}
     </>
@@ -122,12 +128,16 @@ interface TurnFooterProps {
   turn: TurnView
   isLast: boolean
   library: boolean
+  /** The turn's last item is a help link: `link_help` answers from the index
+   * without a browser round trip, so the phases about SQL and the browser say
+   * the wrong thing about what is happening. */
+  linking: boolean
   onRetry: () => void
 }
 
-function TurnFooter({ turn, isLast, library, onRetry }: TurnFooterProps) {
+function TurnFooter({ turn, isLast, library, linking, onRetry }: TurnFooterProps) {
   if (turn.status === 'running') {
-    const phase = turn.phase ?? ''
+    const phase = linking ? 'answering' : (turn.phase ?? '')
     return (
       <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
         <Loader2 className="size-3 animate-spin" aria-hidden="true" />

@@ -231,7 +231,10 @@ async def _link_help(call_id: str, arguments: dict[str, Any], ctx: ToolContext) 
             f"you already linked {MAX_HELP_LINKS} documentation sections in this turn. Stop linking and answer.",
             is_error=True,
         )
-    wanted = text_of(arguments.get("page"), 200).strip("/")
+    asked = arguments.get("page")
+    if not isinstance(asked, str) or not asked.strip():
+        return Immediate("page must name a page from the documentation index; `/` is the introduction", is_error=True)
+    wanted = text_of(asked, 200).strip("/")
     page = index.page(wanted)
     if page is None:
         suggestions = _suggested_pages(wanted)

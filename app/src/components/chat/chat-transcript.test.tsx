@@ -144,7 +144,10 @@ describe('help links in a turn', () => {
   })
 
   it('keeps the thinking label, because linking takes no browser round trip', () => {
-    renderTranscript(threadWithLinks())
+    // The runner emits `validating` before every tool call, including this one,
+    // and "Checking the SQL…" under a documentation link is a lie about what
+    // the assistant is doing.
+    renderTranscript(threadWithLinks({ phase: 'validating' }))
     expect(screen.getByRole('status')).toHaveTextContent(PHASE_LABELS.answering)
   })
 

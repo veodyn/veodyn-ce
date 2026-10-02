@@ -1,6 +1,7 @@
 import asyncio
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -13,10 +14,11 @@ from tests.converse_stubs import SPEEDS
 from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.models.ai_chat import AiChatTurn
 from veodyn_api.schemas.catalog import DatasetOut
+from veodyn_api.services.chat import help_index, store
 from veodyn_api.services.chat import runner as runner_module
-from veodyn_api.services.chat import store
 from veodyn_api.services.chat.bus import TurnBus
 from veodyn_api.services.chat.driver import ModelTurn
+from veodyn_api.services.chat.help_index import build_index, load_index, render
 from veodyn_api.services.chat.runner import TurnRunner
 
 pytestmark = pytest.mark.anyio
@@ -333,7 +335,24 @@ async def test_a_dashboard_result_settles_with_its_widget_count(db: Session, bus
     assert settled["count"] == 2 and "rowCount" not in settled
 
 
-async def test_a_help_link_is_shown_before_the_next_step_and_replays(db: Session, bus: TurnBus, sessions: Any) -> None:
+@pytest.fixture
+def docs_index(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """A two-heading index of its own, so an edit to the real docs cannot fail
+    this test with a message about the runner."""
+    root = tmp_path / "docs" / "features"
+    root.mkdir(parents=True)
+    (root / "queries.md").write_text("---\ntitle: Queries\ndescription: SQL.\n---\n\n## Running it again\n")
+    path = tmp_path / "help_index.json"
+    path.write_text(render(build_index(tmp_path / "docs")))
+    monkeypatch.setattr(help_index, "INDEX_PATH", path)
+    load_index.cache_clear()
+    yield
+    load_index.cache_clear()
+
+
+async def test_a_help_link_is_shown_before_the_next_step_and_replays(
+    db: Session, bus: TurnBus, sessions: Any, docs_index: None
+) -> None:
     turn = new_turn(db, "how do I rerun a query?")
     seen_before_answer: list[str] = []
 
