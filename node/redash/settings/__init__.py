@@ -352,6 +352,7 @@ default_query_runners = [
     "redash.query_runner.ntcip_dms",
     "redash.query_runner.static_geojson",
     "redash.query_runner.tmdd",
+    "redash.query_runner.caltrans_atms",
     "redash.query_runner.legacy_types",
 ]
 

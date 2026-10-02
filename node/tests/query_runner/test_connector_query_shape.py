@@ -85,6 +85,7 @@ class TestParseObjectQuery(TestCase):
 # empty configuration seven of these never reach the query at all.
 FAMILY_CONFIGS = {
     "airnow": {"base_url": "https://x.invalid/", "api_key": "k"},
+    "caltrans_atms": {"base_url": "https://x.invalid/"},
     "gbfs": {},
     "geotab": {"server": "s", "database": "d", "username": "u", "password": "p"},
     "go511": {"api_key": "k"},

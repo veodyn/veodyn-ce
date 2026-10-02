@@ -31,6 +31,7 @@ data source is created (see [Data Sources](/admin/data-sources)).
 | NTCIP 1203 DMS | `ntcip_dms` | Dynamic message sign identity, status and current message, polled over SNMP | SNMP community string (required, secret); SNMP version (`2c` default, or `1`); device list (JSON, required); per-device timeout (default 2s); max devices polled (default 50) |
 | TMDD Center-to-Center | `tmdd` | Active traffic events, and dynamic message sign inventory and status, from a traffic management center over TMDD v3.03d C2C SOAP | C2C SOAP endpoint URL (required); organization id (required); user id and password (optional, but only as a pair, password stored as secret); TMDD version (`3.03d`, the only one implemented); SOAPAction header value (empty by default); message type id and version (both default `1`); TLS verification (on by default) and an optional CA bundle path; max response size (default 10 MB); max records (default 10000) |
 | Static GeoJSON | `static_geojson` | Layers (rail lines, bus routes, service areas, or other named feature sets) from a local GeoJSON directory | Layer directory path (required) |
+| Caltrans ATMS | `caltrans_atms` | Vehicle Detector Station (VDS) inventory (`stations`) and live per-station speed readings (`readings`) from a Caltrans district's ATMS feeds. No segment geometry: see the worked example below for how a `readings` row gets a line to draw | District ATMS base URL (default provided, targets District 7 — LA/Ventura; point a second data source at another district's URL to add it) |
 
 Fields marked "secret" are stored encrypted, the same way any other data
 source credential is (see [Data Sources: Notes for operators](/admin/data-sources#notes-for-operators)).
@@ -315,3 +316,114 @@ read literally it means the action URI is `''`. The published XSD and WSDL
 cannot settle which was meant. So if your center rejects the empty header, put
 two apostrophes in this field and that is what will be sent, with no code
 change needed to match either reading.
+
+## Caltrans ATMS: a worked example, and how a freeway speed map is assembled
+
+This connector reads a Caltrans district's plain-text ATMS feeds directly —
+`webinit.txt` (station inventory) and `webupdate.txt` (live readings) — and
+carries no segment geometry of its own. Drawing a colored line per freeway
+segment needs three pieces working together: this connector, a one-time
+offline geometry build, and a `results` join at query time. This section
+walks through all three; the connector alone only gets you points and
+numbers.
+
+Configuring a data source of this type means filling in one field:
+
+- **District ATMS Base URL**: defaults to
+  `https://cwwp2.dot.ca.gov/data/d7/atms` (District 7, LA/Ventura). A second
+  data source pointed at a different district's base URL is how another
+  district is added — no code change, per Decision 1 of the design spec
+  this ships from.
+
+A query is the same JSON resource selector every connector in this family
+uses:
+
+```json
+{ "resource": "readings" }
+```
+
+`resource` is `stations` (reference data — vds_id, name, route, direction,
+postmile, lon, lat; takes an optional `params.limit`) or `readings` (live —
+vds_id, status, color_code, speed_mph, volume_per_30s, good_lanes_pct,
+observed_at). Every `readings` row carries every column, `no_data` rows
+included: a station whose `color_code` is not one of the four documented
+values (`13`/`1`/`3`/`2`) gets `status: "no_data"` rather than a guessed
+speed, with `color_code` kept alongside raw. At a typical poll, most of a
+district's stations are `no_data` — treat that as the normal shape of the
+feed, not a connector fault. `observed_at` is this connector's own fetch
+time; the upstream feed carries no per-row timestamp of its own.
+
+### Segment geometry is built offline, once, not read live
+
+`readings` has no `geometry` column and this connector makes no
+routing/geocoding calls at query time. Real inter-station segment geometry
+is built by `bin/build_caltrans_segment_geometry.py`, a repo-maintained
+script (not a query runner, never invoked by the app — the same pattern
+`bin/report_data_source_types.py` uses), run once per district and re-run
+by hand whenever the geometry needs refreshing:
+
+```sh
+python bin/build_caltrans_segment_geometry.py \
+  --stations stations.json \
+  --shn-lines shn_lines.geojson \
+  --out-dir /path/to/a/static_geojson/data_path
+```
+
+`stations.json` is a saved export of this connector's own `{"resource":
+"stations"}` result. `shn_lines.geojson` is Caltrans' State Highway Network
+Lines dataset, downloaded once from Caltrans' open data portal and
+converted to GeoJSON if it was fetched as a shapefile (`ogr2ogr -f GeoJSON
+shn_lines.geojson SHN_Lines.shp`) — the builder has no shapefile-reading
+dependency and never fetches geometry over the network itself. It groups
+stations by `(route, direction)`, sorts by `postmile`, and for each
+adjacent pair concatenates the State Highway Network Lines segments whose
+postmile range falls inside the pair's, orienting each one to keep the
+result continuous. A pair with no matching Caltrans geometry is skipped and
+reported, never filled in with a straight line between the two stations —
+segment geometry that was never surveyed must not look surveyed.
+
+The output directory is exactly a `static_geojson` layer directory: point a
+`static_geojson` data source's `data_path` at it (see the Static GeoJSON
+row above and `redash/query_runner/geo_data/README.md`) and
+`{"resource": "list"}` against it reports the new layer.
+
+### Joining live readings to static geometry
+
+The two live pieces — `readings` and the static segment layer — are joined
+at query time by `vds_id`, over a `results`-type data source (see "Spatial
+joins across query results" above for how `results` reads other queries'
+cached output as SQL tables; this join needs none of that section's spatial
+predicates, since the join key here is an exact id, not a geometric test).
+Static GeoJSON's row shape lifts only `id`, `line`, `name`, `mode` and
+`color` to top-level columns; everything else the geometry builder put in a
+feature's `properties` — `vds_id_from`, `vds_id_to`, `route`, `direction` —
+travels as a JSON string in the `properties` column, so the join reads them
+with SQLite's `json_extract`, the same way the spatial section's own
+`GeomFromGeoJSON` reads a geometry column that also travels as text:
+
+```sql
+SELECT
+  seg.geometry AS geometry,
+  CASE r.status
+    WHEN 'ok' THEN
+      CASE
+        WHEN r.speed_mph >= 36 THEN '#2e7d32'  -- green
+        WHEN r.speed_mph >= 21 THEN '#f9a825'  -- yellow
+        ELSE '#c62828'                          -- red
+      END
+    ELSE '#9e9e9e'                              -- no_data: gray
+  END AS color,
+  json_extract(seg.properties, '$.route') || ' ' ||
+    json_extract(seg.properties, '$.direction') AS name,
+  r.speed_mph, r.status, r.observed_at
+FROM cached_query_<static_layer_query_id> seg
+JOIN cached_query_<readings_query_id> r
+  ON r.vds_id = json_extract(seg.properties, '$.vds_id_from')
+```
+
+Because this query's own `SELECT` already aliases its columns to
+`geometry`, `color` and `name` — `transit-lines-model.ts`'s defaults — a
+Transit Lines dashboard widget pointed at it needs no column mapping to
+render. `no_data` segments draw gray rather than green or absent, which is
+the point: a station with no live reading should look unmeasured, not
+quiet.
