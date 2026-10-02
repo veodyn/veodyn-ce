@@ -14,7 +14,7 @@ they were lifted top-level columns. They are not: `_feature_to_row` lifts
 only `id`/`line`/`name`/`mode`/`color`, so everything the geometry builder
 puts in a feature's `properties` travels as a JSON string column instead.
 The corrected query, using SQLite's built-in `json_extract` (no SpatiaLite
-needed — the join key is an exact id, not a spatial predicate), is what
+needed, the join key is an exact id, not a spatial predicate), is what
 docs/docs/connectors.md actually documents, and what this test proves runs.
 """
 

@@ -1,9 +1,3 @@
-// What the chat model is allowed to ask for.
-//
-// The API cannot work this out for itself: its shape list was hand-copied from
-// viz-choices.ts, and the sidecar image does not install a pack, so a pack's
-// visualization was unnameable and clamped to a table. This is the half that
-// knows the truth.
 import { describe, expect, it, vi } from 'vitest'
 import { CORE_CHOICE_GUIDES } from '@/lib/visualizations/choice-guides'
 
@@ -16,8 +10,6 @@ describe('vizCatalog', () => {
     const byId = new Map(vizCatalog().map((entry) => [entry.id, entry]))
     expect(byId.get('table')?.type).toBe('TABLE')
     expect(byId.get('map')?.type).toBe('MAP')
-    // A chart shape is a CHART option, not a type of its own. The API needs the
-    // type to store the visualization and the id to talk to the model.
     expect(byId.get('chart-bar')?.type).toBe('CHART')
     expect(byId.get('chart-line')?.type).toBe('CHART')
   })
@@ -25,14 +17,10 @@ describe('vizCatalog', () => {
   it('carries the guide that tells the model when to pick a shape', () => {
     const map = vizCatalog().find((entry) => entry.id === 'map')
     expect(map?.guide).toBe(CORE_CHOICE_GUIDES.map)
-    // The aliasing instruction is load-bearing: the MAP renderer has no
-    // positional fallback, so coordinates under an unusual name draw nothing.
     expect(map?.guide).toContain('`lat`')
   })
 
   it('leaves the guide off a shape nobody wrote one for', () => {
-    // A choice with no sentence is still offered; the API lists it under its
-    // label. Omitted rather than sent empty so the wire says which is which.
     const entries = vizCatalog()
     const unexplained = entries.filter((entry) => entry.guide === undefined)
     for (const entry of unexplained) expect('guide' in entry).toBe(false)

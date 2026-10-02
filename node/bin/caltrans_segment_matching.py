@@ -19,7 +19,7 @@ PROPERTY_ALIASES = {
 
 # What this rejects is a route whose postmile numbering is not unique along
 # its whole length (a county-line reset, or a realignment carrying its own
-# PMPrefix — see PROPERTY_ALIASES above, which does not include it): route +
+# PMPrefix: see PROPERTY_ALIASES above, which does not include it): route +
 # direction + postmile alone matched a Ventura-area SHN segment to two
 # Thousand-Oaks stations 0.03 postmile apart, and the concatenation jumped
 # 90km to a same-numbered stretch near downtown LA before returning.
@@ -28,7 +28,7 @@ PROPERTY_ALIASES = {
 #
 # Not a tight radius. Measured against the full live District 7 fetch, the
 # distance from a station pair's midpoint to its best-matching SHN segment has
-# no clean gap between "real match" and "wrong match" — it is a smooth curve
+# no clean gap between "real match" and "wrong match", it is a smooth curve
 # from 0 out past 100km, because webinit.txt's own lon/lat fields are rounded
 # to two decimal places (roughly a football field to a kilometer, depending on
 # latitude) and a handful of stations carry outright wrong coordinates (one
@@ -120,18 +120,18 @@ def _near_pair(coords, midpoint):
 
 
 # Adjacent pre-cut SHN segments are not topologically snapped, so a genuine
-# join can be several km wide on its own — measured against the full live
+# join can be several km wide on its own, measured against the full live
 # District 7 build, a legitimate pair spanning a long rural stretch (Route 14
 # through the Antelope Valley, postmile 43 to 58) has a 12.8km internal gap
 # and is real. What this catches sits well past that: two segments that both
 # individually passed the midpoint check above (each is within
 # MAX_SEGMENT_DISTANCE_KM of the pair SOMEWHERE along its own length) but are
-# not actually adjacent. Route 101 southbound has exactly this — two
+# not actually adjacent. Route 101 southbound has exactly this, two
 # overlapping, non-prefixed postmile ranges (0-22.88 and 17.641-38.19) that
 # read as two independent LRS logs for the same route/direction, so a pair
 # near postmile 17.6 can pick up one huge segment from each log, each close
 # enough at its own postmile-17.6 end, and the concatenation jumps 35km at
-# the join — the next value up from that legitimate 12.8km case, with nothing
+# the join, the next value up from that legitimate 12.8km case, with nothing
 # in between in the data actually fetched.
 MAX_INTERNAL_GAP_KM = 15.0
 

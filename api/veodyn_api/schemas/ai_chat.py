@@ -28,14 +28,6 @@ class ChatThreadPatchIn(CamelModel):
 
 
 class ChatVizShapeIn(CamelModel):
-    """One shape the app reports this image can draw.
-
-    `type` is deliberately unconstrained beyond its length: a pack's Redash type
-    (`RIITS_DESTINATION_BOARD`) is a name this service has never heard of, and
-    letting the model name it is the entire point. Nothing here is read as
-    instructions; it becomes a list of ids and a bulleted guide.
-    """
-
     id: str = Field(max_length=64)
     type: str = Field(max_length=64)
     label: str = Field(max_length=80)
@@ -44,10 +36,6 @@ class ChatVizShapeIn(CamelModel):
 
 class ChatTurnIn(CamelModel):
     text: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
-    # The visualization shapes this instance offers, sent by the app's own route
-    # handler rather than by the browser (see app/src/lib/chat/viz-catalog.ts).
-    # Omitted by an older app, in which case the built-in core list is used and
-    # behaviour is unchanged. See services/ai_viz_catalog.py.
     viz_catalog: list[ChatVizShapeIn] | None = Field(default=None, max_length=60)
 
 

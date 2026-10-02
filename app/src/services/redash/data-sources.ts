@@ -1,11 +1,11 @@
 /**
  * Data sources against the real Redash backend.
  *
- * The list endpoint omits `options` — the detail view needs GET /:id.
+ * The list endpoint omits `options`, the detail view needs GET /:id.
  * GET /:id/schema may return {schema} directly or {job} to poll (refresh, or
  * a refresh already in progress); the finished job carries the schema in its
  * `result` field. Column shape varies by query runner: string[] or
- * {name, type}[] — normalize to the typed shape the schema browser expects.
+ * {name, type}[], normalize to the typed shape the schema browser expects.
  */
 
 import { redashApi, ApiError } from '@/services/api-client'

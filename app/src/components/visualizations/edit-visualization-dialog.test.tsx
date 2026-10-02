@@ -5,9 +5,6 @@ import type { QueryResultData } from '@/lib/mock-data'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import { EditVisualizationDialog } from './edit-visualization-dialog'
 
-// A renderer that writes an option from inside the preview, the way a map
-// renderer saves the view an analyst framed by hand. Mocked at the module the
-// lazy registry imports, so the dialog's own preview path is what is driven.
 vi.mock('./counter-renderer', () => ({
   CounterRenderer: ({
     onOptionsChange,
@@ -54,8 +51,6 @@ describe('EditVisualizationDialog', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
-  // The labels used to be text sitting above their controls, so a screen
-  // reader announced an unnamed button and an unnamed text box.
   it('names the type and name controls, not just the text beside them', () => {
     renderWithProviders(
       <EditVisualizationDialog open onClose={() => {}} data={data} onSave={() => {}} />
@@ -75,7 +70,6 @@ describe('EditVisualizationDialog', () => {
     expect(screen.getByText('Name').querySelector('[data-slot="required-marker"]')).toBeNull()
   })
 
-  // The type select showed 'TABLE' where the option it came from reads 'Table'.
   it('shows the type option label in the trigger, not the raw value', () => {
     renderWithProviders(
       <EditVisualizationDialog open onClose={() => {}} data={data} onSave={() => {}} />
@@ -99,10 +93,6 @@ describe('EditVisualizationDialog', () => {
   })
 })
 
-// A chart opened with every column reading '-- unused --'. The renderer infers a
-// mapping when none is saved, so the preview drew something the editor claimed
-// was not configured, and the first select the analyst touched replaced that
-// whole inference with a one-role mapping: a y with no x, which draws nothing.
 describe('EditVisualizationDialog chart column mapping', () => {
   const chartData: QueryResultData = {
     columns: [
@@ -125,8 +115,6 @@ describe('EditVisualizationDialog chart column mapping', () => {
     )
     await openChart(user)
 
-    // findBy: the editor for a type is loaded on demand, so the dialog opens
-    // before the chart editor's own controls are in the DOM.
     expect(await screen.findByLabelText('Role for day')).toBeInTheDocument()
     expect(screen.getByLabelText('Role for trips')).toBeInTheDocument()
   })
@@ -138,12 +126,8 @@ describe('EditVisualizationDialog chart column mapping', () => {
     )
     await openChart(user)
 
-    // The same choice the renderer makes with no mapping saved: first column as
-    // x, numeric columns as y. The editor now says so rather than showing the
-    // analyst a chart it describes as unconfigured.
     expect(screen.getByLabelText('Role for day')).toHaveTextContent('X Axis')
     expect(screen.getByLabelText('Role for trips')).toHaveTextContent('Y Axis')
-    // Not everything: a string column is no series until someone says it is.
     expect(screen.getByLabelText('Role for label')).toHaveTextContent('-- unused --')
   })
 
@@ -164,8 +148,6 @@ describe('EditVisualizationDialog chart column mapping', () => {
     )
   })
 
-  // An existing chart carries its own mapping, and it is the analyst's. Seeding
-  // over it would silently rewrite a saved visualization on open.
   it('leaves a mapping the visualization already has alone', () => {
     renderWithProviders(
       <EditVisualizationDialog
@@ -189,8 +171,6 @@ describe('EditVisualizationDialog chart column mapping', () => {
     expect(screen.getByLabelText('Role for day')).toHaveTextContent('Y Axis')
   })
 
-  // Nothing numeric to plot means there is no honest mapping to write, and half a
-  // mapping is worse than none: it takes the fallback away without replacing it.
   it('writes no mapping when there is nothing to infer', async () => {
     const user = userEvent.setup()
     renderWithProviders(
@@ -207,9 +187,6 @@ describe('EditVisualizationDialog chart column mapping', () => {
   })
 })
 
-// The preview is not read-only: a renderer that is handed the dialog's own
-// setter can write options the editor column then shows and Save persists.
-// Without this, framing a map in the preview would be lost on Save.
 describe('EditVisualizationDialog preview writes', () => {
   it('saves an option the preview renderer wrote', async () => {
     const user = userEvent.setup()

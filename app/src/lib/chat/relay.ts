@@ -64,15 +64,6 @@ export interface ChatJsonRelay<TRequest, TResponse> {
   requestSchema?: ZodType<TRequest>
   responseSchema?: ZodType<TResponse>
   maxRequestBytes?: number
-  /**
-   * Fields the SERVER adds to the validated body before it is forwarded: what
-   * the sidecar needs and the browser must not be trusted to state. The turn
-   * route sends the visualization catalog this image can actually draw.
-   *
-   * Applied after the request schema, so a `.strict()` schema still rejects a
-   * client that tries to send these itself, and applied last, so a client
-   * cannot override one.
-   */
   extend?: () => Record<string, unknown>
 }
 

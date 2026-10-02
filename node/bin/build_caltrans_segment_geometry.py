@@ -6,7 +6,7 @@ Network (SHN) Lines by `route` + `direction` + `postmile`, producing a
 district, or manually re-run when the geometry builder needs a fresh
 station snapshot (see the design spec's Decision 6 and "Domain, cadence,
 catalog" section: `docs/superpowers/specs/2026-09-23-freeway-speed-segments-design.md`).
-Not a query runner and never invoked by the app — matching the
+Not a query runner and never invoked by the app, matching the
 `bin/report_data_source_types.py` precedent for a repo-maintained,
 manually-run utility.
 
@@ -19,13 +19,13 @@ Inputs:
 
 - ``--stations``: a JSON array of station rows, the exact shape the
   `caltrans_atms` connector's `stations` resource returns (`vds_id`,
-  `route`, `direction`, `postmile`, plus whatever else it carries — only
+  `route`, `direction`, `postmile`, plus whatever else it carries, only
   those four are read here). Run `{"resource": "stations"}` once and save
   the rows.
 - ``--shn-lines``: a **GeoJSON** FeatureCollection of Caltrans State
   Highway Network Lines (see the design spec's Evidence section for the
   download page). This script has no shapefile-reading dependency and
-  never fetches geometry over the network itself, per Decision 6 — convert
+  never fetches geometry over the network itself, per Decision 6, convert
   a downloaded shapefile once, e.g.
   ``ogr2ogr -f GeoJSON shn_lines.geojson SHN_Lines.shp``. Each feature's
   properties must carry a route id and a postmile range; property names
@@ -34,7 +34,7 @@ Inputs:
   so a raw `ogr2ogr` export usually needs no manual renaming first. A
   `direction` property is used when present; when the input carries none,
   segments are matched by route and postmile only, a documented v1
-  limitation — see the implementation notes filed beside the design spec.
+  limitation: see the implementation notes filed beside the design spec.
 
 Algorithm (spec "Offline geometry builder" section):
 
@@ -45,11 +45,11 @@ Algorithm (spec "Offline geometry builder" section):
    `MAX_SEGMENT_DISTANCE_KM` of the pair's own midpoint. The distance check
    is not optional polish: a route's postmile numbering can reset or
    duplicate along its length (a county line, a realignment carrying its
-   own PMPrefix — see `PROPERTY_ALIASES` above), so route + direction +
+   own PMPrefix: see `PROPERTY_ALIASES` above), so route + direction +
    postmile alone can match a station pair to a same-numbered stretch tens
    of km away on the same route. Live District 7 data hit exactly this on
    US-101. Sort survivors by their own begin postmile, and concatenate
-   their coordinates into one LineString — orienting each segment to
+   their coordinates into one LineString, orienting each segment to
    connect to the running line's current end rather than assuming the
    source data's own coordinate order already runs start-to-end along the
    route. A pair with no matching SHN segment is skipped and reported, not
@@ -62,7 +62,7 @@ Algorithm (spec "Offline geometry builder" section):
 
 Postmile-interpolated exact-cut geometry (trimming a segment's ends to the
 station's own postmile rather than using the whole pre-cut SHN segment) is
-explicitly out of scope for v1 — pre-cut segment concatenation is the bar.
+explicitly out of scope for v1, pre-cut segment concatenation is the bar.
 """
 
 import argparse
@@ -72,7 +72,7 @@ import sys
 from collections import defaultdict
 
 # Run as `python bin/build_caltrans_segment_geometry.py`, so the script's own
-# directory (bin/, not a package) is normally on sys.path automatically —
+# directory (bin/, not a package) is normally on sys.path automatically,
 # except when a test loads this file by path with importlib, which does not
 # add it. Adding it explicitly makes the sibling import work either way, the
 # same reason report_data_source_types.py adds the project root for its own
@@ -111,7 +111,7 @@ def concatenate_segments(selected):
     """Join selected SHN segments' coordinates into one LineString.
 
     Each segment is oriented (reversed if needed) so its start connects to
-    the running line's current end — the source data's own per-feature
+    the running line's current end, the source data's own per-feature
     coordinate order is not assumed to already run start-to-end along the
     route.
     """
@@ -139,7 +139,7 @@ def build_features(stations, shn_by_route):
             selected = _select_shn_segments(shn_by_route, route, direction, lo, hi, midpoint)
             coords = concatenate_segments(selected) if selected else []
             # Each candidate passed the midpoint check on its own, which does
-            # not guarantee the concatenated chain is actually continuous —
+            # not guarantee the concatenated chain is actually continuous:
             # see has_continuity_break's docstring for the real case this
             # catches (two overlapping postmile logs on the same route).
             if len(coords) < 2 or has_continuity_break(coords):

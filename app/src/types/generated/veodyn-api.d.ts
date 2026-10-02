@@ -1242,15 +1242,7 @@ export interface components {
             /** Type */
             type: string;
         };
-        /**
-         * ChatVizShapeIn
-         * @description One shape the app reports this image can draw.
-         *
-         *     `type` is deliberately unconstrained beyond its length: a pack's Redash type
-         *     (`RIITS_DESTINATION_BOARD`) is a name this service has never heard of, and
-         *     letting the model name it is the entire point. Nothing here is read as
-         *     instructions; it becomes a list of ids and a bulleted guide.
-         */
+        /** ChatVizShapeIn */
         ChatVizShapeIn: {
             /** Guide */
             guide?: string | null;

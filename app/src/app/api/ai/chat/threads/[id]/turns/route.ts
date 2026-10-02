@@ -12,8 +12,6 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     path: `threads/${id}/turns`,
     requestSchema: turnRequestSchema,
     responseSchema: turnStartedSchema,
-    // Which shapes this image can draw, including any the installed packs add.
-    // Computed here rather than sent by the browser: see lib/chat/viz-catalog.ts.
     extend: () => ({ vizCatalog: vizCatalog() }),
   })
 }

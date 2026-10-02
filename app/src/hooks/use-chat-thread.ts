@@ -103,7 +103,7 @@ export function useChatThread(threadId: string): ChatThreadController {
   // via resync() would erase every card the live stream already rendered for
   // it. Reattaching without touching state is correct whenever the server
   // still calls the turn running; a full resync only happens once it has
-  // genuinely settled, when blocks — and the real outcome — are in hand.
+  // genuinely settled, when blocks, and the real outcome, are in hand.
   const reconnect = useCallback(
     (turnId: string) =>
       getThread(threadId).then((detail) => {

@@ -12,19 +12,9 @@ interface VisualizationRendererProps {
   visualization: MockVisualization
   data: QueryResultData
   annotations?: PlacedAnnotation[]
-  /** See the plugin contract: set by the edit dialog's preview alone. */
   onOptionsChange?: (options: Record<string, unknown>) => void
 }
 
-/**
- * Stands in for a renderer whose code has not arrived yet. Fills the pane it was
- * given rather than guessing a height; min-h-24 only stops an unconstrained
- * parent collapsing it to a zero-height box.
- *
- * aria-hidden, because VisualizationProblems below is a role="status" region in
- * this same subtree and a second one would put "loading" in competition with the
- * reason a visualization cannot draw.
- */
 function RendererFallback() {
   return (
     <div
@@ -34,11 +24,6 @@ function RendererFallback() {
   )
 }
 
-/**
- * Dispatches through the registry rather than a switch. The lookup is not
- * filtered by the instance allowlist: a widget saved before an operator disabled
- * its type must still draw, or turning a type off blanks existing dashboards.
- */
 export function VisualizationRenderer({
   visualization,
   data,
@@ -55,22 +40,12 @@ export function VisualizationRenderer({
     )
   }
 
-  // Every renderer takes the same props; ones that do not use annotations ignore
-  // them, which is cheaper than a per-type call site.
   const { Renderer } = plugin
   const options = (visualization.options ?? {}) as Record<string, unknown>
   const problems = validateVisualization(visualization.type, options, data)
 
-  // The theme boundary sits here because this is the one place every
-  // visualization passes through, core and plugin alike. For the default
-  // ('auto') it renders a display:contents element.
   return (
     <WidgetThemeBoundary theme={readWidgetTheme(options)}>
-      {/* Registered renderers are lazy (lib/visualizations/lazy-components.ts).
-          The boundary wraps the renderer ALONE, so the problems list is not
-          hidden behind the load of the thing that cannot draw. Keyed by type so
-          switching type in the edit dialog remounts it rather than leaving the
-          previous renderer on screen while the next one loads. */}
       <VisualizationProblems problems={problems} />
       <Suspense key={visualization.type} fallback={<RendererFallback />}>
         <Renderer

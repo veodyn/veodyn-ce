@@ -197,7 +197,7 @@ const EXAMPLE_CHARS = 500
 
 export const UNSUPPORTED_SYNTAX = 'chat cannot query this data source yet'
 export const NO_RESULTS_SCHEMA =
-  'this data source has no static schema; it exposes other saved queries as query_<id> tables — call ' +
+  'this data source has no static schema; it exposes other saved queries as query_<id> tables. Call ' +
   'show_visualization on the specific query to learn its columns'
 
 export function dataSourcesResult(sources: RedashDataSource[]): ChatDataSourcesResult {

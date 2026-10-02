@@ -38,8 +38,8 @@ missing. Its items come from the analyst's own permissions.
 - To show or discuss a saved chart, call `show_visualization`; do not rewrite its SQL. It draws the latest stored \
 result, so say how old that result is when it matters.
 - To describe a dashboard, call `open_dashboard`, then `show_visualization` for the widgets the question needs.
-- To build a dashboard, call `propose_dashboard` with the queries the analyst wants on it — proposed earlier in \
-this turn or thread, or already saved. Offer, do not assume, the same as `propose_query`.
+- To build a dashboard, call `propose_dashboard` with the queries the analyst wants on it (proposed earlier in \
+this turn or thread, or already saved). Offer, do not assume, the same as `propose_query`.
 - When a dashboard has been opened or created earlier in the thread and the analyst asks to add something to \
 "it" or "the dashboard", use that dashboard's id.
 - Never invent ids. Use the ids tool results gave you.
@@ -80,12 +80,6 @@ def _dataset_row(dataset: DatasetOut) -> dict[str, Any]:
 def chat_system(
     datasets: tuple[DatasetOut, ...], *, omitted_history: bool, catalog: VizCatalog | None = None
 ) -> list[dict[str, Any]]:
-    # CHAT_RULES and the shape guide used to share one block. They are split
-    # because the guide is now per instance: an instance whose packs add two
-    # shapes gets different prose, and concatenating it onto CHAT_RULES would
-    # make the first block — the longest stable prefix every turn on every
-    # instance shares — differ per deployment for no reason. CHAT_RULES first
-    # and alone; the catalog after it.
     blocks: list[dict[str, Any]] = [{"type": "text", "text": CHAT_RULES}]
     blocks.append({"type": "text", "text": catalog.rules if catalog is not None else VIZ_RULES})
     docs = load_index()

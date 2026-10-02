@@ -2033,7 +2033,6 @@
         "type": "object"
       },
       "ChatVizShapeIn": {
-        "description": "One shape the app reports this image can draw.\n\n`type` is deliberately unconstrained beyond its length: a pack's Redash type\n(`RIITS_DESTINATION_BOARD`) is a name this service has never heard of, and\nletting the model name it is the entire point. Nothing here is read as\ninstructions; it becomes a list of ids and a bulleted guide.",
         "properties": {
           "guide": {
             "anyOf": [

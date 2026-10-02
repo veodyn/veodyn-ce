@@ -57,9 +57,6 @@ class ToolContext:
     data_source_info: Callable[[int], DataSourceInfo | None]
     save_draft: SaveDraft
     query_draft_exists: Callable[[str], Awaitable[bool]]
-    # The shapes this instance offers. Defaulted so a caller that does not care
-    # about visualizations (every test of the SQL guards, among others) is
-    # unaffected, and so an older app sending no catalog gets today's list.
     catalog: VizCatalog = DEFAULT_CATALOG
     refusals: int = field(default=0)
     help_links: int = field(default=0)
@@ -96,17 +93,6 @@ VIZ_CHOICE_FIELD = "vizChoiceId"
 
 
 def _with_shapes(definition: dict[str, Any], catalog: VizCatalog) -> dict[str, Any]:
-    """One tool definition, with the shape field closed over this catalog.
-
-    `vizChoiceId` was a free string, so a shape the model invented arrived as a
-    warning in a log and a table on the analyst's screen. An enum makes it
-    unsayable instead. It is applied per turn rather than baked into the
-    definition because the list of shapes is per instance now.
-
-    Every layer this touches is copied rather than edited. The definitions are
-    module-level constants shared by every turn in the process, so patching one
-    in place would pin the first caller's catalog onto all of them.
-    """
     schema = definition.get("input_schema")
     if not isinstance(schema, dict):
         return dict(definition)

@@ -5,7 +5,7 @@ and its output format against the static_geojson schema it must match.
 The script is not a package, so it is loaded here by file path with
 importlib, the same way tests/test_report_data_source_types.py loads its
 sibling bin/ script. It has no redash import and no database dependency at
-all — everything except the round-trip test below runs standalone.
+all, everything except the round-trip test below runs standalone.
 
 Fixture coordinates are on a 0.01-degree grid (~1.1km per step) rather than
 whole degrees, because build_features now grounds every match in real
@@ -160,7 +160,7 @@ class TestSpatialSanity:
     matched a SHN segment near Ventura, and the concatenation jumped 90km to
     a same-numbered stretch near downtown LA before returning, because
     US-101's postmile numbering resets/duplicates along its length (county
-    lines, PMPrefix realignments — see the module docstring). Route,
+    lines, PMPrefix realignments: see the module docstring). Route,
     direction and postmile overlap all agreed; only the stations' own real
     coordinates, which that filter never consults, could have caught it.
     """

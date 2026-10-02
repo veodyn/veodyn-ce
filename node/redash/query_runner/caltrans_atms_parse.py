@@ -42,14 +42,14 @@ def parse_webinit(text):
     them right by one. Locating the route/direction token first and reading
     postmile/x/y/lon/lat as fixed offsets AFTER it, and the id/name as
     whatever sits BEFORE it, handles both shapes without guessing which one
-    a row is from token count alone — the defect a naive `len(parts) >= N`
+    a row is from token count alone, the defect a naive `len(parts) >= N`
     check has, per the design spec's warning against the prior `riits_tiles`
     experiment's earlier, naive `len(parts) >= 10` version (which its own
     iteration history shows was replaced because it mis-split real rows;
     this offset-from-the-anchor approach was verified instead, directly
     against a live fetch, because that prior experiment was never run to
     completion and its own combined-vs-separate assumptions do not hold
-    against real District 7 data either — see the implementation notes).
+    against real District 7 data either: see the implementation notes).
 
     A line that fails to parse is skipped and logged, not raised: one bad
     row must not fail every station in the feed.

@@ -99,19 +99,12 @@ describe('chat JSON relay', () => {
     expect(good.status).toBe(202)
     const sent = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body))
     expect(sent.text).toBe('hi')
-    // The route also sends the shapes this image can draw. Asserted by shape
-    // rather than by contents: the list is whatever the registry holds, and an
-    // installed pack adds to it. See lib/chat/viz-catalog.ts.
     expect(sent.vizCatalog).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: 'table', type: 'TABLE' })])
     )
   })
 
   it('sends the viz catalog itself rather than letting the browser state one', async () => {
-    // The catalog is what the model may ask for, so a client that could set it
-    // could name a type this image does not contain, or one an operator has
-    // switched off. turnRequestSchema is .strict() and the server's own field
-    // is added after that parse, so a forged one is a 400 and never forwarded.
     const fetchMock = vi.fn(async () => json({ turnId: THREAD, seq: 1 }, 202))
     vi.stubGlobal('fetch', fetchMock)
     mockChatModules()

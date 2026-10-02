@@ -177,7 +177,6 @@ BASELINE = {
     "api/veodyn_api/services/ai_grounding.py": 72,
     "api/veodyn_api/services/ai_outline.py": 19,
     "api/veodyn_api/services/ai_sql.py": 81,
-    "api/veodyn_api/services/ai_viz_choice.py": 68,
     "api/veodyn_api/services/ai_written_query.py": 28,
     "api/veodyn_api/services/capture_alert.py": 87,
     "api/veodyn_api/services/capture_expectations.py": 44,
@@ -836,8 +835,6 @@ BASELINE = {
     "app/src/components/visualizations/counter-renderer.tsx": 19,
     "app/src/components/visualizations/details-renderer.test.tsx": 3,
     "app/src/components/visualizations/details-renderer.tsx": 9,
-    "app/src/components/visualizations/edit-visualization-dialog.test.tsx": 17,
-    "app/src/components/visualizations/edit-visualization-dialog.tsx": 112,
     "app/src/components/visualizations/editors/box-plot-editor.test.tsx": 3,
     "app/src/components/visualizations/editors/box-plot-editor.tsx": 1,
     "app/src/components/visualizations/editors/chart-editor.test.tsx": 48,
@@ -916,8 +913,6 @@ BASELINE = {
     "app/src/components/visualizations/visualization-allowlist.test.tsx": 15,
     "app/src/components/visualizations/visualization-editor-slot.tsx": 16,
     "app/src/components/visualizations/visualization-problems.tsx": 9,
-    "app/src/components/visualizations/visualization-renderer.test.tsx": 20,
-    "app/src/components/visualizations/visualization-renderer.tsx": 24,
     "app/src/components/visualizations/visualization-type-label.test.tsx": 7,
     "app/src/components/visualizations/visualization-type-label.tsx": 13,
     "app/src/components/visualizations/viz-chrome-tokens.test.ts": 42,
@@ -1224,14 +1219,12 @@ BASELINE = {
     "app/src/lib/visualizations/kpi-history.ts": 56,
     "app/src/lib/visualizations/lazy-components.ts": 20,
     "app/src/lib/visualizations/option-schema.ts": 19,
-    "app/src/lib/visualizations/plugin.ts": 81,
     "app/src/lib/visualizations/registry.test.ts": 25,
     "app/src/lib/visualizations/registry.ts": 66,
     "app/src/lib/visualizations/validate-columns.test.ts": 19,
     "app/src/lib/visualizations/validate-columns.ts": 31,
     "app/src/lib/viz-audience.test.ts": 18,
     "app/src/lib/viz-choices.test.ts": 15,
-    "app/src/lib/viz-choices.ts": 55,
     "app/src/lib/widget-order.ts": 15,
     "app/src/lib/widget-theme-palette.test.ts": 12,
     "app/src/lib/widget-theme-palette.ts": 9,
@@ -1334,7 +1327,7 @@ BASELINE = {
     "app/veodyn.config.example.yaml": 87,
     "app/vitest.config.ts": 134,
     "ci/assemble-sources.sh": 164,
-    "ci/init-dev.yaml": 100,
+    "ci/init-dev.yaml": 99,
     "ci/init-prod.yaml": 26,
     "ci/redash-test.yaml": 234,
     "ci/scan-secrets.yaml": 153,
@@ -1371,14 +1364,10 @@ BASELINE = {
     "helm/depends/postgres_redis.sh": 14,
     "helm/depends/provision_clickhouse.sh": 18,
     "helm/depends/provision_db.sh": 69,
-    "helm/depends/provision_flow.sh": 34,
     "helm/depends/scripts/migrate_dashboards_redash.py": 38,
     "helm/depends/seed_flow_dev.sh": 77,
     "helm/depends/seed_shared_secret.sh": 57,
     "helm/depends/vars/veodyn-de/clickhouse-prod-values.yml": 14,
-    "helm/depends/vars/veodyn-de/flow-dev-values.yml": 59,
-    "helm/depends/vars/veodyn-de/flow-prod-values.yml": 86,
-    "helm/depends/vars/veodyn-de/postgres-prod-values.yml": 18,
     "helm/depends/vars/veodyn-de/redis-prod-values.yml": 7,
     "helm/deploy.sh": 10,
     "helm/envs/docs-dev/docs-app.yaml": 3,
@@ -1741,6 +1730,6 @@ BASELINE = {
     "validator/validator_service/validation.py": 44,
 }
 
-FILES_WITH_COMMENTS = 1740
-COMMENT_LINES = 46056
-FILES_SCANNED = 2276
+FILES_WITH_COMMENTS = 1729
+COMMENT_LINES = 45481
+FILES_SCANNED = 2286

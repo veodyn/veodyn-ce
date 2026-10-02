@@ -16,7 +16,7 @@ from redash.query_runner import (
 )
 
 # The documented color_code -> speed-range legend (13/1/3/2). Everything
-# else, including the undocumented 0 and 9 seen live, is "no_data" — see
+# else, including the undocumented 0 and 9 seen live, is "no_data": see
 # caltrans_atms.py's module docstring and Decision 4 of the design spec.
 OK_COLOR_CODES = {"13", "1", "3", "2"}
 
@@ -73,7 +73,7 @@ def reading_row(raw, observed_at):
     Shape one raw webupdate.txt record (vds_id/color_code/speed/volume/
     good_lanes strings) into a `readings` row. `speed_mph` always carries
     whatever Caltrans sent, verbatim: no color-range midpoint is invented
-    for an `ok` row, and nothing is nulled out for a `no_data` one — the
+    for an `ok` row, and nothing is nulled out for a `no_data` one, the
     raw field is what it is, `status` is what says whether to trust it.
     """
     color_code = raw["color_code"]

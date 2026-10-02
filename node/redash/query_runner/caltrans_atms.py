@@ -1,8 +1,8 @@
 """
 Caltrans District ATMS query runner.
 
-Reads a Caltrans district's plain-text ATMS feeds — station inventory
-(`webinit.txt`) and live readings (`webupdate.txt`) — for the district's
+Reads a Caltrans district's plain-text ATMS feeds, station inventory
+(`webinit.txt`) and live readings (`webupdate.txt`), for the district's
 Vehicle Detector Stations (VDS). `base_url` is a configuration field, not a
 hardcoded agency, so a second data source instance targets a different
 district by URL alone, the same way `go511.py`/`socaltransport.py` are
@@ -23,10 +23,10 @@ Two resources, columns and parsing split out for the repo's 300-line limit:
 record -> row shaping (`status` derivation included); `caltrans_atms_parse.py`
 holds the two text parsers.
 
-- `stations`: vds_id, name, route, direction, postmile, lon, lat — parsed
+- `stations`: vds_id, name, route, direction, postmile, lon, lat, parsed
   from `webinit.txt`. VDS rows only.
 - `readings`: vds_id, status, color_code, speed_mph, volume_per_30s,
-  good_lanes_pct, observed_at — parsed from `webupdate.txt`. Fixed-schema
+  good_lanes_pct, observed_at, parsed from `webupdate.txt`. Fixed-schema
   output (`connector_tables.to_fixed_table`, the same override `tmdd.py`
   and `ntcip_dms.py` use): every row carries every column, `no_data` rows
   included, so a table whose first row happens to be a healthy station
@@ -37,7 +37,7 @@ holds the two text parsers.
 `2`) maps to `"ok"`; any other value, including the undocumented `0` and `9`
 that make up the large majority of a district's stations at any given
 moment, maps to `"no_data"`. `color_code` is kept alongside, raw, in both
-cases — undocumented codes are surfaced, never guessed at, because guessing
+cases, undocumented codes are surfaced, never guessed at, because guessing
 here would fabricate a "quiet freeway" reading for most of the network.
 `observed_at` is this connector's own fetch time: the upstream feed carries
 no per-row timestamp of its own, so this must not be read, documented or
@@ -132,7 +132,7 @@ class CaltransATMS(BaseResourceRunner):
         # Configuration is validated here and returned, never raised: a data
         # source saved before base_url became required can still hold an
         # empty value, and the moment to say so is the moment someone runs a
-        # query — tmdd.py and ntcip_dms.py establish the same pattern.
+        # query, tmdd.py and ntcip_dms.py establish the same pattern.
         error = require_configured(self.type(), base_url=self.base_url)
         if error:
             return None, error
