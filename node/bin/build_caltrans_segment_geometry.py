@@ -84,8 +84,8 @@ from caltrans_segment_matching import (  # noqa: E402
     has_continuity_break,
     index_shn_lines,
 )
-from caltrans_segment_matching import (
-    select_shn_segments as _select_shn_segments,  # noqa: E402
+from caltrans_segment_matching import (  # noqa: E402
+    select_shn_segments as _select_shn_segments,
 )
 
 
