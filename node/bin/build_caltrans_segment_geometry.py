@@ -41,7 +41,14 @@ Algorithm (spec "Offline geometry builder" section):
 1. Group stations by `(route, direction)`, sort by `postmile`.
 2. For each adjacent pair, select SHN Lines features on the same route
    (and direction, when the input has one) whose postmile range overlaps
-   the pair's, sort them by their own begin postmile, and concatenate
+   the pair's AND whose geometry actually comes within
+   `MAX_SEGMENT_DISTANCE_KM` of the pair's own midpoint. The distance check
+   is not optional polish: a route's postmile numbering can reset or
+   duplicate along its length (a county line, a realignment carrying its
+   own PMPrefix — see `PROPERTY_ALIASES` above), so route + direction +
+   postmile alone can match a station pair to a same-numbered stretch tens
+   of km away on the same route. Live District 7 data hit exactly this on
+   US-101. Sort survivors by their own begin postmile, and concatenate
    their coordinates into one LineString — orienting each segment to
    connect to the running line's current end rather than assuming the
    source data's own coordinate order already runs start-to-end along the
@@ -64,78 +71,27 @@ import os
 import sys
 from collections import defaultdict
 
-PROPERTY_ALIASES = {
-    "route": ("route", "Route", "ROUTE", "RouteS", "RTE", "Route_ID"),
-    "direction": ("direction", "Direction", "DIRECTION", "Dir", "DIR"),
-    "begin_postmile": ("begin_postmile", "BeginPostmile", "BEGIN_PM", "BPostmile", "BPM", "PMBegin"),
-    "end_postmile": ("end_postmile", "EndPostmile", "END_PM", "EPostmile", "EPM", "PMEnd"),
-}
+# Run as `python bin/build_caltrans_segment_geometry.py`, so the script's own
+# directory (bin/, not a package) is normally on sys.path automatically —
+# except when a test loads this file by path with importlib, which does not
+# add it. Adding it explicitly makes the sibling import work either way, the
+# same reason report_data_source_types.py adds the project root for its own
+# import.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-
-def _prop(feature, key):
-    props = feature.get("properties") or {}
-    for alias in PROPERTY_ALIASES[key]:
-        if alias in props and props[alias] not in (None, ""):
-            return props[alias]
-    return None
-
-
-def _to_float(value):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _line_coordinates(geometry):
-    gtype = geometry.get("type")
-    if gtype == "LineString":
-        return geometry.get("coordinates") or []
-    if gtype == "MultiLineString":
-        coords = []
-        for part in geometry.get("coordinates") or []:
-            coords.extend(part)
-        return coords
-    return []
-
-
-def normalize_route(value):
-    """
-    "5", "005" and 5 must all key to the same route, so a zero-padded (or
-    otherwise differently-typed) GIS route id still matches the plain
-    integer-as-string route webinit.txt uses. Falls back to a stripped
-    string for a route id that isn't purely numeric (rare, but silently
-    dropping every pair on such a route into `skipped` would be worse).
-    """
-    try:
-        return str(int(value))
-    except (TypeError, ValueError):
-        return str(value).strip()
+from caltrans_segment_matching import (  # noqa: E402
+    direction_coverage,
+    has_continuity_break,
+    index_shn_lines,
+)
+from caltrans_segment_matching import (
+    select_shn_segments as _select_shn_segments,  # noqa: E402
+)
 
 
 def load_stations(path):
     with open(path) as fh:
         return json.load(fh)
-
-
-def index_shn_lines(path):
-    """route (normalized string) -> [{"lo", "hi", "direction", "coords"}, ...]."""
-    with open(path) as fh:
-        features = (json.load(fh) or {}).get("features", [])
-
-    index = defaultdict(list)
-    for feature in features:
-        route = _prop(feature, "route")
-        begin = _to_float(_prop(feature, "begin_postmile"))
-        end = _to_float(_prop(feature, "end_postmile"))
-        coords = _line_coordinates(feature.get("geometry") or {})
-        if route is None or begin is None or end is None or not coords:
-            continue
-        lo, hi = (begin, end) if begin <= end else (end, begin)
-        index[normalize_route(route)].append(
-            {"lo": lo, "hi": hi, "direction": _prop(feature, "direction"), "coords": coords}
-        )
-    return index
 
 
 def group_stations(stations):
@@ -145,16 +101,6 @@ def group_stations(stations):
     for key in groups:
         groups[key].sort(key=lambda s: s["postmile"])
     return groups
-
-
-def _select_shn_segments(shn_by_route, route, direction, lo, hi):
-    selected = [
-        seg
-        for seg in shn_by_route.get(normalize_route(route), [])
-        if (seg["direction"] is None or seg["direction"] == direction) and not (seg["hi"] < lo or seg["lo"] > hi)
-    ]
-    selected.sort(key=lambda seg: seg["lo"])
-    return selected
 
 
 def _dist2(a, b):
@@ -189,9 +135,14 @@ def build_features(stations, shn_by_route):
     for (route, direction), group in sorted(group_stations(stations).items()):
         for a, b in zip(group, group[1:]):
             lo, hi = sorted((a["postmile"], b["postmile"]))
-            selected = _select_shn_segments(shn_by_route, route, direction, lo, hi)
+            midpoint = ((a["lon"] + b["lon"]) / 2, (a["lat"] + b["lat"]) / 2)
+            selected = _select_shn_segments(shn_by_route, route, direction, lo, hi, midpoint)
             coords = concatenate_segments(selected) if selected else []
-            if len(coords) < 2:
+            # Each candidate passed the midpoint check on its own, which does
+            # not guarantee the concatenated chain is actually continuous —
+            # see has_continuity_break's docstring for the real case this
+            # catches (two overlapping postmile logs on the same route).
+            if len(coords) < 2 or has_continuity_break(coords):
                 skipped.append((a["vds_id"], b["vds_id"], route, direction))
                 continue
             features.append(
@@ -231,12 +182,6 @@ def write_output(out_dir, layer_id, title, features):
     return manifest
 
 
-def _direction_coverage(shn_by_route):
-    """(segments carrying a direction, total segments) across the whole index."""
-    segments = [seg for segs in shn_by_route.values() for seg in segs]
-    return sum(1 for seg in segments if seg["direction"] is not None), len(segments)
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--stations", required=True, help="Path to a JSON array of caltrans_atms stations rows.")
@@ -249,7 +194,7 @@ def main(argv=None):
     stations = load_stations(args.stations)
     shn_by_route = index_shn_lines(args.shn_lines)
 
-    with_direction, total = _direction_coverage(shn_by_route)
+    with_direction, total = direction_coverage(shn_by_route)
     if total and with_direction < total:
         print(
             f"Warning: {total - with_direction}/{total} SHN Lines segment(s) carry no recognized `direction` "
