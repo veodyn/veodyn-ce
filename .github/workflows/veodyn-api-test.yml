@@ -79,6 +79,11 @@ jobs:
       - run: uv run python -m veodyn_api.openapi > /tmp/openapi.json
       - run: diff -u openapi.json /tmp/openapi.json
 
+      # The chat's documentation index, generated from docs/docs and committed
+      # beside the sidecar. Same reason as the schema diff above: a heading
+      # renamed in the docs must not leave the model linking a dead anchor.
+      - run: uv run python -m veodyn_api.services.chat.help_index check ../docs/docs
+
       # Same reasoning, and the same loss, as the artifact step in
       # frontend-test.yml: the junit report survives, the Tests tab and the
       # coverage annotations do not exist here.

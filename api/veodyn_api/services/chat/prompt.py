@@ -3,6 +3,7 @@ from typing import Any
 from veodyn_api.schemas.catalog import DatasetOut
 from veodyn_api.services.ai_capture_semantics import CAPTURE_SEMANTICS
 from veodyn_api.services.ai_viz_choice import VIZ_RULES
+from veodyn_api.services.chat.help_index import load_index, prompt_block
 from veodyn_api.services.llm import compact_json
 
 MAX_COLUMNS = 60
@@ -30,6 +31,13 @@ missing. Its items come from the analyst's own permissions.
 result, so say how old that result is when it matters.
 - To describe a dashboard, call `open_dashboard`, then `show_visualization` for the widgets the question needs.
 - Never invent ids. Use the ids tool results gave you.
+- For questions about how Veodyn works, call `link_help` for the one to three sections of the documentation \
+index below that answer it, then say in a sentence or two what the analyst will find there, based on the index. \
+Do not describe steps, menus or settings the index does not show.
+- Never write documentation URLs; the links appear as cards.
+- If no page in the documentation index fits, say the documentation does not cover it.
+- When a question is about the analyst's data, use the data tools instead. When it is both ("how do I schedule \
+this query"), answer the data part and link the documentation for the how-to part.
 - Ask one question at a time, and only when the answer changes what you would run.
 - Keep answers short and plain."""
 
@@ -59,6 +67,9 @@ def _dataset_row(dataset: DatasetOut) -> dict[str, Any]:
 
 def chat_system(datasets: tuple[DatasetOut, ...], *, omitted_history: bool) -> list[dict[str, Any]]:
     blocks: list[dict[str, Any]] = [{"type": "text", "text": f"{CHAT_RULES}\n\n{VIZ_RULES}"}]
+    docs = load_index()
+    if docs is not None:
+        blocks.append({"type": "text", "text": prompt_block(docs)})
     if datasets:
         catalog = compact_json([_dataset_row(one) for one in datasets])
         blocks.append({"type": "text", "text": f"Tables you may read: {catalog}\n\n{CAPTURE_SEMANTICS}"})

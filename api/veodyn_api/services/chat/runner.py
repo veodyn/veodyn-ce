@@ -211,6 +211,8 @@ class TurnRunner:
         if isinstance(outcome, Immediate):
             if outcome.draft is not None:
                 await self._bus.emit(key, "draft", outcome.draft)
+            if outcome.frame is not None:
+                await self._bus.emit(key, *outcome.frame)
             return _tool_result(call_id, outcome.content, outcome.is_error)
         return await self._round_trip(key, outcome)
 

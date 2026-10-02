@@ -50,6 +50,12 @@ veodyn-api-test:
     # running `pnpm gen:api-types` and the committed schema no longer matches.
     - uv run python -m veodyn_api.openapi > /tmp/openapi.json
     - diff -u openapi.json /tmp/openapi.json
+    # Contract drift gate, half two. The chat's documentation index is generated
+    # from docs/docs and committed beside the sidecar, so a heading renamed in
+    # the docs would otherwise leave the model linking an anchor that no longer
+    # exists. Both repositories carry api/ and docs/, so this runs wherever the
+    # docs are edited.
+    - uv run python -m veodyn_api.services.chat.help_index check ../docs/docs
   # Reads the total off the `TOTAL ... 94%` line pytest-cov prints last.
   coverage: '/^TOTAL.+?(\d+\%)$/'
   artifacts:

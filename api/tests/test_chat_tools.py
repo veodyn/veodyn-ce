@@ -158,6 +158,7 @@ def test_the_registry_lists_every_tool_and_refuses_a_duplicate() -> None:
         "search_library",
         "show_visualization",
         "open_dashboard",
+        "link_help",
     ]
     with pytest.raises(ValueError):
         tools.register_chat_tool(tools.RUN_QUERY)
@@ -179,8 +180,8 @@ def test_the_system_prompt_carries_the_rules_and_the_catalog() -> None:
 def test_the_system_prompt_says_when_history_was_omitted_and_when_nothing_is_readable() -> None:
     blocks = chat_system((), omitted_history=True)
     assert blocks[-1]["text"] == HISTORY_OMITTED
-    assert "No warehouse tables are available" in blocks[1]["text"]
-    assert "existing queries and dashboards" in blocks[1]["text"]
+    assert "No warehouse tables are available" in blocks[-2]["text"]
+    assert "existing queries and dashboards" in blocks[-2]["text"]
 
 
 def test_the_rules_send_the_model_to_the_library_first() -> None:
@@ -251,4 +252,5 @@ def test_each_browser_tool_names_the_result_it_expects() -> None:
     assert tools.result_kind_for("show_visualization") == "saved_visualization"
     assert tools.result_kind_for("open_dashboard") == "dashboard"
     assert tools.result_kind_for("propose_query") is None
+    assert tools.result_kind_for("link_help") is None
     assert tools.result_kind_for("nope") is None

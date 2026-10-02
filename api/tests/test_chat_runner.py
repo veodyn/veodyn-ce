@@ -103,6 +103,7 @@ async def test_a_text_only_turn_streams_and_is_stored(db: Session, bus: TurnBus,
         "search_library",
         "show_visualization",
         "open_dashboard",
+        "link_help",
     ]
 
 
@@ -330,3 +331,34 @@ async def test_a_dashboard_result_settles_with_its_widget_count(db: Session, bus
     assert request["tool"] == "open_dashboard"
     settled = next(data for event, data in await frames(bus, turn) if event == "tool_settled")
     assert settled["count"] == 2 and "rowCount" not in settled
+
+
+async def test_a_help_link_is_shown_before_the_next_step_and_replays(db: Session, bus: TurnBus, sessions: Any) -> None:
+    turn = new_turn(db, "how do I rerun a query?")
+    seen_before_answer: list[str] = []
+
+    async def answer() -> ModelTurn:
+        seen_before_answer.extend(event for event, _ in await frames(bus, turn))
+        return text_turn("The Queries page covers running a query again.")
+
+    arguments = {"page": "features/queries", "section": "running-it-again", "reason": "Rerunning a query"}
+    model = ScriptedChatModel(tool_turn("h1", "link_help", arguments), answer)
+    await make_runner(model, bus, sessions).run(turn.id, turn.thread_id, 1, turn.user_text)
+
+    assert "help_link" in seen_before_answer
+    assert "tool_request" not in seen_before_answer
+    [card] = [data for event, data in await frames(bus, turn) if event == "help_link"]
+    assert card == {
+        "callId": "h1",
+        "page": "features/queries",
+        "pageTitle": "Queries",
+        "anchor": "running-it-again",
+        "sectionTitle": "Running it again",
+        "reason": "Rerunning a query",
+    }
+    [result] = model.calls[1]["messages"][2]["content"]
+    assert "is_error" not in result
+    assert json.loads(result["content"])["linked"] is True
+    done = stored(db, turn)
+    assert done.status == "done"
+    assert done.blocks[1]["content"] == [result]
