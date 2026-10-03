@@ -95,3 +95,31 @@ jobs:
 # check the DURATION first. Over ~1600s means it starved and a re-run will
 # pass. If that turns out to happen here, the fix is to lower `maxWorkers` in
 # app/vitest.config.ts to the runner's vCPU count before reaching for a retry.
+
+  viz-package:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: app
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:viz-host
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: viz-host-results
+          path: app/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+

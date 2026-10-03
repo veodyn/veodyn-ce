@@ -1,0 +1,40 @@
+name: viz-publish
+
+on:
+  push:
+    tags: ["viz-v*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: app
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:viz-host
+
+      - name: Set the version from the tag
+        working-directory: app/packages/viz
+        run: npm version --no-git-tag-version "${GITHUB_REF_NAME#viz-v}"
+
+      - name: Publish
+        working-directory: app/packages/viz
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
