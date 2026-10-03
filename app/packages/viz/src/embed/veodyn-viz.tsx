@@ -21,14 +21,14 @@ export interface VeodynVizProps {
   renderUnavailable?: () => ReactNode
 }
 
-const DEFINITE_LENGTH = /^\d*\.?\d+(px|r?em|ch|ex|[sld]?v[hw]|vmin|vmax|cm|mm|in|pt|pc)$/
-const DEFINITE_CALC = /^calc\([^%]*\)$/
+const INDEFINITE_HEIGHT =
+  /%|^(auto|none|stretch|min-content|max-content|fit-content|inherit|initial|unset|revert|revert-layer)$|^fit-content\(/i
 
 function fillHeight(height: CSSProperties['height']): string | undefined {
   if (typeof height === 'number') return `${height}px`
   if (typeof height !== 'string') return undefined
   const value = height.trim()
-  return DEFINITE_LENGTH.test(value) || DEFINITE_CALC.test(value) ? value : undefined
+  return value === '' || INDEFINITE_HEIGHT.test(value) ? undefined : value
 }
 
 function DefaultLoading() {

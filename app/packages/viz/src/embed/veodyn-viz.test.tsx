@@ -197,8 +197,17 @@ describe('VeodynViz', () => {
   it.each([
     ['60vh', '60vh'],
     ['calc(100vh - 4rem)', 'calc(100vh - 4rem)'],
+    ['20lh', '20lh'],
+    ['60dvb', '60dvb'],
+    ['400PX', '400PX'],
+    ['CALC(100vh - 1rem)', 'CALC(100vh - 1rem)'],
+    ['min(80vh, 600px)', 'min(80vh, 600px)'],
     ['100%', ''],
     ['fit-content', ''],
+    ['MAX-CONTENT', ''],
+    ['fit-content(20rem)', ''],
+    ['inherit', ''],
+    ['auto', ''],
     ['calc(100% - 2rem)', ''],
   ])('takes %s as a fill height only when it is a definite length', async (height, expected) => {
     server.use(http.get(ROUTE, () => HttpResponse.json(payload('TEST_VV_ROWS', 1))))
