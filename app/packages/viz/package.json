@@ -6,6 +6,8 @@
   "type": "module",
   "sideEffects": [
     "*.css",
+    "./src/lib/visualizations/index.ts",
+    "./src/lib/visualizations/core.ts",
     "./dist/lib/visualizations/index.js",
     "./dist/lib/visualizations/core.js"
   ],
