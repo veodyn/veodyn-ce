@@ -71,5 +71,10 @@ describe('the built package', () => {
     expect(css).toMatch(/\.veodyn\s*\{[^}]*--chart-1:/)
     expect(css).toMatch(/\.veodyn\[data-theme="dark"\][^{]*\{[^}]*--chart-1:/)
     expect(css).not.toMatch(/--font-sans-family\s*:/)
+    expect(css).not.toMatch(/--font-display-family\s*:/)
+  })
+
+  it('keeps a monospace stack for the parts that ask for one', () => {
+    expect(read('styles.css')).toMatch(/--font-mono-family\s*:\s*ui-monospace/)
   })
 })

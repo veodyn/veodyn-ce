@@ -13,7 +13,7 @@ function packageTokens(appCss) {
   root.walkRules((rule) => {
     if (rule.selector === '.dark') rule.selector = DARK_TOKENS
   })
-  root.walkDecls(/^--font-[a-z]+-family$/, (decl) => decl.remove())
+  root.walkDecls(/^--font-(sans|display)-family$/, (decl) => decl.remove())
   return root.toString()
 }
 
