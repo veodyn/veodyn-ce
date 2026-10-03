@@ -82,7 +82,7 @@ _NON_SECRET_KEY_SUFFIXES = ("name", "maxage", "enabled")
 # file might genuinely use for a value, and this detector is the only thing
 # standing between a deploy branch and a committed credential.
 _NON_SECRET_EXACT_KEYS = frozenset(
-    {"existingsecret", "existingtoken", "onepassworditempath"}
+    {"existingsecret", "existingtoken", "onepassworditempath", "id-token"}
 )
 
 

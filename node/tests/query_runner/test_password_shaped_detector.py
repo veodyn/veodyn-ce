@@ -79,3 +79,12 @@ def test_addressing_exemption_is_exact_and_does_not_excuse_lookalike_keys():
     assert len(offenders) == 2, offenders
     for offender in offenders:
         assert fake_credential not in offender, "the offender message must never carry the matched value"
+
+
+def test_a_workflow_oidc_permission_is_a_scope_not_a_credential():
+    workflow = "permissions:\n  contents: read\n  id-token: write\n"
+    assert password_shaped_offenders_in_text(".github/workflows/viz-publish.yml", workflow) == []
+
+    fake_credential = "NotHexOrBase64ShapedEither"
+    lookalikes = f'ID_TOKEN: "{fake_credential}"\nid-token-value: "{fake_credential}"\n'
+    assert len(password_shaped_offenders_in_text(".github/workflows/viz-publish.yml", lookalikes)) == 2
