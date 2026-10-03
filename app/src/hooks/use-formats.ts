@@ -11,43 +11,18 @@
 import { useMemo } from 'react'
 import { useOrgSettings } from '@/hooks/use-org-settings'
 import { useAuthStore } from '@/stores/auth-store'
-import type { DisplayPatterns } from '@/lib/date-pattern'
-import {
-  DEFAULT_DATE_FORMAT,
-  DEFAULT_TIME_FORMAT,
-  formatCalendarDate,
-  formatDate,
-  formatDateTime,
-} from '@/lib/format-datetime'
+import { DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT } from '@/lib/format-datetime'
+import { formatsFor, type Formats } from '@/lib/viz-formats'
 
-// Extends DisplayPatterns rather than restating its two fields, so a chart that
-// asks for the configured patterns can be handed this value directly and the
-// two definitions of "the operator's date and time format" cannot drift apart.
-export interface Formats extends DisplayPatterns {
-  /** The date alone, in the configured pattern. */
-  date: (value: unknown) => string
-  /** Date and time, in the two configured patterns. */
-  dateTime: (value: unknown) => string
-  /**
-   * A calendar day rather than an instant, in the configured pattern. Use for
-   * coverage bounds and similar: `date` would shift them across midnight.
-   */
-  calendarDate: (value: unknown) => string
-}
+export type { Formats }
 
-export function useFormats(): Formats {
-  const { data: orgSettings } = useOrgSettings()
+export function useFormats(opts: { enabled?: boolean } = {}): Formats {
+  const { data: orgSettings } = useOrgSettings(opts)
   const clientConfig = useAuthStore((s) => s.clientConfig)
 
   return useMemo(() => {
     const dateFormat = orgSettings?.date_format || clientConfig.dateFormat || DEFAULT_DATE_FORMAT
     const timeFormat = orgSettings?.time_format || DEFAULT_TIME_FORMAT
-    return {
-      dateFormat,
-      timeFormat,
-      date: (value: unknown) => formatDate(value, dateFormat),
-      dateTime: (value: unknown) => formatDateTime(value, dateFormat, timeFormat),
-      calendarDate: (value: unknown) => formatCalendarDate(value, dateFormat),
-    }
+    return formatsFor(dateFormat, timeFormat)
   }, [orgSettings?.date_format, orgSettings?.time_format, clientConfig.dateFormat])
 }

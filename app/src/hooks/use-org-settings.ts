@@ -14,9 +14,10 @@ export interface OrgSettings {
   [key: string]: unknown
 }
 
-export function useOrgSettings() {
+export function useOrgSettings(opts: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ['org-settings'],
+    enabled: opts.enabled ?? true,
     queryFn: async () => {
       // Mock mode has no backend to ask, so the cache is the whole store. It
       // starts empty and consumers fall back to their defaults; a save below

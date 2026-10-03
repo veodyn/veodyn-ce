@@ -17,7 +17,7 @@ import { resolveSeriesColor } from '@/lib/chart-colors'
 import { formatCompactNumber } from '@/lib/chart-format'
 import { ACTIVE_DOT, CHART_INITIAL_DIMENSION, LINE_MARK } from '@/lib/chart-marks'
 import type { DisplayPatterns } from '@/lib/date-pattern'
-import { useFormats } from '@/hooks/use-formats'
+import { useVizFormats } from '@/lib/viz-formats'
 import { cn } from '@/lib/utils'
 import type { MetricTarget, MetricThresholds } from '@/types/metric'
 import {
@@ -104,7 +104,7 @@ export function KpiHistoryChart({
   // The one read of Settings > Formats on this chart. Every surface that writes
   // a timestamp (the accessible summary, the hover panel, the x axis) takes it
   // from here.
-  const patterns = useFormats()
+  const patterns = useVizFormats()
 
   if (history.length === 0) {
     // A blank box reads as a broken chart. Say why it is empty: a KPI has no

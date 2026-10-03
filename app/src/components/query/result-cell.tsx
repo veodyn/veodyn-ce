@@ -1,7 +1,7 @@
 'use client'
 
 import { TableCell } from '@/components/ui/table'
-import { useFormats } from '@/hooks/use-formats'
+import { useVizFormats } from '@/lib/viz-formats'
 import {
   resolveImageCell,
   resolveLinkCell,
@@ -24,7 +24,7 @@ interface ResultCellProps {
  * that goes nowhere is worse than the value it replaced.
  */
 export function ResultCell({ value, row, columnType, config }: ResultCellProps) {
-  const formats = useFormats()
+  const formats = useVizFormats()
   const displayAs = config?.displayAs
 
   const text = () => {

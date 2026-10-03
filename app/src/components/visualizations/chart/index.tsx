@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { useFormats } from '@/hooks/use-formats'
+import { useVizFormats } from '@/lib/viz-formats'
 import { resolveChartConfig } from './resolve-config'
 import { buildChartData } from './transform-data'
 import { LineAreaChart } from './line-area-chart'
@@ -18,7 +18,7 @@ export function ChartRenderer({ visualization, data, annotations }: ChartRendere
   // takes its form from here, threaded down as `patterns`, so a chart cannot
   // show one format on its axis and another in its tooltip. The renderers stay
   // free of hooks and remain testable without a provider.
-  const patterns = useFormats()
+  const patterns = useVizFormats()
 
   switch (config.chartType) {
     case 'pie':

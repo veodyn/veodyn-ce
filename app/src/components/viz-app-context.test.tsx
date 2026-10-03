@@ -5,6 +5,7 @@ import { QueryResultTable } from '@/components/query/query-result-table'
 import { buildCurrentUser } from '@/stores/auth-identity'
 import { useAuthStore } from '@/stores/auth-store'
 import { resetStores } from '@/test/utils'
+import { useVizFormats } from '@/lib/viz-formats'
 import { useAppResultDownloads, VizAppContext } from './viz-app-context'
 
 function signIn(permissions: string[]) {
@@ -75,5 +76,36 @@ describe('VizAppContext', () => {
     renderTable()
 
     expect(screen.queryByRole('button', { name: /Download/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('VizAppContext formats', () => {
+  function formatsUnder(client: QueryClient) {
+    return renderHook(() => useVizFormats(), {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={client}>
+          <VizAppContext>{children}</VizAppContext>
+        </QueryClientProvider>
+      ),
+    })
+  }
+
+  it('gives visualizations the organization date pattern for a signed-in reader', () => {
+    signIn(['view_query'])
+    const client = new QueryClient()
+    client.setQueryData(['org-settings'], { date_format: 'YYYY/MM/DD' })
+
+    const { result } = formatsUnder(client)
+
+    expect(result.current.dateFormat).toBe('YYYY/MM/DD')
+  })
+
+  it('never asks for organization settings on behalf of an anonymous reader', () => {
+    const client = new QueryClient()
+
+    formatsUnder(client)
+
+    expect(client.getQueryCache().find({ queryKey: ['org-settings'] })?.state.fetchStatus ?? 'idle').toBe('idle')
+    expect(client.getQueryData(['org-settings'])).toBeUndefined()
   })
 })
