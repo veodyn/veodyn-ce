@@ -26,26 +26,7 @@ import { SkeletonCard } from '@/components/ui/skeleton-card'
 import { usePublicVisualization } from '@/hooks/use-visualizations'
 import { visualizationData } from '@veodyn/viz'
 import { PUBLIC_VISUALIZATION_ID } from '@veodyn/viz/lib/public-visualization'
-
-// The bounds on `?refresh=`, in seconds. The floor keeps a mistyped `1` from
-// hammering the backend once per second from every screen in a lobby; the
-// ceiling exists only because a cadence past an hour is indistinguishable from
-// a stale page, and clamping beats ignoring.
-const MIN_REFRESH_SECONDS = 15
-const MAX_REFRESH_SECONDS = 3600
-
-/**
- * The refetch cadence a link asked for, in milliseconds, or null for a link
- * that did not ask. Absent and unreadable both mean null: a link minted before
- * the parameter existed keeps behaving the way it always did, fetch once.
- */
-function refreshIntervalMs(value: string | string[] | undefined): number | null {
-  const text = Array.isArray(value) ? value[0] : value
-  if (!text) return null
-  const seconds = Number(text)
-  if (!Number.isFinite(seconds) || seconds <= 0) return null
-  return Math.min(Math.max(Math.round(seconds), MIN_REFRESH_SECONDS), MAX_REFRESH_SECONDS) * 1000
-}
+import { refreshIntervalMs } from '@veodyn/viz/embed/refresh'
 
 function Unavailable() {
   return (
