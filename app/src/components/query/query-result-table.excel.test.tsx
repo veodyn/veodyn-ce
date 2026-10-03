@@ -11,7 +11,12 @@ import type { QueryResultData } from '@/lib/mock-data'
 import { buildCurrentUser } from '@/stores/auth-identity'
 import { useAuthStore } from '@/stores/auth-store'
 import { renderWithProviders, resetStores } from '@/test/utils'
+import { useAppResultDownloads } from '@/components/viz-app-context'
 import { QueryResultTable } from './query-result-table'
+
+function SavedQueryTable({ queryId }: { queryId?: number }) {
+  return <QueryResultTable data={DATA} downloads={useAppResultDownloads(queryId)} />
+}
 
 // The download control is gated on canExportData, which is false with nobody
 // signed in.
@@ -40,7 +45,7 @@ async function openDownloads(user: ReturnType<typeof userEvent.setup>) {
 describe('the download menu', () => {
   it('offers Excel for a saved query, pointed at the backend that makes it', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<QueryResultTable data={DATA} queryId={8} />)
+    renderWithProviders(<SavedQueryTable queryId={8} />)
 
     await openDownloads(user)
 
@@ -56,7 +61,7 @@ describe('the download menu', () => {
   // download from. Offering a dead link would be worse than not offering it.
   it('offers only the client-side formats without a saved query', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<QueryResultTable data={DATA} />)
+    renderWithProviders(<SavedQueryTable />)
 
     await openDownloads(user)
 
@@ -66,7 +71,7 @@ describe('the download menu', () => {
 
   it('still offers CSV and TSV', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<QueryResultTable data={DATA} queryId={8} />)
+    renderWithProviders(<SavedQueryTable queryId={8} />)
 
     await openDownloads(user)
 

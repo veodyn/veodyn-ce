@@ -6,6 +6,7 @@ import {
 } from 'next/dist/shared/lib/app-router-context.shared-runtime'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConfigProvider } from '@/components/config/config-provider'
+import { VizAppContext } from '@/components/viz-app-context'
 import { NEUTRAL_CONFIG, toClientConfig, type ClientConfig } from '@/lib/config-schema'
 import { useAuthStore, type CurrentUser, type Permission } from '@/stores/auth-store'
 import { mockPublishAttempts, mockPublishedFeeds, mockUsers } from '@/lib/mock-data'
@@ -114,7 +115,9 @@ export function renderWithProviders(
     return (
       <ConfigProvider value={value}>
         <AppRouterContext.Provider value={STUB_ROUTER}>
-          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+          <QueryClientProvider client={queryClient}>
+            <VizAppContext>{children}</VizAppContext>
+          </QueryClientProvider>
         </AppRouterContext.Provider>
       </ConfigProvider>
     )

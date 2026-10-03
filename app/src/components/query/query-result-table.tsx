@@ -5,7 +5,7 @@ import { Download, Search, ChevronDown } from 'lucide-react'
 import type { QueryResultData } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { downloadCSV, downloadTSV } from '@/lib/download'
-import { usePolicy } from '@/lib/policy'
+import { useResultDownloads, type ResultDownloads } from '@/lib/result-downloads'
 import type { RedashTableColumnOptions } from '@/services/redash/types'
 import { displayColumns } from '@/lib/filters/result-filters'
 import { reorderColumns } from '@/lib/table-columns'
@@ -25,11 +25,7 @@ interface QueryResultTableProps {
   data: QueryResultData
   className?: string
   columns?: RedashTableColumnOptions[]
-  /**
-   * The saved query behind these rows, when there is one. Only used to offer
-   * the backend's own xlsx export; an ad hoc result has no URL to point at.
-   */
-  queryId?: number
+  downloads?: ResultDownloads
   onColumnsChange?: (columns: RedashTableColumnOptions[]) => void
 }
 
@@ -60,7 +56,7 @@ export function QueryResultTable({
   data: rawData,
   className,
   columns: columnConfig,
-  queryId,
+  downloads: downloadsProp,
   onColumnsChange,
 }: QueryResultTableProps) {
   const data = useMemo(() => applyColumnConfig(rawData, columnConfig), [rawData, columnConfig])
@@ -79,7 +75,9 @@ export function QueryResultTable({
   // this component's props, so a reader with a console, or with the query's own
   // results.csv at the Redash origin, is unaffected. Removing the control is a
   // policy signal, not a boundary, and it is the whole of what was asked for.
-  const canExport = usePolicy().canExportData()
+  const contextDownloads = useResultDownloads()
+  const downloads = downloadsProp ?? contextDownloads
+  const canDownload = !!downloads && (downloads.csv || downloads.tsv || !!downloads.xlsxHref)
   const [search, setSearch] = useState('')
   const [sortCol, setSortCol] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -139,7 +137,7 @@ export function QueryResultTable({
           {filteredRows.length} {filteredRows.length === 1 ? 'row' : 'rows'}
         </span>
         <div className="flex-1" />
-        {canExport && (
+        {downloads && canDownload && (
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
               <Download className="h-3 w-3" />
@@ -147,18 +145,10 @@ export function QueryResultTable({
               <ChevronDown className="h-3 w-3" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => downloadCSV(data)}>CSV</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => downloadTSV(data)}>TSV</DropdownMenuItem>
-              {/* Only for a saved query: an ad hoc result has no URL behind it,
-                  and a dead link is worse than no option. xlsx is not
-                  hand-rolled here because Redash already generates it; the
-                  proxy carries the bytes back untouched. */}
-              {queryId != null && (
-                <DropdownMenuItem
-                  render={
-                    <a href={`/api/node/queries/${queryId}/results.xlsx`} download />
-                  }
-                >
+              {downloads.csv && <DropdownMenuItem onClick={() => downloadCSV(data)}>CSV</DropdownMenuItem>}
+              {downloads.tsv && <DropdownMenuItem onClick={() => downloadTSV(data)}>TSV</DropdownMenuItem>}
+              {downloads.xlsxHref && (
+                <DropdownMenuItem render={<a href={downloads.xlsxHref} download />}>
                   Excel (.xlsx)
                 </DropdownMenuItem>
               )}

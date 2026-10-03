@@ -14,6 +14,7 @@ import { VisualizationRenderer } from '@/components/visualizations/visualization
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { visualizationData } from '@/lib/visualizations'
 import type { RedashTableColumnOptions, RedashTableOptions } from '@/services/redash/types'
+import { useAppResultDownloads } from '@/components/viz-app-context'
 import { QueryResultTable } from './query-result-table'
 
 export interface VisualizationTabPanelProps {
@@ -42,6 +43,7 @@ export function VisualizationTabPanel({
   queryId,
   onColumnsChange,
 }: VisualizationTabPanelProps) {
+  const downloads = useAppResultDownloads(queryId)
   const data = visualizationData(viz.type, resultData)
 
   if (!data) {
@@ -72,7 +74,7 @@ export function VisualizationTabPanel({
       <QueryResultTable
         data={data}
         columns={columns}
-        queryId={queryId}
+        downloads={downloads}
         onColumnsChange={onColumnsChange}
       />
     )

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { ConfigProvider } from '@/components/config/config-provider'
 import { isAppError } from '@/lib/errorIds'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { VizAppContext } from '@/components/viz-app-context'
 import { IdentifyUser } from '@/lib/observability/IdentifyUser'
 import { reportQueryError } from '@/lib/observability/querySeam'
 import { TelemetryProvider } from '@/lib/observability/TelemetryProvider'
@@ -152,7 +153,9 @@ export function Providers({
         <IdentityScopedQueryProvider key={cacheEpoch}>
           {/* One provider for the whole app, so icon buttons across a toolbar
               share a hover delay rather than each imposing a fresh one. */}
-          <TooltipProvider>{children}</TooltipProvider>
+          <TooltipProvider>
+            <VizAppContext>{children}</VizAppContext>
+          </TooltipProvider>
         </IdentityScopedQueryProvider>
       </TelemetryProvider>
     </ConfigProvider>
