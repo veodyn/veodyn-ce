@@ -24,6 +24,7 @@
     "src/lib/visualizations/index.ts",
     "src/plugins/index.ts",
     "src/plugins/*/index.ts",
+    "packages/viz/src/index.ts",
 
     // SEAM 2: the generated static import map.
     //

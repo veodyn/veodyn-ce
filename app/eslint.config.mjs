@@ -51,9 +51,10 @@ const eslintConfig = defineConfig([
     // same guardrails. It sat outside this glob briefly and a raw <button>
     // under src/plugins linted clean, which is the whole failure this rule
     // exists to prevent.
-    files: ["src/components/**/*.tsx", "src/app/**/*.tsx", "src/plugins/**/*.tsx"],
+    files: ["src/components/**/*.tsx", "src/app/**/*.tsx", "src/plugins/**/*.tsx", "packages/*/src/**/*.tsx"],
     ignores: [
       "src/components/ui/**",
+      "packages/*/src/components/ui/**",
       // Test harnesses legitimately build raw DOM to drive a component under
       // test. 9 raw buttons live in test files. ADDED 2026-07-28 from the
       // batch 2 lesson: the label rule blocked on exactly this and cost a

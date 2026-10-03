@@ -1,0 +1,50 @@
+{
+  "name": "@veodyn/viz",
+  "version": "0.0.0",
+  "description": "Render Veodyn visualizations natively in a React or Next.js page.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "sideEffects": [
+    "*.css",
+    "./dist/lib/visualizations/index.js",
+    "./dist/lib/visualizations/core.js"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./ui": {
+      "types": "./dist/types/ui.d.ts",
+      "default": "./dist/ui.js"
+    },
+    "./normalize": {
+      "types": "./dist/types/normalize.d.ts",
+      "default": "./dist/normalize.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.90.21",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.3.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "d3-cloud": "^1.2.9",
+    "d3-hierarchy": "^3.1.2",
+    "d3-shape": "^3.2.0",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.577.0",
+    "maplibre-gl": "^4.7.1",
+    "react-map-gl": "^7.1.9",
+    "recharts": "^3.8.0",
+    "tailwind-merge": "^3.5.0"
+  }
+}
