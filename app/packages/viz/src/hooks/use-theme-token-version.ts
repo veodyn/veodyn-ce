@@ -1,48 +1,57 @@
 'use client'
 
-import { useSyncExternalStore } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 
-// A counter that changes whenever the active token scope changes, for renderers
-// that resolve CSS custom properties to concrete values and cache the result.
-// MapLibre paints WebGL fills and cannot read a CSS variable, so a choropleth
-// bakes hex into its feature collection; without this it keeps painting the
-// previous theme until the data changes.
-//
-// It watches document.documentElement's class and data-theme rather than the
-// React context, because the class is what decides which tokens
-// getComputedStyle resolves, and authenticated-layout.tsx adds it in an effect
-// that runs after the render which already read the old values.
-let version = 0
-const listeners = new Set<() => void>()
-let observer: MutationObserver | null = null
+interface Watch {
+  version: number
+  listeners: Set<() => void>
+  observer: MutationObserver | null
+}
 
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener)
-  if (!observer) {
-    observer = new MutationObserver(() => {
-      version += 1
-      for (const l of listeners) l()
+const watches = new Map<Element, Watch>()
+
+function watchFor(target: Element): Watch {
+  let watch = watches.get(target)
+  if (!watch) {
+    watch = { version: 0, listeners: new Set(), observer: null }
+    watches.set(target, watch)
+  }
+  return watch
+}
+
+function subscribeTo(target: Element, listener: () => void): () => void {
+  const watch = watchFor(target)
+  watch.listeners.add(listener)
+  if (!watch.observer) {
+    watch.observer = new MutationObserver(() => {
+      watch.version += 1
+      for (const l of watch.listeners) l()
     })
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class', 'data-theme'],
-    })
+    watch.observer.observe(target, { attributes: true, attributeFilter: ['class', 'data-theme'] })
   }
   return () => {
-    listeners.delete(listener)
-    if (listeners.size === 0) {
-      observer?.disconnect()
-      observer = null
+    watch.listeners.delete(listener)
+    if (watch.listeners.size === 0) {
+      watch.observer?.disconnect()
+      watches.delete(target)
     }
   }
 }
 
-export function useThemeTokenVersion(): number {
+function targetOf(root: Element | null | undefined): Element | null {
+  if (root) return root
+  return typeof document === 'undefined' ? null : document.documentElement
+}
+
+export function useThemeTokenVersion(root?: Element | null): number {
+  const target = targetOf(root)
+  const subscribe = useCallback(
+    (listener: () => void) => (target ? subscribeTo(target, listener) : () => {}),
+    [target]
+  )
   return useSyncExternalStore(
     subscribe,
-    () => version,
-    // The server has no theme class to read, and a mismatch here would
-    // re-render every subscriber on hydration.
-    () => 0,
+    () => (target ? (watches.get(target)?.version ?? 0) : 0),
+    () => 0
   )
 }

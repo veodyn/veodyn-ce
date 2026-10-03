@@ -112,8 +112,8 @@ export function useHeatmapGridInteraction(xCategories: string[], yCategories: st
   // light/dark toggle invalidates inkFor's memoization (see the comment on
   // inkFor). See choropleth-renderer.tsx for the same pattern against the
   // same hazard.
-  const themeVersion = useThemeTokenVersion()
   const { root } = useVizEnvironment()
+  const themeVersion = useThemeTokenVersion(root)
 
   // getSequentialScale reads no CSS custom property at all: its returned
   // function closes over nothing but (min, max) and emits a live CSS

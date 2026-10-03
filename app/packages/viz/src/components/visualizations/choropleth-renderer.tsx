@@ -59,8 +59,8 @@ export function ChoroplethRenderer({ visualization, data }: ChoroplethRendererPr
   // an unhandled request, and skip it entirely when the regions come from the
   // result: there is no asset to load.
   const { data: geojson, isLoading, isError } = useVizGeoJson(mapType, { enabled: hasColumns && !fromColumn })
-  const themeVersion = useThemeTokenVersion()
   const { root } = useVizEnvironment()
+  const themeVersion = useThemeTokenVersion(root)
   const isDark = useThemeScope() === 'dark'
 
   const model = useMemo(() => {
