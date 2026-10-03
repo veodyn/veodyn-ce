@@ -22,7 +22,7 @@ export interface VeodynVizProps {
 }
 
 const INDEFINITE_HEIGHT =
-  /%|^(auto|none|stretch|min-content|max-content|fit-content|inherit|initial|unset|revert|revert-layer)$|^fit-content\(/i
+  /%|var\(|calc-size\(|fill-available|-moz-available|\b(auto|none|stretch|min-content|max-content|fit-content|inherit|initial|unset|revert|revert-layer)\b/i
 
 function fillHeight(height: CSSProperties['height']): string | undefined {
   if (typeof height === 'number') return `${height}px`

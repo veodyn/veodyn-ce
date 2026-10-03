@@ -208,6 +208,18 @@ describe('VeodynViz', () => {
     ['fit-content(20rem)', ''],
     ['inherit', ''],
     ['auto', ''],
+    ['none', ''],
+    ['stretch', ''],
+    ['min-content', ''],
+    ['initial', ''],
+    ['unset', ''],
+    ['revert', ''],
+    ['revert-layer', ''],
+    ['-webkit-fill-available', ''],
+    ['-moz-available', ''],
+    ['calc-size(auto, size)', ''],
+    ['var(--host-height, auto)', ''],
+    ['var(--host-height)', ''],
     ['calc(100% - 2rem)', ''],
   ])('takes %s as a fill height only when it is a definite length', async (height, expected) => {
     server.use(http.get(ROUTE, () => HttpResponse.json(payload('TEST_VV_ROWS', 1))))
