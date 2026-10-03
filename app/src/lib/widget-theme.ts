@@ -10,7 +10,7 @@
 //
 // Pure, so the option parsing and the resolution rule stay testable without a
 // DOM and cannot drift between the renderer and the editor that sets them.
-import type { ResolvedTheme } from './theme-preference'
+import type { ThemeScope } from '@/components/theme/theme-scope'
 
 /** 'auto' follows the reader; the other two override them. */
 export type WidgetTheme = 'auto' | 'light' | 'dark'
@@ -48,6 +48,6 @@ export function readWidgetTheme(options: unknown): WidgetTheme {
 }
 
 /** What the widget actually renders as, once the reader's theme is known. */
-export function resolveWidgetTheme(theme: WidgetTheme, appTheme: ResolvedTheme): ResolvedTheme {
+export function resolveWidgetTheme(theme: WidgetTheme, appTheme: ThemeScope): ThemeScope {
   return theme === 'auto' ? appTheme : theme
 }
