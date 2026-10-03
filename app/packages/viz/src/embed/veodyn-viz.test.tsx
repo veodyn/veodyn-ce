@@ -135,6 +135,44 @@ describe('VeodynViz', () => {
     expect(screen.getByText('Ridership: 2 rows')).toBeInTheDocument()
   })
 
+  it.each([502, 503, 429])('keeps the last good render when a poll answers %i', async (status) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    let calls = 0
+    server.use(
+      http.get(ROUTE, () => {
+        calls += 1
+        return calls === 1 ? HttpResponse.json(payload('TEST_VV_ROWS', 2)) : HttpResponse.json({}, { status })
+      })
+    )
+
+    renderViz({ refreshSeconds: 15 })
+    await screen.findByText('Ridership: 2 rows')
+    await act(() => vi.advanceTimersByTimeAsync(15_000))
+
+    await waitFor(() => expect(calls).toBeGreaterThanOrEqual(2))
+    expect(screen.getByText('Ridership: 2 rows')).toBeInTheDocument()
+  })
+
+  it('shows the unavailable panel when the very first fetch hits an outage', async () => {
+    server.use(http.get(ROUTE, () => HttpResponse.json({}, { status: 503 })))
+
+    renderViz()
+
+    expect(await screen.findByText('This visualization is no longer available.')).toBeInTheDocument()
+  })
+
+  it('names an unregistered type even when the payload carries no result', async () => {
+    server.use(
+      http.get(ROUTE, () =>
+        HttpResponse.json({ visualization: { type: 'PACK_IMAGE_PANEL', name: 'Camera', description: '', options: {} }, data: null })
+      )
+    )
+
+    renderViz()
+
+    expect(await screen.findByText(/Unsupported visualization type: PACK_IMAGE_PANEL/)).toBeInTheDocument()
+  })
+
   it('exposes a root part and takes the host sizing', async () => {
     server.use(http.get(ROUTE, () => HttpResponse.json(payload('TEST_VV_ROWS', 1))))
 
@@ -144,6 +182,26 @@ describe('VeodynViz', () => {
     const root = container.querySelector('[data-veodyn-part="root"]')
     expect(root).toHaveClass('h-96')
     expect(root).toHaveStyle({ height: '300px' })
+  })
+
+  it('turns a host height into the height charts fill', async () => {
+    server.use(http.get(ROUTE, () => HttpResponse.json(payload('TEST_VV_ROWS', 1))))
+
+    const { container } = renderViz({ style: { height: 300 } })
+
+    await screen.findByText('Ridership: 1 rows')
+    const root = container.querySelector<HTMLElement>('[data-veodyn-part="root"]')
+    expect(root?.style.getPropertyValue('--chart-frame-fill')).toBe('300px')
+  })
+
+  it('leaves the fill height alone when the host sizes the widget another way', async () => {
+    server.use(http.get(ROUTE, () => HttpResponse.json(payload('TEST_VV_ROWS', 1))))
+
+    const { container } = renderViz({ className: 'h-96' })
+
+    await screen.findByText('Ridership: 1 rows')
+    const root = container.querySelector<HTMLElement>('[data-veodyn-part="root"]')
+    expect(root?.style.getPropertyValue('--chart-frame-fill')).toBe('')
   })
 
   it('refuses to render outside a provider, saying why', () => {

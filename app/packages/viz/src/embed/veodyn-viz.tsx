@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import type { CSSProperties, ReactNode } from 'react'
 import { CHART_FILL_VAR } from '../lib/chart-marks'
 import { PUBLIC_VISUALIZATION_ID } from '../lib/public-visualization'
-import { visualizationData } from '../lib/visualizations/data-gate'
+import { EMPTY_QUERY_RESULT, visualizationData } from '../lib/visualizations/data-gate'
+import { getVisualization } from '../lib/visualizations/registry'
 import { VisualizationErrorBoundary } from '../components/visualizations/visualization-error-boundary'
 import { VisualizationRenderer } from '../components/visualizations/visualization-renderer'
 import { fetchPublicVisualization } from './fetch-public-visualization'
@@ -18,6 +19,11 @@ export interface VeodynVizProps {
   style?: CSSProperties
   renderLoading?: () => ReactNode
   renderUnavailable?: () => ReactNode
+}
+
+function fillHeight(height: CSSProperties['height']): string | undefined {
+  if (typeof height === 'number') return `${height}px`
+  return typeof height === 'string' && height !== 'auto' ? height : undefined
 }
 
 function DefaultLoading() {
@@ -38,7 +44,8 @@ export function VeodynViz({ token, refreshSeconds, className, style, renderLoadi
     refetchInterval: refresh == null ? false : refresh * 1000,
   })
 
-  const data = payload ? visualizationData(payload.visualization.type, payload.data) : null
+  const registered = payload ? getVisualization(payload.visualization.type) !== undefined : false
+  const data = !payload ? null : registered ? visualizationData(payload.visualization.type, payload.data) : EMPTY_QUERY_RESULT
 
   let body: ReactNode
   if (isLoading) body = renderLoading ? renderLoading() : <DefaultLoading />
@@ -59,7 +66,7 @@ export function VeodynViz({ token, refreshSeconds, className, style, renderLoadi
       role="figure"
       aria-label={payload?.visualization.name || undefined}
       className={className}
-      style={{ [CHART_FILL_VAR]: '100%', ...style } as CSSProperties}
+      style={{ ...(fillHeight(style?.height) ? { [CHART_FILL_VAR]: fillHeight(style?.height) } : {}), ...style } as CSSProperties}
     >
       {body}
     </div>

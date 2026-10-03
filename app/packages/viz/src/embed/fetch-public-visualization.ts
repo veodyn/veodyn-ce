@@ -14,6 +14,7 @@ export async function fetchPublicVisualization(
     signal,
     headers: { accept: 'application/json' },
   })
-  if (!response.ok) return null
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error(`Shared visualization request failed with status ${response.status}`)
   return normalizePublicVisualization(await response.json())
 }
