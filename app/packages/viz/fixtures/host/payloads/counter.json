@@ -1,0 +1,25 @@
+{
+ "visualization": {
+  "type": "COUNTER",
+  "name": "Weekday riders",
+  "description": "",
+  "options": {
+   "counterColName": "riders",
+   "counterLabel": "Riders today"
+  }
+ },
+ "data": {
+  "columns": [
+   {
+    "name": "riders",
+    "friendly_name": "riders",
+    "type": "integer"
+   }
+  ],
+  "rows": [
+   {
+    "riders": 1234
+   }
+  ]
+ }
+}

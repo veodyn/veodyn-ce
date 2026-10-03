@@ -1,0 +1,15 @@
+{
+ "type": "CHART",
+ "name": "Riders by route",
+ "description": "",
+ "options": {},
+ "query": {
+  "id": 41
+ },
+ "query_result": {
+  "data": {
+   "columns": [],
+   "rows": []
+  }
+ }
+}

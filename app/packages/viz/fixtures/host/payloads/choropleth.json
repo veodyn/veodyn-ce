@@ -1,0 +1,37 @@
+{
+ "visualization": {
+  "type": "CHOROPLETH",
+  "name": "Riders by country",
+  "description": "",
+  "options": {
+   "mapType": "world-countries",
+   "keyColumn": "country",
+   "targetField": "name",
+   "valueColumn": "riders"
+  }
+ },
+ "data": {
+  "columns": [
+   {
+    "name": "country",
+    "friendly_name": "country",
+    "type": "string"
+   },
+   {
+    "name": "riders",
+    "friendly_name": "riders",
+    "type": "integer"
+   }
+  ],
+  "rows": [
+   {
+    "country": "Alpha",
+    "riders": 10
+   },
+   {
+    "country": "Beta",
+    "riders": 30
+   }
+  ]
+ }
+}

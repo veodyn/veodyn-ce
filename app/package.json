@@ -24,7 +24,8 @@
     "test:e2e:chat": "playwright test --config playwright.chat.config.ts",
     "screenshots:docs": "playwright test --config playwright.screenshots.config.ts",
     "validate:palette": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/validate-palette.mjs",
-    "build:viz": "node packages/viz/scripts/build.mjs"
+    "build:viz": "node packages/viz/scripts/build.mjs",
+    "test:viz-host": "playwright test --config playwright.viz-host.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

@@ -44,8 +44,13 @@ export const scopePlugin = () => ({
     root.walkRules((rule) => {
       if (insideUntouchedAtRule(rule)) return
       const scoped = [...new Set(splitSelectors(rule.selector).map(scopeSelector).filter(Boolean))]
-      if (scoped.length === 0) rule.remove()
-      else rule.selector = scoped.join(', ')
+      if (scoped.length === 0) {
+        rule.remove()
+        return
+      }
+      rule.selector = scoped.join(', ')
+      if (rule.selector === ROOT) rule.walkDecls('font-family', (decl) => decl.remove())
+      if (rule.nodes.length === 0) rule.remove()
     })
     root.walkDecls((decl) => {
       decl.important = false

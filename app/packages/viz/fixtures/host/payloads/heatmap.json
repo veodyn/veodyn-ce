@@ -1,0 +1,65 @@
+{
+ "visualization": {
+  "type": "HEATMAP",
+  "name": "Load by period",
+  "description": "",
+  "options": {
+   "columnMapping": {
+    "weekday": "x",
+    "period": "y",
+    "count": "value"
+   }
+  }
+ },
+ "data": {
+  "columns": [
+   {
+    "name": "weekday",
+    "friendly_name": "weekday",
+    "type": "string"
+   },
+   {
+    "name": "period",
+    "friendly_name": "period",
+    "type": "string"
+   },
+   {
+    "name": "count",
+    "friendly_name": "count",
+    "type": "integer"
+   }
+  ],
+  "rows": [
+   {
+    "weekday": "Mon",
+    "period": "AM",
+    "count": 0
+   },
+   {
+    "weekday": "Mon",
+    "period": "PM",
+    "count": 1
+   },
+   {
+    "weekday": "Tue",
+    "period": "AM",
+    "count": 3
+   },
+   {
+    "weekday": "Tue",
+    "period": "PM",
+    "count": 4
+   },
+   {
+    "weekday": "Wed",
+    "period": "AM",
+    "count": 6
+   },
+   {
+    "weekday": "Wed",
+    "period": "PM",
+    "count": 7
+   }
+  ]
+ }
+}

@@ -1,0 +1,44 @@
+{
+ "visualization": {
+  "type": "TABLE",
+  "name": "Routes",
+  "description": "",
+  "options": {}
+ },
+ "data": {
+  "columns": [
+   {
+    "name": "route",
+    "friendly_name": "route",
+    "type": "string"
+   },
+   {
+    "name": "riders",
+    "friendly_name": "riders",
+    "type": "integer"
+   }
+  ],
+  "rows": [
+   {
+    "route": "R1",
+    "riders": 11
+   },
+   {
+    "route": "R2",
+    "riders": 22
+   },
+   {
+    "route": "R3",
+    "riders": 33
+   },
+   {
+    "route": "R4",
+    "riders": 44
+   },
+   {
+    "route": "R5",
+    "riders": 55
+   }
+  ]
+ }
+}

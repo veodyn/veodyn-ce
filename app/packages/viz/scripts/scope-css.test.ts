@@ -23,7 +23,7 @@ describe('scopeCss', () => {
   })
 
   it('keeps the root-scoped half of a list that mixes html with a scopable selector', async () => {
-    expect(squash(await scopeCss('html, :host { font-family: serif }'))).toContain('.veodyn { font-family: serif }')
+    expect(squash(await scopeCss('html, :host { tab-size: 4 }'))).toContain('.veodyn { tab-size: 4 }')
   })
 
   it('leaves keyframe steps alone', async () => {
@@ -50,6 +50,20 @@ describe('scopeCss', () => {
 
   it('scopes a bare universal selector and pseudo elements', async () => {
     expect(squash(await scopeCss('*, ::before { box-sizing: border-box }'))).toContain('.veodyn *, .veodyn ::before')
+  })
+
+  it('leaves the root font to the host rather than a fallback stack', async () => {
+    const out = squash(await scopeCss('html, :host { font-family: var(--default-font-family, ui-sans-serif); line-height: 1.5 }'))
+    expect(out).toContain('.veodyn { line-height: 1.5 }')
+    expect(out).not.toContain('font-family')
+  })
+
+  it('drops a root rule left empty once its font is removed', async () => {
+    expect(squash(await scopeCss(':host { font-family: serif }'))).not.toContain('.veodyn')
+  })
+
+  it('keeps a font family set on anything below the root', async () => {
+    expect(squash(await scopeCss('code { font-family: monospace }'))).toContain('.veodyn code { font-family: monospace }')
   })
 
   it('removes every !important flag', async () => {

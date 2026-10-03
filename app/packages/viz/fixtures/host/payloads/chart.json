@@ -1,0 +1,71 @@
+{
+ "visualization": {
+  "type": "CHART",
+  "name": "Riders by day",
+  "description": "",
+  "options": {
+   "globalSeriesType": "line",
+   "columnMapping": {
+    "day": "x",
+    "riders": "y",
+    "trips": "y"
+   }
+  }
+ },
+ "data": {
+  "columns": [
+   {
+    "name": "day",
+    "friendly_name": "day",
+    "type": "date"
+   },
+   {
+    "name": "riders",
+    "friendly_name": "riders",
+    "type": "integer"
+   },
+   {
+    "name": "trips",
+    "friendly_name": "trips",
+    "type": "integer"
+   }
+  ],
+  "rows": [
+   {
+    "day": "2026-09-01",
+    "riders": 107,
+    "trips": 43
+   },
+   {
+    "day": "2026-09-02",
+    "riders": 114,
+    "trips": 46
+   },
+   {
+    "day": "2026-09-03",
+    "riders": 121,
+    "trips": 49
+   },
+   {
+    "day": "2026-09-04",
+    "riders": 128,
+    "trips": 52
+   },
+   {
+    "day": "2026-09-05",
+    "riders": 135,
+    "trips": 55
+   },
+   {
+    "day": "2026-09-06",
+    "riders": 142,
+    "trips": 58
+   },
+   {
+    "day": "2026-09-07",
+    "riders": 149,
+    "trips": 61
+   }
+  ]
+ }
+}

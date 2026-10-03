@@ -61,7 +61,7 @@ export default defineConfig({
     // `.spec.ts` files that vitest will happily collect and then fail on, since
     // a Playwright fixture (`page`) is not something vitest can supply:
     // e2e-docs/ was collected on its first run and failed the suite that way.
-    exclude: ['e2e/**', 'e2e-docs/**', 'node_modules/**', '.next/**'],
+    exclude: ['e2e/**', 'e2e-docs/**', 'e2e-viz-host/**', 'packages/*/fixtures/**', 'node_modules/**', '.next/**'],
     /**
      * CAP THE POOL IN CI, BECAUSE A CI RUNNER IS SHARED AND A LAPTOP IS NOT.
      *
