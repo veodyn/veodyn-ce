@@ -74,6 +74,11 @@ describe('the built package', () => {
     expect(css).not.toMatch(/--font-display-family\s*:/)
   })
 
+  it('puts the dark palette on the provider only, so nested boundaries inherit a host override', () => {
+    const css = read('styles.css')
+    expect(css).not.toMatch(/\.veodyn \[data-theme="dark"\][^{]*\{[^}]*--chart-1:/)
+  })
+
   it('keeps a monospace stack for the parts that ask for one', () => {
     expect(read('styles.css')).toMatch(/--font-mono-family\s*:\s*ui-monospace/)
   })

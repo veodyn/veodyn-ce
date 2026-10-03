@@ -381,7 +381,6 @@ BASELINE = {
     "app/packages/viz/src/components/visualizations/word-cloud-model.ts": 10,
     "app/packages/viz/src/components/visualizations/word-cloud-renderer.test.tsx": 50,
     "app/packages/viz/src/components/visualizations/word-cloud-renderer.tsx": 38,
-    "app/packages/viz/src/hooks/use-theme-token-version.ts": 12,
     "app/packages/viz/src/hooks/use-viz-geojson.test.tsx": 6,
     "app/packages/viz/src/hooks/use-viz-geojson.ts": 12,
     "app/packages/viz/src/lib/annotation-overlay.test.ts": 5,
@@ -1734,6 +1733,6 @@ BASELINE = {
     "validator/validator_service/validation.py": 44,
 }
 
-FILES_WITH_COMMENTS = 1733
-COMMENT_LINES = 45467
-FILES_SCANNED = 2353
+FILES_WITH_COMMENTS = 1732
+COMMENT_LINES = 45455
+FILES_SCANNED = 2354

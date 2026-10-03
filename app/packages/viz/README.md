@@ -60,13 +60,13 @@ share a plugin list.
 | --- | --- | --- |
 | `token` | `string` | The share token of the visualization. |
 | `refreshSeconds` | `number` | Re-read the latest stored result on this interval, between 15 and 3600 seconds. Without it the widget fetches once. |
-| `className`, `style` | | Size the widget. Charts fill the box they are given. |
+| `className`, `style` | | Size the widget. A `style.height` in an absolute unit, such as `420` or `'60vh'`, is also the height charts and maps fill. Sized another way, they keep their own height inside your box. |
 | `renderLoading` | `() => ReactNode` | Replaces the default loading placeholder. |
 | `renderUnavailable` | `() => ReactNode` | Replaces the panel shown for a revoked, expired or unknown token. |
 
 The fetch sends no cookies and no credentials. A token revoked in Veodyn shows the
-unavailable panel on the next refresh. A refresh that fails outright keeps the
-last good render on screen.
+unavailable panel on the next refresh. A refresh that fails, or that meets a
+server error or rate limit, keeps the last good render on screen.
 
 ## Fetch on the server instead
 

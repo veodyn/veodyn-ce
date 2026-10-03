@@ -6,7 +6,7 @@ import { scopePlugin } from './scope-css.mjs'
 
 const tailwind = createRequire(import.meta.url)('@tailwindcss/postcss')
 
-const DARK_TOKENS = '.veodyn[data-theme="dark"], [data-theme="dark"]'
+const DARK_TOKENS = '.veodyn[data-theme="dark"]'
 
 function packageTokens(appCss) {
   const root = postcss.parse(appCss)

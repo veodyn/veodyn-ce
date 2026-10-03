@@ -1,10 +1,26 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
+
+const ASSETS_ORIGIN = 'http://assets.veodyn.test'
+const GEOMETRY = readFileSync(join(process.cwd(), 'packages/viz/fixtures/host/public/geo/world-countries.geojson'), 'utf8')
+
+test.beforeEach(async ({ page }) => {
+  await page.route(`${ASSETS_ORIGIN}/geo/**`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/geo+json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: GEOMETRY,
+    })
+  )
+})
 
 test.describe('a host page with no Tailwind rendering the built package', () => {
   test('renders each shared visualization natively', async ({ page }) => {
     await page.goto('/')
 
-    await expect(page.locator('[data-veodyn-type="CHART"] [data-veodyn-part="chart"]')).toBeVisible()
+    await expect(page.locator('[data-veodyn-type="CHART"] [data-veodyn-part="chart"]').first()).toBeVisible()
     await expect(page.locator('[data-veodyn-type="TABLE"] [data-veodyn-part="table-row"]').first()).toBeVisible()
     await expect(page.locator('[data-veodyn-type="COUNTER"] [data-veodyn-part="counter-value"]')).toHaveText('1,234')
     await expect(page.locator('[data-veodyn-type="HEATMAP"] [data-veodyn-part="heatmap-cell"]').first()).toBeVisible()
@@ -31,6 +47,13 @@ test.describe('a host page with no Tailwind rendering the built package', () => 
     await expect(swatch).toHaveCSS('background-color', 'rgb(255, 0, 0)')
   })
 
+  test('takes the host palette in a dark provider too', async ({ page }) => {
+    await page.goto('/')
+
+    const swatch = page.locator('#dark-host [data-veodyn-type="CHART"] [data-slot="legend-swatch"]').first()
+    await expect(swatch).toHaveCSS('background-color', 'rgb(255, 0, 0)')
+  })
+
   test('leaves the host page outside the widget unstyled by the package', async ({ page }) => {
     await page.goto('/')
 
@@ -47,12 +70,15 @@ test.describe('a host page with no Tailwind rendering the built package', () => 
     expect(await tooltip.evaluate((node) => node.closest('.veodyn') !== null)).toBe(true)
   })
 
-  test('loads choropleth geometry from the assets origin it was given', async ({ page }) => {
-    const geometry = page.waitForRequest((request) => request.url().endsWith('/geo/world-countries.geojson'))
+  test('loads choropleth geometry from the assets origin it was given and draws the map', async ({ page }) => {
+    const geometry = page.waitForResponse((response) => response.url().endsWith('/geo/world-countries.geojson'))
 
     await page.goto('/')
 
-    expect(new URL((await geometry).url()).origin).toBe(new URL(page.url()).origin)
+    const response = await geometry
+    expect(new URL(response.url()).origin).toBe(ASSETS_ORIGIN)
+    expect(response.ok()).toBe(true)
+    await expect(page.locator('[data-veodyn-type="CHOROPLETH"] [data-veodyn-part="map"]')).toBeVisible()
   })
 
   test('lets a server component normalize a payload through the server entry', async ({ page }) => {
