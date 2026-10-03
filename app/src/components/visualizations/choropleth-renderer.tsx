@@ -14,6 +14,7 @@ import {
 } from '@/lib/chart-colors'
 import { useVizGeoJson } from '@/hooks/use-viz-geojson'
 import { useThemeTokenVersion } from '@/hooks/use-theme-token-version'
+import { useVizEnvironment } from '@/lib/viz-environment'
 import { useThemeScope } from '@/components/theme/theme-provider'
 import { buildChoroplethModel } from './choropleth-model'
 import { choroplethTooltipText } from './choropleth-tooltip'
@@ -59,19 +60,20 @@ export function ChoroplethRenderer({ visualization, data }: ChoroplethRendererPr
   // result: there is no asset to load.
   const { data: geojson, isLoading, isError } = useVizGeoJson(mapType, { enabled: hasColumns && !fromColumn })
   const themeVersion = useThemeTokenVersion()
+  const { root } = useVizEnvironment()
   const isDark = useThemeScope() === 'dark'
 
   const model = useMemo(() => {
     if (!options.keyColumn || !options.valueColumn) return null
     if (!fromColumn && !geojson) return null
     return buildChoroplethModel(options, data, geojson ?? NO_GEOJSON, {
-      makeScale: getSequentialScaleHex,
-      noValue: readCssVarHex('--muted', MUTED_FALLBACK_HEX),
+      makeScale: (min, max) => getSequentialScaleHex(min, max, root),
+      noValue: readCssVarHex('--muted', MUTED_FALLBACK_HEX, root),
     })
     // themeVersion is not read in the body: it is the signal that the CSS
     // custom properties this model resolved have changed underneath it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geojson, options, data, themeVersion, fromColumn])
+  }, [geojson, options, data, themeVersion, fromColumn, root])
 
   const initialViewState = useMemo(
     () => (fromColumn && model ? viewForFeatureCollection(model.featureCollection) : WORLD_VIEW),
@@ -122,7 +124,7 @@ export function ChoroplethRenderer({ visualization, data }: ChoroplethRendererPr
     return <div className="p-4 text-sm text-muted-foreground">No regions matched the key column.</div>
   }
 
-  const outline = readCssVarHex('--border', BORDER_FALLBACK_HEX)
+  const outline = readCssVarHex('--border', BORDER_FALLBACK_HEX, root)
 
   return (
     <div className="w-full">

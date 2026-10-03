@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw/server'
 import { useVizGeoJson } from '@/hooks/use-viz-geojson'
+import { VizEnvironmentProvider } from '@/lib/viz-environment'
 import type { ReactNode } from 'react'
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -19,6 +20,17 @@ const collection = {
 }
 
 describe('useVizGeoJson', () => {
+  it('loads geometry from the assets origin a host page supplies', async () => {
+    server.use(http.get('https://veodyn.example/geo/world-countries.geojson', () => HttpResponse.json(collection)))
+    const hostWrapper = ({ children }: { children: ReactNode }) =>
+      wrapper({ children: <VizEnvironmentProvider assetsUrl="https://veodyn.example">{children}</VizEnvironmentProvider> })
+
+    const { result } = renderHook(() => useVizGeoJson('world-countries'), { wrapper: hostWrapper })
+
+    await waitFor(() => expect(result.current.data).toBeDefined())
+    expect(result.current.data?.features).toHaveLength(1)
+  })
+
   it('loads geometry for a mapType from the same-origin /geo path', async () => {
     server.use(http.get('/geo/world-countries.geojson', () => HttpResponse.json(collection)))
     const { result } = renderHook(() => useVizGeoJson('world-countries'), { wrapper })

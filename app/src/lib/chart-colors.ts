@@ -62,15 +62,15 @@ export function getSequentialScale(min: number, max: number) {
 // paint the same color. When the computed value is empty (SSR, or a test without
 // inline vars), they fall back to DEFAULT_PALETTE.
 
-export function readCssVarHex(name: string, fallback: string): string {
+export function readCssVarHex(name: string, fallback: string, root?: HTMLElement | null): string {
   if (typeof window === 'undefined') return fallback
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  const raw = getComputedStyle(root ?? document.documentElement).getPropertyValue(name).trim()
   return raw || fallback
 }
 
-export function resolveChartHex(index: number): string {
+export function resolveChartHex(index: number, root?: HTMLElement | null): string {
   const fallback = DEFAULT_PALETTE[index % DEFAULT_PALETTE.length]
-  return readCssVarHex(`--chart-${index + 1}`, fallback)
+  return readCssVarHex(`--chart-${index + 1}`, fallback, root)
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -104,9 +104,13 @@ function mixOklab(hexA: string, hexB: string, t: number): string {
   return oklabToHex(L, Math.hypot(a, b), Math.atan2(b, a))
 }
 
-export function getSequentialScaleHex(min: number, max: number): (value: number) => string {
-  const cardHex = readCssVarHex('--card', CARD_FALLBACK_HEX)
-  const chart1Hex = resolveChartHex(0)
+export function getSequentialScaleHex(
+  min: number,
+  max: number,
+  root?: HTMLElement | null
+): (value: number) => string {
+  const cardHex = readCssVarHex('--card', CARD_FALLBACK_HEX, root)
+  const chart1Hex = resolveChartHex(0, root)
   return (value: number): string => {
     // Mirrors getSequentialScale exactly: same floor, same rounding, and the
     // same OKLab mix, resolved to concrete rgb because MapLibre's WebGL fills
@@ -137,10 +141,14 @@ export function getSequentialScaleHex(min: number, max: number): (value: number)
 // #0601FD at 60% mix, an sRGB mix picks card ink (about 3.11:1 against the
 // real painted color) where OKLab correctly picks foreground ink (about
 // 5.53:1).
-export function getSequentialInk(min: number, max: number): (value: number) => string {
-  const cardHex = readCssVarHex('--card', CARD_FALLBACK_HEX)
-  const foregroundHex = readCssVarHex('--foreground', FOREGROUND_FALLBACK_HEX)
-  const chart1Hex = resolveChartHex(0)
+export function getSequentialInk(
+  min: number,
+  max: number,
+  root?: HTMLElement | null
+): (value: number) => string {
+  const cardHex = readCssVarHex('--card', CARD_FALLBACK_HEX, root)
+  const foregroundHex = readCssVarHex('--foreground', FOREGROUND_FALLBACK_HEX, root)
+  const chart1Hex = resolveChartHex(0, root)
   return (value: number): string => {
     // Round exactly as getSequentialScale does before handing the percentage to
     // color-mix. Measuring the unrounded mix would evaluate a color one step off

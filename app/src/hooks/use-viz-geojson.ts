@@ -3,15 +3,16 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import type { FeatureCollection } from 'geojson'
 import { AppError, ErrorIds } from '@/lib/errorIds'
+import { geoJsonUrl, useVizEnvironment } from '@/lib/viz-environment'
 
-async function fetchGeoJson(mapType: string, signal?: AbortSignal): Promise<FeatureCollection> {
+async function fetchGeoJson(assetsUrl: string, mapType: string, signal?: AbortSignal): Promise<FeatureCollection> {
   // mapType is interpolated straight into the URL. Constrain it to a bare
   // static-asset name so a value like '../api/export' cannot normalize its
   // way out of /geo/ and hit an unintended same-origin route.
   if (!/^[a-z0-9_-]+$/i.test(mapType)) {
     throw new AppError(ErrorIds.UI_VIZ_GEOJSON_FAILED, 'Invalid map type', { mapType })
   }
-  const res = await fetch(`/geo/${mapType}.geojson`, { signal })
+  const res = await fetch(geoJsonUrl(assetsUrl, mapType), { signal })
   if (!res.ok) {
     throw new AppError(ErrorIds.UI_VIZ_GEOJSON_FAILED, 'Failed to load map geometry', {
       mapType,
@@ -38,9 +39,10 @@ export function useVizGeoJson(
   mapType: string,
   opts: { enabled?: boolean } = {}
 ): UseQueryResult<FeatureCollection> {
+  const { assetsUrl } = useVizEnvironment()
   return useQuery({
-    queryKey: ['viz-geojson', mapType],
-    queryFn: ({ signal }) => fetchGeoJson(mapType, signal),
+    queryKey: ['viz-geojson', assetsUrl, mapType],
+    queryFn: ({ signal }) => fetchGeoJson(assetsUrl, mapType, signal),
     staleTime: Infinity,
     enabled: opts.enabled ?? true,
   })

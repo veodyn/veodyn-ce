@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { getSequentialInk, getSequentialScale } from '@/lib/chart-colors'
 import { useThemeTokenVersion } from '@/hooks/use-theme-token-version'
+import { useVizEnvironment } from '@/lib/viz-environment'
 import { cellKey } from './heatmap-cell-key'
 import { useHeatmapTooltip } from './use-heatmap-tooltip'
 
@@ -112,6 +113,7 @@ export function useHeatmapGridInteraction(xCategories: string[], yCategories: st
   // inkFor). See choropleth-renderer.tsx for the same pattern against the
   // same hazard.
   const themeVersion = useThemeTokenVersion()
+  const { root } = useVizEnvironment()
 
   // getSequentialScale reads no CSS custom property at all: its returned
   // function closes over nothing but (min, max) and emits a live CSS
@@ -137,9 +139,9 @@ export function useHeatmapGridInteraction(xCategories: string[], yCategories: st
   // resolved under the OLD theme until this memo is invalidated. themeVersion
   // is exactly that invalidation signal.
   const inkFor = useMemo(
-    () => getSequentialInk(min, max),
+    () => getSequentialInk(min, max, root),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- themeVersion invalidates the memo when the resolved tokens change; not read in the factory call itself
-    [min, max, themeVersion]
+    [min, max, root, themeVersion]
   )
 
   // Stable across renders (empty deps, or deps that only change when the

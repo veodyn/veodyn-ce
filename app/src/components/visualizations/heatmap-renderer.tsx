@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import type { RedashHeatmapOptions } from '@/services/redash/types'
 import { cn } from '@/lib/utils'
+import { useVizEnvironment } from '@/lib/viz-environment'
 import { cellKey } from './heatmap-cell-key'
 import { buildHeatmapModel, describeHeatmapCell, shouldShowValues } from './heatmap-model'
 import { HeatmapLegend } from './heatmap-legend'
@@ -64,6 +65,7 @@ export function HeatmapRenderer({ visualization, data }: HeatmapRendererProps) {
     handleBlurCell,
     handleNavigate,
   } = useHeatmapGridInteraction(xCategories, yCategories, min, max)
+  const { portalContainer } = useVizEnvironment()
 
   if (!model) {
     return <div className="p-4 text-sm text-muted-foreground">Heatmap requires x, y, and value columns.</div>
@@ -227,7 +229,7 @@ export function HeatmapRenderer({ visualization, data }: HeatmapRendererProps) {
           >
             {activeDescription}
           </div>,
-          document.body
+          portalContainer ?? document.body
         )}
     </div>
   )
