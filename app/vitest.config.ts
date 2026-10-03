@@ -119,9 +119,10 @@ export default defineConfig({
       // well tested is the code" and "how well tested is the code we wrote
       // tests for". Vitest 3 spelled this `coverage.all`; that option is gone
       // in 4 and every file matching `include` is measured either way.
-      include: ['src/**/*.{ts,tsx}'],
+      include: ['src/**/*.{ts,tsx}', 'packages/*/src/**/*.{ts,tsx}'],
       exclude: [
         'src/**/*.test.{ts,tsx}',
+        'packages/*/src/**/*.test.{ts,tsx}',
         'src/**/*.d.ts',
         // Generated from veodyn-api's openapi.json by `pnpm gen:api-types`.
         'src/types/generated/**',
