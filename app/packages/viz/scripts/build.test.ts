@@ -67,6 +67,24 @@ describe('the built package', () => {
     expect(loose).toEqual([])
   })
 
+  it('names a file for every package subpath that has no exports map', () => {
+    const bare = /(?:from\s*|import\s*\(\s*|^import\s+)['"]((?:@[^/'"]+\/)?[^@./'"][^/'"]*)\/([^'"]+)['"]/gm
+    const unresolvable = files(out)
+      .filter((path) => path.endsWith('.js'))
+      .flatMap((path) =>
+        [...readFileSync(path, 'utf8').matchAll(bare)].map((m) => ({ pkg: m[1], sub: m[2], path }))
+      )
+      .filter(({ pkg, sub }) => {
+        const root = join(process.cwd(), 'node_modules', pkg)
+        const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+        if (manifest.exports) return false
+        const target = join(root, sub)
+        return !existsSync(target) || statSync(target).isDirectory()
+      })
+      .map(({ pkg, sub, path }) => `${path.slice(out.length + 1)}: ${pkg}/${sub}`)
+    expect(unresolvable).toEqual([])
+  })
+
   it('rewrites source import extensions so a bundler can resolve them', () => {
     expect(read('lib/chart-palette.js')).not.toMatch(/from ['"][^'"]+\.ts['"]/)
   })

@@ -15,7 +15,7 @@ rmSync(outDir, { recursive: true, force: true })
 const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc')
 execFileSync(process.execPath, [tsc, '-p', join(pkgRoot, 'tsconfig.build.json'), '--outDir', outDir], { stdio: 'inherit' })
 
-spellOutSpecifiers(outDir)
+spellOutSpecifiers(outDir, join(appRoot, 'node_modules'))
 
 for (const entry of CLIENT_ENTRIES) {
   const file = join(outDir, entry)
