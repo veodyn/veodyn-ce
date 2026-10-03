@@ -194,6 +194,22 @@ describe('VeodynViz', () => {
     expect(root?.style.getPropertyValue('--chart-frame-fill')).toBe('300px')
   })
 
+  it.each([
+    ['60vh', '60vh'],
+    ['calc(100vh - 4rem)', 'calc(100vh - 4rem)'],
+    ['100%', ''],
+    ['fit-content', ''],
+    ['calc(100% - 2rem)', ''],
+  ])('takes %s as a fill height only when it is a definite length', async (height, expected) => {
+    server.use(http.get(ROUTE, () => HttpResponse.json(payload('TEST_VV_ROWS', 1))))
+
+    const { container } = renderViz({ style: { height } })
+
+    await screen.findByText('Ridership: 1 rows')
+    const root = container.querySelector<HTMLElement>('[data-veodyn-part="root"]')
+    expect(root?.style.getPropertyValue('--chart-frame-fill')).toBe(expected)
+  })
+
   it('leaves the fill height alone when the host sizes the widget another way', async () => {
     server.use(http.get(ROUTE, () => HttpResponse.json(payload('TEST_VV_ROWS', 1))))
 

@@ -60,7 +60,7 @@ share a plugin list.
 | --- | --- | --- |
 | `token` | `string` | The share token of the visualization. |
 | `refreshSeconds` | `number` | Re-read the latest stored result on this interval, between 15 and 3600 seconds. Without it the widget fetches once. |
-| `className`, `style` | | Size the widget. A `style.height` in an absolute unit, such as `420` or `'60vh'`, is also the height charts and maps fill. Sized another way, they keep their own height inside your box. |
+| `className`, `style` | | Size the widget. A `style.height` given as a definite length, such as `420`, `'60vh'` or `'calc(100vh - 4rem)'`, is also the height charts and maps fill. Percentages do not qualify. Sized another way, they keep their own height inside your box. |
 | `renderLoading` | `() => ReactNode` | Replaces the default loading placeholder. |
 | `renderUnavailable` | `() => ReactNode` | Replaces the panel shown for a revoked, expired or unknown token. |
 
