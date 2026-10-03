@@ -7,6 +7,7 @@ const captureMock = vi.hoisted(() => ({
 vi.mock('./capture', () => captureMock)
 
 import { AppError, ErrorIds } from '@/lib/errorIds'
+import { VizError, VIZ_ERROR_IDS } from '@veodyn/viz/lib/visualizations/viz-error'
 import { reportQueryError } from './querySeam'
 
 beforeEach(() => vi.clearAllMocks())
@@ -18,6 +19,18 @@ describe('reportQueryError', () => {
       queryKey: 'feeds',
       errorId: 'E_UP_003',
       status: 502,
+      route: '/captures',
+    })
+  })
+
+  it('reports the id and status of a failure raised inside the visualization package', () => {
+    reportQueryError(new VizError(VIZ_ERROR_IDS.GEOJSON_FAILED, 'Failed to load map geometry', { status: 404 }), [
+      'viz-geojson',
+    ])
+    expect(captureMock.capture).toHaveBeenCalledWith('query_failed', {
+      queryKey: 'viz-geojson',
+      errorId: 'E_UI_002',
+      status: 404,
       route: '/captures',
     })
   })
