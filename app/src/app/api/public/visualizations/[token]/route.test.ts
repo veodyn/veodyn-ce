@@ -149,7 +149,7 @@ describe('GET /api/public/visualizations/[token]', () => {
     expect(sent['authorization']).toBeUndefined()
   })
 
-  it.each([404, 401, 403, 500])(
+  it.each([404, 401, 403])(
     'answers a plain 404 for upstream %i without repeating its body',
     async (status) => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -201,11 +201,7 @@ describe('GET /api/public/visualizations/[token]', () => {
     expect(body.visualization.type).toBe(UPSTREAM_BODY.type)
   })
 
-  // A refusal is decided on the status, before the body is parsed. An upstream
-  // that answers HTML (a proxy error page, a Flask 500) would otherwise blow up
-  // in JSON parsing and reach the reader as a 502, which says "we are broken"
-  // about a link that is simply dead.
-  it('answers 404 for a refusal whose body is not JSON at all', async () => {
+  it('answers an upstream outage as an outage, without parsing or echoing its body', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('<html><body>502 Bad Gateway</body></html>', {
         status: 500,
@@ -216,8 +212,29 @@ describe('GET /api/public/visualizations/[token]', () => {
 
     const response = await GET(request(), { params: Promise.resolve({ token: 'tok' }) })
 
-    expect(response.status).toBe(404)
+    expect(response.status).toBe(502)
     expect(await response.text()).not.toContain('Bad Gateway')
+  })
+
+  it('answers an upstream rate limit as an outage', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('slow down', { status: 429 }))
+    const { GET } = await loadRoute('https://redash.example')
+
+    const response = await GET(request(), { params: Promise.resolve({ token: 'tok' }) })
+
+    expect(response.status).toBe(502)
+  })
+
+  it('answers an upstream 500 that names the object without repeating it', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ message: 'Visualization 9 is not shared' }, { status: 500 })
+    )
+    const { GET } = await loadRoute('https://redash.example')
+
+    const response = await GET(request(), { params: Promise.resolve({ token: 'tok' }) })
+
+    expect(response.status).toBe(502)
+    expect(await response.text()).not.toContain('Visualization 9')
   })
 
   it('answers 502 when the backend cannot be reached', async () => {
