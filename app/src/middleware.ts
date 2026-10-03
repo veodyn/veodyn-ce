@@ -155,5 +155,5 @@ export const config = {
   // rather than redirecting: an API caller wants a status code, not an HTML
   // sign-in page. Static assets and the favicon are excluded so the sign-in
   // page can style itself.
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|geojson)$).*)'],
 }

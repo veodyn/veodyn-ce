@@ -121,7 +121,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
 
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders() }];
+    return [
+      { source: "/:path*", headers: securityHeaders() },
+      { source: "/geo/:path*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] },
+    ];
   },
 
   turbopack: {

@@ -9,8 +9,9 @@
 import { NextResponse } from 'next/server'
 import { env } from '@/lib/env'
 import { ErrorIds } from '@/lib/errorIds'
-import { normalizePublicVisualization } from '@veodyn/viz/lib/public-visualization'
+import { normalizePublicVisualization } from '@veodyn/viz/normalize'
 import { readerForwardingHeaders } from '@/lib/reader-forwarding'
+import { PUBLIC_CORS_HEADERS } from './cors'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,12 +20,16 @@ const NOT_FOUND = {
   errorId: ErrorIds.API_NOT_FOUND,
 }
 
+export function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: PUBLIC_CORS_HEADERS })
+}
+
 export async function GET(request: Request, ctx: { params: Promise<{ token: string }> }) {
   const base = env.REDASH_URL.replace(/\/+$/, '')
   if (!base) {
     return NextResponse.json(
       { error: 'REDASH_URL not configured', errorId: ErrorIds.CFG_ENV_MISSING },
-      { status: 503 }
+      { status: 503, headers: PUBLIC_CORS_HEADERS }
     )
   }
 
@@ -40,15 +45,15 @@ export async function GET(request: Request, ctx: { params: Promise<{ token: stri
     // Upstream's own body is not passed through even on a refusal: it is
     // written for an authenticated API caller and may name the object. The
     // reader gets one sentence and a status.
-    if (!upstream.ok) return NextResponse.json(NOT_FOUND, { status: 404 })
+    if (!upstream.ok) return NextResponse.json(NOT_FOUND, { status: 404, headers: PUBLIC_CORS_HEADERS })
 
     const payload = normalizePublicVisualization(await upstream.json())
-    if (!payload) return NextResponse.json(NOT_FOUND, { status: 404 })
-    return NextResponse.json(payload)
+    if (!payload) return NextResponse.json(NOT_FOUND, { status: 404, headers: PUBLIC_CORS_HEADERS })
+    return NextResponse.json(payload, { headers: PUBLIC_CORS_HEADERS })
   } catch {
     return NextResponse.json(
       { error: 'redash backend unreachable', errorId: ErrorIds.UP_UNREACHABLE },
-      { status: 502 }
+      { status: 502, headers: PUBLIC_CORS_HEADERS }
     )
   }
 }
