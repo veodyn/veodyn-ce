@@ -43,13 +43,6 @@ describe('visualization registry', () => {
     }
   })
 
-  it('gives every builder-offered type an editor', () => {
-    for (const plugin of CORE_VISUALIZATIONS) {
-      if (!plugin.choices?.length) continue
-      expect(isRenderableComponent(plugin.Editor), `${plugin.type} is pickable but has no Editor`).toBe(true)
-    }
-  })
-
   it('keeps builder choice ids unique across plugins', () => {
     const ids = CORE_VISUALIZATIONS.flatMap((p) => p.choices ?? []).map((c) => c.id)
     expect(new Set(ids).size).toBe(ids.length)

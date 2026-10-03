@@ -20,12 +20,12 @@ import { mapCoordinateOptions } from '@/components/visualizations/map-column-map
 // selector and the Visual builder draw before anything is chosen, and they are
 // plain SVG and arithmetic. See ./lazy-components.ts for why the split exists.
 import {
-  BoxPlotEditor, BoxPlotRenderer, ChartEditor, ChartRenderer, ChoroplethEditor,
-  ChoroplethRenderer, CohortEditor, CohortRenderer, CounterEditor, CounterRenderer,
-  DetailsEditor, DetailsRenderer, FunnelEditor, FunnelRenderer, HeatmapEditor,
-  HeatmapRenderer, MapEditor, MapRenderer, PivotEditor, PivotRenderer, SankeyEditor,
-  SankeyRenderer, SunburstEditor, SunburstRenderer, TableEditor, TableRenderer,
-  WordCloudEditor, WordCloudRenderer,
+  BoxPlotRenderer, ChartRenderer, 
+  ChoroplethRenderer, CohortRenderer, CounterRenderer,
+  DetailsRenderer, FunnelRenderer, 
+  HeatmapRenderer, MapRenderer, PivotRenderer, 
+  SankeyRenderer, SunburstRenderer, TableRenderer,
+  WordCloudRenderer,
 } from './lazy-components'
 import { CORE_PUBLIC_OPTIONS, NAMED_COLUMNS } from './core-options'
 import { KPI_HISTORY_VISUALIZATION } from './kpi-history'
@@ -49,7 +49,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: {},
     publicOptions: CORE_PUBLIC_OPTIONS.TABLE,
     Renderer: TableRenderer,
-    Editor: TableEditor,
     choices: [{ id: 'table', label: 'Table', options: {}, Thumbnail: TableThumbnail }],
   },
   {
@@ -60,7 +59,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: { globalSeriesType: 'line', columnMapping: {} },
     publicOptions: CORE_PUBLIC_OPTIONS.CHART,
     Renderer: ChartRenderer,
-    Editor: ChartEditor,
     // Two independent reasons a chart is not the chart that was asked for: a
     // column that is no longer in the result, and a shape Redash can store that
     // this app cannot draw. The second used to be silent, so a Redash-authored
@@ -94,7 +92,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: { counterColName: '', counterLabel: '', rowNumber: 1 },
     publicOptions: CORE_PUBLIC_OPTIONS.COUNTER,
     Renderer: CounterRenderer,
-    Editor: CounterEditor,
     validate: (options, data) => missingNamedColumns(options, NAMED_COLUMNS.COUNTER, data),
     choices: [{ id: 'counter', label: 'Counter', options: {}, Thumbnail: CounterThumbnail }],
   },
@@ -106,7 +103,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: { rowField: '', colField: '', valueField: '', aggregation: 'sum' },
     publicOptions: CORE_PUBLIC_OPTIONS.PIVOT,
     Renderer: PivotRenderer,
-    Editor: PivotEditor,
     validate: (options, data) => missingNamedColumns(options, NAMED_COLUMNS.PIVOT, data),
     choices: [{ id: 'pivot', label: 'Pivot', options: {}, Thumbnail: PivotThumbnail }],
   },
@@ -118,7 +114,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: { stepColumn: '', valueColumn: '', sortOrder: 'desc' },
     publicOptions: CORE_PUBLIC_OPTIONS.FUNNEL,
     Renderer: FunnelRenderer,
-    Editor: FunnelEditor,
     validate: (options, data) => missingNamedColumns(options, NAMED_COLUMNS.FUNNEL, data),
     choices: [{ id: 'funnel', label: 'Funnel', options: {}, Thumbnail: FunnelThumbnail }],
   },
@@ -130,7 +125,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: { columns: [] },
     publicOptions: CORE_PUBLIC_OPTIONS.DETAILS,
     Renderer: DetailsRenderer,
-    Editor: DetailsEditor,
     choices: [{ id: 'details', label: 'Details', options: {}, Thumbnail: DetailsThumbnail }],
   },
   {
@@ -141,7 +135,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: { latColName: 'lat', lonColName: 'lon', popup: { enabled: true } },
     publicOptions: CORE_PUBLIC_OPTIONS.MAP,
     Renderer: MapRenderer,
-    Editor: MapEditor,
     validate: (options, data) => missingNamedColumns(options, NAMED_COLUMNS.MAP, data),
     inferOptions: mapCoordinateOptions,
     choices: [{ id: 'map', label: 'Map', options: {}, Thumbnail: MapThumbnail }],
@@ -154,7 +147,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: { columnMapping: {} },
     publicOptions: CORE_PUBLIC_OPTIONS.HEATMAP,
     Renderer: HeatmapRenderer,
-    Editor: HeatmapEditor,
     validate: (options, data) => missingMappedColumns(options, data),
     // Same contract as the chart's: seed the mapping, never touch one the
     // analyst already set. heatmap-model.ts resolves an empty mapping
@@ -179,7 +171,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: { columnMapping: {} },
     publicOptions: CORE_PUBLIC_OPTIONS.BOXPLOT,
     Renderer: BoxPlotRenderer,
-    Editor: BoxPlotEditor,
     validate: (options, data) => missingMappedColumns(options, data),
     choices: [{ id: 'boxplot', label: 'Box Plot', options: {}, Thumbnail: BoxPlotThumbnail }],
   },
@@ -191,7 +182,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: { columnMapping: {} },
     publicOptions: CORE_PUBLIC_OPTIONS.SANKEY,
     Renderer: SankeyRenderer,
-    Editor: SankeyEditor,
     validate: (options, data) => missingMappedColumns(options, data),
     choices: [{ id: 'sankey', label: 'Sankey', options: {}, Thumbnail: SankeyThumbnail }],
   },
@@ -217,7 +207,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: { mapType: 'world-countries', targetField: 'name' },
     publicOptions: CORE_PUBLIC_OPTIONS.CHOROPLETH,
     Renderer: ChoroplethRenderer,
-    Editor: ChoroplethEditor,
     // defaultOptions only reach a visualization at creation, so seeding
     // targetField does nothing for the choropleths saved before it existed.
     // Those still match zero regions, and the renderer blames the key column.
@@ -249,7 +238,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: {},
     publicOptions: CORE_PUBLIC_OPTIONS.COHORT,
     Renderer: CohortRenderer,
-    Editor: CohortEditor,
     validate: (options, data) => missingNamedColumns(options, NAMED_COLUMNS.COHORT, data),
   },
   {
@@ -260,7 +248,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: {},
     publicOptions: CORE_PUBLIC_OPTIONS.SUNBURST_SEQUENCE,
     Renderer: SunburstRenderer,
-    Editor: SunburstEditor,
     validate: (options, data) => missingNamedColumns(options, NAMED_COLUMNS.SUNBURST, data),
   },
   {
@@ -271,7 +258,6 @@ export const CORE_VISUALIZATIONS: VisualizationPlugin[] = [
     defaultOptions: {},
     publicOptions: CORE_PUBLIC_OPTIONS.WORD_CLOUD,
     Renderer: WordCloudRenderer,
-    Editor: WordCloudEditor,
     validate: (options, data) => missingNamedColumns(options, NAMED_COLUMNS.WORD_CLOUD, data),
   },
 

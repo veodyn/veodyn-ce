@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react'
 import { getVisualization } from '@/lib/visualizations'
+import { CORE_EDITORS } from '@/lib/visualization-editors'
 import type { QueryResultData } from '@/lib/mock-data'
 
 interface VisualizationEditorSlotProps {
@@ -27,7 +28,7 @@ export function VisualizationEditorSlot({
   data,
   onChange,
 }: VisualizationEditorSlotProps) {
-  const Editor = getVisualization(type)?.Editor
+  const Editor = CORE_EDITORS[type] ?? getVisualization(type)?.Editor
 
   if (!Editor) {
     return <div className="text-sm text-muted-foreground">No editor for this type.</div>

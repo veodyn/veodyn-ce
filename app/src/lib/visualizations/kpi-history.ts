@@ -21,7 +21,7 @@ import type { RedashKpiHistoryOptions } from '@/services/redash/types'
 // runs on every route that registers, the drawing does not. The three recovery
 // functions above come from ./kpi-history-model rather than from the renderer
 // for exactly that reason. See ./lazy-components.ts.
-import { KpiHistoryEditor, KpiHistoryRenderer } from './lazy-components'
+import { KpiHistoryRenderer } from './lazy-components'
 import { CORE_PUBLIC_OPTIONS, NAMED_COLUMNS } from './core-options'
 import { PLUGIN_API_VERSION, type VisualizationPlugin } from './plugin'
 import { missingNamedColumns } from './validate-columns'
@@ -105,7 +105,6 @@ export const KPI_HISTORY_VISUALIZATION: VisualizationPlugin = {
   defaultOptions: {},
   publicOptions: CORE_PUBLIC_OPTIONS.KPI_HISTORY,
   Renderer: KpiHistoryRenderer,
-  Editor: KpiHistoryEditor,
   validate: (rawOptions, data) => {
     const options = rawOptions as RedashKpiHistoryOptions
     const problems = missingNamedColumns(rawOptions, NAMED_COLUMNS.KPI_HISTORY, data)

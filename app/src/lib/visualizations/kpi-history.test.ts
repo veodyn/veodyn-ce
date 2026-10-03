@@ -52,7 +52,6 @@ describe('the KPI history visualization', () => {
 
     expect(registeredTypes()).toContain('KPI_HISTORY')
     expect(isRenderableComponent(plugin?.Renderer)).toBe(true)
-    expect(isRenderableComponent(plugin?.Editor)).toBe(true)
     expect(plugin?.choices?.map((choice) => choice.id)).toEqual(['kpi-history'])
     // Declared, not omitted: an omitted schema publishes nothing, which for
     // this type strips the target the whole picture is about.
