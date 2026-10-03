@@ -8,3 +8,4 @@ export { clampRefreshSeconds, MAX_REFRESH_SECONDS, MIN_REFRESH_SECONDS } from '.
 export type { PublicVisualizationConfig, PublicVisualizationPayload } from './lib/public-visualization'
 export type { QueryResultColumn, QueryResultData, MockVisualization as SharedVisualization } from './types/viz-data'
 export { PARTS, type Part } from './parts'
+export { useVizEnvironment, type VizEnvironment } from './lib/viz-environment'

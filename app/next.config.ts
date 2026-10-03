@@ -124,6 +124,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders() },
       { source: "/geo/:path*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] },
+      { source: "/icons/:path*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] },
     ];
   },
 
