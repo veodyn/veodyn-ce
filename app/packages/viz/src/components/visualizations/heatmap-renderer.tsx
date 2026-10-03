@@ -68,7 +68,7 @@ export function HeatmapRenderer({ visualization, data }: HeatmapRendererProps) {
   const { portalContainer } = useVizEnvironment()
 
   if (!model) {
-    return <div className="p-4 text-sm text-muted-foreground">Heatmap requires x, y, and value columns.</div>
+    return <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">Heatmap requires x, y, and value columns.</div>
   }
 
   const { cellCount, valueLabel, xLabel, yLabel } = model
@@ -82,7 +82,7 @@ export function HeatmapRenderer({ visualization, data }: HeatmapRendererProps) {
     // h-full plus the min-h-0 chain below it is what lets GRID_HOST_BOUND reach
     // the scrollport: a flex item's automatic minimum size is its content, so
     // without min-h-0 at every level the scroller refuses to shrink.
-    <div className="flex h-full min-h-0 flex-col p-4">
+    <div data-veodyn-part="heatmap" className="flex h-full min-h-0 flex-col p-4">
       <div className="flex min-h-0 min-w-0 flex-1 gap-2">
         {/* The rotated y axis title, outside the scrolling wrapper so it does
             not slide away when the grid scrolls sideways. In vertical writing
@@ -210,6 +210,7 @@ export function HeatmapRenderer({ visualization, data }: HeatmapRendererProps) {
           // exact text, so without it a virtual cursor reads the value twice.
           <div
             role="tooltip"
+            data-veodyn-part="tooltip"
             aria-hidden="true"
             // Inline, not the memoized callback itself, so React re-invokes it
             // on every render rather than only on mount: measureTooltip reads

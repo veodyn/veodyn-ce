@@ -22,6 +22,7 @@ export function VisualizationProblems({ problems, className }: VisualizationProb
   return (
     <div
       role="status"
+      data-veodyn-part="problems"
       className={`flex items-start gap-2 border-b bg-muted/40 px-3 py-2 text-xs text-muted-foreground ${className ?? ''}`}
     >
       <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" aria-hidden="true" />

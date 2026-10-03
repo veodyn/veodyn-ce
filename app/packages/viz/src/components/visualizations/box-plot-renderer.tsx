@@ -105,7 +105,7 @@ export function BoxPlotRenderer({ visualization, data }: BoxPlotRendererProps) {
   )
 
   if (model.boxes.length === 0) {
-    return <div className="p-4 text-sm text-muted-foreground">Box plot requires a category and a numeric value column.</div>
+    return <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">Box plot requires a category and a numeric value column.</div>
   }
 
   const range = model.domainMax - model.domainMin || 1

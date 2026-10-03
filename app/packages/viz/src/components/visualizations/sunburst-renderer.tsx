@@ -116,7 +116,7 @@ export function SunburstTooltip({ active, payload }: Partial<TooltipContentProps
   if (!active || !entry) return null
 
   return (
-    <div className="rounded-md border bg-card px-3 py-2 text-sm shadow-md">
+    <div data-veodyn-part="tooltip" className="rounded-md border bg-card px-3 py-2 text-sm shadow-md">
       <div className="mb-1 font-medium text-card-foreground">{String(entry.name ?? '')}</div>
       <div className="font-medium tabular-nums text-card-foreground">{formatLabelValue(entry.value)}</div>
     </div>
@@ -151,7 +151,7 @@ export function SunburstRenderer({ visualization, data }: SunburstRendererProps)
   }, [options, data])
 
   if (!tree) {
-    return <div className="p-4 text-sm text-muted-foreground">No data to display.</div>
+    return <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">No data to display.</div>
   }
 
   // Zero on the first render and on the server, where nothing has been measured

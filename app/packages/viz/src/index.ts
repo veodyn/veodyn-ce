@@ -7,3 +7,4 @@ export { VisualizationErrorBoundary } from './components/visualizations/visualiz
 export { clampRefreshSeconds, MAX_REFRESH_SECONDS, MIN_REFRESH_SECONDS } from './embed/refresh'
 export type { PublicVisualizationConfig, PublicVisualizationPayload } from './lib/public-visualization'
 export type { QueryResultColumn, QueryResultData, MockVisualization as SharedVisualization } from './types/viz-data'
+export { PARTS, type Part } from './parts'

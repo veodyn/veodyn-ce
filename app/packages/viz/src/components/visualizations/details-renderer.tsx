@@ -35,7 +35,7 @@ export function DetailsRenderer({ visualization, data }: DetailsRendererProps) {
   const row = data.rows[currentIndex]
   if (!row) {
     return (
-      <div className="p-4 text-sm text-muted-foreground">No data to display.</div>
+      <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">No data to display.</div>
     )
   }
 
@@ -44,7 +44,7 @@ export function DetailsRenderer({ visualization, data }: DetailsRendererProps) {
     : data.columns
 
   return (
-    <div className="p-4">
+    <div data-veodyn-part="details" className="p-4">
       {data.rows.length > 1 && (
         <div className="flex items-center gap-2 mb-4">
           <IconButton

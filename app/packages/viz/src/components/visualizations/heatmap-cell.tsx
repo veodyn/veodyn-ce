@@ -61,6 +61,7 @@ export const HeatmapCell = memo(function HeatmapCell({
 }: HeatmapCellProps) {
   return (
     <div
+      data-veodyn-part="heatmap-cell"
       ref={(node) => registerRef(x, y, node)}
       role="gridcell"
       tabIndex={tabIndex}

@@ -95,39 +95,39 @@ export function ChoroplethRenderer({ visualization, data }: ChoroplethRendererPr
   const handleMouseLeave = useCallback(() => setHovered(null), [])
 
   if (!options.keyColumn || !options.valueColumn) {
-    return <div className="p-4 text-sm text-muted-foreground">Choropleth requires key and value columns.</div>
+    return <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">Choropleth requires key and value columns.</div>
   }
   if (fromColumn && !options.geometryColumn) {
     return (
-      <div className="p-4 text-sm text-muted-foreground">
+      <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">
         Choropleth needs a geometry column when the boundaries come from the query result.
       </div>
     )
   }
   if (isError) {
-    return <div className="p-4 text-sm text-muted-foreground">Map geometry is unavailable in this context.</div>
+    return <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">Map geometry is unavailable in this context.</div>
   }
   if (isLoading || !model) {
-    return <div className="p-4 text-sm text-muted-foreground">Loading map geometry...</div>
+    return <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">Loading map geometry...</div>
   }
   if (fromColumn) {
     // Regions with no value still say where the districts are, so only an empty
     // set of them is an empty state here.
     if (model.featureCollection.features.length === 0) {
       return (
-        <div className="p-4 text-sm text-muted-foreground">
+        <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">
           No region geometry could be read from the &quot;{options.geometryColumn}&quot; column.
         </div>
       )
     }
   } else if (model.matchedCount === 0) {
-    return <div className="p-4 text-sm text-muted-foreground">No regions matched the key column.</div>
+    return <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">No regions matched the key column.</div>
   }
 
   const outline = readCssVarHex('--border', BORDER_FALLBACK_HEX, root)
 
   return (
-    <div className="w-full">
+    <div data-veodyn-part="map" className="w-full">
       <div className="w-full" style={{ height: FILLABLE_PANEL_HEIGHT }}>
         <Map
           initialViewState={initialViewState}

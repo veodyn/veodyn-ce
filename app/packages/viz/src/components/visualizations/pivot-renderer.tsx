@@ -57,7 +57,7 @@ export function PivotRenderer({ visualization, data }: PivotRendererProps) {
 
   if (!rowField || !colField || !valueField) {
     return (
-      <div className="p-4 text-sm text-muted-foreground">
+      <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">
         Configure row, column, and value fields to display pivot table.
       </div>
     )

@@ -107,7 +107,7 @@ export function MapRenderer({ visualization, data }: MapRendererProps) {
 
   if (!hasLatLon) {
     return (
-      <div className="p-4 text-sm text-muted-foreground">
+      <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">
         Configure latitude and longitude columns to display map.
       </div>
     )
@@ -129,7 +129,7 @@ export function MapRenderer({ visualization, data }: MapRendererProps) {
   // padding box, which uses the USED height. So it fills the wrapper however
   // the wrapper got its height: h-full, min-h, or flex.
   return (
-    <div className="relative h-full min-h-[400px] w-full">
+    <div data-veodyn-part="map" className="relative h-full min-h-[400px] w-full">
       <Map
         initialViewState={{
           latitude: view.lat,
@@ -166,7 +166,7 @@ export function MapRenderer({ visualization, data }: MapRendererProps) {
             anchor="bottom"
             offset={12}
           >
-            <div className="text-sm p-1 whitespace-pre-line">{selectedMarker.popupContent}</div>
+            <div data-veodyn-part="map-popup" className="text-sm p-1 whitespace-pre-line">{selectedMarker.popupContent}</div>
           </Popup>
         )}
       </Map>

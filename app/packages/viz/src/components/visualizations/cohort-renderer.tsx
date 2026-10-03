@@ -32,7 +32,7 @@ export function CohortRenderer({ visualization, data }: CohortRendererProps) {
   const model = useMemo(() => buildCohortModel(options, data), [options, data])
 
   if (model.rows.length === 0) {
-    return <div className="p-4 text-sm text-muted-foreground">Cohort requires cohort, period, and value columns.</div>
+    return <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">Cohort requires cohort, period, and value columns.</div>
   }
 
   return (

@@ -42,7 +42,7 @@ export function ResultCell({ value, row, columnType, config }: ResultCellProps) 
     const link = resolveLinkCell(config, row, value)
     if (link) {
       return (
-        <TableCell className="max-w-[300px] truncate px-3 py-1.5 whitespace-nowrap">
+        <TableCell data-veodyn-part="table-cell" className="max-w-[300px] truncate px-3 py-1.5 whitespace-nowrap">
           <a
             href={link.href}
             title={link.title}
@@ -61,7 +61,7 @@ export function ResultCell({ value, row, columnType, config }: ResultCellProps) 
     const image = resolveImageCell(config, row, value)
     if (image) {
       return (
-        <TableCell className="px-3 py-1.5">
+        <TableCell data-veodyn-part="table-cell" className="px-3 py-1.5">
           {/* Not next/image: the URL comes from the query author at runtime, so
               there is no build-time host to configure a loader against. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -79,6 +79,6 @@ export function ResultCell({ value, row, columnType, config }: ResultCellProps) 
   }
 
   return (
-    <TableCell className="max-w-[300px] truncate px-3 py-1.5 whitespace-nowrap">{text()}</TableCell>
+    <TableCell data-veodyn-part="table-cell" className="max-w-[300px] truncate px-3 py-1.5 whitespace-nowrap">{text()}</TableCell>
   )
 }

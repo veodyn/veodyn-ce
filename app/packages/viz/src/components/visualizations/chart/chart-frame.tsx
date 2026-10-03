@@ -67,6 +67,7 @@ export function ChartFrame({ seriesCount, hasAxisBand, summary, children }: Char
   return (
     <div
       data-testid="chart-frame"
+      data-veodyn-part="chart"
       // The inline height is a preferred height, not a hard one: max-h-full
       // (max-height: 100%) resolves against the parent's own height only when
       // that parent has a definite height (a bounded dashboard widget card),

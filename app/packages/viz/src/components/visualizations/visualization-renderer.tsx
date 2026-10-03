@@ -45,7 +45,7 @@ export function VisualizationRenderer({
   const problems = validateVisualization(visualization.type, options, data)
 
   return (
-    <WidgetThemeBoundary theme={readWidgetTheme(options)}>
+    <WidgetThemeBoundary theme={readWidgetTheme(options)} visualizationType={visualization.type}>
       <VisualizationProblems problems={problems} />
       <Suspense key={visualization.type} fallback={<RendererFallback />}>
         <Renderer

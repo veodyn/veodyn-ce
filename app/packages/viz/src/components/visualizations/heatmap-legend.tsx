@@ -32,7 +32,7 @@ export function HeatmapLegend({ min, max, valueLabel, clipped }: HeatmapLegendPr
     // pt-3 as well as pb-3: with padding on the bottom only the bar sat
     // directly against the last row of cells, reading as part of the grid
     // rather than as the key to it.
-    <div className="flex items-center gap-2 px-4 pt-3 pb-3 text-xs text-muted-foreground">
+    <div data-veodyn-part="legend" className="flex items-center gap-2 px-4 pt-3 pb-3 text-xs text-muted-foreground">
       <span className="truncate" title={valueLabel}>
         {valueLabel}
       </span>

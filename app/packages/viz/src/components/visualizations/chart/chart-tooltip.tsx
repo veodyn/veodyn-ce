@@ -20,7 +20,7 @@ export function ChartTooltip({ active, payload, label, xIsDatetime, xHasTime, pa
   const formatValue = valueFormatter ?? formatCompactNumber
 
   return (
-    <div className="rounded-md border bg-card px-3 py-2 text-sm shadow-md">
+    <div data-veodyn-part="tooltip" className="rounded-md border bg-card px-3 py-2 text-sm shadow-md">
       <div className="mb-1 font-medium text-card-foreground">
         {xIsDatetime ? formatDateLabel(label, xHasTime ?? false, patterns) : String(label)}
       </div>

@@ -21,11 +21,12 @@ export function ChartLegend({ payload }: Pick<Partial<DefaultLegendContentProps>
 
   return (
     <ul
+      data-veodyn-part="legend"
       aria-label="Chart legend"
       className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 pt-2"
     >
       {payload.map((entry) => (
-        <li key={String(entry.value)} className="flex items-center gap-1.5">
+        <li key={String(entry.value)} data-veodyn-part="legend-item" className="flex items-center gap-1.5">
           <span
             data-slot="legend-swatch"
             aria-hidden="true"

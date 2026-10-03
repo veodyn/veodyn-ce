@@ -121,8 +121,8 @@ export function QueryResultTable({
   }
 
   return (
-    <div className={cn('flex flex-col', className)}>
-      <div className="flex items-center gap-2 px-3 py-2 border-b">
+    <div data-veodyn-part="table" className={cn('flex flex-col', className)}>
+      <div data-veodyn-part="table-toolbar" className="flex items-center gap-2 px-3 py-2 border-b">
         <InputGroup className="w-48">
           <InputGroupAddon>
             <Search className="h-3.5 w-3.5" />
@@ -177,6 +177,7 @@ export function QueryResultTable({
               {data.columns.map((col) => (
                 <TableHead
                   key={col.name}
+                  data-veodyn-part="table-head"
                   {...dragProps(col.name)}
                   onClick={() => handleSort(col.name)}
                   className={cn(
@@ -192,7 +193,7 @@ export function QueryResultTable({
           </TableHeader>
           <TableBody>
             {pagedRows.map((row, i) => (
-              <TableRow key={page * pageSize + i} className="hover:bg-muted/30">
+              <TableRow key={page * pageSize + i} data-veodyn-part="table-row" className="hover:bg-muted/30">
                 {data.columns.map((col) => (
                   <ResultCell
                     key={col.name}
@@ -208,7 +209,7 @@ export function QueryResultTable({
         </Table>
       </div>
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 px-3 py-2 border-t text-xs">
+        <div data-veodyn-part="pagination" className="flex items-center justify-center gap-2 px-3 py-2 border-t text-xs">
           <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}>
             Prev
           </Button>

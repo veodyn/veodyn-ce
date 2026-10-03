@@ -60,7 +60,7 @@ export function SankeyTooltip({ active, payload }: Partial<TooltipContentProps<n
   const title = String(entry.name ?? '')
 
   return (
-    <div className="rounded-md border bg-card px-3 py-2 text-sm shadow-md">
+    <div data-veodyn-part="tooltip" className="rounded-md border bg-card px-3 py-2 text-sm shadow-md">
       {title && <div className="mb-1 font-medium text-card-foreground">{title}</div>}
       <div className="font-medium tabular-nums text-card-foreground">
         {formatLabelValue(entry.value)}
@@ -122,7 +122,7 @@ export function SankeyRenderer({ visualization, data }: SankeyRendererProps) {
   }, [data.rows, sourceCol, targetCol, valueCol])
 
   if (!sankeyData || sankeyData.links.length === 0) {
-    return <div className="p-4 text-sm text-muted-foreground">Sankey requires source, target, and value columns.</div>
+    return <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">Sankey requires source, target, and value columns.</div>
   }
 
   return (

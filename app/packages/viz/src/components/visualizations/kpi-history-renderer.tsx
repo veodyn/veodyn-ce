@@ -43,7 +43,7 @@ export function KpiHistoryRenderer({ visualization, data }: KpiHistoryRendererPr
     // Here the query returned something and none of it could be plotted, and
     // saying so names the fix.
     return (
-      <div className="p-4 text-sm text-muted-foreground">
+      <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">
         No readings to draw. This visualization needs a timestamp column and a numeric value
         column.
       </div>

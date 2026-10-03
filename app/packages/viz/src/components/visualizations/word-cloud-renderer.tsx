@@ -79,10 +79,10 @@ export function WordCloudRenderer({ visualization, data }: WordCloudRendererProp
   }, [model])
 
   if (!options.column) {
-    return <div className="p-4 text-sm text-muted-foreground">Word cloud requires a word column.</div>
+    return <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">Word cloud requires a word column.</div>
   }
   if (model.words.length === 0) {
-    return <div className="p-4 text-sm text-muted-foreground">No words to display.</div>
+    return <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">No words to display.</div>
   }
 
   return (

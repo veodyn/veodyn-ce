@@ -40,13 +40,13 @@ interface SingleValueProps {
  */
 export function SingleValue({ value, label, trend }: SingleValueProps) {
   return (
-    <div className="flex aspect-[4/1] h-full w-full flex-col items-center justify-center overflow-hidden p-3 text-center [container-type:size]">
-      <div className="text-[clamp(1.5rem,min(9cqw,30cqh),3.5rem)] font-bold leading-tight text-foreground tabular-nums">
+    <div data-veodyn-part="counter" className="flex aspect-[4/1] h-full w-full flex-col items-center justify-center overflow-hidden p-3 text-center [container-type:size]">
+      <div data-veodyn-part="counter-value" className="text-[clamp(1.5rem,min(9cqw,30cqh),3.5rem)] font-bold leading-tight text-foreground tabular-nums">
         {value}
       </div>
-      {trend && <div className="text-lg mt-2 [@container_(max-height:7rem)]:hidden">{trend}</div>}
+      {trend && <div data-veodyn-part="counter-trend" className="text-lg mt-2 [@container_(max-height:7rem)]:hidden">{trend}</div>}
       {label && (
-        <div className="text-sm text-muted-foreground mt-2 [@container_(max-height:4.5rem)]:hidden">
+        <div data-veodyn-part="counter-label" className="text-sm text-muted-foreground mt-2 [@container_(max-height:4.5rem)]:hidden">
           {label}
         </div>
       )}

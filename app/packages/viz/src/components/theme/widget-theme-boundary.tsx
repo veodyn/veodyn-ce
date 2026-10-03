@@ -13,10 +13,14 @@ import { themeTokens } from '../../lib/widget-theme-palette'
 
 export interface WidgetThemeBoundaryProps {
   theme: WidgetTheme
+  visualizationType?: string
   children: React.ReactNode
 }
 
-export function WidgetThemeBoundary({ theme, children }: WidgetThemeBoundaryProps) {
+export function WidgetThemeBoundary({ theme, visualizationType, children }: WidgetThemeBoundaryProps) {
+  const partProps = visualizationType
+    ? { 'data-veodyn-part': 'visualization', 'data-veodyn-type': visualizationType }
+    : {}
   const appTheme = useThemeScope()
   const resolved = resolveWidgetTheme(theme, appTheme)
 
@@ -24,7 +28,7 @@ export function WidgetThemeBoundary({ theme, children }: WidgetThemeBoundaryProp
   // part in layout, and every map in here sizes itself against its parent.
   if (theme === 'auto') {
     return (
-      <div data-theme={resolved} className="contents">
+      <div data-theme={resolved} className="contents" {...partProps}>
         {children}
       </div>
     )
@@ -41,6 +45,7 @@ export function WidgetThemeBoundary({ theme, children }: WidgetThemeBoundaryProp
   return (
     <ThemeScopeProvider scope={resolved}>
       <div
+        {...partProps}
         data-theme={resolved}
         className={
           resolved === 'dark'

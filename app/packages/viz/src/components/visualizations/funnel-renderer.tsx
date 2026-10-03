@@ -167,7 +167,7 @@ export function FunnelTooltip({ active, payload }: Partial<TooltipContentProps<n
   if (!active || !step) return null
 
   return (
-    <div className="rounded-md border bg-card px-3 py-2 text-sm shadow-md">
+    <div data-veodyn-part="tooltip" className="rounded-md border bg-card px-3 py-2 text-sm shadow-md">
       <div className="mb-1 font-medium text-card-foreground">{step.label}</div>
       <div className="font-medium tabular-nums text-card-foreground">
         {step.valueLabel} <span className="text-muted-foreground">({step.shareLabel})</span>
@@ -208,7 +208,7 @@ export function FunnelRenderer({ visualization, data }: FunnelRendererProps) {
 
   if (steps.length === 0) {
     return (
-      <div className="p-4 text-sm text-muted-foreground">
+      <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">
         Configure step and value columns to display funnel.
       </div>
     )
@@ -224,7 +224,7 @@ export function FunnelRenderer({ visualization, data }: FunnelRendererProps) {
   const largest = Math.max(...steps.map((step) => step.value))
   if (largest <= 0) {
     return (
-      <div className="p-4 text-sm text-muted-foreground">
+      <div data-veodyn-part="empty" className="p-4 text-sm text-muted-foreground">
         No step has a value above zero, so there is no funnel to draw.
       </div>
     )
