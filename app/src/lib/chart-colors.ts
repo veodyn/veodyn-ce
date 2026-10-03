@@ -3,7 +3,7 @@
 // palette. Colors themselves live in globals.css (--chart-1..8, light/dark)
 // by default, overridden per-tenant by theme injection (lib/theme-style.ts themeStyle).
 import { contrast, hexToOklab, oklabToHex } from '@/lib/chart-palette'
-import { DEFAULT_PALETTE } from '@/lib/config-schema'
+import { DEFAULT_PALETTE } from '@/lib/chart-palette-default'
 
 const PALETTE_SIZE = 8
 

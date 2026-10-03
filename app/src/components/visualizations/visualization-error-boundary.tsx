@@ -3,7 +3,7 @@
 import { Component, type ReactNode } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { AppError, ErrorIds } from '@/lib/errorIds'
+import { VizError, VIZ_ERROR_IDS } from '@/lib/visualizations/viz-error'
 
 interface VisualizationErrorBoundaryProps {
   children: ReactNode
@@ -21,10 +21,10 @@ export class VisualizationErrorBoundary extends Component<VisualizationErrorBoun
   }
 
   componentDidCatch(error: Error) {
-    const appError = new AppError(ErrorIds.UI_VIZ_RENDER_FAILED, 'Visualization failed to render', {
+    const vizError = new VizError(VIZ_ERROR_IDS.RENDER_FAILED, 'Visualization failed to render', {
       cause: error.message,
     })
-    console.error(appError.toLogLine())
+    console.error(vizError.toLogLine())
   }
 
   render() {

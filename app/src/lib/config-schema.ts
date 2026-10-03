@@ -2,6 +2,9 @@
 // No file or process access here (that lives in config.ts), so this module is
 // safe to import from tests and from client code for the ClientConfig type.
 import { z } from 'zod'
+import { DEFAULT_PALETTE, DEFAULT_PALETTE_DARK } from './chart-palette-default.ts'
+
+export { DEFAULT_PALETTE, DEFAULT_PALETTE_DARK }
 
 const HEX = /^#[0-9a-fA-F]{6}$/
 
@@ -30,15 +33,6 @@ export const DEFAULT_ACCENT_DARK = '#7FA9E0'
 // order, so adjacent slots clear the adjacent CVD and normal-vision floors. Do
 // not reorder or edit a hex without re-running chart-palette.test.ts.
 // Eight entries, one per slot, so an 8-series chart never repeats a colour.
-export const DEFAULT_PALETTE = [
-  '#485EA7', '#2B7E4E', '#A37AC7', '#3570A2', '#89435E', '#BF8A32', '#1D9999', '#B25630',
-]
-
-// Same eight hues, re-stepped for the dark card: hand-selected, not derived
-// from the light column.
-export const DEFAULT_PALETTE_DARK = [
-  '#4A61AA', '#2B7E4E', '#754998', '#4D8FC8', '#A05771', '#BF861D', '#1D9999', '#B55933',
-]
 
 const aiSchema = z
   .object({

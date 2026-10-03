@@ -29,7 +29,7 @@ export type { VizThumbnail } from '@/components/visualizations/viz-thumbnails'
 export {
   useThemeScope as useVisualizationTheme,
   type ThemeScope as VisualizationTheme,
-} from '@/components/theme/theme-provider'
+} from '@/components/theme/theme-scope'
 export { WidgetThemeBoundary } from '@/components/theme/widget-theme-boundary'
 export {
   WIDGET_THEMES,

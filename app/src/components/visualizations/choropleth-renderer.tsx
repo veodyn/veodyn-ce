@@ -15,7 +15,7 @@ import {
 import { useVizGeoJson } from '@/hooks/use-viz-geojson'
 import { useThemeTokenVersion } from '@/hooks/use-theme-token-version'
 import { useVizEnvironment } from '@/lib/viz-environment'
-import { useThemeScope } from '@/components/theme/theme-provider'
+import { useThemeScope } from '@/components/theme/theme-scope'
 import { buildChoroplethModel } from './choropleth-model'
 import { choroplethTooltipText } from './choropleth-tooltip'
 import { WORLD_VIEW, viewForFeatureCollection } from './choropleth-view'

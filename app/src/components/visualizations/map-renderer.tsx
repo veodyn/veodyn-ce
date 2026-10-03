@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useCallback } from 'react'
-import { useThemeScope } from '@/components/theme/theme-provider'
+import { useThemeScope } from '@/components/theme/theme-scope'
 import Map, { Marker, Popup } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'

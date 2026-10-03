@@ -7,7 +7,7 @@
 // `bg-background` and `text-foreground` underneath resolves to; the context
 // flips what renderers that cannot read CSS see (MapLibre picks a basemap URL,
 // not a CSS variable). One without the other is a dark panel with a white map.
-import { ThemeScopeProvider, useThemeScope } from './theme-provider'
+import { ThemeScopeProvider, useThemeScope } from './theme-scope'
 import { resolveWidgetTheme, type WidgetTheme } from '@/lib/widget-theme'
 import { themeTokens } from '@/lib/widget-theme-palette'
 

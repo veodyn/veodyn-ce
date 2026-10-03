@@ -70,4 +70,23 @@ describe('useVizGeoJson', () => {
     await waitFor(() => expect(result.current.isError).toBe(true))
     expect((result.current.error as { id?: string })?.id).toBe('E_UI_002')
   })
+
+  it('does not retry a missing geometry file, whatever the client default', async () => {
+    let requests = 0
+    server.use(
+      http.get('/geo/absent.geojson', () => {
+        requests += 1
+        return new HttpResponse(null, { status: 404 })
+      })
+    )
+    const client = new QueryClient()
+    const retryingWrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    )
+
+    const { result } = renderHook(() => useVizGeoJson('absent'), { wrapper: retryingWrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 15_000 })
+    expect(requests).toBe(1)
+  }, 20_000)
 })

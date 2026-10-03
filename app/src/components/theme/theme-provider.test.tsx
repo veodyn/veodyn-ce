@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { ThemeProvider, useThemeScope } from '@/components/theme/theme-provider'
+import { ThemeProvider } from '@/components/theme/theme-provider'
+import { useThemeScope } from '@/components/theme/theme-scope'
 import { THEME_STORAGE_KEY } from '@/lib/theme-preference'
 
 function Probe() {
