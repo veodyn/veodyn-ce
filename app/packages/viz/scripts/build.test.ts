@@ -54,6 +54,19 @@ describe('the built package', () => {
     expect(js.filter((path) => /from ['"]@\//.test(readFileSync(path, 'utf8')))).toEqual([])
   })
 
+  it('spells every relative import out to a file, as strict ESM resolution requires', () => {
+    const specifier = /(?:from\s*|import\s*\(\s*|^import\s+)['"](\.{1,2}\/[^'"]+)['"]/gm
+    const loose = files(out)
+      .filter((path) => path.endsWith('.js') || path.endsWith('.d.ts'))
+      .flatMap((path) =>
+        [...readFileSync(path, 'utf8').matchAll(specifier)]
+          .map((m) => m[1])
+          .filter((spec) => !spec.endsWith('.js') || !existsSync(join(path, '..', spec.replace(/\.js$/, path.endsWith('.d.ts') ? '.d.ts' : '.js'))))
+          .map((spec) => `${path.slice(out.length + 1)}: ${spec}`)
+      )
+    expect(loose).toEqual([])
+  })
+
   it('rewrites source import extensions so a bundler can resolve them', () => {
     expect(read('lib/chart-palette.js')).not.toMatch(/from ['"][^'"]+\.ts['"]/)
   })
