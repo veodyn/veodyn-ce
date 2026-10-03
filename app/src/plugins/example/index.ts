@@ -5,7 +5,7 @@
 // the name `register`, which scripts/generate-plugin-registry.mjs requires.
 // A package with more than one visualization registers each of them the same
 // way and exports one `register`; this one has a single entry.
-import { registerVisualization, type VisualizationPlugin } from '@/lib/visualizations'
+import { registerVisualization, type VisualizationPlugin } from '@veodyn/viz'
 import { helloPanelPlugin } from './hello-panel'
 
 export const EXAMPLE_VISUALIZATIONS: readonly VisualizationPlugin[] = [helloPanelPlugin]

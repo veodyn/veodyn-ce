@@ -8,13 +8,13 @@ import { Toaster } from '@/components/ui/sonner'
 import { mockQueries, type MockVisualization } from '@/lib/mock-data'
 import { VisualizationTabs } from './visualization-tabs'
 
-vi.mock('@/components/visualizations/visualization-renderer', () => ({
+vi.mock('@veodyn/viz/components/visualizations/visualization-renderer', () => ({
   VisualizationRenderer: ({ visualization }: { visualization: MockVisualization }) => (
     <div data-testid="viz">{visualization.name}</div>
   ),
 }))
 
-vi.mock('./query-result-table', () => ({
+vi.mock('@veodyn/viz/components/query/query-result-table', () => ({
   QueryResultTable: () => <div data-testid="viz">table panel</div>,
 }))
 

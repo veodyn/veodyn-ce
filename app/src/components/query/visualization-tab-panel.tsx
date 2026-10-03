@@ -9,13 +9,13 @@
 // that state forever, because the query it hangs off may never be run.
 import { Play, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { VisualizationErrorBoundary } from '@/components/visualizations/visualization-error-boundary'
-import { VisualizationRenderer } from '@/components/visualizations/visualization-renderer'
+import { VisualizationErrorBoundary } from '@veodyn/viz/components/visualizations/visualization-error-boundary'
+import { VisualizationRenderer } from '@veodyn/viz/components/visualizations/visualization-renderer'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
-import { visualizationData } from '@/lib/visualizations'
+import { visualizationData } from '@veodyn/viz'
 import type { RedashTableColumnOptions, RedashTableOptions } from '@/services/redash/types'
 import { useAppResultDownloads } from '@/components/viz-app-context'
-import { QueryResultTable } from './query-result-table'
+import { QueryResultTable } from '@veodyn/viz/components/query/query-result-table'
 
 export interface VisualizationTabPanelProps {
   viz: MockVisualization

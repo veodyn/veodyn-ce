@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { required } from '@/lib/required'
-import { CounterRenderer } from './counter-renderer'
+import { CounterRenderer } from '@veodyn/viz/components/visualizations/counter-renderer'
 
 function viz(options: Record<string, unknown>): MockVisualization {
   return {

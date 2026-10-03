@@ -10,7 +10,7 @@ import {
   normalizeHex,
   oklabToHex,
   oklch,
-} from '@/lib/chart-palette'
+} from '@veodyn/viz/lib/chart-palette'
 import { CHART_SURFACE_DARK } from '@/lib/config-schema'
 
 // WCAG AA for normal text. The accent is used as link-coloured text, not only

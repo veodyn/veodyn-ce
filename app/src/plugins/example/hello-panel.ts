@@ -5,7 +5,7 @@
 // declaration and its renderer share one .ts file.
 import { createElement } from 'react'
 import { Sparkles } from 'lucide-react'
-import { PLUGIN_API_VERSION, type VisualizationPlugin } from '@/lib/visualizations'
+import { PLUGIN_API_VERSION, type VisualizationPlugin } from '@veodyn/viz'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export const HELLO_PANEL_TYPE = 'EXAMPLE_HELLO_PANEL'

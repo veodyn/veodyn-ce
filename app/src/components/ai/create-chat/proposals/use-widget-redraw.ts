@@ -16,7 +16,7 @@
 import { useConfig } from '@/components/config/config-provider'
 import { useCreateVisualization } from '@/hooks/use-visualizations'
 import { useForkQuery, useUpdateQuery } from '@/hooks/use-queries'
-import { inferredVizOptions } from '@/lib/visualizations'
+import { inferredVizOptions } from '@veodyn/viz'
 import { resolveVizChoice } from '@/lib/viz-choices'
 import { executeSavedQuery } from '@/services/redash/execution'
 import { useAuthStore } from '@/stores/auth-store'

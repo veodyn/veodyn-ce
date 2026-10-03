@@ -4,7 +4,7 @@
 // visualizations of the run that succeeded.
 import { VisualizationTabs } from './visualization-tabs'
 import { QueryExecutionStatus } from './query-execution-status'
-import { getVisualization } from '@/lib/visualizations'
+import { getVisualization } from '@veodyn/viz'
 import { readQueryError } from '@/lib/query-error'
 import type { AdhocViz } from '@/lib/viz-choices'
 import type { MockQueryResult, MockVisualization, QueryResultData } from '@/lib/mock-data'

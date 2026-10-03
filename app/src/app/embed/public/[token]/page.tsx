@@ -19,13 +19,13 @@
 import { use } from 'react'
 import type { CSSProperties } from 'react'
 import { Link2Off } from 'lucide-react'
-import { VisualizationRenderer } from '@/components/visualizations/visualization-renderer'
-import { CHART_FILL_VAR } from '@/components/visualizations/chart/chart-frame'
+import { VisualizationRenderer } from '@veodyn/viz/components/visualizations/visualization-renderer'
+import { CHART_FILL_VAR } from '@veodyn/viz/components/visualizations/chart/chart-frame'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SkeletonCard } from '@/components/ui/skeleton-card'
 import { usePublicVisualization } from '@/hooks/use-visualizations'
-import { visualizationData } from '@/lib/visualizations'
-import { PUBLIC_VISUALIZATION_ID } from '@/lib/public-visualization'
+import { visualizationData } from '@veodyn/viz'
+import { PUBLIC_VISUALIZATION_ID } from '@veodyn/viz/lib/public-visualization'
 
 // The bounds on `?refresh=`, in seconds. The floor keeps a mistyped `1` from
 // hammering the backend once per second from every screen in a lobby; the

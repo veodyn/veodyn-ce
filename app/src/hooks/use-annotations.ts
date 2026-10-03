@@ -5,7 +5,7 @@ import { useMockDataStore } from '@/stores/mock-data-store'
 import { USE_REAL_API } from '@/services/redash/config'
 import * as annotationsService from '@/services/redash/annotations'
 import { ANNOTATIONS_SUPPORTED } from '@/services/redash/annotations'
-import type { Annotation } from '@/types/annotation'
+import type { Annotation } from '@veodyn/viz/types/annotation'
 
 export function useAnnotations(dashboardId: number) {
   const store = useMockDataStore()

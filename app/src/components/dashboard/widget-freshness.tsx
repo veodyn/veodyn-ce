@@ -6,7 +6,7 @@ import { useCaptures } from '@/hooks/use-captures'
 import { useQuerySqlById } from '@/hooks/use-query-sql'
 import { datasetForQueryId, resolveDatasetStatus } from '@/lib/dataset-freshness'
 import { CAPTURE_STATUS_META } from '@/lib/capture-status'
-import { formatRelativeTime } from '@/lib/chart-format'
+import { formatRelativeTime } from '@veodyn/viz/lib/chart-format'
 
 /**
  * A widget's data age, with a status icon that means something.

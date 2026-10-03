@@ -1,7 +1,7 @@
 'use client'
 
 import { useApplyTheme, useThemePreference } from '@/hooks/use-theme-preference'
-import { ThemeScopeProvider, type ThemeScope } from './theme-scope'
+import { ThemeScopeProvider, type ThemeScope } from '@veodyn/viz/components/theme/theme-scope'
 
 /**
  * Owns the live theme: resolves it, puts it on <html>, and publishes it to the

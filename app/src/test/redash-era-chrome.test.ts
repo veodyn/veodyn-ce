@@ -1,7 +1,7 @@
-import { readdirSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { findRedashEraChrome, readAppSource, REDASH_ERA_PATTERNS } from './redash-era-chrome'
+import { findRedashEraChrome, readAppSource, REDASH_ERA_PATTERNS, SOURCE_ROOTS } from './redash-era-chrome'
 
 describe('redash-era-chrome helper', () => {
   it('flags a known Redash-era class', () => {
@@ -119,7 +119,6 @@ const sharedFurniture = [
 // sanctioned fontSize: 12 never reach this guard: do not "fix" the walk to
 // include .ts, that would break the one legitimate raw font size in the tree.
 function vizSources(): string[] {
-  const root = join(process.cwd(), 'src', 'components', 'visualizations')
   const found: string[] = []
   const walk = (dir: string, rel: string) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -128,8 +127,11 @@ function vizSources(): string[] {
       else if (entry.name.endsWith('.tsx') && !entry.name.includes('.test.')) found.push(relPath)
     }
   }
-  walk(root, '')
-  return found.map((p) => `components/visualizations/${p}`)
+  for (const sourceRoot of SOURCE_ROOTS) {
+    const root = join(sourceRoot, 'components', 'visualizations')
+    if (existsSync(root)) walk(root, '')
+  }
+  return [...new Set(found)].sort().map((p) => `components/visualizations/${p}`)
 }
 
 // Drawings, not chrome. These are SVG miniatures on a fixed 48x32 viewBox, so
@@ -150,5 +152,25 @@ describe('shared furniture carries no Redash-era chrome', () => {
 
   it('finds every visualization source', () => {
     expect(vizSources().length).toBeGreaterThan(25)
+  })
+})
+
+describe('readAppSource', () => {
+  it('reads a file that moved into the visualization package by its old src path', () => {
+    expect(readAppSource('components/visualizations/heatmap-grid-chrome.ts')).toContain('export')
+  })
+
+  it('reads a file that stayed in the app', () => {
+    expect(readAppSource('components/layout/page-header.tsx')).toContain('export')
+  })
+})
+
+describe('the visualization sources this guard walks', () => {
+  it('include the sources that moved into the package', () => {
+    expect(vizSources()).toEqual(expect.arrayContaining(['components/visualizations/heatmap-renderer.tsx']))
+  })
+
+  it('include the editors that stayed in the app', () => {
+    expect(vizSources()).toEqual(expect.arrayContaining(['components/visualizations/editors/chart-editor.tsx']))
   })
 })

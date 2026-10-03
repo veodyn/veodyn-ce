@@ -9,7 +9,7 @@ import {
   PLUGIN_API_VERSION,
   registerVisualization,
   type VisualizationPlugin,
-} from '@/lib/visualizations'
+} from '@veodyn/viz'
 import AdminPluginsPage from './page'
 
 function signInAsAdmin() {

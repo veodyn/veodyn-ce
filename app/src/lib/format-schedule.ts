@@ -5,7 +5,7 @@
 // than written again here, so a schedule reads the same in this header as it
 // does in the Schedules list.
 
-import { formatCalendarDate } from '@/lib/format-datetime'
+import { formatCalendarDate } from '@veodyn/viz/lib/format-datetime'
 import { describeSchedule, hasExpired, type QuerySchedule } from '@/lib/query-schedule'
 
 export type ScheduleState = 'set' | 'ended' | 'unset'

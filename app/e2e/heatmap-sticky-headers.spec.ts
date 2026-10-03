@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { authorHeatmap, authorTallHeatmap, authorWideHeatmap, gridScroller } from './heatmap-interaction-helpers'
 import { EPSILON, measure, MIN_SCROLL, scrollTo } from './heatmap-sticky-helpers'
-import { ROW_HEADER_MIN_WIDTH } from '../src/components/visualizations/heatmap-grid-chrome'
+import { ROW_HEADER_MIN_WIDTH } from '../packages/viz/src/components/visualizations/heatmap-grid-chrome'
 
 // The floor in px, derived from the component's own constant rather than
 // duplicated as a literal, so the two cannot drift apart.

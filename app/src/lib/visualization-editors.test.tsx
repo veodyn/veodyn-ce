@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { isRenderableComponent } from '@/test/component-shape'
-import { CORE_VISUALIZATIONS, PLUGIN_API_VERSION, getVisualization, registerVisualization } from '@/lib/visualizations'
+import { CORE_VISUALIZATIONS, PLUGIN_API_VERSION, getVisualization, registerVisualization } from '@veodyn/viz'
 import { VisualizationEditorSlot } from '@/components/visualizations/visualization-editor-slot'
 import { CORE_EDITORS } from './visualization-editors'
 

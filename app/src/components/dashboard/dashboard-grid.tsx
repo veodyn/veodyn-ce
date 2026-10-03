@@ -3,7 +3,7 @@
 import { useMemo, useCallback } from 'react'
 import { ResponsiveGridLayout, useContainerWidth, type LayoutItem, type Layout } from 'react-grid-layout'
 import type { MockDashboardWidget } from '@/lib/mock-data'
-import type { Annotation } from '@/types/annotation'
+import type { Annotation } from '@veodyn/viz/types/annotation'
 import { Button } from '@/components/ui/button'
 import { VisualizationWidget } from './visualization-widget'
 import { TextboxWidget } from './textbox-widget'

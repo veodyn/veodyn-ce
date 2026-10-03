@@ -1,9 +1,9 @@
 'use client'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { VisualizationRenderer } from '@/components/visualizations/visualization-renderer'
+import { VisualizationRenderer } from '@veodyn/viz/components/visualizations/visualization-renderer'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
-import type { PlacedAnnotation } from '@/lib/annotation-overlay'
+import type { PlacedAnnotation } from '@veodyn/viz/lib/annotation-overlay'
 
 interface ExpandedWidgetDialogProps {
   open: boolean

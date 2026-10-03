@@ -6,7 +6,7 @@ import { NEUTRAL_CONFIG, toClientConfig } from '@/lib/config-schema'
 import { useMockDataStore } from '@/stores/mock-data-store'
 import { mockQueries, mockQueryResults } from '@/lib/mock-data'
 import type { MockDashboardWidget, MockQuery, MockQueryResult } from '@/lib/mock-data'
-import type { Annotation } from '@/types/annotation'
+import type { Annotation } from '@veodyn/viz/types/annotation'
 import { VisualizationWidget } from './visualization-widget'
 
 // The widget mounts the annotation dialog, which reads config to gate its AI

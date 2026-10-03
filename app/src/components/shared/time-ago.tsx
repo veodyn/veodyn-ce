@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { formatAgeProse } from '@/lib/format-datetime'
+import { formatAgeProse } from '@veodyn/viz/lib/format-datetime'
 import { cn } from '@/lib/utils'
 
 // The one treatment for a relative timestamp, applied here rather than left to

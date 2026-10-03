@@ -6,16 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { VisualizationRenderer } from './visualization-renderer'
+import { VisualizationRenderer } from '@veodyn/viz/components/visualizations/visualization-renderer'
 import { useConfig } from '@/components/config/config-provider'
 import {
   getVisualization,
   inferredVizOptions as withInferredMapping,
   validateVisualization,
   visualizationData,
-} from '@/lib/visualizations'
+} from '@veodyn/viz'
 import { VisualizationEditorSlot } from './visualization-editor-slot'
-import { VisualizationProblems } from './visualization-problems'
+import { VisualizationProblems } from '@veodyn/viz/components/visualizations/visualization-problems'
 import { VisualizationTypeLabel } from './visualization-type-label'
 import { visibleVisualizations } from '@/lib/viz-choices'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'

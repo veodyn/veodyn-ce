@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Direction } from '@/types/metric'
+import type { Direction } from '@veodyn/viz/types/metric'
 
 /**
  * A change against the previous evaluation, in the same unit as the value it

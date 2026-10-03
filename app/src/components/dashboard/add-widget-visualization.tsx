@@ -2,7 +2,7 @@
 
 import { ArrowLeft, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getVisualization } from '@/lib/visualizations'
+import { getVisualization } from '@veodyn/viz'
 import type { MockQuery, MockVisualization } from '@/lib/mock-data'
 import { getDefaultSize } from './add-widget-layout'
 

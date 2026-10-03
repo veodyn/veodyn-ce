@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { themeStyle } from '@/lib/theme-style'
-import { CHART_PALETTE_SIZE, contrast, oklch } from '@/lib/chart-palette'
-import { getChartPalette } from '@/lib/chart-colors'
+import { CHART_PALETTE_SIZE, contrast, oklch } from '@veodyn/viz/lib/chart-palette'
+import { getChartPalette } from '@veodyn/viz/lib/chart-colors'
 import {
   CHART_SURFACE_DARK,
   DEFAULT_ACCENT_DARK,

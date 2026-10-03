@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { render, renderHook, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { QueryResultTable } from '@/components/query/query-result-table'
+import { QueryResultTable } from '@veodyn/viz/components/query/query-result-table'
 import { buildCurrentUser } from '@/stores/auth-identity'
 import { useAuthStore } from '@/stores/auth-store'
 import { resetStores } from '@/test/utils'
-import { useVizFormats } from '@/lib/viz-formats'
+import { useVizFormats } from '@veodyn/viz/lib/viz-formats'
 import { useAppResultDownloads, VizAppContext } from './viz-app-context'
 
 function signIn(permissions: string[]) {

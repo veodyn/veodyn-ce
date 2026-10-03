@@ -5,7 +5,7 @@ import { mockQueryResults } from '@/lib/mock-data'
 import { buildCurrentUser } from '@/stores/auth-identity'
 import { useAuthStore } from '@/stores/auth-store'
 import { renderWithProviders, resetStores } from '@/test/utils'
-import { QueryResultTable } from './query-result-table'
+import { QueryResultTable } from '@veodyn/viz/components/query/query-result-table'
 
 afterEach(() => resetStores())
 

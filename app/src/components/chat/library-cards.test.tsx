@@ -14,7 +14,7 @@ const execution = vi.hoisted(() => ({ executeSavedQuery: vi.fn() }))
 vi.mock('@/hooks/use-queries', () => ({ useQueryById: hooks.useQueryById }))
 vi.mock('@/hooks/use-query-execution', () => ({ useQueryResult: hooks.useQueryResult }))
 vi.mock('@/services/redash/execution', () => execution)
-vi.mock('@/components/visualizations/visualization-renderer', () => ({
+vi.mock('@veodyn/viz/components/visualizations/visualization-renderer', () => ({
   VisualizationRenderer: ({ visualization }: { visualization: { name: string } }) => (
     <div data-testid="chart">{visualization.name}</div>
   ),

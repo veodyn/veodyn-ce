@@ -1,5 +1,5 @@
 import { lazy, type ComponentType } from 'react'
-import type { VisualizationEditorProps } from '@/lib/visualizations'
+import type { VisualizationEditorProps } from '@veodyn/viz'
 
 export const BoxPlotEditor = lazy(() =>
   import('@/components/visualizations/editors/box-plot-editor').then((m) => ({ default: m.BoxPlotEditor }))

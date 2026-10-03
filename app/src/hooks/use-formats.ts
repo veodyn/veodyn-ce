@@ -11,8 +11,8 @@
 import { useMemo } from 'react'
 import { useOrgSettings } from '@/hooks/use-org-settings'
 import { useAuthStore } from '@/stores/auth-store'
-import { DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT } from '@/lib/format-datetime'
-import { formatsFor, type Formats } from '@/lib/viz-formats'
+import { DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT } from '@veodyn/viz/lib/format-datetime'
+import { formatsFor, type Formats } from '@veodyn/viz/lib/viz-formats'
 
 export type { Formats }
 

@@ -1,4 +1,4 @@
-import type { Annotation } from '@/types/annotation'
+import type { Annotation } from '@veodyn/viz/types/annotation'
 import { mockDashboards } from './dashboards'
 
 // Timestamps mirror the LA pack: chosen to fall inside the data range of the

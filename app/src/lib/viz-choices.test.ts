@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getVisualization, listVisualizations } from '@/lib/visualizations'
+import { getVisualization, listVisualizations } from '@veodyn/viz'
 import { isRenderableComponent } from '@/test/component-shape'
 import {
   DEFAULT_VIZ_ID,

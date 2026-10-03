@@ -10,7 +10,7 @@ import {
   hueRadians,
   oklch,
   validatePalette,
-} from '@/lib/chart-palette'
+} from '@veodyn/viz/lib/chart-palette'
 import {
   CHART_SURFACE_DARK,
   CHART_SURFACE_LIGHT,

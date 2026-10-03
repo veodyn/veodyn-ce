@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, screen } from '@testing-library/react'
 import { renderWithProviders, resetStores } from '@/test/utils'
-import { PLUGIN_API_VERSION, registerVisualization } from '@/lib/visualizations'
+import { PLUGIN_API_VERSION, registerVisualization } from '@veodyn/viz'
 import PublicEmbedPage from './page'
 
 const TOKEN = 'viz_tok_abc123456789'

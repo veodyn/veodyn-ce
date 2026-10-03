@@ -5,7 +5,7 @@ import { screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw/server'
 import { renderWithProviders, resetStores } from '@/test/utils'
-import { QueryResultTable } from './query-result-table'
+import { QueryResultTable } from '@veodyn/viz/components/query/query-result-table'
 
 vi.mock('@/services/redash/config', () => ({ USE_REAL_API: true }))
 

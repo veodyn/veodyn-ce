@@ -2,7 +2,7 @@
 // No file or process access here (that lives in config.ts), so this module is
 // safe to import from tests and from client code for the ClientConfig type.
 import { z } from 'zod'
-import { DEFAULT_PALETTE, DEFAULT_PALETTE_DARK } from './chart-palette-default.ts'
+import { DEFAULT_PALETTE, DEFAULT_PALETTE_DARK } from '../../packages/viz/src/lib/chart-palette-default.ts'
 
 export { DEFAULT_PALETTE, DEFAULT_PALETTE_DARK }
 

@@ -4,7 +4,7 @@ import {
   PLUGIN_API_VERSION,
   registerVisualization,
   type VisualizationPlugin,
-} from '@/lib/visualizations'
+} from '@veodyn/viz'
 import { VisualizationTypeLabel } from './visualization-type-label'
 
 registerVisualization({

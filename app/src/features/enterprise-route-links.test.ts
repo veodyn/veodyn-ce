@@ -98,7 +98,12 @@ describe('enterprise route guard, self-checks', () => {
   })
 
   it('scans the community surfaces this guard was written for', () => {
-    for (const file of ['src/app/favorites/page.tsx', 'src/app/page.tsx', 'src/middleware.ts']) {
+    for (const file of [
+      'src/app/favorites/page.tsx',
+      'src/app/page.tsx',
+      'src/middleware.ts',
+      join('packages', 'viz', 'src', 'components', 'visualizations', 'heatmap-renderer.tsx'),
+    ]) {
       expect(FILES, `${file} must be scanned`).toContain(file)
     }
   })
@@ -152,9 +157,10 @@ describe('enterprise route guard, self-checks', () => {
   // link, unlike an import specifier in a comment, which is why this file strips
   // comments where feature-boundary-scan does not.
   it('does not read a route named in a comment as a link', () => {
-    const source = code('src/components/visualizations/heatmap-grid-chrome.ts')
+    const file = 'packages/viz/src/components/visualizations/heatmap-grid-chrome.ts'
+    const source = code(file)
     expect(source).toContain('/present')
-    expect(routeLinksIn('src/components/visualizations/heatmap-grid-chrome.ts', source)).toEqual([])
+    expect(routeLinksIn(file, source)).toEqual([])
   })
 
   it('catches a link planted in a community file, naming the file, the line and the literal', () => {

@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { registeredVisualizations } from '@/lib/visualizations'
+import { registeredVisualizations } from '@veodyn/viz'
 import { effectiveAudience, visibleVisualizations } from '@/lib/viz-choices'
 import { PLUGIN_PACKAGES, installedPluginNames } from '@/plugins'
 

@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { installsNoFeaturePackages } from '@/features'
-import { registeredVisualizations } from '@/lib/visualizations'
+import { registeredVisualizations } from '@veodyn/viz'
 import { PLUGIN_PACKAGES, installedPluginNames, registerInstalledPlugins } from './index'
 
 describe('installedPluginNames', () => {

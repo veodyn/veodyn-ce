@@ -5,7 +5,7 @@ import type { QueryResultData } from '@/lib/mock-data'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import { EditVisualizationDialog } from './edit-visualization-dialog'
 
-vi.mock('./counter-renderer', () => ({
+vi.mock('@veodyn/viz/components/visualizations/counter-renderer', () => ({
   CounterRenderer: ({
     onOptionsChange,
   }: {

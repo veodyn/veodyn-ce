@@ -21,7 +21,6 @@
     // the whole plugin API as unused exports. It is not: the exports are the
     // published contract. Listed as entry points so the contract is not
     // reported as dead every time somebody runs this.
-    "src/lib/visualizations/index.ts",
     "src/plugins/index.ts",
     "src/plugins/*/index.ts",
     "packages/viz/src/index.ts",

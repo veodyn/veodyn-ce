@@ -7,7 +7,7 @@ import userEvent from '@testing-library/user-event'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import { EditVisualizationDialog } from './edit-visualization-dialog'
-import { VisualizationRenderer } from './visualization-renderer'
+import { VisualizationRenderer } from '@veodyn/viz/components/visualizations/visualization-renderer'
 
 const data: QueryResultData = {
   columns: [

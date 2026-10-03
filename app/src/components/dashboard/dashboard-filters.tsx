@@ -4,7 +4,7 @@ import { useId, useState, useMemo } from 'react'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { QueryResultData } from '@/lib/mock-data'
-import { detectResultFilters } from '@/lib/filters/result-filters'
+import { detectResultFilters } from '@veodyn/viz/lib/filters/result-filters'
 
 interface DashboardFiltersProps {
   allResults: QueryResultData[]

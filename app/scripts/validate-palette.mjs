@@ -13,7 +13,7 @@
 // MODULE_TYPELESS_PACKAGE_JSON, which the package.json script silences: the
 // reparse cost is immaterial for a one-shot CLI, but do not silence it if you
 // copy this pattern into a long-running process.
-import { validatePalette, formatReport, deriveDarkColumn, effectivePalette, CHART_PALETTE_SIZE } from '../src/lib/chart-palette.ts'
+import { validatePalette, formatReport, deriveDarkColumn, effectivePalette, CHART_PALETTE_SIZE } from '../packages/viz/src/lib/chart-palette.ts'
 import {
   DEFAULT_PALETTE,
   DEFAULT_PALETTE_DARK,

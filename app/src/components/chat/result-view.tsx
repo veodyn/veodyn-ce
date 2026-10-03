@@ -1,11 +1,11 @@
 'use client'
 
 import { useMemo } from 'react'
-import { VisualizationRenderer } from '@/components/visualizations/visualization-renderer'
+import { VisualizationRenderer } from '@veodyn/viz/components/visualizations/visualization-renderer'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
-import { getVisualization, inferredVizOptions } from '@/lib/visualizations'
-import { visualizationData } from '@/lib/visualizations/data-gate'
+import { getVisualization, inferredVizOptions } from '@veodyn/viz'
+import { visualizationData } from '@veodyn/viz/lib/visualizations/data-gate'
 import { resolveVizChoice } from '@/lib/viz-choices'
 
 interface ResultViewProps {

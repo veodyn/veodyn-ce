@@ -7,19 +7,9 @@
  * resolves; packs/neutral imports directly from here.
  */
 
-export interface MockVisualization {
-  id: number
-  type: string
-  name: string
-  description: string
-  options: Record<string, unknown>
-  created_at: string
-  updated_at: string
-  // Real Redash only: the embed share token, present only for an admin or the
-  // owner of the parent query. The fixtures mint no tokens, so anything reading
-  // it has to handle its absence rather than substitute another value.
-  api_key?: string
-}
+import type { MockVisualization } from '@veodyn/viz/types/viz-data'
+
+export type { MockVisualization }
 
 /**
  * Everything a parameter value can be:

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contrast, hueRadians, oklch } from '@/lib/chart-palette'
+import { contrast, hueRadians, oklch } from '@veodyn/viz/lib/chart-palette'
 import { CHART_SURFACE_DARK } from '@/lib/config-schema'
 import { deriveDarkAccent } from '@/lib/theme-accent'
 import { required } from '@/lib/required'

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { DeltaChip } from './delta-chip'
 import { MICRO_SUBLABEL } from '@/lib/section-heading'
-import type { Direction } from '@/types/metric'
+import type { Direction } from '@veodyn/viz/types/metric'
 
 export interface StatNumberProps {
   value: number

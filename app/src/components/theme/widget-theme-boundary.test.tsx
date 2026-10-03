@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { ThemeProvider } from './theme-provider'
-import { useThemeScope } from './theme-scope'
-import { WidgetThemeBoundary } from './widget-theme-boundary'
+import { useThemeScope } from '@veodyn/viz/components/theme/theme-scope'
+import { WidgetThemeBoundary } from '@veodyn/viz/components/theme/widget-theme-boundary'
 
 // Stands in for a renderer that cannot read CSS and has to be told the theme:
 // the maps pick a basemap URL exactly like this.

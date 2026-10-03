@@ -13,7 +13,7 @@ import {
   mockAnnotations,
 } from '@/lib/mock-data'
 import type { Dataset, DomainHub } from '@/types/catalog'
-import type { Annotation } from '@/types/annotation'
+import type { Annotation } from '@veodyn/viz/types/annotation'
 import { hydrateMockData } from './mock-data-hydration'
 import { createCaptureSlice, type CaptureSlice } from './capture-slice'
 import { createConnectorSlice, type ConnectorSlice } from './connector-slice'

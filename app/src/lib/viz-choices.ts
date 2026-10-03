@@ -1,11 +1,11 @@
-import type { VizThumbnail } from '@/components/visualizations/viz-thumbnails'
-import { CORE_CHOICE_GUIDES } from '@/lib/visualizations/choice-guides'
+import type { VizThumbnail } from '@veodyn/viz/components/visualizations/viz-thumbnails'
+import { CORE_CHOICE_GUIDES } from '@veodyn/viz/lib/visualizations/choice-guides'
 import {
   listVisualizations,
   registeredTypes,
   type VisualizationAudience,
   type VisualizationPlugin,
-} from '@/lib/visualizations'
+} from '@veodyn/viz'
 
 export interface VizChoice {
   id: string

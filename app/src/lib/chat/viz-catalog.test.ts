@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { CORE_CHOICE_GUIDES } from '@/lib/visualizations/choice-guides'
+import { CORE_CHOICE_GUIDES } from '@veodyn/viz/lib/visualizations/choice-guides'
 
 vi.mock('@/lib/config', () => ({ config: { visualizations: { enabled: null, audience: {} } } }))
 

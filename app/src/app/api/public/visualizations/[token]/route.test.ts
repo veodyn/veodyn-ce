@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { normalizePublicVisualization } from '@/lib/public-visualization'
+import { normalizePublicVisualization } from '@veodyn/viz/lib/public-visualization'
 
 async function loadRoute(redashUrl?: string) {
   vi.resetModules()

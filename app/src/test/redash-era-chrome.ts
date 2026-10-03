@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 // Markers of leftover Redash-era chrome, all forbidden in restyled surfaces:
@@ -54,7 +54,9 @@ export function findRedashEraChrome(source: string): string[] {
   return REDASH_ERA_PATTERNS.filter((p) => p.re.test(source)).map((p) => p.name)
 }
 
-// Vitest runs with cwd at the veodyn-de package root, so src is reachable there.
+export const SOURCE_ROOTS = [join(process.cwd(), 'src'), join(process.cwd(), 'packages', 'viz', 'src')]
+
 export function readAppSource(relFromSrc: string): string {
-  return readFileSync(join(process.cwd(), 'src', relFromSrc), 'utf8')
+  const root = SOURCE_ROOTS.find((candidate) => existsSync(join(candidate, relFromSrc)))
+  return readFileSync(join(root ?? SOURCE_ROOTS[0], relFromSrc), 'utf8')
 }

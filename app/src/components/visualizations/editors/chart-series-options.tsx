@@ -19,16 +19,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getChartPalette } from '@/lib/chart-colors'
+import { getChartPalette } from '@veodyn/viz/lib/chart-colors'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import type { RedashChartOptions, RedashSeriesOptions } from '@/services/redash/types'
-import type { ChartShape } from '@/components/visualizations/chart/chart-shape'
+import type { ChartShape } from '@veodyn/viz/components/visualizations/chart/chart-shape'
 import {
   resolveChartConfig,
   rightAxisSeriesNamesFor,
   scatterSeriesKey,
   seriesNamesFor,
-} from '@/components/visualizations/chart/resolve-config'
+} from '@veodyn/viz/components/visualizations/chart/resolve-config'
 
 interface ChartSeriesOptionsProps {
   chartType: ChartShape

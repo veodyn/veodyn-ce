@@ -25,7 +25,7 @@ import type { MockDestinationType } from './types/destination-types'
 import type { MockQuerySnippet } from './types/query-snippets'
 import type { SchemaTable } from './types/schema'
 import type { Dataset, DomainHub } from '@/types/catalog'
-import type { Annotation } from '@/types/annotation'
+import type { Annotation } from '@veodyn/viz/types/annotation'
 import type { Capture } from '@/types/capture'
 import type { PublishAttempt, PublishedFeed } from '@/types/published-feed'
 

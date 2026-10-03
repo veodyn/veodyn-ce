@@ -11,7 +11,7 @@
 // those from process.env directly via the env boundary.
 import { readFileSync } from 'node:fs'
 import { parse as parseYaml } from 'yaml'
-import { deriveDarkColumn, effectivePalette, formatReport, validatePalette, CHART_PALETTE_SIZE } from '@/lib/chart-palette'
+import { deriveDarkColumn, effectivePalette, formatReport, validatePalette, CHART_PALETTE_SIZE } from '@veodyn/viz/lib/chart-palette'
 import { CHART_SURFACE_DARK, CHART_SURFACE_LIGHT, veodynConfigSchema, type VeodynConfig } from '@/lib/config-schema'
 import { warnOnHubWithoutEnterprise } from '@/lib/edition'
 

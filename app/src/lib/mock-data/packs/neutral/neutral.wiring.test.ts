@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mockDashboards, mockQueries, mockQueryResults } from './index'
-import { CORE_VISUALIZATIONS } from '@/lib/visualizations'
+import { CORE_VISUALIZATIONS } from '@veodyn/viz'
 
 // Split out of neutral.test.ts, which is about the pack's shape (ids, keys,
 // lengths). These tests are about whether fixtures actually point at each

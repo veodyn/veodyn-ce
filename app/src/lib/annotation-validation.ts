@@ -3,7 +3,7 @@
 // same thing here, so an AI draft cannot become a stored annotation the manual
 // form would have refused (a blank label, `start: "not-a-date"`, an end before
 // its start). Pure: no React, no I/O.
-import { parseDateValue } from '@/lib/chart-format'
+import { parseDateValue } from '@veodyn/viz/lib/chart-format'
 
 export interface AnnotationDraft {
   label: string

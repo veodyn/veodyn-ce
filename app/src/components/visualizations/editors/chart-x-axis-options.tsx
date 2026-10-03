@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { ChartShape } from '@/components/visualizations/chart/chart-shape'
+import type { ChartShape } from '@veodyn/viz/components/visualizations/chart/chart-shape'
 import type { RedashChartOptions } from '@/services/redash/types'
 
 interface ChartXAxisOptionsProps {

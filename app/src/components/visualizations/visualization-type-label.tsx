@@ -1,7 +1,7 @@
 'use client'
 
 import { Plug } from 'lucide-react'
-import { visualizationLabel, visualizationOrigin } from '@/lib/visualizations'
+import { visualizationLabel, visualizationOrigin } from '@veodyn/viz'
 
 /**
  * How a visualization type names itself in a list that mixes the product's own

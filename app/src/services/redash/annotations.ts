@@ -5,7 +5,7 @@
 
 import { redashApi } from '@/services/api-client'
 import { USE_REAL_API } from '@/services/redash/config'
-import type { Annotation } from '@/types/annotation'
+import type { Annotation } from '@veodyn/viz/types/annotation'
 
 /**
  * Whether this instance can actually store an annotation. Mock mode only: in

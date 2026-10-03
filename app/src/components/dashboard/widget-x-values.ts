@@ -1,5 +1,5 @@
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
-import { resolveChartConfig } from '@/components/visualizations/chart/resolve-config'
+import { resolveChartConfig } from '@veodyn/viz/components/visualizations/chart/resolve-config'
 
 // The chart's x-axis is a categorical scale keyed by whatever the x column's
 // values render as (see annotationsForWidget), so placing an annotation needs

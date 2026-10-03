@@ -9,7 +9,7 @@ import { redashApi } from '@/services/api-client'
 import {
   normalizePublicVisualization,
   type PublicVisualizationPayload,
-} from '@/lib/public-visualization'
+} from '@veodyn/viz/lib/public-visualization'
 import type { RedashVisualization } from './types'
 
 /**

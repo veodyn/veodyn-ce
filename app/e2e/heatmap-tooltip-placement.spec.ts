@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { authorLongLabelHeatmap, authorTallLongLabelHeatmap } from './heatmap-interaction-helpers'
-import { TOOLTIP_HALF_WIDTH } from '../src/components/visualizations/use-heatmap-tooltip'
+import { TOOLTIP_HALF_WIDTH } from '../packages/viz/src/components/visualizations/use-heatmap-tooltip'
 
 // Task 5 fix rounds 4 and 5: the tooltip's own GEOMETRY, split out of
 // heatmap-interaction.spec.ts (already at the file-size hook's limit) because

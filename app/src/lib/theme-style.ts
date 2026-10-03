@@ -10,7 +10,7 @@
 // A tenant palette gets its dark column derived (hue held, lightness and chroma
 // re-stepped). An unmodified build keeps DEFAULT_PALETTE_DARK, which is
 // hand-picked and validated as a set.
-import { CHART_PALETTE_SIZE, deriveDarkColumn, effectivePalette, normalizeHex } from '@/lib/chart-palette'
+import { CHART_PALETTE_SIZE, deriveDarkColumn, effectivePalette, normalizeHex } from '@veodyn/viz/lib/chart-palette'
 import {
   DEFAULT_ACCENT,
   DEFAULT_ACCENT_DARK,

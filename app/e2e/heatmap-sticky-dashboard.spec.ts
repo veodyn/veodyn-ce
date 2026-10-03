@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { addHeatmapToDashboard, authorTallHeatmap } from './heatmap-interaction-helpers'
 import { EPSILON, measure, MIN_SCROLL, scrollTo } from './heatmap-sticky-helpers'
-import { GRID_MIN_HEIGHT } from '../src/components/visualizations/heatmap-grid-chrome'
+import { GRID_MIN_HEIGHT } from '../packages/viz/src/components/visualizations/heatmap-grid-chrome'
 
 // Parsed from the component's own class rather than duplicated as a literal, so
 // the floor and the assertions about it cannot drift apart. Throwing rather

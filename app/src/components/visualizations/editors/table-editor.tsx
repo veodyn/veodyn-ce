@@ -6,7 +6,7 @@ import { IconButton } from '@/components/shared/icon-button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { QueryResultColumn } from '@/lib/mock-data'
-import { effectiveColumnConfig, renumberColumnConfig } from '@/lib/table-columns'
+import { effectiveColumnConfig, renumberColumnConfig } from '@veodyn/viz/lib/table-columns'
 import type { RedashTableColumnOptions, RedashTableOptions } from '@/services/redash/types'
 
 interface TableEditorProps {

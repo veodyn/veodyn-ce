@@ -13,7 +13,7 @@ import { useCreateVisualization, useUpdateVisualization, useDeleteVisualization 
 import { IconButton } from '@/components/shared/icon-button'
 import { isSavedVisualization } from '@/lib/viz-choices'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CHART_FILL_VAR } from '@/components/visualizations/chart/chart-frame'
+import { CHART_FILL_VAR } from '@veodyn/viz/components/visualizations/chart/chart-frame'
 import { useColumnOrderSave } from '@/hooks/use-column-order-save'
 import { FILL_HEIGHT } from './visualization-fill-height'
 

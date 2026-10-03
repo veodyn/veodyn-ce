@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mockAnnotations, mockDashboards } from '@/lib/mock-data'
-import type { Annotation } from '@/types/annotation'
+import type { Annotation } from '@veodyn/viz/types/annotation'
 
 describe('annotation fixtures', () => {
   it('exposes a non-empty set with the full contract shape', () => {

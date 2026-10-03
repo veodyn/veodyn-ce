@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { contrast, hexToOklab, oklabToHex } from '@/lib/chart-palette'
+import { contrast, hexToOklab, oklabToHex } from '@veodyn/viz/lib/chart-palette'
 import {
   getChartPalette,
   getSequentialInk,
@@ -8,7 +8,7 @@ import {
   resolveChartHex,
   resolveSeriesColor,
   SEQ_MIN_PCT,
-} from '@/lib/chart-colors'
+} from '@veodyn/viz/lib/chart-colors'
 import { DEFAULT_PALETTE } from '@/lib/config-schema'
 
 // Real default tokens from globals.css, not the module's own fallback

@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense } from 'react'
-import { getVisualization } from '@/lib/visualizations'
+import { getVisualization } from '@veodyn/viz'
 import { CORE_EDITORS } from '@/lib/visualization-editors'
 import type { QueryResultData } from '@/lib/mock-data'
 

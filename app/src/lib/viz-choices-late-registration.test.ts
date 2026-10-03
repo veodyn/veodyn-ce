@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PLUGIN_API_VERSION, registerVisualization } from '@/lib/visualizations'
+import { PLUGIN_API_VERSION, registerVisualization } from '@veodyn/viz'
 import { adhocVizFor, allVizChoices, resolveVizChoice } from '@/lib/viz-choices'
 
 const LATE_TYPE = 'TEST_LATE_REGISTERED'

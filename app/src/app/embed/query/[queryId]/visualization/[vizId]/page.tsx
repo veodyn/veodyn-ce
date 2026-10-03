@@ -3,8 +3,8 @@
 import { use } from 'react'
 import { useQueryById } from '@/hooks/use-queries'
 import { useQueryResult } from '@/hooks/use-query-execution'
-import { visualizationData } from '@/lib/visualizations'
-import { VisualizationRenderer } from '@/components/visualizations/visualization-renderer'
+import { visualizationData } from '@veodyn/viz'
+import { VisualizationRenderer } from '@veodyn/viz/components/visualizations/visualization-renderer'
 
 export default function EmbedVisualizationPage({
   params,

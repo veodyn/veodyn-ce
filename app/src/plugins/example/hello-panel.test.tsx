@@ -7,7 +7,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
-import { registerVisualization, registeredVisualizations } from '@/lib/visualizations'
+import { registerVisualization, registeredVisualizations } from '@veodyn/viz'
 import { HELLO_PANEL_TYPE, helloPanelPlugin } from './hello-panel'
 
 // Same reason a tenant package's own panel test does it: registration is per

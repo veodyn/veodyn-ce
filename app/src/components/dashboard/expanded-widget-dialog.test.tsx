@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
-import type { PlacedAnnotation } from '@/lib/annotation-overlay'
+import type { PlacedAnnotation } from '@veodyn/viz/lib/annotation-overlay'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import { ExpandedWidgetDialog } from './expanded-widget-dialog'
 

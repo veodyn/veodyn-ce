@@ -11,7 +11,7 @@ import {
   authorHeatmap,
   boxShadow,
 } from './heatmap-interaction-helpers'
-import { TOOLTIP_HALF_WIDTH } from '../src/components/visualizations/use-heatmap-tooltip'
+import { TOOLTIP_HALF_WIDTH } from '../packages/viz/src/components/visualizations/use-heatmap-tooltip'
 
 // Task 5: a heatmap cell's value must be reachable from the keyboard and
 // announced to assistive tech, not just readable by a mouse hovering long

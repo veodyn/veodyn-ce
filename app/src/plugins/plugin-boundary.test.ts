@@ -46,7 +46,7 @@ const FILES = PACKAGES.flatMap((pkg) => sourceFilesUnder(join(PLUGINS_ROOT, pkg)
 const ALLOWED = [
   'react',
   'lucide-react',
-  '@/lib/visualizations',
+  '@veodyn/viz',
   '@/lib/mock-data',
   // A map plugin cannot avoid these: both core map renderers import the same
   // stylesheet for popup and attribution chrome.
@@ -57,7 +57,7 @@ const ALLOWED = [
 // `@/components/ui/` is part of the plugin API: it is the one product directory a
 // plugin may reach into, and the promise is that these primitives do not break
 // under a plugin.
-const ALLOWED_PREFIXES = ['@/components/ui/', './', '../']
+const ALLOWED_PREFIXES = ['@/components/ui/', '@veodyn/viz/ui', './', '../']
 
 // Comments are stripped first, so the guard can describe the boundary it enforces
 // without tripping over its own prose. A state machine rather than two regexes:
@@ -168,7 +168,7 @@ describe('plugin import boundary, self-checks', () => {
   // matcher reports a forbidden import that does not exist, and the obvious fix
   // is then to rename the innocent identifier rather than the regex.
   it('reads an import as an import and an identifier as an identifier', () => {
-    expect(importsIn("import { a } from '@/lib/visualizations'")).toEqual(['@/lib/visualizations'])
+    expect(importsIn("import { a } from '@veodyn/viz'")).toEqual(['@veodyn/viz'])
     expect(importsIn("import './side-effect'")).toEqual(['./side-effect'])
     expect(importsIn("const x = require('node:fs')")).toEqual(['node:fs'])
     expect(importsIn("const C = ['effective_from', 'x']")).toEqual([])
@@ -177,27 +177,27 @@ describe('plugin import boundary, self-checks', () => {
 
   it('sees the imports it is checking', () => {
     expect(importsIn(code(join('example', 'hello-panel.ts')))).toEqual(
-      expect.arrayContaining(['lucide-react', '@/lib/visualizations', '@/components/ui/card'])
+      expect.arrayContaining(['lucide-react', '@veodyn/viz', '@/components/ui/card'])
     )
     expect(importsIn(code(join('example', 'index.ts')))).toEqual(
-      expect.arrayContaining(['@/lib/visualizations', './hello-panel'])
+      expect.arrayContaining(['@veodyn/viz', './hello-panel'])
     )
   })
 
   it('catches a forbidden import in code, and ignores one written in a comment', () => {
     const offending = [
-      "import { MapRenderer } from '@/components/visualizations/map-renderer'",
+      "import { MapRenderer } from '@veodyn/viz/components/visualizations/map-renderer'",
       "import Image from 'next/image'",
       "const mod = await import('@/lib/env')",
     ].join('\n')
     expect(offendersIn(offending)).toEqual([
-      '@/components/visualizations/map-renderer',
+      '@veodyn/viz/components/visualizations/map-renderer',
       'next/image',
       '@/lib/env',
     ])
     expect(offendersIn(code(join('example', 'hello-panel.ts')))).toEqual([])
     expect(
-      offendersIn(stripComments("// import x from '@/components/visualizations/map-renderer'"))
+      offendersIn(stripComments("// import x from '@veodyn/viz/components/visualizations/map-renderer'"))
     ).toEqual([])
   })
 })

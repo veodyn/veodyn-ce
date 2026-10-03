@@ -5,11 +5,12 @@
 // definition of what the enterprise pack owns, never re-listed: a hand-written
 // list of URL prefixes would drift the first time a route directory is renamed,
 // and drift is the failure mode the guard exists for.
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { ENTERPRISE_PATHS } from '../../scripts/enterprise-paths.mjs'
 
 export const SRC_ROOT = join(process.cwd(), 'src')
+const PACKAGE_SRC_ROOTS = [join(process.cwd(), 'packages', 'viz', 'src')]
 
 /** Every enterprise path, normalised to this platform's separator. */
 const ENTERPRISE_TREE_PATHS: string[] = (ENTERPRISE_PATHS as string[]).map((path) => path.split('/').join(sep))
@@ -151,13 +152,13 @@ function walk(dir: string): string[] {
     const abs = join(dir, name)
     if (statSync(abs).isDirectory()) return walk(abs)
     if (!SOURCE_EXTENSIONS.test(name)) return []
-    const rel = join('src', relative(SRC_ROOT, abs))
+    const rel = relative(process.cwd(), abs)
     return isSkipped(rel) ? [] : [rel]
   })
 }
 
 /** Every production module under src/ this guard is responsible for. */
-export const FILES = walk(SRC_ROOT).sort()
+export const FILES = [SRC_ROOT, ...PACKAGE_SRC_ROOTS.filter((root) => existsSync(root))].flatMap(walk).sort()
 
 export function code(file: string): string {
   return readFileSync(join(process.cwd(), file), 'utf8')

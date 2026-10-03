@@ -2,7 +2,7 @@
 
 import { Toaster as Sonner, useSonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
-import { useThemeScope } from "@/components/theme/theme-scope"
+import { useThemeScope } from "@veodyn/viz/components/theme/theme-scope"
 
 const ASSERTIVE_TYPES = new Set(["warning", "error"])
 

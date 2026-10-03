@@ -9,7 +9,7 @@
 import { NextResponse } from 'next/server'
 import { env } from '@/lib/env'
 import { ErrorIds } from '@/lib/errorIds'
-import { normalizePublicVisualization } from '@/lib/public-visualization'
+import { normalizePublicVisualization } from '@veodyn/viz/lib/public-visualization'
 import { readerForwardingHeaders } from '@/lib/reader-forwarding'
 
 export const dynamic = 'force-dynamic'

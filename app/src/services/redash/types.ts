@@ -205,4 +205,4 @@ export interface RedashSchemaResponse {
 // Visualization/chart-type option shapes (RedashChartOptions and friends)
 // moved to ./visualization-options and re-exported here so existing imports
 // from '@/services/redash/types' keep working unchanged.
-export * from './visualization-options'
+export * from '@veodyn/viz/services/redash/visualization-options'

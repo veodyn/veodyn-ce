@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { NEUTRAL_CONFIG, toClientConfig } from '@/lib/config-schema'
 import { renderWithProviders } from '@/test/utils'
 import { AnnotationDialog } from './annotation-dialog'
-import type { Annotation } from '@/types/annotation'
+import type { Annotation } from '@veodyn/viz/types/annotation'
 import type { FeatureDescriptor } from '@/features/types'
 
 /**

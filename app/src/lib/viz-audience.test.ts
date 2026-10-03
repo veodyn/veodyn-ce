@@ -12,7 +12,7 @@ import {
   getVisualization,
   registerVisualization,
   type VisualizationPlugin,
-} from '@/lib/visualizations'
+} from '@veodyn/viz'
 import { effectiveAudience, visibleVisualizations } from '@/lib/viz-choices'
 import { isRenderableComponent } from '@/test/component-shape'
 
