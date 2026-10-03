@@ -24,6 +24,9 @@
     "src/plugins/index.ts",
     "src/plugins/*/index.ts",
     "packages/viz/src/index.ts",
+    "packages/viz/src/ui.ts",
+    "packages/viz/src/normalize.ts",
+    "packages/viz/scripts/*.mjs",
 
     // SEAM 2: the generated static import map.
     //

@@ -13,15 +13,15 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/types/index.d.ts",
+      "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
     "./ui": {
-      "types": "./dist/types/ui.d.ts",
+      "types": "./dist/ui.d.ts",
       "default": "./dist/ui.js"
     },
     "./normalize": {
-      "types": "./dist/types/normalize.d.ts",
+      "types": "./dist/normalize.d.ts",
       "default": "./dist/normalize.js"
     },
     "./styles.css": "./dist/styles.css"
@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
+    "@types/geojson": "^7946.0.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "d3-cloud": "^1.2.9",

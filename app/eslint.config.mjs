@@ -12,6 +12,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "packages/*/dist/**",
   ]),
 
   // ── agent-starter correctness cherry-pick ──────────────────────────────────
