@@ -29,9 +29,9 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:viz-host
 
-      - name: Set the version from the tag
+      - name: Check the tag names the committed version
         working-directory: app/packages/viz
-        run: npm version --no-git-tag-version "${GITHUB_REF_NAME#viz-v}"
+        run: test "$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME#viz-v}"
 
       - name: Publish
         working-directory: app/packages/viz

@@ -14,6 +14,18 @@ npm install @veodyn/viz
 `react`, `react-dom` and `@tanstack/react-query` are peer dependencies. TypeScript
 users also need `@types/react`.
 
+Every Veodyn instance also serves the package it was built with, beside any
+plugin packages it carries, at `/packages/<name>-<version>.tgz`:
+
+```sh
+curl -O https://veodyn.example.org/packages/veodyn-viz-0.1.2.tgz
+npm install ./veodyn-viz-0.1.2.tgz
+```
+
+Keep the downloaded file in your repository. A later release of the instance
+serves only its own versions, so a build that fetches the URL directly breaks
+when the instance moves on.
+
 ## Render a shared visualization
 
 ```tsx

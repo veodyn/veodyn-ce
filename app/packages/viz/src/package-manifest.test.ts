@@ -16,6 +16,11 @@ describe('@veodyn/viz package manifest', () => {
     expect(pkg.private).not.toBe(true)
   })
 
+  it('carries the version it is released as, since the served tarball is named by it', () => {
+    expect(pkg.version).toMatch(/^\d+\.\d+\.\d+$/)
+    expect(pkg.version).not.toBe('0.0.0')
+  })
+
   it('names the repository its provenance is signed from', () => {
     expect(pkg.repository).toEqual({
       type: 'git',
