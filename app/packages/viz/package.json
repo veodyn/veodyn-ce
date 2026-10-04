@@ -3,6 +3,11 @@
   "version": "0.0.0",
   "description": "Render Veodyn visualizations natively in a React or Next.js page.",
   "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/veodyn/veodyn-ce.git",
+    "directory": "app/packages/viz"
+  },
   "type": "module",
   "sideEffects": [
     "*.css",

@@ -16,6 +16,14 @@ describe('@veodyn/viz package manifest', () => {
     expect(pkg.private).not.toBe(true)
   })
 
+  it('names the repository its provenance is signed from', () => {
+    expect(pkg.repository).toEqual({
+      type: 'git',
+      url: 'git+https://github.com/veodyn/veodyn-ce.git',
+      directory: 'app/packages/viz',
+    })
+  })
+
   it.each(['dependencies', 'peerDependencies'])('pins every %s range to the app range', (field) => {
     for (const [name, range] of Object.entries(pkg[field] as Record<string, string>)) {
       expect(appRanges[name], `${name} missing from app/package.json`).toBeDefined()
