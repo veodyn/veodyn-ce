@@ -24,11 +24,19 @@ describe('@veodyn/viz package manifest', () => {
     })
   })
 
-  it.each(['dependencies', 'peerDependencies'])('pins every %s range to the app range', (field) => {
-    for (const [name, range] of Object.entries(pkg[field] as Record<string, string>)) {
+  it('pins every dependency range to the app range', () => {
+    for (const [name, range] of Object.entries(pkg.dependencies as Record<string, string>)) {
       expect(appRanges[name], `${name} missing from app/package.json`).toBeDefined()
       expect(range, name).toBe(appRanges[name])
     }
+  })
+
+  it('takes any React 19 as a peer, which the app itself is on', () => {
+    expect(pkg.peerDependencies.react).toBe('^19.0.0')
+    expect(pkg.peerDependencies['react-dom']).toBe('^19.0.0')
+    expect(appRanges.react).toMatch(/^19\./)
+    expect(appRanges['react-dom']).toMatch(/^19\./)
+    expect(pkg.peerDependencies['@tanstack/react-query']).toBe(appRanges['@tanstack/react-query'])
   })
 
   it('treats react, react-dom and react-query as peers', () => {
