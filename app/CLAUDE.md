@@ -52,6 +52,14 @@ Both patterns are seeds, not a migration mandate. Apply them when you are
 already touching the relevant code (see `../.claude/rules/starter-patterns.md`),
 not as a bulk refactor.
 
+**Package versions are bumped by hand.** `packages/viz` and any plugin package
+an overlay places under `packages/` carry their release `version` in
+`package.json`. The frontend image serves each as
+`public/packages/<name>-<version>.tgz`, and npm publishes `@veodyn/viz` on a
+`viz-v<version>` tag that must match. Bump the version with every change
+under the package, or a host's lockfile meets different bytes under the same
+file name. Nothing enforces it.
+
 ## Mobile UI is out of scope
 
 This is a **desktop-only product**. Do not build, review, or file findings
