@@ -1,6 +1,7 @@
 'use client'
 
-import { use } from 'react'
+import { use, useLayoutEffect } from 'react'
+import { redashApi } from '@/services/api-client'
 import { usePublicDashboard } from '@/hooks/use-dashboards'
 import { DashboardGrid } from '@/components/dashboard/dashboard-grid'
 import { USE_REAL_API } from '@/services/redash/config'
@@ -12,6 +13,11 @@ import { NoData } from '@/components/ui/no-data'
 export default function PublicDashboardPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
   const { data: dashboard, isLoading } = usePublicDashboard(token)
+
+  useLayoutEffect(() => {
+    redashApi.setApiKey(token)
+    return () => redashApi.setApiKey(null)
+  }, [token])
 
   // Every branch titles itself. This route used to render a heading only once a
   // real backend returned a dashboard, so the mock and revoked-link states were
