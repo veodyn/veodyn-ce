@@ -123,6 +123,19 @@ def test_a_non_json_body_is_a_named_upstream_failure(client: RedashClient) -> No
 
 
 @respx.mock
+def test_a_session_redash_does_not_recognise_is_unauthenticated(client: RedashClient) -> None:
+    respx.get(f"{REDASH}/api/session").mock(
+        return_value=httpx.Response(404, json={"message": "Couldn't find resource. Please login and try again."})
+    )
+
+    with pytest.raises(ApiError) as raised:
+        client.get_session("session=expired", None)
+
+    assert raised.value.status_code == 401
+    assert raised.value.error_id is ErrorId.UNAUTHENTICATED
+
+
+@respx.mock
 def test_a_json_body_that_is_not_an_object_is_refused(client: RedashClient) -> None:
     respx.get(f"{REDASH}/api/session").mock(return_value=httpx.Response(200, json=["not", "a", "session"]))
 

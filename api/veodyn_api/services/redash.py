@@ -60,7 +60,7 @@ class RedashClient(AlertVerbs, QueryWriteVerbs):
             headers["authorization"] = authorization
 
         response = self._get("/api/session", headers)
-        if response.is_redirect or response.status_code in (401, 403):
+        if response.is_redirect or response.status_code in (401, 403, 404):
             raise ApiError(ErrorId.UNAUTHENTICATED, "redash rejected the credential", status_code=401)
         if response.status_code >= 500:
             raise ApiError(ErrorId.REDASH_UNREACHABLE, f"redash returned {response.status_code}", status_code=503)
