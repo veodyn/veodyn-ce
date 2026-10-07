@@ -11,6 +11,7 @@ import { reportQueryError } from '@/lib/observability/querySeam'
 import { TelemetryProvider } from '@/lib/observability/TelemetryProvider'
 import type { TelemetryClientConfig } from '@/lib/observability/telemetryConfig'
 import { hydrateSession, useAuthStore, type InitialSession } from '@/stores/auth-store'
+import { revalidateSessionAfter } from '@/stores/session-revalidation'
 import { usesSharedDemoAccounts, type ClientConfig } from '@/lib/config-schema'
 // Installs the instance's plugins into the BROWSER graph, so it has to run from
 // a client component: the root layout is a server component, and registering
@@ -44,11 +45,16 @@ function createQueryClient() {
     // The cache is the only place a query failure is visible: a consumer that
     // destructures `{ data, isLoading }` renders a failed fetch as empty.
     queryCache: new QueryCache({
-      onError: (error, query) => reportQueryError(error, query.queryKey),
+      onError: (error, query) => {
+        reportQueryError(error, query.queryKey)
+        void revalidateSessionAfter(error)
+      },
     }),
     mutationCache: new MutationCache({
-      onError: (error, _variables, _context, mutation) =>
-        reportQueryError(error, mutation.options.mutationKey ?? []),
+      onError: (error, _variables, _context, mutation) => {
+        reportQueryError(error, mutation.options.mutationKey ?? [])
+        void revalidateSessionAfter(error)
+      },
     }),
     defaultOptions: {
       queries: {
