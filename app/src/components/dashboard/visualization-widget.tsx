@@ -228,12 +228,14 @@ export function VisualizationWidget({
           onSave={handleSaveViz}
         />
       )}
-      <AnnotationDialog
-        open={annotateOpen}
-        onClose={() => setAnnotateOpen(false)}
-        dashboardId={widget.dashboard_id}
-        widgetId={widget.id}
-      />
+      {!isPublic && (
+        <AnnotationDialog
+          open={annotateOpen}
+          onClose={() => setAnnotateOpen(false)}
+          dashboardId={widget.dashboard_id}
+          widgetId={widget.id}
+        />
+      )}
     </>
   )
 }
