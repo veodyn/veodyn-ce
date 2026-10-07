@@ -34,7 +34,8 @@ import {
 } from 'react'
 import { AppError, ErrorIds } from '@/lib/errorIds'
 import { FEATURES } from './generated-registry'
-import { featureList } from './index'
+import { enabledFeatures, featureList } from './index'
+import { useOptionalConfig } from '@/components/config/config-provider'
 import type {
   FeatureDescriptor,
   MultiSlotId,
@@ -149,6 +150,11 @@ function shellFor<Id extends SlotId>(
  * it reads the descriptors only, so a surface that has to size itself before it
  * knows what will render can ask without entering anyone's loader.
  */
+function useSwitchedOn(registry: Registry): Registry {
+  const config = useOptionalConfig()
+  return config ? enabledFeatures(config, registry) : registry
+}
+
 export function hasSlotContributor(id: SlotId, registry: Registry = FEATURES): boolean {
   return contributorFor(id, registry) !== undefined
 }
@@ -172,9 +178,10 @@ export function Slot<Id extends SingleSlotId | NavRowBadgeSlotId>({
   /** Overridable so a test can exercise a real empty or stub registry. */
   registry?: Registry
 }) {
-  const contributor = contributorFor(id, registry)
+  const switchedOn = useSwitchedOn(registry)
+  const contributor = contributorFor(id, switchedOn)
   if (!contributor) return <>{fallback}</>
-  const shell = shellFor(id, contributor, registry)
+  const shell = shellFor(id, contributor, switchedOn)
 
   // createElement rather than JSX, and a lowercase binding, because this is a
   // lookup and not a definition: shellFor returns the SAME lazy component out of
@@ -205,7 +212,8 @@ export function SlotList<Id extends MultiSlotId>({
   /** Overridable so a test can exercise a real empty or stub registry. */
   registry?: Registry
 }) {
-  const contributors = contributorsFor(id, registry)
+  const switchedOn = useSwitchedOn(registry)
+  const contributors = contributorsFor(id, switchedOn)
   if (contributors.length === 0) return null
 
   return (
@@ -215,7 +223,7 @@ export function SlotList<Id extends MultiSlotId>({
         // reorders this list, and an index key would remount the wrong section.
         <Fragment key={contributor.featureId}>
           <Suspense fallback={null}>
-            {createElement(shellFor(id, contributor, registry), {
+            {createElement(shellFor(id, contributor, switchedOn), {
               slotProps: props,
               fallback: null,
             })}

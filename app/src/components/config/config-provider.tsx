@@ -14,3 +14,7 @@ export function useConfig(): ClientConfig {
   if (ctx === null) throw new Error('useConfig must be used within a ConfigProvider')
   return ctx
 }
+
+export function useOptionalConfig(): ClientConfig | null {
+  return useContext(ConfigContext)
+}
