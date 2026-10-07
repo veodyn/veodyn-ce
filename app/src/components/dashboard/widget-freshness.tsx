@@ -23,6 +23,15 @@ import { formatRelativeTime } from '@veodyn/viz/lib/chart-format'
  * Fails closed: a widget whose query resolves to no catalog dataset gets a bare
  * timestamp and NO icon.
  */
+export function WidgetRunAge({ retrievedAt, now }: { retrievedAt: string | undefined; now: number | null }) {
+  if (now == null) return null
+  return (
+    <span className="mr-1 font-mono text-xs tabular-nums text-muted-foreground">
+      {formatRelativeTime(retrievedAt, now)}
+    </span>
+  )
+}
+
 export function WidgetFreshness({
   queryId,
   retrievedAt,
@@ -46,12 +55,7 @@ export function WidgetFreshness({
   const dataset = datasetForQueryId(queryId, datasets, sqlByQueryId)
   const status = dataset ? resolveDatasetStatus(dataset.freshness, captures, now) : null
 
-  if (!status) {
-    // Untraceable to a dataset: the age of the run is all that is known.
-    return (
-      <span className="mr-1 font-mono text-xs tabular-nums text-muted-foreground">{ran}</span>
-    )
-  }
+  if (!status) return <WidgetRunAge retrievedAt={retrievedAt} now={now} />
 
   const { label, Icon, text } = CAPTURE_STATUS_META[status]
 

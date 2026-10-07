@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { RefreshCw, ExternalLink, Trash2, Expand, MessageSquarePlus, Pencil } from 'lucide-react'
 import { IconButton } from '@/components/shared/icon-button'
 import { ANNOTATIONS_SUPPORTED } from '@/services/redash/annotations'
-import { WidgetFreshness } from './widget-freshness'
+import { WidgetFreshness, WidgetRunAge } from './widget-freshness'
 
 // The control row in a widget's header: the data age, then the icon buttons.
 // Split out of visualization-widget so that file is about resolving and drawing
@@ -47,7 +47,11 @@ export function WidgetControls({
 }: WidgetControlsProps) {
   return (
     <div className="flex items-center gap-1 shrink-0">
-      <WidgetFreshness queryId={queryId} retrievedAt={retrievedAt} now={now} />
+      {isPublic ? (
+        <WidgetRunAge retrievedAt={retrievedAt} now={now} />
+      ) : (
+        <WidgetFreshness queryId={queryId} retrievedAt={retrievedAt} now={now} />
+      )}
       {/* Author attribution and view count mount here when that metadata lands
           (umbrella section 4). */}
       {/* Five icons in a row, four of which are only distinguishable by
