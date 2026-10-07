@@ -51,7 +51,7 @@ export function ChatTranscript(props: ChatTranscriptProps) {
     <>
       {state.turns.map((turn) => (
         <MessageScrollerItem key={turn.id} messageId={turn.id} className="flex flex-col gap-3">
-          <div className="max-w-[80%] self-end whitespace-pre-wrap rounded-lg bg-muted px-3 py-2 text-sm">
+          <div className="max-w-[80%] self-end whitespace-pre-wrap rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground">
             {turn.userText}
           </div>
           {grouped(turn.items).map((item, index) => (

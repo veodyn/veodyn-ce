@@ -1,15 +1,16 @@
 'use client'
 
-import { AlertCircle, ChevronDown, Loader2, PanelRightOpen, RotateCw } from 'lucide-react'
+import { ChevronDown, PanelRightOpen, RotateCw } from 'lucide-react'
 import { CodeBlock } from '@/components/shared/code-block'
 import { IconButton } from '@/components/shared/icon-button'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardHeader } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { RunView } from '@/lib/chat/thread-model'
 import type { QueryResultData } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { ResultView } from './result-view'
+import { ToolCardTitle, ToolFailure } from './tool-card-parts'
 
 export function runStatusLabel(run: RunView): string {
   if (run.status === 'running') return 'Running in your browser…'
@@ -34,11 +35,9 @@ export function RunCard({ run, data, error, selected, onSelect, onRerun }: RunCa
   return (
     <Card size="sm" className={cn('w-full', selected && 'ring-2 ring-primary')}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-sm">
-          {run.status === 'running' ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-          {run.status === 'failed' ? <AlertCircle className="size-4 text-destructive" aria-hidden="true" /> : null}
+        <ToolCardTitle running={run.status === 'running'} failed={run.status === 'failed'}>
           <span className="truncate">{run.purpose || 'Query'}</span>
-        </CardTitle>
+        </ToolCardTitle>
         <p className="text-xs text-muted-foreground" aria-live="polite">
           {runStatusLabel(run)}
         </p>
@@ -56,7 +55,7 @@ export function RunCard({ run, data, error, selected, onSelect, onRerun }: RunCa
             Run again to draw the chart
           </Button>
         ) : null}
-        {message ? <p className="text-pretty text-sm text-destructive">{message}</p> : null}
+        {message ? <ToolFailure>{message}</ToolFailure> : null}
         <Collapsible>
           <CollapsibleTrigger render={<Button variant="ghost" size="sm" className="-ml-2" />}>
             <ChevronDown aria-hidden="true" />

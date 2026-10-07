@@ -1,9 +1,10 @@
 'use client'
 
-import { AlertCircle, Database, Loader2 } from 'lucide-react'
+import { Database } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { CallView } from '@/lib/chat/thread-model'
+import { ToolCardTitle, ToolFailure } from './tool-card-parts'
 
 export const NO_SOURCES_FOUND = 'No data sources are available to the analyst.'
 
@@ -13,21 +14,13 @@ export function DataSourcesCard({ call }: { call: CallView }) {
   return (
     <Card size="sm" className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-sm">
-          {call.status === 'running' ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Database className="size-4" aria-hidden="true" />
-          )}
+        <ToolCardTitle icon={Database} running={call.status === 'running'}>
           {call.status === 'running' ? 'Listing data sources…' : 'Data sources'}
-        </CardTitle>
+        </ToolCardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         {call.status === 'failed' ? (
-          <p className="flex items-center gap-2 text-sm text-destructive">
-            <AlertCircle className="size-4" aria-hidden="true" />
-            {call.error ?? 'The data sources could not be listed.'}
-          </p>
+          <ToolFailure>{call.error ?? 'The data sources could not be listed.'}</ToolFailure>
         ) : null}
         {output && sources.length === 0 ? <p className="text-sm text-muted-foreground">{NO_SOURCES_FOUND}</p> : null}
         {sources.length > 0 ? (

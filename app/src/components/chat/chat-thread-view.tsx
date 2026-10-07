@@ -3,6 +3,9 @@
 import { Square } from 'lucide-react'
 import { useState } from 'react'
 import { IconButton } from '@/components/shared/icon-button'
+import { ListLoadError } from '@/components/shared/list-load-error'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
+import { SkeletonCard } from '@/components/ui/skeleton-card'
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -69,21 +72,31 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
   }
 
   if (chat.loadFailed) {
-    return <p className="p-6 text-sm text-destructive">This conversation could not be opened.</p>
+    return <ListLoadError noun="this conversation" onRetry={chat.reload} />
   }
 
   const pane = paneFor(selection, chat.state, results)
   const savedCall = selection?.kind === 'call' ? state.calls[selection.id] : undefined
+  const closePane = () => setSelection(null)
+  const sidePane = pane ? (
+    <DetailPane {...pane} onClose={closePane} />
+  ) : savedCall?.tool === 'show_visualization' ? (
+    <SavedVizPane call={savedCall} onClose={closePane} />
+  ) : null
 
   return (
-    <div className="flex h-full min-h-0">
-      <div className="flex min-w-0 flex-1 flex-col">
+    <ResizablePanelGroup orientation="horizontal" className="min-h-0">
+      <ResizablePanel id="chat-transcript" minSize="30%" className="flex min-w-0 flex-col">
         <MessageScrollerProvider autoScroll defaultScrollPosition="end">
           <FollowNewTurns lastTurnId={state.turns.at(-1)?.id ?? null} loading={chat.loading} />
           <MessageScroller className="min-h-0 grow">
             <MessageScrollerViewport aria-label="Conversation">
               <MessageScrollerContent className="w-full max-w-3xl gap-6 px-6 py-6">
-                {chat.loading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
+                {chat.loading ? (
+                  <div role="status" aria-label="Loading the conversation">
+                    <SkeletonCard />
+                  </div>
+                ) : null}
                 <ChatTranscript
                   state={state}
                   results={results}
@@ -112,18 +125,16 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
             </IconButton>
           ) : null}
         </div>
-      </div>
-      {pane ? (
-        <div className="w-[42%] min-w-96 shrink-0">
-          <DetailPane {...pane} onClose={() => setSelection(null)} />
-        </div>
+      </ResizablePanel>
+      {sidePane ? (
+        <>
+          <ResizableHandle />
+          <ResizablePanel id="chat-detail-pane" defaultSize="42%" minSize="24rem" maxSize="70%">
+            {sidePane}
+          </ResizablePanel>
+        </>
       ) : null}
-      {savedCall?.tool === 'show_visualization' ? (
-        <div className="w-[42%] min-w-96 shrink-0">
-          <SavedVizPane call={savedCall} onClose={() => setSelection(null)} />
-        </div>
-      ) : null}
-    </div>
+    </ResizablePanelGroup>
   )
 }
 

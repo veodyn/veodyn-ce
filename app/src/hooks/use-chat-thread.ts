@@ -41,6 +41,7 @@ export interface ChatThreadController {
   stop: () => void
   retry: () => void
   rerun: (callId: string) => void
+  reload: () => void
   promoted: (draftId: string, promotion: ChatPromotion) => void
   promotedDashboard: (draftId: string, promotion: ChatPromotion) => void
   dashboardActive: (dashboard: ActiveDashboard) => void
@@ -51,6 +52,7 @@ export function useChatThread(threadId: string): ChatThreadController {
   const [state, setState] = useState<ThreadState>(emptyThread)
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const { results, errors, execute, rerun: rerunQuery } = useToolExecutor()
@@ -136,7 +138,13 @@ export function useChatThread(threadId: string): ChatThreadController {
       }
     )
     return () => controller.abort()
-  }, [resync])
+  }, [resync, loadAttempt])
+
+  const reload = useCallback(() => {
+    setLoadFailed(false)
+    setLoading(true)
+    setLoadAttempt((attempt) => attempt + 1)
+  }, [])
 
   const busy = sending || runningTurn(state) !== null
 
@@ -209,6 +217,7 @@ export function useChatThread(threadId: string): ChatThreadController {
     stop,
     retry,
     rerun,
+    reload,
     promoted,
     promotedDashboard,
     dashboardActive,

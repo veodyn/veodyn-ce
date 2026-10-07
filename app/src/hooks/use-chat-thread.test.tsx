@@ -326,4 +326,14 @@ describe('useChatThread', () => {
     const { result } = await mounted()
     expect(result.current.loadFailed).toBe(true)
   })
+
+  it('loads again after a failed load when asked to reload', async () => {
+    client.getThread.mockRejectedValueOnce(new Error('503'))
+    const { result } = await mounted()
+    expect(result.current.loadFailed).toBe(true)
+    act(() => result.current.reload())
+    await waitFor(() => expect(result.current.loadFailed).toBe(false))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(client.getThread).toHaveBeenCalledTimes(2)
+  })
 })

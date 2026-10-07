@@ -1,16 +1,17 @@
 'use client'
 
-import { AlertCircle, BarChart3, Loader2, PanelRightOpen, RotateCw } from 'lucide-react'
+import { BarChart3, Loader2, PanelRightOpen, RotateCw } from 'lucide-react'
 import Link from 'next/link'
 import { IconButton } from '@/components/shared/icon-button'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { VisualizationRenderer } from '@veodyn/viz/components/visualizations/visualization-renderer'
 import { useSavedVisualization, type SavedVisualization } from '@/hooks/use-saved-visualization'
 import type { CallView } from '@/lib/chat/thread-model'
 import { formatDateTime } from '@veodyn/viz/lib/format-datetime'
 import { cn } from '@/lib/utils'
 import { visualizationData } from '@veodyn/viz/lib/visualizations/data-gate'
+import { ToolCardTitle, ToolFailure } from './tool-card-parts'
 
 export const NEEDS_PARAMETERS = 'This query takes parameters. Open it to choose values and run it.'
 export const NEVER_RAN = 'This query has not been run yet.'
@@ -61,12 +62,7 @@ export function SavedVizCard({ call, selected, onSelect }: SavedVizCardProps) {
   return (
     <Card size="sm" className={cn('w-full', selected && 'ring-2 ring-primary')}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-sm">
-          {call.status === 'running' ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <BarChart3 className="size-4" aria-hidden="true" />
-          )}
+        <ToolCardTitle icon={BarChart3} running={call.status === 'running'}>
           {query ? (
             <Link href={`/queries/${query.id}`} className="truncate hover:underline">
               {query.name}
@@ -74,7 +70,7 @@ export function SavedVizCard({ call, selected, onSelect }: SavedVizCardProps) {
           ) : (
             <span>Saved chart</span>
           )}
-        </CardTitle>
+        </ToolCardTitle>
         <CardDescription>
           {[visualization?.name, retrievedAt ? `as of ${formatDateTime(retrievedAt)}` : null]
             .filter(Boolean)
@@ -90,10 +86,7 @@ export function SavedVizCard({ call, selected, onSelect }: SavedVizCardProps) {
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {call.status === 'failed' && !visualization ? (
-          <p className="flex items-center gap-2 text-sm text-destructive">
-            <AlertCircle className="size-4" aria-hidden="true" />
-            {call.error ?? 'The chart could not be shown.'}
-          </p>
+          <ToolFailure>{call.error ?? 'The chart could not be shown.'}</ToolFailure>
         ) : null}
         <SavedChart saved={saved} />
         <RunControls saved={saved} />

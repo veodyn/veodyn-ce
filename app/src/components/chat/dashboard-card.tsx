@@ -1,9 +1,10 @@
 'use client'
 
-import { AlertCircle, LayoutDashboard, Loader2 } from 'lucide-react'
+import { LayoutDashboard } from 'lucide-react'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { CallView } from '@/lib/chat/thread-model'
+import { ToolCardTitle, ToolFailure } from './tool-card-parts'
 
 export function DashboardCard({ call }: { call: CallView }) {
   const output = call.output?.kind === 'dashboard' && call.output.ok ? call.output : null
@@ -13,12 +14,7 @@ export function DashboardCard({ call }: { call: CallView }) {
   return (
     <Card size="sm" className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-sm">
-          {call.status === 'running' ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <LayoutDashboard className="size-4" aria-hidden="true" />
-          )}
+        <ToolCardTitle icon={LayoutDashboard} running={call.status === 'running'}>
           {dashboard ? (
             <Link href={`/dashboards/${dashboard.id}`} className="truncate hover:underline">
               {dashboard.name}
@@ -26,14 +22,11 @@ export function DashboardCard({ call }: { call: CallView }) {
           ) : (
             <span>{call.status === 'running' ? 'Opening the dashboard…' : 'Dashboard'}</span>
           )}
-        </CardTitle>
+        </ToolCardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         {call.status === 'failed' ? (
-          <p className="flex items-center gap-2 text-sm text-destructive">
-            <AlertCircle className="size-4" aria-hidden="true" />
-            {call.error ?? 'The dashboard could not be opened.'}
-          </p>
+          <ToolFailure>{call.error ?? 'The dashboard could not be opened.'}</ToolFailure>
         ) : null}
         {widgets.length > 0 ? (
           <ul className="flex flex-col gap-1 text-sm">

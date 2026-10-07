@@ -71,6 +71,7 @@ function make(overrides: Partial<ChatThreadController> = {}): ChatThreadControll
     promoted: vi.fn(),
     promotedDashboard: vi.fn(),
     dashboardActive: vi.fn(),
+    reload: vi.fn(),
     ...overrides,
   }
 }
@@ -111,9 +112,19 @@ describe('ChatThreadView', () => {
     expect(screen.getByText('Nope.')).toBeInTheDocument()
   })
 
-  it('says when the conversation cannot be opened', () => {
-    controller.current = make({ loadFailed: true })
+  it('says when the conversation cannot be opened and retries the load', async () => {
+    const current = make({ loadFailed: true })
+    controller.current = current
     renderWithProviders(<ChatThreadView threadId="x" />)
-    expect(screen.getByText('This conversation could not be opened.')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not load this conversation')
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(current.reload).toHaveBeenCalled()
+  })
+
+  it('shows a skeleton instead of loading text while the conversation loads', () => {
+    controller.current = make({ loading: true, state: emptyThread(), busy: false })
+    renderWithProviders(<ChatThreadView threadId="x" />)
+    expect(screen.queryByText('Loading…')).not.toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Loading the conversation' })).toBeInTheDocument()
   })
 })

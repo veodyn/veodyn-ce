@@ -2,9 +2,13 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Pin, PinOff, Plus, Trash2 } from 'lucide-react'
+import { MessagesSquare, Pin, PinOff, Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { IconButton } from '@/components/shared/icon-button'
+import { ListLoadError } from '@/components/shared/list-load-error'
 import { buttonVariants } from '@/components/ui/button'
+import { NoData } from '@/components/ui/no-data'
 import { useChatThreads, useDeleteChatThread, useUpdateChatThread } from '@/hooks/use-chat'
 import type { ChatThread } from '@/lib/chat/wire'
 import { cn } from '@/lib/utils'
@@ -20,10 +24,14 @@ export function ThreadList({ activeId }: ThreadListProps) {
   const threads = useChatThreads(true)
   const update = useUpdateChatThread()
   const remove = useDeleteChatThread()
+  const [pendingDelete, setPendingDelete] = useState<ChatThread | null>(null)
 
-  const handleDelete = (thread: ChatThread) => {
+  const confirmDelete = () => {
+    if (!pendingDelete) return
+    const thread = pendingDelete
     remove.mutate(thread.id, {
       onSuccess: () => {
+        setPendingDelete(null)
         if (thread.id === activeId) router.push('/chat')
       },
     })
@@ -38,10 +46,16 @@ export function ThreadList({ activeId }: ThreadListProps) {
         </Link>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-        {threads.isPending ? <p className="px-2 text-xs text-muted-foreground">Loading…</p> : null}
-        {threads.isError ? <p className="px-2 text-xs text-destructive">Conversations could not be loaded.</p> : null}
+        {threads.isPending ? (
+          <div role="status" aria-label="Loading conversations" className="flex animate-pulse flex-col gap-2 px-2">
+            <div className="h-7 rounded-md bg-muted" />
+            <div className="h-7 rounded-md bg-muted" />
+            <div className="h-7 rounded-md bg-muted" />
+          </div>
+        ) : null}
+        {threads.isError ? <ListLoadError noun="conversations" onRetry={() => void threads.refetch()} /> : null}
         {threads.data?.threads.length === 0 ? (
-          <p className="px-2 text-xs text-muted-foreground">No conversations yet.</p>
+          <NoData message="No conversations yet." icon={<MessagesSquare className="mb-3 size-8 opacity-50" />} />
         ) : null}
         <ul className="flex flex-col gap-0.5">
           {threads.data?.threads.map((thread) => {
@@ -50,8 +64,10 @@ export function ThreadList({ activeId }: ThreadListProps) {
               <li
                 key={thread.id}
                 className={cn(
-                  'group flex items-center gap-1 rounded-md pr-1 text-sm hover:bg-muted',
-                  thread.id === activeId && 'bg-muted font-medium'
+                  'group flex items-center gap-1 rounded-md pr-1 text-sm transition-colors',
+                  thread.id === activeId
+                    ? 'bg-accent text-foreground font-medium'
+                    : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
                 )}
               >
                 <Link
@@ -78,7 +94,7 @@ export function ThreadList({ activeId }: ThreadListProps) {
                   variant="ghost"
                   size="icon-xs"
                   className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                  onClick={() => handleDelete(thread)}
+                  onClick={() => setPendingDelete(thread)}
                 >
                   <Trash2 aria-hidden="true" />
                 </IconButton>
@@ -87,6 +103,18 @@ export function ThreadList({ activeId }: ThreadListProps) {
           })}
         </ul>
       </div>
+      {pendingDelete ? (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setPendingDelete(null)
+          }}
+          title="Delete conversation?"
+          description={`"${pendingDelete.title || UNTITLED_THREAD}" and its messages will be deleted. This cannot be undone.`}
+          isPending={remove.isPending}
+          onConfirm={confirmDelete}
+        />
+      ) : null}
     </nav>
   )
 }

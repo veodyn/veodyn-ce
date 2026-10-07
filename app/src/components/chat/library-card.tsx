@@ -1,10 +1,11 @@
 'use client'
 
-import { AlertCircle, FileCode2, LayoutDashboard, Loader2, Search } from 'lucide-react'
+import { FileCode2, LayoutDashboard, Search } from 'lucide-react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { CallView } from '@/lib/chat/thread-model'
+import { ToolCardTitle, ToolFailure } from './tool-card-parts'
 
 export const NOTHING_FOUND = 'Nothing matched.'
 export const MORE_FOUND = 'More items match. Ask with more specific words to narrow it down.'
@@ -19,21 +20,13 @@ export function LibraryCard({ call }: { call: CallView }) {
   return (
     <Card size="sm" className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-sm">
-          {call.status === 'running' ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Search className="size-4" aria-hidden="true" />
-          )}
+        <ToolCardTitle icon={Search} running={call.status === 'running'}>
           {call.status === 'running' ? 'Searching the library…' : 'Library search'}
-        </CardTitle>
+        </ToolCardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         {call.status === 'failed' ? (
-          <p className="flex items-center gap-2 text-sm text-destructive">
-            <AlertCircle className="size-4" aria-hidden="true" />
-            {call.error ?? 'The search failed.'}
-          </p>
+          <ToolFailure>{call.error ?? 'The search failed.'}</ToolFailure>
         ) : null}
         {output && items.length === 0 ? <p className="text-sm text-muted-foreground">{NOTHING_FOUND}</p> : null}
         {items.length > 0 ? (
