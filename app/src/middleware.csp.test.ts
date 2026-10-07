@@ -147,6 +147,16 @@ describe('content security policy', () => {
     expect(connect).toContain('https://*.basemaps.cartocdn.com')
   })
 
+  it('lets the Google Maps JavaScript API fetch its viewport metadata and traffic tiles', async () => {
+    const middleware = await loadMiddleware('production')
+
+    const connect = directive(middleware(request('/dashboards/5')), 'connect-src')
+
+    expect(connect).toContain('https://maps.googleapis.com')
+    expect(connect).toContain('https://*.googleapis.com')
+    expect(connect).toContain('https://*.gstatic.com')
+  })
+
   it('names a configured tile host in connect-src', async () => {
     vi.stubEnv('VEODYN_MAP__TILE_URL', 'https://tiles.example/style.json')
     const middleware = await loadMiddleware('production')

@@ -65,8 +65,14 @@ const IS_PROD = process.env.NODE_ENV === 'production'
  * fails visibly rather than silently: the basemap does not render and the
  * browser console names the blocked origin.
  */
+const GOOGLE_MAPS_ORIGINS = ['https://maps.googleapis.com', 'https://*.googleapis.com', 'https://*.gstatic.com']
+
 function mapOrigins(): string[] {
-  const origins = new Set(['https://basemaps.cartocdn.com', 'https://*.basemaps.cartocdn.com'])
+  const origins = new Set([
+    'https://basemaps.cartocdn.com',
+    'https://*.basemaps.cartocdn.com',
+    ...GOOGLE_MAPS_ORIGINS,
+  ])
   const configured = process.env.VEODYN_MAP__TILE_URL ?? 'https://demotiles.maplibre.org/style.json'
   try {
     origins.add(new URL(configured).origin)
