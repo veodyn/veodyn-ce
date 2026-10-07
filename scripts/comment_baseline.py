@@ -498,8 +498,8 @@ BASELINE = {
     "app/src/app/api/public/feeds/[slug]/route.test.ts": 37,
     "app/src/app/api/public/feeds/[slug]/route.ts": 10,
     "app/src/app/api/public/feeds/forward-feed.ts": 64,
-    "app/src/app/api/public/visualizations/[token]/route.test.ts": 34,
-    "app/src/app/api/public/visualizations/[token]/route.ts": 11,
+    "app/src/app/api/public/visualizations/[token]/route.test.ts": 30,
+    "app/src/app/api/public/visualizations/[token]/route.ts": 8,
     "app/src/app/api/published-feeds/[slug]/attempts/route.test.ts": 1,
     "app/src/app/api/published-feeds/[slug]/attempts/route.ts": 2,
     "app/src/app/api/published-feeds/[slug]/route.ts": 1,
@@ -1644,7 +1644,6 @@ BASELINE = {
     "node/tests/query_runner/test_tmdd_transport_encoding.py": 61,
     "node/tests/query_runner/test_trafficland.py": 6,
     "node/tests/query_runner/test_trino.py": 3,
-    "node/tests/query_runner/test_waze.py": 1,
     "node/tests/query_runner/tmdd_event_fixtures.py": 42,
     "node/tests/query_runner/tmdd_fixture_parts.py": 26,
     "node/tests/query_runner/tmdd_fixtures.py": 69,
@@ -1733,6 +1732,6 @@ BASELINE = {
     "validator/validator_service/validation.py": 44,
 }
 
-FILES_WITH_COMMENTS = 1732
-COMMENT_LINES = 45455
-FILES_SCANNED = 2354
+FILES_WITH_COMMENTS = 1731
+COMMENT_LINES = 45447
+FILES_SCANNED = 2358

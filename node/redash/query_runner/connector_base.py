@@ -253,8 +253,11 @@ class BaseResourceRunner(RedisPublisherMixin, BaseQueryRunner):
         if pubsub_channel:
             self._publish_to_redis(pubsub_channel, resource, params, raw)
 
-        columns, rows = to_redash_table(records)
+        columns, rows = self._table(resource, records)
         return serialize_result(columns, rows), None
+
+    def _table(self, resource, records):
+        return to_redash_table(records)
 
     def get_schema(self, get_stats=False):
         schema = []
