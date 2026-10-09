@@ -52,25 +52,91 @@ class TestRejections(PublicParamsCase):
         return self.get("", token="not-a-token").data
 
     def assert_rejected(self, qs):
-        res = self.get(qs)
+        with patch("redash.public_execution.enqueue_query") as enqueue:
+            res = self.get(qs)
         self.assertEqual(res.status_code, 404)
         self.assertEqual(res.data, self.bad_token_body())
+        enqueue.assert_not_called()
+        self.assertEqual(redis_connection.keys("public-exec*"), [])
 
-    def test_every_rule_three_rejection_matches_a_bad_token(self):
+    def test_a_repeated_key_is_rejected(self):
         self.build()
-        long_key = "p_" + "a" * 65
-        for qs in [
-            "?p_route=MT020&p_route=MT030",
-            "?p_unknown=MT020",
-            "?p_route=" + "M" * 201,
-            "?p_route=XX020",
-            "?p_route=MT020'",
-            "?" + long_key + "=x",
-            "?" + "&".join("p_k{}=x".format(i) for i in range(11)),
-            "?p_=x",
-        ]:
-            with self.subTest(qs=qs):
-                self.assert_rejected(qs)
+        self.assert_rejected("?p_route=MT020&p_route=MT030")
+
+    def test_a_key_missing_from_public_parameters_is_rejected(self):
+        self.build(vis_options={"publicParameters": {"other": "^x$"}})
+        self.assert_rejected("?p_route=MT020")
+
+    def test_an_empty_key_name_is_rejected(self):
+        self.build()
+        self.assert_rejected("?p_=x")
+
+    def test_eleven_declared_and_listed_keys_are_rejected(self):
+        names = ["k{}".format(i) for i in range(11)]
+        parameters = [{"name": n, "type": "enum", "enumOptions": "x", "value": "x"} for n in names]
+        self.build(
+            parameters=parameters,
+            text="SELECT 1",
+            vis_options={"publicParameters": {n: "^x$" for n in names}},
+        )
+        self.assert_rejected("?" + "&".join("p_{}=x".format(n) for n in names))
+        self.store("SELECT 1")
+        ten = "?" + "&".join("p_{}=x".format(n) for n in names[:10])
+        self.assertEqual(self.get(ten).status_code, 200)
+
+    def test_an_oversized_value_that_is_a_member_and_matches_is_rejected(self):
+        big = "M" * 201
+        self.build(
+            parameters=[{"name": "route", "type": "enum", "enumOptions": "M\n" + big, "value": "M"}],
+            vis_options={"publicParameters": {"route": "^M+$"}},
+        )
+        self.store("SELECT 'M'")
+        self.assertEqual(self.get("?p_route=M").status_code, 200)
+        self.assert_rejected("?p_route=" + big)
+
+    def test_an_enum_member_excluded_only_by_the_public_pattern_is_rejected(self):
+        self.build(
+            parameters=[{"name": "route", "type": "enum", "enumOptions": "MT020\nXX020\nMT0'", "value": "MT020"}]
+        )
+        self.assert_rejected("?p_route=XX020")
+        self.assert_rejected("?p_route=MT0'")
+
+    def test_an_oversized_declared_and_listed_key_is_rejected(self):
+        name = "a" * 65
+        self.build(
+            parameters=[{"name": name, "type": "enum", "enumOptions": "x", "value": "x"}],
+            text="SELECT 1",
+            vis_options={"publicParameters": {name: "^x$"}},
+        )
+        self.assert_rejected("?p_{}=x".format(name))
+
+    def test_a_dropdown_query_that_does_not_exist_is_rejected(self):
+        self.build(parameters=[{"name": "route", "type": "query", "queryId": 99999, "value": "MT020"}])
+        self.assert_rejected("?p_route=MT020")
+
+    def test_a_dropdown_query_in_another_org_is_rejected(self):
+        other = self.factory.create_org()
+        other_ds = self.factory.create_data_source(org=other)
+        foreign = self.factory.create_query(org=other, data_source=other_ds)
+        models.db.session.commit()
+        self.build(parameters=[{"name": "route", "type": "query", "queryId": foreign.id, "value": "MT020"}])
+        self.assert_rejected("?p_route=MT020")
+
+    def test_a_deleted_data_source_is_rejected_before_any_lookup(self):
+        self.build()
+        self.store("SELECT 'MT020'")
+        self.query.data_source.delete()
+        models.db.session.expire_all()
+        self.assert_rejected("?p_route=MT020")
+
+    def test_a_deleted_data_source_leaves_the_plain_path_unchanged(self):
+        self.build()
+        self.query.data_source.delete()
+        models.db.session.expire_all()
+        res = self.get()
+        self.assertEqual(res.status_code, 200)
+        self.assertIsNone(res.json["query_result"])
+        self.assertNotIn("status", res.json)
 
     def test_the_key_boundary_is_64_characters_after_the_prefix(self):
         name = "a" * 64
@@ -326,18 +392,38 @@ class TestUnchangedPath(PublicParamsCase):
         self.assertNotIn("parameters", res.json)
         self.assertEqual(res.json["query_result"]["data"]["rows"], [{"x": "SELECT 'whatever'"}])
 
-    def test_the_legacy_body_equals_the_default_serialization(self):
-        import json
+    def test_the_legacy_body_matches_bytes_captured_from_the_old_serializer(self):
+        import datetime
+        import os
 
-        from redash.serializers import public_visualization
-        from redash.utils import json_dumps
-
-        self.build()
-        latest = self.store("SELECT 'whatever'")
-        self.query.latest_query_data = latest
+        moment = datetime.datetime(2026, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc)
+        self.factory.grant_permission("publish_visualization")
+        query = self.factory.create_query(
+            name="Live route",
+            query_text="SELECT 1",
+            options={"parameters": [{"name": "route", "type": "enum", "enumOptions": "A\nB", "value": "A"}]},
+        )
+        result = self.factory.create_query_result(
+            data_source=query.data_source,
+            data={"columns": [{"name": "x", "friendly_name": "x", "type": "integer"}], "rows": [{"x": 1}]},
+            retrieved_at=moment,
+        )
+        query.latest_query_data = result
+        vis = self.factory.create_visualization(
+            query_rel=query, name="Map", options={"publicParameters": {"route": "^A$"}}
+        )
+        vis.created_at = moment
         models.db.session.commit()
-        res = self.get()
-        self.assertEqual(res.json, json.loads(json_dumps(public_visualization(self.vis))))
+        token = self.make_request("post", "/api/visualizations/{}/share".format(vis.id)).json["api_key"]
+        models.db.session.execute(
+            models.db.text("UPDATE visualizations SET updated_at = :m WHERE id = :i"), {"m": moment, "i": vis.id}
+        )
+        models.db.session.commit()
+        models.db.session.expire_all()
+        res = self.get(token=token)
+        path = os.path.join(os.path.dirname(__file__), "fixtures", "public_visualization_legacy.json")
+        with open(path, "rb") as fixture:
+            self.assertEqual(res.data, fixture.read())
 
     def test_serializer_takes_an_explicit_result_including_none(self):
         from redash.serializers import public_visualization

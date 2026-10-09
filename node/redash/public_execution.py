@@ -96,6 +96,8 @@ def _matches(pattern, value):
 
 
 def validate_request(vis, raw):
+    if vis.query_rel.data_source is None:
+        raise Rejected()
     patterns = (vis.options or {}).get("publicParameters")
     if not isinstance(patterns, dict) or not patterns:
         raise Rejected()
@@ -121,7 +123,7 @@ def validate_request(vis, raw):
 def _check_dropdown(definition, org):
     try:
         dropdown = models.Query.get_by_id_and_org(definition.get("queryId"), org)
-    except NotFound:
+    except (NotFound, models.NoResultFound):
         raise Rejected()
     if dropdown.latest_query_data_id is None:
         raise Unavailable()

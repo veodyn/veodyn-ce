@@ -65,3 +65,16 @@ class TestAdmission(BaseTestCase):
         attempt(LEASE, seconds=30)()
         self.assertGreater(redis_connection.ttl(LEASE), 0)
         self.assertLessEqual(redis_connection.ttl(LEASE), 30)
+
+    def test_a_held_key_at_full_capacity_answers_capacity(self):
+        self.assertEqual(attempt(LEASE, cap=1)(), "admitted")
+        self.assertEqual(attempt(LEASE, cap=1)(), "capacity")
+
+    def test_the_window_prunes_only_expired_entries(self):
+        self.assertEqual(attempt("public-exec:1:short", cap=2, seconds=1)(), "admitted")
+        self.assertEqual(attempt("public-exec:1:long", cap=2, seconds=30)(), "admitted")
+        self.assertEqual(attempt("public-exec:1:third", cap=2, seconds=30)(), "capacity")
+        time.sleep(1.2)
+        self.assertEqual(attempt("public-exec:1:third", cap=2, seconds=30)(), "admitted")
+        members = {m.decode() if isinstance(m, bytes) else m for m in redis_connection.zrange(WINDOW, 0, -1)}
+        self.assertEqual(members, {"public-exec:1:long", "public-exec:1:third"})
