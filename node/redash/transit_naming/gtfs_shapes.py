@@ -2,10 +2,10 @@ import json
 import math
 
 from redash.transit_naming.patterns import (
-    _canonical,
     _pattern_ids,
     _sequences,
     _trip_attributes,
+    canonical_keys,
     direction_number,
     most_common_smallest,
 )
@@ -64,7 +64,7 @@ def _simplified(shape):
 def path_rows(carrier_code, route_code, gtfs_route_id, snapshot, profile, digest):
     sequences = _sequences(snapshot, gtfs_route_id)
     ids = _pattern_ids(sequences)
-    longest = _canonical(sequences)
+    canonical_patterns = canonical_keys(snapshot, gtfs_route_id, sequences)
     attributes = _trip_attributes(snapshot, gtfs_route_id)
     rows = []
     for key, pattern_id in sorted(ids.items()):
@@ -77,7 +77,7 @@ def path_rows(carrier_code, route_code, gtfs_route_id, snapshot, profile, digest
                 "carrier_code": carrier_code,
                 "route_code": route_code,
                 "pattern_id": pattern_id,
-                "is_canonical": stops == longest[direction_id],
+                "is_canonical": key in canonical_patterns,
                 "direction_id": direction_number(direction_id),
                 "direction": profile.direction_letter(route_code, direction_id),
                 "headsign": most_common_smallest(headsigns) or "",

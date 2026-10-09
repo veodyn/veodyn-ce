@@ -146,6 +146,14 @@ def _canonical(sequences):
     return best
 
 
+def canonical_keys(snapshot, gtfs_route_id, sequences):
+    trips = [trip for trip in snapshot.trips if trip.get("route_id") == gtfs_route_id]
+    if trips and not any(str(trip.get("direction_id", "")) for trip in trips):
+        return set(sequences)
+    longest = _canonical(sequences)
+    return {key for key in sequences if key[1] == longest[key[0]]}
+
+
 def cut_patterns(
     carrier_code,
     route_code,
@@ -160,14 +168,14 @@ def cut_patterns(
 ):
     sequences = _sequences(snapshot, gtfs_route_id)
     ids = _pattern_ids(sequences)
-    longest = _canonical(sequences)
+    canonical_patterns = canonical_keys(snapshot, gtfs_route_id, sequences)
     sources = public_sources or {}
     index = stop_index if stop_index is not None else StopIndex(mca_stops)
     memo = {}
     rows = []
     for (direction_id, stops), pattern_id in sorted(ids.items()):
         letter = profile.direction_letter(route_code, direction_id)
-        canonical = stops == longest[direction_id]
+        canonical = (direction_id, stops) in canonical_patterns
         for sequence, gtfs_stop_id in enumerate(stops):
             stop_id, public_name, match, source = _match(
                 gtfs_stop_id, snapshot, mca_stops, public_names, sources, threshold_feet, memo, index
