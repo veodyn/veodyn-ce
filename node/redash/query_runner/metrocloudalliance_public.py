@@ -16,6 +16,7 @@ from redash.transit_naming.routes import name_route, parse_route_number, route_r
 from redash.transit_naming.snapshot import PatternStop, RouteName, StopName
 from redash.transit_naming.stops import stop_row
 from redash.transit_naming.suffixes import CarrierIndexes
+from redash.transit_naming.trip_routes import TRIP_ROUTE_COLUMNS, trip_route_rows
 
 archive_fetch = http_fetch
 _profile_set = {}
@@ -90,6 +91,18 @@ PUBLIC_RESOURCES = {
         ],
         "example": '{"resource": "public_route_paths", "params": {"carrier_code": "MT"}}',
     },
+    "public_trip_routes": {
+        "path": "v2/transitnetwork/routes",
+        "doc_params": ["carrier_code (required): string"],
+        "doc_returns": [
+            "carrier_code: string",
+            "trip_id: string, every trip in the carrier's GTFS archives that resolves to one route code",
+            "route_code: string, resolved as on public_route_paths, plus the profile's extra_trip_routes",
+            "direction_id: integer, GTFS's, null when the trip has none",
+            "gtfs_digest",
+        ],
+        "example": '{"resource": "public_trip_routes", "params": {"carrier_code": "MT"}}',
+    },
     "public_departures": {
         "path": "v2/realtime/predictions",
         "doc_params": [
@@ -162,6 +175,7 @@ PUBLIC_COLUMN_NAMES = {
     "public_stops": list(stop_row({}, StopName("", "", "", "", "", "", False, ""), "", "")),
     "public_route_stops": list(pattern_row(PatternStop(*[""] * 11), "", "")),
     "public_route_paths": list(PATH_COLUMNS),
+    "public_trip_routes": list(TRIP_ROUTE_COLUMNS),
     "public_departures": [column.split(":")[0] for column in PUBLIC_DEPARTURE_COLUMNS],
     "public_stop_locations": list(LOCATION_COLUMNS),
     "naming_profiles": ["carrier_code", "source_file", "is_default", "gtfs_sources", "overrides", "revision"],
@@ -286,6 +300,17 @@ def public_route_paths(params, fetch, profiles, archive_fetcher=None):
     return rows
 
 
+def public_trip_routes(params, fetch, profiles, archive_fetcher=None):
+    routes = fetch("routes", {"carrier_code": _carrier(params)})
+    profile = _profile(profiles, params, routes)
+    resolver = _resolver(profile, True, archive_fetcher)
+    resolutions = {
+        route_code: resolved
+        for route_code, (_, _, resolved) in _route_names(routes, profile, resolver, with_resolved=True).items()
+    }
+    return trip_route_rows(profile.carrier_code, resolutions, profile, resolver)
+
+
 def public_departures(params, fetch, profiles, now, archive_fetcher=None, source=None):
     query = {
         k: v
@@ -335,6 +360,8 @@ def run_public_resource(resource, params, fetch, now=None, archive_fetcher=None,
         return public_route_stops(params, fetch, profiles, archive_fetcher, source)
     if resource == "public_route_paths":
         return public_route_paths(params, fetch, profiles, archive_fetcher)
+    if resource == "public_trip_routes":
+        return public_trip_routes(params, fetch, profiles, archive_fetcher)
     if resource == "public_departures":
         return public_departures(params, fetch, profiles, now, archive_fetcher, source)
     return naming_profiles(profiles)

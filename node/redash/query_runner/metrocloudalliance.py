@@ -55,6 +55,7 @@ class MetroCloudAlliance(BaseResourceRunner):
         "public_routes": ("carrier_code",),
         "public_route_stops": ("carrier_code",),
         "public_route_paths": ("carrier_code",),
+        "public_trip_routes": ("carrier_code",),
         "public_departures": ("carrier_code",),
     }
 
