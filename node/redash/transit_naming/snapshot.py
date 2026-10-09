@@ -11,6 +11,7 @@ class GtfsSnapshot:
     trips: tuple = ()
     stop_times_by_trip: dict = field(default_factory=dict)
     stops: dict = field(default_factory=dict)
+    shapes: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -68,3 +69,6 @@ class PatternStop:
     stop_match: str
     sequence_source: str
     public_name_source: str = ""
+    direction_id: object = None
+    lat: object = None
+    lng: object = None

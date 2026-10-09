@@ -33,13 +33,14 @@ from redash.query_runner.metrocloudalliance_public import (
     PUBLIC_RESOURCES,
     run_public_resource,
 )
-from redash.query_runner.metrocloudalliance_resources import RESOURCES
+from redash.query_runner.metrocloudalliance_resources import EMPTY_COLUMNS, RESOURCES
 
 DEFAULT_BASE_URL = "https://api.metrocloudalliance.com/"
 
 
 class MetroCloudAlliance(BaseResourceRunner):
     resources = {**RESOURCES, **PUBLIC_RESOURCES}
+    empty_columns = EMPTY_COLUMNS
     default_resource = "carriers"
     noop_query = '{"resource": "carriers"}'
 
@@ -52,6 +53,7 @@ class MetroCloudAlliance(BaseResourceRunner):
         "stoptimes": ("iline",),
         "public_routes": ("carrier_code",),
         "public_route_stops": ("carrier_code",),
+        "public_route_paths": ("carrier_code",),
         "public_departures": ("carrier_code",),
     }
 

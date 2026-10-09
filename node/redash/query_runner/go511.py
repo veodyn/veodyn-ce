@@ -10,7 +10,7 @@ shipped as a default.
 
 import requests
 
-from redash.query_runner import register
+from redash.query_runner import TYPE_STRING, register
 from redash.query_runner.connector_base import (
     REQUEST_HEADERS,
     BaseResourceRunner,
@@ -37,6 +37,27 @@ ALERT_RETURNS = [
     "LastUpdated: datetime",
     "LanesAffected: string",
 ]
+
+ALERT_COLUMNS = {
+    name: TYPE_STRING
+    for name in (
+        "ID",
+        "Description",
+        "Location",
+        "RoadwayName",
+        "DirectionOfTravel",
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "CountyName",
+        "StartDate",
+        "PlannedEndDate",
+        "Reported",
+        "LastUpdated",
+        "LanesAffected",
+        "LcsEntries",
+    )
+}
 
 
 class Go511(BaseResourceRunner):
@@ -75,6 +96,7 @@ class Go511(BaseResourceRunner):
             ],
         },
     }
+    empty_columns = {"incidents": ALERT_COLUMNS, "roadwork": ALERT_COLUMNS}
     default_resource = "incidents"
     noop_query = '{"resource": "parkandridelots"}'
 

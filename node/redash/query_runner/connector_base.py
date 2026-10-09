@@ -219,6 +219,7 @@ class BaseResourceRunner(RedisPublisherMixin, BaseQueryRunner):
 
     should_annotate_query = False
     resources = {}
+    empty_columns = {}
     default_resource = None
 
     def __init__(self, configuration):
@@ -257,7 +258,11 @@ class BaseResourceRunner(RedisPublisherMixin, BaseQueryRunner):
         return serialize_result(columns, rows), None
 
     def _table(self, resource, records):
-        return to_redash_table(records)
+        columns, rows = to_redash_table(records)
+        declared = self.empty_columns.get(resource)
+        if not columns and declared:
+            columns = [{"name": name, "friendly_name": name, "type": kind} for name, kind in declared.items()]
+        return columns, rows
 
     def get_schema(self, get_stats=False):
         schema = []

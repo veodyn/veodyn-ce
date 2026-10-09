@@ -1,4 +1,5 @@
 import math
+from collections import Counter
 
 from redash.transit_naming import provenance
 from redash.transit_naming.snapshot import PatternStop
@@ -53,6 +54,15 @@ class StopIndex:
         return best
 
 
+def _stop_coordinates(snapshot, gtfs_stop_id):
+    point = _coordinates(snapshot.stops.get(gtfs_stop_id, {}), "stop_lat", "stop_lon")
+    return point if point is not None else (None, None)
+
+
+def direction_number(direction_id):
+    return int(direction_id) if direction_id.isdigit() else None
+
+
 def _nearest(gtfs_stop, index, threshold_feet):
     origin = _coordinates(gtfs_stop, "stop_lat", "stop_lon")
     if origin is None:
@@ -88,6 +98,30 @@ def _sequences(snapshot, gtfs_route_id):
         key = (str(trip.get("direction_id", "")), stops)
         found.setdefault(key, trip.get("shape_id") or trip.get("trip_headsign") or key[0])
     return found
+
+
+def _trip_attributes(snapshot, gtfs_route_id):
+    found = {}
+    for trip in snapshot.trips:
+        if trip.get("route_id") != gtfs_route_id:
+            continue
+        stops = tuple(stop_id for _, stop_id in snapshot.stop_times_by_trip.get(trip["trip_id"], []))
+        if not stops:
+            continue
+        key = (str(trip.get("direction_id", "")), stops)
+        shapes, headsigns, trips = found.setdefault(key, (Counter(), Counter(), []))
+        if trip.get("shape_id"):
+            shapes[trip["shape_id"]] += 1
+        if trip.get("trip_headsign"):
+            headsigns[trip["trip_headsign"]] += 1
+        trips.append(trip["trip_id"])
+    return found
+
+
+def most_common_smallest(counts):
+    if not counts:
+        return None
+    return min(counts, key=lambda value: (-counts[value], value))
 
 
 def _pattern_ids(sequences):
@@ -138,6 +172,7 @@ def cut_patterns(
             stop_id, public_name, match, source = _match(
                 gtfs_stop_id, snapshot, mca_stops, public_names, sources, threshold_feet, memo, index
             )
+            lat, lng = _stop_coordinates(snapshot, gtfs_stop_id)
             rows.append(
                 PatternStop(
                     carrier_code,
@@ -152,6 +187,9 @@ def cut_patterns(
                     match,
                     "gtfs_stop_times",
                     source,
+                    direction_number(direction_id),
+                    lat,
+                    lng,
                 )
             )
     return rows
@@ -198,4 +236,7 @@ def pattern_row(p, revision, digest):
         "sequence_source": p.sequence_source,
         "normalization_revision": revision,
         "gtfs_digest": digest,
+        "direction_id": p.direction_id,
+        "lat": p.lat,
+        "lng": p.lng,
     }

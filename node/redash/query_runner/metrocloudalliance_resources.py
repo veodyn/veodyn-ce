@@ -1,7 +1,27 @@
+from redash.query_runner import TYPE_FLOAT, TYPE_INTEGER, TYPE_STRING
 from redash.query_runner.metrocloudalliance_departures import DEPARTURE_COLUMNS
 
 TRANSIT_MODES = "rail, commuter rail, light rail, bus, express bus, rapid bus, local bus, transitway, ferry"
 
+
+EMPTY_COLUMNS = {
+    "vehiclelocations": {
+        "ave_update_freq": TYPE_FLOAT,
+        "direction": TYPE_STRING,
+        "heading": TYPE_STRING,
+        "last_report_ts": TYPE_STRING,
+        "last_update": TYPE_STRING,
+        "last_update_ts": TYPE_INTEGER,
+        "lat": TYPE_FLOAT,
+        "lng": TYPE_FLOAT,
+        "pattern": TYPE_STRING,
+        "realtime_source_id": TYPE_INTEGER,
+        "realtime_source_type_id": TYPE_INTEGER,
+        "route": TYPE_STRING,
+        "source": TYPE_STRING,
+        "speed": TYPE_FLOAT,
+    }
+}
 
 RESOURCES = {
     "predictions": {

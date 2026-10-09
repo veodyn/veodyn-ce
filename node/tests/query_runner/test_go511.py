@@ -48,6 +48,31 @@ class TestGo511(TestCase):
         self.assertEqual(params["format"], "json")
         self.assertEqual(params["version"], "0.0")
 
+    def test_empty_incidents_and_roadwork_keep_their_columns(self):
+        expected = [
+            "ID",
+            "Description",
+            "Location",
+            "RoadwayName",
+            "DirectionOfTravel",
+            "Latitude",
+            "Longitude",
+            "Severity",
+            "CountyName",
+            "StartDate",
+            "PlannedEndDate",
+            "Reported",
+            "LastUpdated",
+            "LanesAffected",
+            "LcsEntries",
+        ]
+        for resource in ("incidents", "roadwork"):
+            with patch("redash.query_runner.go511.requests.get", return_value=mock_response([])):
+                data, error = self.runner.run_query('{"resource": "%s"}' % resource, None)
+            self.assertIsNone(error)
+            self.assertEqual([c["name"] for c in data["columns"]], expected)
+            self.assertEqual(data["rows"], [])
+
     def test_sends_a_non_default_user_agent(self):
         # The live edge answers 403 to requests' own `python-requests/*` User-Agent.
         with patch("redash.query_runner.go511.requests.get", return_value=mock_response(SAMPLE_INCIDENTS)) as get:

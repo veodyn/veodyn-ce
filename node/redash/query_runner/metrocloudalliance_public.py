@@ -3,6 +3,7 @@ from redash.query_runner.metrocloudalliance_departures import flatten_departures
 from redash.transit_naming.departures import PUBLIC_DEPARTURE_COLUMNS, enrich_departures
 from redash.transit_naming.gtfs_cache import http_fetch
 from redash.transit_naming.gtfs_routes import GtfsResolver
+from redash.transit_naming.gtfs_shapes import PATH_COLUMNS, path_rows
 from redash.transit_naming.locations import LOCATION_COLUMNS, location_rows
 from redash.transit_naming.patterns import (
     StopIndex,
@@ -63,13 +64,29 @@ PUBLIC_RESOURCES = {
         "doc_params": [
             "carrier_code (required): string",
             "route_code (optional): string - one route; default every route of the carrier",
+            "canonical_only (optional): boolean - rows of canonical patterns only",
         ],
         "doc_returns": [
             "carrier_code, route_code, direction, pattern_id, is_canonical, sequence, stop_id, gtfs_stop_id, public_name",
             "stop_match: id | coordinate | unmatched; sequence_source: gtfs_stop_times | mca_pattern (sequence null)",
             "normalization_revision, gtfs_digest",
+            "direction_id: integer, GTFS's; lat, lng: float from stops.txt by gtfs_stop_id, null when unmatched",
         ],
         "example": '{"resource": "public_route_stops", "params": {"carrier_code": "MT", "route_code": "MT030"}}',
+    },
+    "public_route_paths": {
+        "path": "v2/transitnetwork/routes",
+        "doc_params": ["carrier_code (required): string"],
+        "doc_returns": [
+            "carrier_code, route_code, pattern_id, is_canonical: as on public_route_stops",
+            "direction_id: integer, GTFS's; direction: the profile's letter",
+            "headsign: most common trip headsign of the pattern, else empty",
+            "shape_id: most common shape of the pattern's trips, null when none",
+            "trip_count, point_count: integer (points in the simplified geometry)",
+            "geometry: GeoJSON LineString string, [lon, lat], null when the shape is missing or has under 2 points",
+            "gtfs_digest",
+        ],
+        "example": '{"resource": "public_route_paths", "params": {"carrier_code": "MT"}}',
     },
     "public_departures": {
         "path": "v2/realtime/predictions",
@@ -114,8 +131,18 @@ def _profile(profiles, params, records):
     return profiles.for_carrier(_carrier(params), name)
 
 
-def _resolver(profile, with_patterns, archive_fetcher=None):
-    return GtfsResolver(profile, cache_dir(), fetch=archive_fetcher or archive_fetch, with_patterns=with_patterns)
+def _resolver(profile, with_patterns, archive_fetcher=None, with_shapes=False):
+    return GtfsResolver(
+        profile,
+        cache_dir(),
+        fetch=archive_fetcher or archive_fetch,
+        with_patterns=with_patterns,
+        with_shapes=with_shapes,
+    )
+
+
+def _flag(value):
+    return value is True or str(value).strip().lower() in ("true", "1", "yes")
 
 
 def _route_names(routes, profile, resolver, with_resolved=False):
@@ -132,6 +159,7 @@ PUBLIC_COLUMN_NAMES = {
     "public_routes": list(route_row({}, RouteName(*[""] * 12), "", "")),
     "public_stops": list(stop_row({}, StopName("", "", "", "", "", "", False, ""), "", "")),
     "public_route_stops": list(pattern_row(PatternStop(*[""] * 11), "", "")),
+    "public_route_paths": list(PATH_COLUMNS),
     "public_departures": [column.split(":")[0] for column in PUBLIC_DEPARTURE_COLUMNS],
     "public_stop_locations": list(LOCATION_COLUMNS),
     "naming_profiles": ["carrier_code", "source_file", "is_default", "gtfs_sources", "overrides", "revision"],
@@ -222,7 +250,25 @@ def public_route_stops(params, fetch, profiles, archive_fetcher=None):
                         sources,
                     )
                 )
-        rows.extend(pattern_row(p, profiles.revision, resolver.digest) for p in patterns)
+        rows.extend(
+            pattern_row(p, profiles.revision, resolver.digest)
+            for p in patterns
+            if p.is_canonical or not _flag(params.get("canonical_only"))
+        )
+    return rows
+
+
+def public_route_paths(params, fetch, profiles, archive_fetcher=None):
+    routes = fetch("routes", {"carrier_code": _carrier(params)})
+    profile = _profile(profiles, params, routes)
+    resolver = _resolver(profile, True, archive_fetcher, with_shapes=True)
+    rows = []
+    for route_code, (route, name, resolved) in _route_names(routes, profile, resolver, with_resolved=True).items():
+        if resolved is not None:
+            snapshot = resolver.snapshots()[resolved.source_name]
+            rows.extend(
+                path_rows(profile.carrier_code, route_code, name.gtfs_route_id, snapshot, profile, resolver.digest)
+            )
     return rows
 
 
@@ -272,6 +318,8 @@ def run_public_resource(resource, params, fetch, now=None, archive_fetcher=None)
         return location_rows(stops, profiles, params)
     if resource == "public_route_stops":
         return public_route_stops(params, fetch, profiles, archive_fetcher)
+    if resource == "public_route_paths":
+        return public_route_paths(params, fetch, profiles, archive_fetcher)
     if resource == "public_departures":
         return public_departures(params, fetch, profiles, now, archive_fetcher)
     return naming_profiles(profiles)

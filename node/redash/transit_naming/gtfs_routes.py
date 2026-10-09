@@ -17,6 +17,7 @@ from redash.transit_naming.snapshot import GtfsSnapshot, ResolvedRoute
 ROUTE_FIELDS = ("route_id", "route_short_name", "route_long_name", "route_type", "route_color", "route_text_color")
 TRIP_FIELDS = ("route_id", "trip_id", "direction_id", "shape_id", "trip_headsign")
 STOP_FIELDS = ("stop_id", "stop_name", "stop_lat", "stop_lon")
+SHAPE_FIELDS = ("shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence")
 
 
 def _rows(archive, members, table, budget, fields):
@@ -27,7 +28,20 @@ def _rows(archive, members, table, budget, fields):
             yield {field: (row.get(field) or "").strip() for field in fields}
 
 
-def read_snapshot(source_name, content, safe_url, with_patterns=False):
+def _shapes(archive, members, budget):
+    shapes = {}
+    for row in _rows(archive, members, "shapes", budget, SHAPE_FIELDS):
+        try:
+            point = (int(float(row["shape_pt_sequence"])), float(row["shape_pt_lat"]), float(row["shape_pt_lon"]))
+        except ValueError:
+            continue
+        shapes.setdefault(row["shape_id"], []).append(point)
+    for points in shapes.values():
+        points.sort()
+    return shapes
+
+
+def read_snapshot(source_name, content, safe_url, with_patterns=False, with_shapes=False):
     try:
         archive = zipfile.ZipFile(io.BytesIO(content))
     except zipfile.BadZipFile as error:
@@ -46,7 +60,8 @@ def read_snapshot(source_name, content, safe_url, with_patterns=False):
         for sequence in stop_times.values():
             sequence.sort()
         stops = {row["stop_id"]: row for row in _rows(archive, members, "stops", budget, STOP_FIELDS)}
-    return GtfsSnapshot(source_name, hashlib.sha256(content).hexdigest(), routes, trips, stop_times, stops)
+    shapes = _shapes(archive, members, budget) if with_shapes else {}
+    return GtfsSnapshot(source_name, hashlib.sha256(content).hexdigest(), routes, trips, stop_times, stops, shapes)
 
 
 def _resolved(gtfs_route_id, row, snapshot, provenance_value):
@@ -92,8 +107,9 @@ def resolve_route(route_code, route_number, profile, snapshots):
 
 
 class GtfsResolver:
-    def __init__(self, profile, cache_dir, fetch=http_fetch, with_patterns=False, now=None):
+    def __init__(self, profile, cache_dir, fetch=http_fetch, with_patterns=False, now=None, with_shapes=False):
         self.profile = profile
+        self.with_shapes = with_shapes
         self.cache_dir = cache_dir
         self.fetch = fetch
         self.with_patterns = with_patterns
@@ -114,13 +130,13 @@ class GtfsResolver:
                     self.fetch,
                     now=self.now,
                     validate=lambda content, name=source.name, url=safe_url: read_snapshot(
-                        name, content, url, self.with_patterns
+                        name, content, url, self.with_patterns, self.with_shapes
                     ),
                 )
                 if archive.refresh_error:
                     self.refresh_errors.append(archive.refresh_error)
                 self._snapshots[source.name] = read_snapshot(
-                    source.name, archive.content, safe_url, self.with_patterns
+                    source.name, archive.content, safe_url, self.with_patterns, self.with_shapes
                 )
         return self._snapshots
 

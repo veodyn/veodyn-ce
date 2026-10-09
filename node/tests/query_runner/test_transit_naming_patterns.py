@@ -110,6 +110,9 @@ class TestCutPatterns(TestCase):
                 "sequence_source",
                 "normalization_revision",
                 "gtfs_digest",
+                "direction_id",
+                "lat",
+                "lng",
             ],
         )
 
