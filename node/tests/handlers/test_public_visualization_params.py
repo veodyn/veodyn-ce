@@ -279,7 +279,7 @@ class TestStatuses(PublicParamsCase):
         self.assertTrue(kwargs["is_api_key"])
         self.assertEqual(kwargs["metadata"], {"query_id": self.query.id, "Username": "public-visualization"})
         self.assertEqual(kwargs["job_timeout"], 40)
-        self.assertEqual(kwargs["queued_ttl"], 20)
+        self.assertEqual(kwargs["queued_ttl"], 60)
 
     def test_a_miss_with_an_old_result_answers_pending_with_the_stale_result(self):
         self.build()
@@ -379,7 +379,7 @@ class TestStatuses(PublicParamsCase):
         jobs = Queue(self.query.data_source.queue_name, connection=rq_redis_connection).jobs
         job = jobs[-1]
         self.assertEqual(job.timeout, 40)
-        self.assertEqual(job.ttl, 20)
+        self.assertEqual(job.ttl, 60)
         self.assertEqual(job.args[0], "SELECT 'MT020'")
         self.assertEqual(job.kwargs["is_api_key"], True)
         self.assertEqual(job.kwargs["user_id"], self.token)
