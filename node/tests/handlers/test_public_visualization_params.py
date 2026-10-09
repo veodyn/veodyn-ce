@@ -67,9 +67,16 @@ class TestRejections(PublicParamsCase):
         self.build(vis_options={"publicParameters": {"other": "^x$"}})
         self.assert_rejected("?p_route=MT020")
 
-    def test_an_empty_key_name_is_rejected(self):
-        self.build()
-        self.assert_rejected("?p_=x")
+    def test_malformed_key_names_that_are_declared_and_listed_are_rejected(self):
+        names = ["", "a" * 65, "a-b"]
+        self.build(
+            parameters=[{"name": n, "type": "enum", "enumOptions": "x", "value": "x"} for n in names],
+            text="SELECT 1",
+            vis_options={"publicParameters": {n: "^x$" for n in names}},
+        )
+        for name in names:
+            with self.subTest(name=name):
+                self.assert_rejected("?p_{}=x".format(name))
 
     def test_eleven_declared_and_listed_keys_are_rejected(self):
         names = ["k{}".format(i) for i in range(11)]
@@ -143,12 +150,10 @@ class TestRejections(PublicParamsCase):
         self.build(
             parameters=[{"name": name, "type": "enum", "enumOptions": "MT020", "value": "MT020"}],
             text="SELECT '{{ %s }}'" % name,
-            vis_options={"publicParameters": {name: "^MT020$", name + "a": "^MT020$"}},
+            vis_options={"publicParameters": {name: "^MT020$"}},
         )
         self.store("SELECT 'MT020'")
         self.assertEqual(self.get("?p_{}=MT020".format(name)).status_code, 200)
-        self.assert_rejected("?p_{}=MT020".format(name + "a"))
-        self.assert_rejected("?p_a-b=MT020")
 
     def test_a_value_outside_the_enum_is_rejected(self):
         self.build()
