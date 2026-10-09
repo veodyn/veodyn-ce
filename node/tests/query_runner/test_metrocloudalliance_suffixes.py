@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from unittest import TestCase
 from unittest.mock import patch
 
 from redash import redis_connection
@@ -228,3 +229,15 @@ class TestCarrierWithoutTheOption(PublicResourceCase):
         )
         self.assertTrue(all(r["original_public_name"] == r["public_name"] for r in data["rows"]))
         self.assertTrue(all(r["suffix_completion"] == "" for r in data["rows"]))
+
+
+class TestSourceHash(TestCase):
+    def test_path_case_matters(self):
+        self.assertNotEqual(source_hash("https://host/TenantA", "k"), source_hash("https://host/tenanta", "k"))
+
+    def test_scheme_and_host_case_do_not_matter(self):
+        self.assertEqual(source_hash("HTTPS://Host/path", "k"), source_hash("https://host/path/", "k"))
+
+    def test_query_case_matters_and_the_key_distinguishes(self):
+        self.assertNotEqual(source_hash("https://host/p?A=1", "k"), source_hash("https://host/p?a=1", "k"))
+        self.assertNotEqual(source_hash("https://host/p", "k"), source_hash("https://host/p", "j"))

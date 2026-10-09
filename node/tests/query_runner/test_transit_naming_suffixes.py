@@ -1,3 +1,4 @@
+from math import cos, radians
 from unittest import TestCase
 
 from redash.transit_naming import provenance
@@ -21,8 +22,12 @@ def at(meters_north):
     return LAT + meters_north / 111_000.0
 
 
-def stop(stop_id, raw, meters_north, on="", cross="", **kwargs):
-    return mca_stop(stop_id, raw, at(meters_north), LNG, on, cross, **kwargs)
+def east(meters):
+    return LNG + meters / (111_000.0 * cos(radians(LAT)))
+
+
+def stop(stop_id, raw, meters_north, on="", cross="", east_m=0, **kwargs):
+    return mca_stop(stop_id, raw, at(meters_north), east(east_m), on, cross, **kwargs)
 
 
 def named(stops):
@@ -53,8 +58,20 @@ class TestDonors(TestCase):
     def test_a_base_that_does_not_match_the_raw_name_is_not_a_donor(self):
         loose = stop("a", "Main/Valley", 0, "Main St", "Valley Circle Blvd")
         self.assertEqual(name_stop(loose, PROFILE).public_name, "Main St/Valley Circle Bl")
-        entries = self.entries(loose)
-        self.assertEqual([(e[0], e[2], e[3]) for e in entries], [("main", "St", "")])
+        self.assertEqual(self.entries(loose), [])
+
+    def test_a_loosely_accepted_stop_does_not_donate_through_its_good_part(self):
+        stops = [
+            stop("a", "Main/Valley", 0, "Main St", "Valley Circle Blvd"),
+            stop("b", "Main/Elm", 4000, "Main Ave", "Elm Ave"),
+            stop("c", "Main/Valley Circle", 50, "Main", "Valley Circle"),
+        ]
+        result = named(stops)["c"]
+        self.assertEqual((result.public_name, result.suffix_completion), ("Main/Valley Circle", ""))
+
+    def test_a_stop_whose_parts_do_not_map_one_to_one_onto_its_raw_name_donates_nothing(self):
+        self.assertEqual(self.entries(stop("a", "Main/Elm", 0, "Main St", "Main Ave")), [])
+        self.assertEqual(self.entries(stop("b", "Main/Elm", 0, "Main St", "Pine Ave")), [])
 
     def test_two_parts_claiming_one_raw_part_are_both_refused(self):
         entries = self.entries(stop("a", "Main/Elm", 0, "Main St", "Main Ave"))
@@ -186,17 +203,22 @@ class TestRules(TestCase):
         self.assertEqual((result.public_name, result.public_name_source), ("Pico/Rimpau", provenance.OVERRIDE))
         self.assertEqual(result.suffix_completion, "")
 
-    def test_keep_whole_and_direction_word_parts_are_untouched(self):
+    def test_keep_whole_and_direction_word_parts_stay_bare_though_a_donor_carries_a_suffix(self):
         result = named(
             [
-                stop("a", "Broadway/Main", 0, "Broadway", "Main St"),
-                stop("b", "Ocean North/Main", 0, "Ocean North", "Main St"),
+                stop("a", "Broadway St/Main", 0, "Broadway St", "Main St"),
+                stop("b", "Ocean North St/Main", 0, "Ocean North St", "Main St"),
                 stop("c", "Broadway/Main", 10, "Broadway", "Main"),
                 stop("d", "Ocean North/Main", 10, "Ocean North", "Main"),
+                stop("e", "Broadway/Elm", 800, "Broadway", "Elm"),
+                stop("f", "Ocean North/Elm", 800, "Ocean North", "Elm"),
             ]
         )
+        self.assertEqual(result["a"].public_name, "Broadway St/Main St")
         self.assertEqual(result["c"].public_name, "Broadway/Main St")
         self.assertEqual(result["d"].public_name, "Ocean North/Main St")
+        self.assertEqual(result["e"].public_name, "Broadway/Elm")
+        self.assertEqual(result["f"].public_name, "Ocean North/Elm")
 
     def test_a_carrier_without_the_option_completes_nothing(self):
         plain = build_profile_set(
@@ -209,6 +231,55 @@ class TestRules(TestCase):
         results = name_stops(stops, plain, build_index(stops, plain))
         self.assertEqual([r.public_name for r in results], ["Wilshire Bl/10th St", "Wilshire/10th"])
         self.assertEqual([r.suffix_completion for r in results], ["", ""])
+
+
+class TestDistance(TestCase):
+    def fill(self, east_m, north_m=0):
+        donor = stop("a", "Wilshire/10th", 0, "Wilshire Blvd", "10th St")
+        target = stop("b", "Wilshire/10th", north_m, "Wilshire", "10th", east_m=east_m)
+        return named([donor, target])["b"].suffix_completion
+
+    def test_east_west_distance_counts_toward_the_same_intersection_range(self):
+        self.assertEqual(self.fill(120), "same_intersection")
+        self.assertEqual(self.fill(180), "unique_street")
+
+    def test_east_west_distance_counts_toward_the_unique_street_range(self):
+        donor = stop("a", "Hoover/Adams", 0, "Hoover St", "Adams")
+        near = stop("b", "Hoover/Jefferson", 0, "Hoover", "Jefferson", east_m=1900)
+        far = stop("c", "Hoover/Jefferson", 0, "Hoover", "Jefferson", east_m=2100)
+        result = named([donor, near, far])
+        self.assertEqual(result["b"].public_name, "Hoover St/Jefferson")
+        self.assertEqual(result["c"].public_name, "Hoover/Jefferson")
+
+    def test_diagonal_distance_combines_both_axes(self):
+        self.assertEqual(self.fill(110, north_m=110), "unique_street")
+
+
+class TestCoordinates(TestCase):
+    BAD = [
+        (float("nan"), -118.3),
+        (34.0, float("nan")),
+        (float("inf"), -118.3),
+        (34.0, float("-inf")),
+        (91.0, -118.3),
+        (-91.0, -118.3),
+        (34.0, 181.0),
+        (34.0, -181.0),
+    ]
+
+    def test_a_recipient_without_finite_in_range_coordinates_abstains(self):
+        donor = stop("a", "Hoover/Adams", 0, "Hoover St", "Adams")
+        for lat, lng in self.BAD:
+            target = mca_stop("b", "Hoover/Jefferson", lat, lng, "Hoover", "Jefferson")
+            result = named([donor, target])["b"]
+            self.assertEqual((result.public_name, result.suffix_completion), ("Hoover/Jefferson", ""), (lat, lng))
+
+    def test_a_donor_without_finite_in_range_coordinates_donates_nothing(self):
+        for lat, lng in self.BAD:
+            donor = mca_stop("a", "Hoover/Adams", lat, lng, "Hoover St", "Adams")
+            target = stop("b", "Hoover/Jefferson", 0, "Hoover", "Jefferson")
+            self.assertEqual(donor_entries([donor], PROFILE), [], (lat, lng))
+            self.assertEqual(named([donor, target])["b"].public_name, "Hoover/Jefferson", (lat, lng))
 
 
 class TestRows(TestCase):

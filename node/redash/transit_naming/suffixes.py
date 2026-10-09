@@ -2,7 +2,8 @@ import hashlib
 import json
 from collections import defaultdict
 from dataclasses import dataclass, replace
-from math import asin, cos, radians, sin, sqrt
+from math import asin, cos, isfinite, radians, sin, sqrt
+from urllib.parse import urlsplit
 
 import redis
 
@@ -27,7 +28,8 @@ class Decision:
 
 
 def source_hash(base_url, api_key):
-    endpoint = str(base_url or "").strip().lower().rstrip("/")
+    parts = urlsplit(str(base_url or "").strip())
+    endpoint = f"{parts.scheme.lower()}://{parts.netloc.lower()}{parts.path.rstrip('/')}?{parts.query}"
     return hashlib.sha256(f"{endpoint}\x00{api_key or ''}".encode()).hexdigest()
 
 
@@ -43,9 +45,12 @@ def _meters(lat_a, lng_a, lat_b, lng_b):
 
 def _coordinates(stop):
     try:
-        return float(stop["lat"]), float(stop["lng"])
+        lat, lng = float(stop["lat"]), float(stop["lng"])
     except (KeyError, TypeError, ValueError):
         return None
+    if not (isfinite(lat) and isfinite(lng) and -90 <= lat <= 90 and -180 <= lng <= 180):
+        return None
+    return lat, lng
 
 
 def classify(part, rules):
@@ -72,8 +77,8 @@ def _eligible_coordinates(stop, name):
     return _coordinates(stop)
 
 
-def _claims_a_distinct_raw_part(own, other):
-    return bool(own) and (not other or any(i != j for i in own for j in other))
+def _maps_one_to_one(name_bases, raw_bases):
+    return name_bases == raw_bases or name_bases == raw_bases[::-1]
 
 
 def donor_entries(stops, profile):
@@ -87,11 +92,9 @@ def donor_entries(stops, profile):
             continue
         parts = [classify(part, rules) for part in (name.on_street, name.cross_street)]
         raw_bases = [classify(part, rules)[1] for part in raw]
-        matches = [{j for j, base in enumerate(raw_bases) if base == part[1]} for part in parts]
-        suffixes = [
-            part[2] if part[0] == "suffixed" and _claims_a_distinct_raw_part(matches[i], matches[1 - i]) else ""
-            for i, part in enumerate(parts)
-        ]
+        if not _maps_one_to_one([part[1] for part in parts], raw_bases):
+            continue
+        suffixes = [part[2] if part[0] == "suffixed" else "" for part in parts]
         if any(suffixes):
             entries.append((parts[0][1], parts[1][1], suffixes[0], suffixes[1], *coordinates))
     return entries
