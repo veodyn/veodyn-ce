@@ -1,20 +1,19 @@
-import { normalizePublicVisualization, type PublicVisualizationPayload } from '../lib/public-visualization'
+import { publicParameterSearch, readPublicResponse, type PublicParameters, type PublicVisualizationResult } from './public-request'
 
-export function publicVisualizationUrl(baseUrl: string, token: string): string {
-  return `${baseUrl.replace(/\/+$/, '')}/api/public/visualizations/${encodeURIComponent(token)}`
+export function publicVisualizationUrl(baseUrl: string, token: string, parameters?: PublicParameters): string {
+  return `${baseUrl.replace(/\/+$/, '')}/api/public/visualizations/${encodeURIComponent(token)}${publicParameterSearch(parameters)}`
 }
 
 export async function fetchPublicVisualization(
   baseUrl: string,
   token: string,
+  parameters?: PublicParameters,
   signal?: AbortSignal
-): Promise<PublicVisualizationPayload | null> {
-  const response = await fetch(publicVisualizationUrl(baseUrl, token), {
+): Promise<PublicVisualizationResult | null> {
+  const response = await fetch(publicVisualizationUrl(baseUrl, token, parameters), {
     credentials: 'omit',
     signal,
     headers: { accept: 'application/json' },
   })
-  if (response.status === 404) return null
-  if (!response.ok) throw new Error(`Shared visualization request failed with status ${response.status}`)
-  return normalizePublicVisualization(await response.json())
+  return readPublicResponse(response)
 }

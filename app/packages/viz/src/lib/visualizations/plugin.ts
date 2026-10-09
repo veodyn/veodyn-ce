@@ -11,6 +11,7 @@ export interface VisualizationRendererProps {
   data: QueryResultData
   annotations?: PlacedAnnotation[]
   onOptionsChange?: (options: Record<string, unknown>) => void
+  retrievedAt?: string | null
 }
 
 export interface VisualizationEditorProps {

@@ -18,8 +18,8 @@ Every Veodyn instance also serves the package it was built with, beside any
 plugin packages it carries, at `/packages/<name>-<version>.tgz`:
 
 ```sh
-curl -O https://veodyn.example.org/packages/veodyn-viz-0.1.2.tgz
-npm install ./veodyn-viz-0.1.2.tgz
+curl -O https://veodyn.example.org/packages/veodyn-viz-0.2.0.tgz
+npm install ./veodyn-viz-0.2.0.tgz
 ```
 
 Keep the downloaded file in your repository. A later release of the instance
@@ -71,6 +71,7 @@ share a plugin list.
 | Prop | Type | What it does |
 | --- | --- | --- |
 | `token` | `string` | The share token of the visualization. |
+| `parameters` | `Record<string, string \| number>` | Values for the parameters the visualization lists as public, sent as `p_<name>`. A visualization that does not list them answers as an unavailable token. |
 | `refreshSeconds` | `number` | Re-read the latest stored result on this interval, between 15 and 3600 seconds. Without it the widget fetches once. |
 | `className`, `style` | | Size the widget. A `style.height` such as `420`, `'60vh'` or `'calc(100vh - 4rem)'` is also the height charts and maps fill. A percentage, a keyword such as `auto` or `fit-content`, or a `var()` reference is not, because it may have nothing definite to resolve against inside the widget. Sized another way, they keep their own height inside your box. |
 | `renderLoading` | `() => ReactNode` | Replaces the default loading placeholder. |
@@ -217,6 +218,6 @@ yourself.
 
 ## Not supported yet
 
-- Query parameters and filters. A token always shows the latest stored result of
-  its query, so filter on your side or share one visualization per filter value.
+- Free-form query parameters and filters. Only the parameters a visualization
+  lists as public can be set, one value each.
 - Editing. The package renders visualizations and does not include the editors.

@@ -13,6 +13,7 @@ interface VisualizationRendererProps {
   data: QueryResultData
   annotations?: PlacedAnnotation[]
   onOptionsChange?: (options: Record<string, unknown>) => void
+  retrievedAt?: string | null
 }
 
 function RendererFallback() {
@@ -29,6 +30,7 @@ export function VisualizationRenderer({
   data,
   annotations,
   onOptionsChange,
+  retrievedAt,
 }: VisualizationRendererProps) {
   const plugin = getVisualization(visualization.type)
 
@@ -53,6 +55,7 @@ export function VisualizationRenderer({
           data={data}
           annotations={annotations}
           onOptionsChange={onOptionsChange}
+          retrievedAt={retrievedAt}
         />
       </Suspense>
     </WidgetThemeBoundary>

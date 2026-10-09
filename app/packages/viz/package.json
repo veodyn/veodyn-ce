@@ -1,6 +1,6 @@
 {
   "name": "@veodyn/viz",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Render Veodyn visualizations natively in a React or Next.js page.",
   "license": "AGPL-3.0-only",
   "repository": {

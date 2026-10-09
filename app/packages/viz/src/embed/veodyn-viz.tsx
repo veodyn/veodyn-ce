@@ -9,11 +9,14 @@ import { getVisualization } from '../lib/visualizations/registry'
 import { VisualizationErrorBoundary } from '../components/visualizations/visualization-error-boundary'
 import { VisualizationRenderer } from '../components/visualizations/visualization-renderer'
 import { fetchPublicVisualization } from './fetch-public-visualization'
+import { canonicalParameters, type PublicParameters } from './public-request'
+import { usePublicPollInterval } from './use-public-poll'
 import { clampRefreshSeconds } from './refresh'
 import { useVeodyn } from './veodyn-context'
 
 export interface VeodynVizProps {
   token: string
+  parameters?: PublicParameters
   refreshSeconds?: number
   className?: string
   style?: CSSProperties
@@ -39,28 +42,41 @@ function DefaultUnavailable() {
   return <p data-veodyn-part="unavailable">This visualization is no longer available.</p>
 }
 
-export function VeodynViz({ token, refreshSeconds, className, style, renderLoading, renderUnavailable }: VeodynVizProps) {
+export function VeodynViz({
+  token,
+  parameters,
+  refreshSeconds,
+  className,
+  style,
+  renderLoading,
+  renderUnavailable,
+}: VeodynVizProps) {
   const { baseUrl } = useVeodyn()
   const refresh = clampRefreshSeconds(refreshSeconds)
+  const pairs = canonicalParameters(parameters)
+  const refetchInterval = usePublicPollInterval(refresh == null ? null : refresh * 1000)
   const { data: payload, isLoading } = useQuery({
-    queryKey: ['veodyn-public-visualization', baseUrl, token],
-    queryFn: ({ signal }) => fetchPublicVisualization(baseUrl, token, signal),
+    queryKey: ['veodyn-public-visualization', baseUrl, token, pairs],
+    queryFn: ({ signal }) => fetchPublicVisualization(baseUrl, token, parameters, signal),
     retry: false,
-    refetchInterval: refresh == null ? false : refresh * 1000,
+    refetchInterval,
   })
 
   const registered = payload ? getVisualization(payload.visualization.type) !== undefined : false
   const data = !payload ? null : registered ? visualizationData(payload.visualization.type, payload.data) : EMPTY_QUERY_RESULT
 
   let body: ReactNode
-  if (isLoading) body = renderLoading ? renderLoading() : <DefaultLoading />
-  else if (!payload || !data) body = renderUnavailable ? renderUnavailable() : <DefaultUnavailable />
+  const waiting = payload?.data === null && payload.status === 'pending'
+  const gone = payload?.data === null && payload.status === 'unavailable'
+  if (isLoading || waiting) body = renderLoading ? renderLoading() : <DefaultLoading />
+  else if (!payload || !data || gone) body = renderUnavailable ? renderUnavailable() : <DefaultUnavailable />
   else
     body = (
       <VisualizationErrorBoundary>
         <VisualizationRenderer
           visualization={{ ...payload.visualization, id: PUBLIC_VISUALIZATION_ID, created_at: '', updated_at: '' }}
           data={data}
+          retrievedAt={payload.retrievedAt}
         />
       </VisualizationErrorBoundary>
     )
