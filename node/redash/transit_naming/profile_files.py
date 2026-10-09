@@ -3,7 +3,7 @@ import os
 
 from redash.transit_naming.profiles import OVERRIDE_KINDS, Override, ProfileError
 
-PROFILE_SUFFIXES = (".yaml", ".csv")
+PROFILE_SUFFIXES = (".yaml", ".csv", ".streets.json")
 
 
 def parse_overrides_csv(text, carrier, file):

@@ -17,6 +17,8 @@ DIRECTION_WORDS = frozenset(
 )
 SAME_INTERSECTION = "same_intersection"
 UNIQUE_STREET = "unique_street"
+STREET_REFERENCE = "street_reference"
+METHOD_ORDER = (STREET_REFERENCE, SAME_INTERSECTION, UNIQUE_STREET)
 EARTH_RADIUS_M = 6_371_000
 
 
@@ -144,27 +146,37 @@ def build_index(stops, profile):
     return SuffixIndex(donor_entries(stops, profile))
 
 
+def _decide(base, other, coordinates, profile, index):
+    rules = profile.stop_name
+    if rules.street_reference is not None:
+        decision = profile.streets.decide(base, *coordinates, rules.street_reference.within_m)
+        if decision.suffix or decision.abstained != "no_street":
+            return decision
+    if rules.complete_suffixes is not None and index is not None:
+        return index.decide(base, other, *coordinates, rules.complete_suffixes)
+    return Decision(abstained="no_donor")
+
+
 def complete_name(stop, name, profile, index):
-    completion = profile.stop_name.complete_suffixes
-    if completion is None or index is None:
+    rules = profile.stop_name
+    if rules.street_reference is None and (rules.complete_suffixes is None or index is None):
         return name
     coordinates = _eligible_coordinates(stop, name)
     if coordinates is None:
         return name
-    rules = profile.stop_name
     parts = [classify(part, rules) for part in (name.on_street, name.cross_street)]
     texts = [name.on_street, name.cross_street]
     methods = []
     for i, (kind, base, _) in enumerate(parts):
         if kind != "bare":
             continue
-        decision = index.decide(base, parts[1 - i][1], *coordinates, completion)
+        decision = _decide(base, parts[1 - i][1], coordinates, profile, index)
         if decision.suffix:
             texts[i] = f"{texts[i]} {decision.suffix}"
             methods.append(decision.method)
     if not methods:
         return name
-    method = SAME_INTERSECTION if SAME_INTERSECTION in methods else UNIQUE_STREET
+    method = next(method for method in METHOD_ORDER if method in methods)
     return replace(
         name,
         public_name=f"{texts[0]}{rules.separator}{texts[1]}",

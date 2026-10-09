@@ -23,8 +23,10 @@ from redash.transit_naming.profiles import (
     RouteNameEntry,
     RouteNameRules,
     StopNameRules,
+    StreetReference,
     SuffixCompletion,
 )
+from redash.transit_naming.streets import StreetIndex, parse_streets_json
 
 CORE_PROFILE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profiles")
 DEFAULT_FILE = "default.yaml"
@@ -65,8 +67,11 @@ STOP_NAME_KEYS = {
     "complete_suffixes",
     "split_on",
     "keep_upper",
+    "street_reference",
 }
 COMPLETE_SUFFIX_KEYS = {"same_intersection_m", "unique_street_m"}
+STREET_REFERENCE_KEYS = {"within_m"}
+STREETS_SUFFIX = ".streets.json"
 HEADSIGN_KEYS = {"title_case", "expand"}
 SOURCE_KEYS = {"name", "url", "join"}
 ALIAS_KEYS = {"source", "gtfs_route_id", "note"}
@@ -174,14 +179,14 @@ def _route_name_rules(data, carrier, file):
     )
 
 
-def _distance(data, key, carrier, file):
-    value = data.get(key, getattr(SuffixCompletion, key))
+def _distance(data, key, carrier, file, section="complete_suffixes", defaults=SuffixCompletion):
+    value = data.get(key, getattr(defaults, key))
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise ProfileError(
             f"{key} must be a positive integer, got {value!r}",
             carrier,
             file,
-            field=f"stop_name.complete_suffixes.{key}",
+            field=f"stop_name.{section}.{key}",
         )
     return value
 
@@ -197,6 +202,16 @@ def _complete_suffixes(data, carrier, file):
         same_intersection_m=_distance(section, "same_intersection_m", carrier, file),
         unique_street_m=_distance(section, "unique_street_m", carrier, file),
     )
+
+
+def _street_reference(data, carrier, file):
+    if "street_reference" not in data:
+        return None
+    section = data["street_reference"]
+    if not isinstance(section, dict):
+        raise ProfileError("street_reference must be a mapping", carrier, file, field="stop_name.street_reference")
+    _check_keys(section, STREET_REFERENCE_KEYS, carrier, file, "stop_name.street_reference.")
+    return StreetReference(within_m=_distance(section, "within_m", carrier, file, "street_reference", StreetReference))
 
 
 def _split_on(data, carrier, file):
@@ -230,6 +245,7 @@ def _stop_name_rules(data, carrier, file):
         complete_suffixes=_complete_suffixes(data, carrier, file),
         split_on=_split_on(data, carrier, file),
         keep_upper=frozenset(str(w).upper() for w in data.get("keep_upper") or []),
+        street_reference=_street_reference(data, carrier, file),
     )
 
 
@@ -333,6 +349,16 @@ def parse_profile_yaml(text, file):
     )
 
 
+def _with_streets(profile, streets_path, files):
+    if profile.stop_name.street_reference is None:
+        return profile
+    if streets_path not in files:
+        message = f"street_reference needs {os.path.basename(streets_path)} beside the profile"
+        raise ProfileError(message, profile.carrier_code, profile.source_file, field="stop_name.street_reference")
+    streets = parse_streets_json(files[streets_path].decode("utf-8"), profile.carrier_code, streets_path)
+    return replace(profile, streets=StreetIndex(streets, profile.stop_name))
+
+
 def build_profile_set(dirs, extra_files=None):
     files = read_profile_files(dirs, extra_files)
     digest = hashlib.sha256()
@@ -341,6 +367,7 @@ def build_profile_set(dirs, extra_files=None):
         digest.update(os.path.basename(path).encode("utf-8"))
         digest.update(files[path])
         digest.update(files.get(path[: -len(".yaml")] + ".csv", b""))
+        digest.update(files.get(path[: -len(".yaml")] + STREETS_SUFFIX, b""))
     profiles = {}
     default = None
     for path in sorted(files):
@@ -351,6 +378,7 @@ def build_profile_set(dirs, extra_files=None):
         if csv_path in files:
             overrides = parse_overrides_csv(files[csv_path].decode("utf-8"), profile.carrier_code, csv_path)
             profile = replace(profile, overrides=overrides)
+        profile = _with_streets(profile, path[: -len(".yaml")] + STREETS_SUFFIX, files)
         if profile.is_default:
             default = profile
             continue

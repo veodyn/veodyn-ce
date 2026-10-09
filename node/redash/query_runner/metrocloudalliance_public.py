@@ -58,7 +58,7 @@ PUBLIC_RESOURCES = {
             "stop_kind: intersection | station | named_place | unparsed",
             "mode: bus | rail | empty; retired: boolean (empty transit_modes and no predictions)",
             "lat, lng, city, accessible, public_name_source, normalization_revision, gtfs_digest",
-            "original_public_name: the name before suffix completion; suffix_completion: same_intersection | unique_street | empty",
+            "original_public_name: the name before suffix completion; suffix_completion: street_reference | same_intersection | unique_street | empty",
         ],
         "example": '{"resource": "public_stops", "params": {"carrier_code": "MT"}}',
     },

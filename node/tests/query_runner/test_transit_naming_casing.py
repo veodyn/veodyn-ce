@@ -185,4 +185,4 @@ class TestProfileOptions(TestCase):
         self.assertIn("split_on", self.refused('  split_on: "/"'))
 
     def test_the_revision_moved_with_the_casing_rules(self):
-        self.assertEqual(CORE_REVISION, "2026.10.09")
+        self.assertEqual(CORE_REVISION, "2026.10.09.2")
