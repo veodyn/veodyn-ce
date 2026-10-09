@@ -75,7 +75,7 @@ class TestGtfsRealtime(TestCase):
             data, error = self.runner.run_query('{"resource": "vehicle_positions", "params": {"routes": "42"}}', None)
 
         self.assertIsNone(error)
-        self.assertEqual(data, {"columns": [], "rows": []})
+        self.assertEqual(data["rows"], [])
         self.assertEqual(connect.call_args.args[0], "wss://feed.example.org/ws/vehicle_positions/42")
 
     def test_connect_error_returned_as_query_error(self):

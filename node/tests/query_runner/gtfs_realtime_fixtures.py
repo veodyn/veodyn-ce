@@ -73,6 +73,7 @@ def build_vehicle_entity(
     direction_id=None,
     timestamp=None,
     with_position=True,
+    trip_id=None,
 ):
     """One FeedEntity carrying a VehiclePosition, leaving unset fields unset."""
     if gtfs_realtime_pb2 is None:
@@ -92,6 +93,8 @@ def build_vehicle_entity(
         entity.vehicle.trip.route_id = route_id
     if direction_id is not None:
         entity.vehicle.trip.direction_id = direction_id
+    if trip_id is not None:
+        entity.vehicle.trip.trip_id = trip_id
     if timestamp is not None:
         entity.vehicle.timestamp = timestamp
     return entity

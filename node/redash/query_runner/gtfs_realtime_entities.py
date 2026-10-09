@@ -33,6 +33,7 @@ def parse_vehicle_message(message, route_labels):
 
     row = {
         "vehicle_id": vehicle_id,
+        "trip_id": trip.get("tripId") or None,
         "latitude": latitude,
         "longitude": longitude,
         "bearing": position.get("bearing"),
@@ -65,6 +66,7 @@ def parse_vehicle_entity(entity, route_labels):
 
     row = {
         "vehicle_id": vehicle_id,
+        "trip_id": trip.trip_id if trip.HasField("trip_id") and trip.trip_id else None,
         "latitude": position.latitude,
         "longitude": position.longitude,
         "bearing": position.bearing if position.HasField("bearing") else None,

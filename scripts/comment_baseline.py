@@ -1476,7 +1476,6 @@ BASELINE = {
     "node/redash/query_runner/google_spreadsheets.py": 5,
     "node/redash/query_runner/gtfs_realtime.py": 24,
     "node/redash/query_runner/gtfs_realtime_entities.py": 17,
-    "node/redash/query_runner/gtfs_realtime_resources.py": 1,
     "node/redash/query_runner/gtfs_realtime_transport.py": 3,
     "node/redash/query_runner/gtfs_static.py": 23,
     "node/redash/query_runner/gtfs_static_tables.py": 57,
@@ -1732,6 +1731,6 @@ BASELINE = {
     "validator/validator_service/validation.py": 44,
 }
 
-FILES_WITH_COMMENTS = 1731
-COMMENT_LINES = 45447
+FILES_WITH_COMMENTS = 1730
+COMMENT_LINES = 45446
 FILES_SCANNED = 2358

@@ -1,9 +1,24 @@
-"""Schema-browser metadata for the GTFS-Realtime resources: params, returns and examples."""
+from redash.query_runner import TYPE_FLOAT, TYPE_INTEGER, TYPE_STRING
 
 DEFAULT_SAMPLE_SECONDS = 8
 MAX_SAMPLE_SECONDS = 30
 DEFAULT_EARLY_SECONDS = 60
 DEFAULT_LATE_SECONDS = 300
+
+EMPTY_COLUMNS = {
+    "vehicle_positions": {
+        "vehicle_id": TYPE_STRING,
+        "trip_id": TYPE_STRING,
+        "route_id": TYPE_STRING,
+        "line": TYPE_STRING,
+        "latitude": TYPE_FLOAT,
+        "longitude": TYPE_FLOAT,
+        "bearing": TYPE_FLOAT,
+        "speed": TYPE_FLOAT,
+        "direction_id": TYPE_INTEGER,
+        "timestamp": TYPE_STRING,
+    }
+}
 
 RESOURCES = {
     "vehicle_positions": {
@@ -16,6 +31,7 @@ RESOURCES = {
         ],
         "doc_returns": [
             "vehicle_id: string",
+            "trip_id: string, or null when the feed sets none",
             "route_id: string",
             "line: string",
             "latitude: float",

@@ -43,6 +43,7 @@ from redash.query_runner.gtfs_realtime_resources import (
     DEFAULT_EARLY_SECONDS,
     DEFAULT_LATE_SECONDS,
     DEFAULT_SAMPLE_SECONDS,
+    EMPTY_COLUMNS,
     MAX_SAMPLE_SECONDS,
     RESOURCES,
 )
@@ -86,6 +87,7 @@ def _parse_threshold_seconds(params, param_name, default):
 
 class GtfsRealtime(BaseResourceRunner):
     resources = RESOURCES
+    empty_columns = EMPTY_COLUMNS
     default_resource = "vehicle_positions"
     noop_query = '{"resource": "vehicle_positions", "params": {"sample_seconds": 3}}'
 
