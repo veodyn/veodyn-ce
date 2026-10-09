@@ -18,6 +18,10 @@ ALLOWLISTED_LITERALS = (
     ("tests/query_runner/test_mongodb.py", "6569ee53d53db7930aaa0cc0"),
     # A hash this test computes and asserts on, not a credential.
     ("tests/query_runner/test_query_results.py", "1c5f1acad40f99b968836273d74baa89"),
+    (
+        "tests/query_runner/transit_naming_baseline.json",
+        "67fefc4b644ffa2bf59374a77bb88cc07726d46ac05aca0d10d725153d0b7623",
+    ),
     # A commit-SHA-pinned upstream doc link, inherited from the getredash fork,
     # predating this branch.
     #

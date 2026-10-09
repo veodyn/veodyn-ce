@@ -402,7 +402,7 @@ BASELINE = {
     "app/packages/viz/src/lib/hex-color.ts": 11,
     "app/packages/viz/src/lib/metric-thresholds.ts": 15,
     "app/packages/viz/src/lib/metric-value-format.ts": 14,
-    "app/packages/viz/src/lib/public-visualization.ts": 29,
+    "app/packages/viz/src/lib/public-visualization.ts": 27,
     "app/packages/viz/src/lib/visualizations/column-display.test.ts": 17,
     "app/packages/viz/src/lib/visualizations/column-display.ts": 20,
     "app/packages/viz/src/lib/visualizations/core-options.test.ts": 6,
@@ -698,7 +698,7 @@ BASELINE = {
     "app/src/components/dashboard/visualization-widget.tsx": 44,
     "app/src/components/dashboard/widget-controls.tsx": 30,
     "app/src/components/dashboard/widget-freshness.test.tsx": 21,
-    "app/src/components/dashboard/widget-freshness.tsx": 20,
+    "app/src/components/dashboard/widget-freshness.tsx": 19,
     "app/src/components/dashboard/widget-x-values.ts": 7,
     "app/src/components/data-sources/data-source-logo.tsx": 10,
     "app/src/components/data-sources/data-source-pause.test.tsx": 8,
@@ -1732,5 +1732,5 @@ BASELINE = {
 }
 
 FILES_WITH_COMMENTS = 1730
-COMMENT_LINES = 45446
-FILES_SCANNED = 2358
+COMMENT_LINES = 45443
+FILES_SCANNED = 2398
