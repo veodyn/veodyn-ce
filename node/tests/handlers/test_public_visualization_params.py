@@ -58,7 +58,7 @@ class TestRejections(PublicParamsCase):
 
     def test_every_rule_three_rejection_matches_a_bad_token(self):
         self.build()
-        long_key = "p_" + "a" * 63
+        long_key = "p_" + "a" * 65
         for qs in [
             "?p_route=MT020&p_route=MT030",
             "?p_unknown=MT020",
@@ -71,6 +71,18 @@ class TestRejections(PublicParamsCase):
         ]:
             with self.subTest(qs=qs):
                 self.assert_rejected(qs)
+
+    def test_the_key_boundary_is_64_characters_after_the_prefix(self):
+        name = "a" * 64
+        self.build(
+            parameters=[{"name": name, "type": "enum", "enumOptions": "MT020", "value": "MT020"}],
+            text="SELECT '{{ %s }}'" % name,
+            vis_options={"publicParameters": {name: "^MT020$", name + "a": "^MT020$"}},
+        )
+        self.store("SELECT 'MT020'")
+        self.assertEqual(self.get("?p_{}=MT020".format(name)).status_code, 200)
+        self.assert_rejected("?p_{}=MT020".format(name + "a"))
+        self.assert_rejected("?p_a-b=MT020")
 
     def test_a_value_outside_the_enum_is_rejected(self):
         self.build()

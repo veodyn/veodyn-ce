@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 PREFIX = "p_"
 MAX_KEYS = 10
-MAX_KEY_LENGTH = 64
+KEY_PATTERN = re.compile(r"p_[A-Za-z0-9_]{1,64}")
 MAX_VALUE_LENGTH = 200
 ALLOWED_TYPES = ("enum", "query")
 
@@ -105,7 +105,7 @@ def validate_request(vis, raw):
     supplied = {}
     for key, values in raw.items():
         name = key[len(PREFIX) :]
-        if len(values) != 1 or len(key) > MAX_KEY_LENGTH or len(values[0]) > MAX_VALUE_LENGTH:
+        if len(values) != 1 or KEY_PATTERN.fullmatch(key) is None or len(values[0]) > MAX_VALUE_LENGTH:
             raise Rejected()
         if name not in patterns or not _matches(patterns[name], values[0]):
             raise Rejected()
