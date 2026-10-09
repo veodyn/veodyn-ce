@@ -244,10 +244,9 @@ def public_route_stops(params, fetch, profiles, archive_fetcher=None, source=Non
     live = {}
     for stop in stops:
         named = indexes.name(stop, profile)
-        if not named.retired:
-            live[str(stop["stop_id"])] = stop
-            names[str(stop["stop_id"])] = named.public_name
-            sources[str(stop["stop_id"])] = named.public_name_source
+        live[str(stop["stop_id"])] = stop
+        names[str(stop["stop_id"])] = named.public_name
+        sources[str(stop["stop_id"])] = named.public_name_source
     rows = []
     index = StopIndex(live)
     for route_code, (route, name, resolved) in _route_names(routes, profile, resolver, with_resolved=True).items():

@@ -161,3 +161,80 @@ class TestExtraTripRoutes(TestCase):
 
     def test_a_trip_id_in_two_routes_of_different_codes_is_emitted_for_neither(self):
         self.assertNotIn("shared", {r["trip_id"] for r in self.rows()})
+
+
+RS_URL = "https://gitlab.example.org/rs.zip"
+RS_YAML = PA_YAML.replace("pa.zip", "rs.zip").replace("extra_trip_routes:\n  PA020: [20cw]\n", "")
+RS_MEMBERS = {
+    "routes.txt": "route_id,route_short_name,route_long_name,route_type,route_color,route_text_color\n10,10,Ten,3,,\n",
+    "trips.txt": "route_id,service_id,trip_id,trip_headsign,direction_id,shape_id\n10,WD,t1,,0,\n",
+    "stop_times.txt": (
+        "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+        "t1,06:00:00,06:00:00,g1,1\n"
+        "t1,06:05:00,06:05:00,g2,2\n"
+        "t1,06:10:00,06:10:00,g3,3\n"
+    ),
+    "stops.txt": (
+        "stop_id,stop_code,stop_name,stop_lat,stop_lon\n"
+        "g1,g1,Main / First,34.0100,-118.1000\n"
+        "g2,g2,Main / Second,34.0200,-118.1000\n"
+        "g3,g3,Main / Third,34.0300,-118.1000\n"
+    ),
+}
+
+
+def rs_stop(stop_id, lat, lng, modes, predictions):
+    return {
+        "carrier_code": "PA",
+        "stop_id": stop_id,
+        "stop_name": f"Stop {stop_id}",
+        "lat": lat,
+        "lng": lng,
+        "on_street": "Main St",
+        "cross_street": "Cross St",
+        "street_direction": "",
+        "transit_modes": modes,
+        "prediction_count": predictions,
+    }
+
+
+class TestRouteStopsMatchRetiredStops(TestCase):
+    def setUp(self):
+        self.cache = tempfile.TemporaryDirectory()
+        profiles = build_profile_set([CORE_PROFILE_DIR], extra_files={"/pack/naming_profiles": {"PA.yaml": RS_YAML}})
+        fetcher = archive_fetcher({RS_URL: build_archive(RS_MEMBERS)})
+        for p in (
+            patch.object(public, "load_profile_set", return_value=profiles),
+            patch.object(public, "cache_dir", return_value=self.cache.name),
+            patch.object(public, "archive_fetch", fetcher),
+        ):
+            p.start()
+            self.addCleanup(p.stop)
+        self.addCleanup(self.cache.cleanup)
+
+    def rows(self, stops):
+        def fetch(resource, params):
+            return [pa_route("PA010")] if resource == "routes" else stops
+
+        rows = public.run_public_resource("public_route_stops", {"carrier_code": "PA"}, fetch)
+        return {r["gtfs_stop_id"]: r for r in rows}
+
+    def test_a_carrier_whose_stops_are_all_retired_still_matches_by_id_with_coordinates(self):
+        rows = self.rows([rs_stop("g1", 34.0100, -118.1000, "", 0), rs_stop("g2", 34.0200, -118.1000, "", 0)])
+        for gtfs_stop_id in ("g1", "g2"):
+            self.assertEqual(rows[gtfs_stop_id]["stop_match"], "id")
+            self.assertEqual(rows[gtfs_stop_id]["stop_id"], gtfs_stop_id)
+            self.assertIsNotNone(rows[gtfs_stop_id]["lat"])
+            self.assertIsNotNone(rows[gtfs_stop_id]["lng"])
+
+    def test_a_retired_stop_near_an_unmatched_id_matches_by_coordinate(self):
+        rows = self.rows([rs_stop("m9", 34.0300, -118.1000, "", 0)])
+        self.assertEqual((rows["g3"]["stop_match"], rows["g3"]["stop_id"]), ("coordinate", "m9"))
+        self.assertEqual((rows["g3"]["lat"], rows["g3"]["lng"]), (34.03, -118.1))
+
+    def test_a_carrier_with_live_stops_is_unchanged(self):
+        rows = self.rows([rs_stop("g1", 34.0100, -118.1000, "BUS", 3), rs_stop("g2", 34.0200, -118.1000, "BUS", 3)])
+        self.assertEqual((rows["g1"]["stop_match"], rows["g1"]["stop_id"]), ("id", "g1"))
+        self.assertEqual((rows["g2"]["stop_match"], rows["g2"]["stop_id"]), ("id", "g2"))
+        self.assertEqual(rows["g3"]["stop_match"], "unmatched")
+        self.assertIsNone(rows["g3"]["lat"])
