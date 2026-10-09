@@ -12,6 +12,7 @@ import { ErrorIds } from '@/lib/errorIds'
 import { normalizePublicVisualization } from '@veodyn/viz/normalize'
 import { readerForwardingHeaders } from '@/lib/reader-forwarding'
 import { PUBLIC_CORS_HEADERS } from './cors'
+import { publicParameterQuery } from './parameters'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,6 +24,11 @@ const NOT_FOUND = {
 const UNAVAILABLE = {
   error: 'redash backend unavailable',
   errorId: ErrorIds.UP_UNREACHABLE,
+}
+
+function withRetryAfter(upstream: Response): Record<string, string> {
+  const retryAfter = upstream.headers.get('retry-after')
+  return retryAfter ? { ...PUBLIC_CORS_HEADERS, 'Retry-After': retryAfter } : { ...PUBLIC_CORS_HEADERS }
 }
 
 export function OPTIONS() {
@@ -39,14 +45,21 @@ export async function GET(request: Request, ctx: { params: Promise<{ token: stri
   }
 
   const { token } = await ctx.params
+  const query = publicParameterQuery(new URL(request.url).searchParams)
+  if (query === null) return NextResponse.json(NOT_FOUND, { status: 404, headers: PUBLIC_CORS_HEADERS })
   try {
     const upstream = await fetch(
-      `${base}/api/visualizations/public/${encodeURIComponent(token)}`,
+      `${base}/api/visualizations/public/${encodeURIComponent(token)}${query}`,
       {
         signal: request.signal,
         headers: { accept: 'application/json', ...readerForwardingHeaders(request) },
       }
     )
+    if (upstream.status === 503) {
+      const payload = normalizePublicVisualization(await upstream.json())
+      if (!payload) return NextResponse.json(UNAVAILABLE, { status: 502, headers: PUBLIC_CORS_HEADERS })
+      return NextResponse.json(payload, { status: 503, headers: withRetryAfter(upstream) })
+    }
     if (upstream.status >= 500 || upstream.status === 429) {
       return NextResponse.json(UNAVAILABLE, { status: 502, headers: PUBLIC_CORS_HEADERS })
     }
@@ -54,7 +67,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ token: stri
 
     const payload = normalizePublicVisualization(await upstream.json())
     if (!payload) return NextResponse.json(NOT_FOUND, { status: 404, headers: PUBLIC_CORS_HEADERS })
-    return NextResponse.json(payload, { headers: PUBLIC_CORS_HEADERS })
+    return NextResponse.json(payload, { status: upstream.status === 202 ? 202 : 200, headers: withRetryAfter(upstream) })
   } catch {
     return NextResponse.json(
       { error: 'redash backend unreachable', errorId: ErrorIds.UP_UNREACHABLE },

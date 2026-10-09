@@ -60,6 +60,7 @@ const SERVED = {
     columns: [{ name: 'station', friendly_name: 'Station', type: 'string' }],
     rows: [{ station: 'Central Station' }],
   },
+  retrievedAt: '2026-07-20T09:59:00Z',
 }
 
 function request(headers: Record<string, string> = {}) {

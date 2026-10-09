@@ -28,6 +28,22 @@ export interface PublicVisualizationPayload {
    * `visualizationData` which case it is holding.
    */
   data: QueryResultData | null
+  status?: PublicVisualizationStatus
+  retrievedAt?: string | null
+}
+
+export const PUBLIC_VISUALIZATION_STATUSES = ['fresh', 'pending', 'stale', 'unavailable'] as const
+
+export type PublicVisualizationStatus = (typeof PUBLIC_VISUALIZATION_STATUSES)[number]
+
+function pickStatus(root: Record<string, unknown>): PublicVisualizationStatus | undefined {
+  return PUBLIC_VISUALIZATION_STATUSES.find((status) => status === root.status)
+}
+
+function pickRetrievedAt(root: Record<string, unknown>): string | null | undefined {
+  const source = asRecord(root.query_result) ?? root
+  const value = source === root ? root.retrievedAt : source.retrieved_at
+  return typeof value === 'string' || value === null ? value : undefined
 }
 
 // `MockVisualization` wants a numeric id and upstream sends none. A local
@@ -79,7 +95,12 @@ export function normalizePublicVisualization(raw: unknown): PublicVisualizationP
     }
   }
 
+  const status = pickStatus(root)
+  const retrievedAt = pickRetrievedAt(root)
+
   return {
+    ...(status ? { status } : {}),
+    ...(retrievedAt !== undefined ? { retrievedAt } : {}),
     visualization: {
       type: viz.type,
       name: typeof viz.name === 'string' ? viz.name : '',
