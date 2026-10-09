@@ -5,6 +5,8 @@ import { useMockDataStore } from '@/stores/mock-data-store'
 import { USE_REAL_API } from '@/services/redash/config'
 import * as vizService from '@/services/redash/visualizations'
 import { AppError, ErrorIds } from '@/lib/errorIds'
+import { canonicalParameters, type PublicParameters } from '@veodyn/viz/embed/public-request'
+import { usePublicPollInterval } from '@veodyn/viz/embed/use-public-poll'
 import type { MockQuery, MockVisualization } from '@/lib/mock-data'
 
 // Minting an embed link needs a backend that can serve it. Mock mode has none,
@@ -211,15 +213,17 @@ export function usePublicVisualization(
      * query's own schedule, and this only picks up what that schedule wrote.
      */
     refetchIntervalMs?: number | null
+    parameters?: PublicParameters
   } = {}
 ) {
+  const refetchInterval = usePublicPollInterval(opts.refetchIntervalMs ?? null)
   return useQuery({
-    queryKey: ['public-visualization', token],
+    queryKey: ['public-visualization', token, canonicalParameters(opts.parameters)],
     enabled: !!token,
     retry: false,
-    refetchInterval: opts.refetchIntervalMs ?? false,
+    refetchInterval,
     queryFn: ({ signal }) =>
-      token ? vizService.fetchPublicVisualization(token, { signal }) : null,
+      token ? vizService.fetchPublicVisualization(token, { signal, parameters: opts.parameters }) : null,
   })
 }
 

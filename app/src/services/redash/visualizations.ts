@@ -7,9 +7,11 @@
 
 import { redashApi } from '@/services/api-client'
 import {
-  normalizePublicVisualization,
-  type PublicVisualizationPayload,
-} from '@veodyn/viz/lib/public-visualization'
+  publicParameterSearch,
+  readPublicResponse,
+  type PublicParameters,
+  type PublicVisualizationResult,
+} from '@veodyn/viz/embed/public-request'
 import type { RedashVisualization } from './types'
 
 /**
@@ -24,15 +26,15 @@ import type { RedashVisualization } from './types'
  */
 export async function fetchPublicVisualization(
   token: string,
-  opts: { signal?: AbortSignal } = {}
-): Promise<PublicVisualizationPayload | null> {
-  const response = await fetch(`/api/public/visualizations/${encodeURIComponent(token)}`, {
+  opts: { signal?: AbortSignal; parameters?: PublicParameters } = {}
+): Promise<PublicVisualizationResult | null> {
+  const url = `/api/public/visualizations/${encodeURIComponent(token)}${publicParameterSearch(opts.parameters)}`
+  const response = await fetch(url, {
     credentials: 'omit',
     signal: opts.signal,
     headers: { accept: 'application/json' },
   })
-  if (!response.ok) return null
-  return normalizePublicVisualization(await response.json())
+  return readPublicResponse(response).catch(() => null)
 }
 
 export function createVisualization(data: {

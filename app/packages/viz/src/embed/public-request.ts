@@ -42,7 +42,7 @@ export async function readPublicResponse(response: Response): Promise<PublicVisu
 }
 
 export function pollIntervalMs(
-  payload: PublicVisualizationResult | null | undefined,
+  payload: Pick<PublicVisualizationResult, 'status' | 'retryAfterMs'> | null | undefined,
   pendingStreak: number,
   refreshMs: number | null
 ): number | false {

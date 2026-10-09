@@ -47,6 +47,17 @@ function Unavailable() {
   )
 }
 
+const PARAMETER_PREFIX = 'p_'
+
+function publicParameters(search: Record<string, string | string[] | undefined>): Record<string, string> {
+  const parameters: Record<string, string> = {}
+  for (const [key, value] of Object.entries(search)) {
+    const first = Array.isArray(value) ? value[0] : value
+    if (key.startsWith(PARAMETER_PREFIX) && first !== undefined) parameters[key.slice(PARAMETER_PREFIX.length)] = first
+  }
+  return parameters
+}
+
 export default function PublicEmbedPage({
   params,
   searchParams,
@@ -55,16 +66,18 @@ export default function PublicEmbedPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { token } = use(params)
-  const refresh = refreshIntervalMs(use(searchParams).refresh)
+  const search = use(searchParams)
+  const refresh = refreshIntervalMs(search.refresh)
+  const parameters = publicParameters(search)
   // The token is a lookup key and is never rendered, so a screenshot of the
   // dead-link panel cannot hand a working token back out.
   const {
     data: payload,
     isLoading,
     isError,
-  } = usePublicVisualization(token, { refetchIntervalMs: refresh })
+  } = usePublicVisualization(token, { refetchIntervalMs: refresh, parameters })
 
-  if (isLoading) {
+  if (isLoading || (payload?.data === null && payload.status === 'pending')) {
     return (
       <div className="p-4">
         <h1 className="sr-only">Loading this visualization</h1>
@@ -109,6 +122,7 @@ export default function PublicEmbedPage({
           updated_at: '',
         }}
         data={data}
+        retrievedAt={payload.retrievedAt}
       />
     </div>
   )
