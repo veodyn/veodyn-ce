@@ -73,6 +73,13 @@ class TestGo511(TestCase):
             self.assertEqual([c["name"] for c in data["columns"]], expected)
             self.assertEqual(data["rows"], [])
 
+    def test_declared_columns_apply_only_when_there_are_no_rows(self):
+        with patch("redash.query_runner.go511.requests.get", return_value=mock_response([{}])):
+            data, error = self.runner.run_query('{"resource": "incidents"}', None)
+        self.assertIsNone(error)
+        self.assertEqual(data["columns"], [])
+        self.assertEqual(data["rows"], [{}])
+
     def test_sends_a_non_default_user_agent(self):
         # The live edge answers 403 to requests' own `python-requests/*` User-Agent.
         with patch("redash.query_runner.go511.requests.get", return_value=mock_response(SAMPLE_INCIDENTS)) as get:

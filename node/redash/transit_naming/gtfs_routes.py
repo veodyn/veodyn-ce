@@ -1,6 +1,7 @@
 import csv
 import hashlib
 import io
+import math
 import zipfile
 
 from redash.query_runner.gtfs_realtime_transport import sanitize_feed_url
@@ -34,6 +35,8 @@ def _shapes(archive, members, budget):
         try:
             point = (int(float(row["shape_pt_sequence"])), float(row["shape_pt_lat"]), float(row["shape_pt_lon"]))
         except ValueError:
+            continue
+        if not (math.isfinite(point[1]) and math.isfinite(point[2])):
             continue
         shapes.setdefault(row["shape_id"], []).append(point)
     for points in shapes.values():

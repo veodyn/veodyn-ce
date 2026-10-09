@@ -172,7 +172,7 @@ def cut_patterns(
             stop_id, public_name, match, source = _match(
                 gtfs_stop_id, snapshot, mca_stops, public_names, sources, threshold_feet, memo, index
             )
-            lat, lng = _stop_coordinates(snapshot, gtfs_stop_id)
+            lat, lng = _stop_coordinates(snapshot, gtfs_stop_id) if match != "unmatched" else (None, None)
             rows.append(
                 PatternStop(
                     carrier_code,

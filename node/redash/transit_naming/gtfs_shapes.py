@@ -29,10 +29,12 @@ PATH_COLUMNS = (
 
 def _deviation(point, start, end):
     dx, dy = end[0] - start[0], end[1] - start[1]
-    length = math.hypot(dx, dy)
-    if length == 0:
+    length_squared = dx * dx + dy * dy
+    if length_squared == 0:
         return math.hypot(point[0] - start[0], point[1] - start[1])
-    return abs(dx * (start[1] - point[1]) - (start[0] - point[0]) * dy) / length
+    along = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / length_squared
+    along = max(0.0, min(1.0, along))
+    return math.hypot(point[0] - (start[0] + along * dx), point[1] - (start[1] + along * dy))
 
 
 def simplify(points, tolerance=SIMPLIFY_TOLERANCE_DEGREES):

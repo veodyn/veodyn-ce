@@ -260,7 +260,7 @@ class BaseResourceRunner(RedisPublisherMixin, BaseQueryRunner):
     def _table(self, resource, records):
         columns, rows = to_redash_table(records)
         declared = self.empty_columns.get(resource)
-        if not columns and declared:
+        if not rows and not columns and declared:
             columns = [{"name": name, "friendly_name": name, "type": kind} for name, kind in declared.items()]
         return columns, rows
 

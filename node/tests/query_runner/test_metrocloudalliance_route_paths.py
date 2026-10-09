@@ -66,7 +66,7 @@ class TestPublicRoutePaths(RoutePathsCase):
         rows = {(r["route_code"], r["pattern_id"]) for r in data["rows"]}
         self.assertEqual(
             {k for k in rows if k[0] == "MT720"},
-            {("MT720", "720_0"), ("MT720", "720_0-2"), ("MT720", "720_1"), ("MT720", "720_1-2")},
+            {("MT720", "720_0"), ("MT720", "720_0-2"), ("MT720", "720_1a"), ("MT720", "720_1a-2")},
         )
         self.assertEqual(len(rows), len(data["rows"]))
 
@@ -85,16 +85,18 @@ class TestPublicRoutePaths(RoutePathsCase):
         self.assertEqual(paths[("MT720", "720_0")]["trip_count"], 3)
         self.assertEqual(paths[("MT720", "720_0-2")]["shape_id"], "720_0-2")
 
-    def test_suffixed_pattern_id_keeps_the_real_shape_id_and_ties_go_to_the_smallest(self):
+    def test_ties_go_to_the_smallest_shape_even_when_the_larger_comes_first(self):
         paths = self.paths()
-        self.assertEqual(paths[("MT720", "720_1")]["shape_id"], "720_1")
-        self.assertEqual(paths[("MT720", "720_1-2")]["shape_id"], "720_1")
+        tied = paths[("MT720", "720_1a")]
+        self.assertEqual(tied["shape_id"], "720_1")
+        self.assertEqual(json.loads(tied["geometry"])["coordinates"], [[-118.0, 34.5], [-118.1, 34.6]])
+        self.assertEqual(paths[("MT720", "720_1a-2")]["shape_id"], "720_1a")
 
     def test_headsign_is_most_common_non_empty_ties_smallest_else_empty(self):
         paths = self.paths()
         self.assertEqual(paths[("MT720", "720_0")]["headsign"], "Santa Monica")
         self.assertEqual(paths[("MT720", "720_0-2")]["headsign"], "")
-        self.assertEqual(paths[("MT720", "720_1")]["headsign"], "Alpha")
+        self.assertEqual(paths[("MT720", "720_1a")]["headsign"], "Alpha")
 
     def test_points_follow_numeric_sequence_and_are_simplified_without_going_under_two(self):
         paths = self.paths()
@@ -140,6 +142,11 @@ class TestPublicRouteStopsAdditions(RoutePathsCase):
         self.assertEqual((row["direction_id"], row["lat"], row["lng"]), (0, 34.04, -118.26))
         unmatched = next(r for r in rows if r["gtfs_stop_id"] == "9999")
         self.assertEqual((unmatched["direction_id"], unmatched["lat"], unmatched["lng"]), (1, None, None))
+
+    def test_unmatched_stops_have_null_coordinates_even_when_stops_txt_has_them(self):
+        rows = self.run_resource(STOPS_QUERY)["rows"]
+        row = next(r for r in rows if r["gtfs_stop_id"] == "9002")
+        self.assertEqual((row["stop_match"], row["lat"], row["lng"]), ("unmatched", None, None))
 
     def test_canonical_only_drops_the_other_patterns(self):
         query = '{"resource": "public_route_stops", "params": {"carrier_code": "MT", "canonical_only": true}}'
