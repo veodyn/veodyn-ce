@@ -130,8 +130,8 @@ class TestVotingOnOriginalNames(TestCase):
     def test_an_inferred_name_cannot_manufacture_agreement(self):
         rows = self.rows(
             [
-                member("MT", "1", "Wilshire Bl/10th St", original="Wilshire/10th"),
-                member("SM", "2", "Wilshire Bl/10th St", original="Wilshire Bl/10th St"),
+                member("MT", "1", "Elmwood Bl/10th St", original="Elmwood/10th"),
+                member("SM", "2", "Elmwood Bl/10th St", original="Elmwood Bl/10th St"),
                 member("BB", "3", "Foo/Bar", original="Foo/Bar"),
             ]
         )
@@ -140,8 +140,8 @@ class TestVotingOnOriginalNames(TestCase):
     def test_the_displayed_name_is_the_chosen_members_completed_name(self):
         rows = self.rows(
             [
-                member("MT", "1", "Wilshire Bl/10th St", original="Wilshire/10th"),
-                member("BB", "3", "Wilshire/10th", original="Wilshire/10th"),
+                member("MT", "1", "Elmwood Bl/10th St", original="Elmwood/10th"),
+                member("BB", "3", "Elmwood/10th", original="Elmwood/10th"),
             ]
         )
-        self.assertEqual((rows[0]["chosen_carrier"], rows[0]["public_name"]), ("MT", "Wilshire Bl/10th St"))
+        self.assertEqual((rows[0]["chosen_carrier"], rows[0]["public_name"]), ("MT", "Elmwood Bl/10th St"))

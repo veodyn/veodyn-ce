@@ -116,7 +116,7 @@ class TestPublicRoutePaths(RoutePathsCase):
         self.assertEqual(
             (single_point["shape_id"], single_point["geometry"], single_point["point_count"]), ("30_1", None, 0)
         )
-        no_shape_id = paths[("MT094", "Union Station")]
+        no_shape_id = paths[("MT094", "Central Station")]
         self.assertEqual((no_shape_id["shape_id"], no_shape_id["geometry"]), (None, None))
         missing_shape = paths[("MT950", "910_0")]
         self.assertEqual((missing_shape["shape_id"], missing_shape["geometry"]), ("910_0", None))
@@ -125,7 +125,7 @@ class TestPublicRoutePaths(RoutePathsCase):
         paths = self.paths()
         row = paths[("MT030", "30_0")]
         self.assertEqual((row["direction"], row["direction_id"], row["is_canonical"]), ("E", 0, True))
-        self.assertEqual(paths[("MT094", "Union Station")]["direction"], "S")
+        self.assertEqual(paths[("MT094", "Central Station")]["direction"], "S")
         self.assertEqual(len(row["gtfs_digest"]), 64)
 
     def test_carrier_code_is_required(self):

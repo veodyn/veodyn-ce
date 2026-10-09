@@ -20,7 +20,7 @@ SHAPE_TRIPS_TXT = (
     "720-13201,WD,t720e,Zed,1,2,720_1a\n"
     "720-13201,WD,t720f,Alpha,1,2,720_1\n"
     "94-13201,WD,t94a,,0,3,\n"
-    "94-13201,WD,t94b,Union Station,1,3,\n"
+    "94-13201,WD,t94b,Central Station,1,3,\n"
     "910-13201,WD,t910a,,0,4,910_0\n"
 )
 SHAPE_STOP_TIMES_TXT = BUS_STOP_TIMES_TXT + (

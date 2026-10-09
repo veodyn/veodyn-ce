@@ -110,14 +110,14 @@ class TestCasingReviewFindings(TestCase):
 
 class TestSplitOnIsPerProfile(TestCase):
     def test_metro_does_not_split_on_a_hyphen(self):
-        self.assertEqual(public("Wilshire - Western", METRO), "Wilshire - Western")
+        self.assertEqual(public("Elmwood - Western", METRO), "Elmwood - Western")
 
     def test_a_profile_that_lists_the_hyphen_splits_on_it(self):
-        self.assertEqual(public("Wilshire - Western", OCTA), "Wilshire/Western")
+        self.assertEqual(public("Elmwood - Western", OCTA), "Elmwood/Western")
 
     def test_suffix_donor_parts_split_the_same_way(self):
         self.assertEqual(raw_street_parts(stop("ORANGE-MAIN STREET"), OCTA.stop_name), ["Orange", "Main St"])
-        self.assertEqual(raw_street_parts(stop("Wilshire - Western"), METRO.stop_name), ["Wilshire - Western"])
+        self.assertEqual(raw_street_parts(stop("Elmwood - Western"), METRO.stop_name), ["Elmwood - Western"])
 
 
 class TestTrailingBoundTokens(TestCase):

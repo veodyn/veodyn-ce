@@ -40,8 +40,8 @@ class TestDonors(TestCase):
         return donor_entries(list(stops), PROFILE)
 
     def test_a_suffixed_part_of_a_live_intersection_is_a_donor(self):
-        entries = self.entries(stop("a", "Wilshire/10th", 0, "Wilshire Blvd", "10th St"))
-        self.assertEqual([(e[0], e[1], e[2], e[3]) for e in entries], [("wilshire", "10th", "Bl", "St")])
+        entries = self.entries(stop("a", "Elmwood/10th", 0, "Elmwood Blvd", "10th St"))
+        self.assertEqual([(e[0], e[1], e[2], e[3]) for e in entries], [("elmwood", "10th", "Bl", "St")])
 
     def test_a_suffix_that_is_not_the_last_word_is_not_a_donor(self):
         entries = self.entries(stop("a", "Valley Bl Heights/Main St", 0))
@@ -82,11 +82,11 @@ class TestDonors(TestCase):
         self.assertEqual(entries, [])
 
     def test_a_retired_stop_is_not_a_donor(self):
-        entries = self.entries(stop("a", "Wilshire/10th", 0, "Wilshire Blvd", "10th St", modes="", predictions=0))
+        entries = self.entries(stop("a", "Elmwood/10th", 0, "Elmwood Blvd", "10th St", modes="", predictions=0))
         self.assertEqual(entries, [])
 
     def test_stations_places_unparsed_and_coordinate_less_stops_are_not_donors(self):
-        no_coordinates = dict(stop("e", "Wilshire/10th", 0, "Wilshire Blvd", "10th St"), lat=None, lng=None)
+        no_coordinates = dict(stop("e", "Elmwood/10th", 0, "Elmwood Blvd", "10th St"), lat=None, lng=None)
         entries = self.entries(
             stop("b", "Pacific Ave Station", 0, "Pacific Avenue", "4th Street", modes="RAIL"),
             stop("c", "Fullerton Park & Ride Dock 14", 0),
@@ -97,44 +97,44 @@ class TestDonors(TestCase):
 
     def test_completed_names_never_feed_back(self):
         stops = [
-            stop("a", "Wilshire/10th", 0, "Wilshire Blvd", "10th St"),
-            stop("b", "Wilshire/10th", 100, "Wilshire", "10th"),
-            stop("c", "Wilshire/Cross", 2500, "Wilshire", "Cross"),
+            stop("a", "Elmwood/10th", 0, "Elmwood Blvd", "10th St"),
+            stop("b", "Elmwood/10th", 100, "Elmwood", "10th"),
+            stop("c", "Elmwood/Cross", 2500, "Elmwood", "Cross"),
         ]
         self.assertEqual(len(build_index(stops, PROFILE).entries), 1)
-        self.assertEqual(named(stops)["b"].public_name, "Wilshire Bl/10th St")
-        self.assertEqual(named(stops)["c"].public_name, "Wilshire/Cross")
+        self.assertEqual(named(stops)["b"].public_name, "Elmwood Bl/10th St")
+        self.assertEqual(named(stops)["c"].public_name, "Elmwood/Cross")
 
 
 class TestRules(TestCase):
     def test_same_intersection_fills_both_bare_parts(self):
         result = named(
             [
-                stop("a", "Wilshire/10th", 0, "Wilshire Blvd", "10th St"),
-                stop("b", "Wilshire/10th", 100, "Wilshire", "10th"),
+                stop("a", "Elmwood/10th", 0, "Elmwood Blvd", "10th St"),
+                stop("b", "Elmwood/10th", 100, "Elmwood", "10th"),
             ]
         )["b"]
-        self.assertEqual(result.public_name, "Wilshire Bl/10th St")
-        self.assertEqual((result.on_street, result.cross_street), ("Wilshire Bl", "10th St"))
-        self.assertEqual(result.original_public_name, "Wilshire/10th")
+        self.assertEqual(result.public_name, "Elmwood Bl/10th St")
+        self.assertEqual((result.on_street, result.cross_street), ("Elmwood Bl", "10th St"))
+        self.assertEqual(result.original_public_name, "Elmwood/10th")
         self.assertEqual(result.suffix_completion, "same_intersection")
         self.assertEqual(result.public_name_source, provenance.RULE)
 
     def test_same_intersection_conflict_abstains_for_that_base(self):
         result = named(
             [
-                stop("a", "Wilshire/10th", 0, "Wilshire Blvd", "10th St"),
-                stop("b", "Wilshire/10th", 50, "Wilshire Ave", "10th St"),
-                stop("c", "Wilshire/10th", 100, "Wilshire", "10th"),
+                stop("a", "Elmwood/10th", 0, "Elmwood Blvd", "10th St"),
+                stop("b", "Elmwood/10th", 50, "Elmwood Ave", "10th St"),
+                stop("c", "Elmwood/10th", 100, "Elmwood", "10th"),
             ]
         )["c"]
-        self.assertEqual(result.public_name, "Wilshire/10th St")
+        self.assertEqual(result.public_name, "Elmwood/10th St")
 
     def test_the_same_intersection_must_be_within_range(self):
         result = named(
             [
-                stop("a", "Wilshire/10th", 0, "Wilshire Blvd", "10th St"),
-                stop("b", "Wilshire/10th", 180, "Wilshire", "10th"),
+                stop("a", "Elmwood/10th", 0, "Elmwood Blvd", "10th St"),
+                stop("b", "Elmwood/10th", 180, "Elmwood", "10th"),
             ]
         )["b"]
         self.assertEqual(result.suffix_completion, "unique_street")
@@ -179,13 +179,13 @@ class TestRules(TestCase):
         self.assertEqual((result.public_name, result.suffix_completion), ("Alameda St/Adams", "same_intersection"))
 
     def test_untouched_kinds_keep_todays_name(self):
-        donor = stop("a", "Wilshire/10th", 0, "Wilshire Blvd", "10th St")
+        donor = stop("a", "Elmwood/10th", 0, "Elmwood Blvd", "10th St")
         untouched = [
             stop("b", "Pacific Ave Station", 10, "Pacific Avenue", "4th Street", modes="RAIL"),
             stop("c", "Fullerton Park & Ride Dock 14", 10),
-            stop("d", "Wilshire Plaza Lot", 10),
-            dict(stop("e", "Wilshire/10th", 10, "Wilshire", "10th"), lat=None, lng=None),
-            stop("f", "Wilshire/10th", 10, "Wilshire", "10th", modes="", predictions=0),
+            stop("d", "Elmwood Plaza Lot", 10),
+            dict(stop("e", "Elmwood/10th", 10, "Elmwood", "10th"), lat=None, lng=None),
+            stop("f", "Elmwood/10th", 10, "Elmwood", "10th", modes="", predictions=0),
         ]
         result = named([donor] + untouched)
         for item in untouched:
@@ -225,18 +225,18 @@ class TestRules(TestCase):
             [CORE_PROFILE_DIR], extra_files={"/pack/naming_profiles": {"MT.yaml": MT_YAML}}
         ).for_carrier("MT", "Metro")
         stops = [
-            stop("a", "Wilshire/10th", 0, "Wilshire Blvd", "10th St"),
-            stop("b", "Wilshire/10th", 100, "Wilshire", "10th"),
+            stop("a", "Elmwood/10th", 0, "Elmwood Blvd", "10th St"),
+            stop("b", "Elmwood/10th", 100, "Elmwood", "10th"),
         ]
         results = name_stops(stops, plain, build_index(stops, plain))
-        self.assertEqual([r.public_name for r in results], ["Wilshire Bl/10th St", "Wilshire/10th"])
+        self.assertEqual([r.public_name for r in results], ["Elmwood Bl/10th St", "Elmwood/10th"])
         self.assertEqual([r.suffix_completion for r in results], ["", ""])
 
 
 class TestDistance(TestCase):
     def fill(self, east_m, north_m=0):
-        donor = stop("a", "Wilshire/10th", 0, "Wilshire Blvd", "10th St")
-        target = stop("b", "Wilshire/10th", north_m, "Wilshire", "10th", east_m=east_m)
+        donor = stop("a", "Elmwood/10th", 0, "Elmwood Blvd", "10th St")
+        target = stop("b", "Elmwood/10th", north_m, "Elmwood", "10th", east_m=east_m)
         return named([donor, target])["b"].suffix_completion
 
     def test_east_west_distance_counts_toward_the_same_intersection_range(self):
@@ -285,17 +285,17 @@ class TestCoordinates(TestCase):
 class TestRows(TestCase):
     def test_rows_carry_the_original_name_and_the_completion_method(self):
         stops = [
-            stop("a", "Wilshire/10th", 0, "Wilshire Blvd", "10th St"),
-            stop("b", "Wilshire/10th", 100, "Wilshire", "10th"),
+            stop("a", "Elmwood/10th", 0, "Elmwood Blvd", "10th St"),
+            stop("b", "Elmwood/10th", 100, "Elmwood", "10th"),
         ]
         results = named(stops)
         row = stop_row(stops[1], results["b"], "rev", "digest")
         self.assertEqual(
             (row["public_name"], row["original_public_name"], row["suffix_completion"]),
-            ("Wilshire Bl/10th St", "Wilshire/10th", "same_intersection"),
+            ("Elmwood Bl/10th St", "Elmwood/10th", "same_intersection"),
         )
         plain = stop_row(stops[0], results["a"], "rev", "digest")
-        self.assertEqual((plain["original_public_name"], plain["suffix_completion"]), ("Wilshire Bl/10th St", ""))
+        self.assertEqual((plain["original_public_name"], plain["suffix_completion"]), ("Elmwood Bl/10th St", ""))
 
     def test_the_shared_fixture_stops_are_unchanged_by_completion(self):
         for item, result in zip(MT_STOPS, name_stops(MT_STOPS, PROFILE, build_index(MT_STOPS, PROFILE))):
