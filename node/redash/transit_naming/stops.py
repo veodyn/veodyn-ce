@@ -37,7 +37,7 @@ def _split_parts(body, rules):
 
 
 def _cased(text, rules, uppercase=None):
-    return recase(_tidy(text), rules.keep_upper, uppercase)
+    return recase(_tidy(text), rules.keep_upper, uppercase, rules.split_on)
 
 
 def _suffix_lookup(rules):

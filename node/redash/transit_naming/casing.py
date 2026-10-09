@@ -3,9 +3,8 @@ import re
 LOWERCASE_WORDS = frozenset(
     {"de", "del", "la", "las", "los", "el", "and", "or", "at", "of", "the", "on", "in", "to", "via", "near", "between"}
 )
-UPPERCASE_PART_BOUNDARY = re.compile(r"[/&\\\-(]")
-MIXED_CASE_PART_BOUNDARY = re.compile(r"[/&\\(]")
-TOKEN = re.compile(r"[A-Za-z0-9']+|[^A-Za-z0-9']+")
+DEFAULT_SPLIT_ON = ("&", "/", "\\")
+TOKEN = re.compile(r"[^\W_]+(?:'[^\W_]+)*|[\W_]+")
 ORDINAL = re.compile(r"^(\d+)(st|nd|rd|th)$", re.IGNORECASE)
 MC_NAME = re.compile(r"^mc[a-z]{2,}$", re.IGNORECASE)
 
@@ -34,18 +33,18 @@ def is_uppercase(text):
     return bool(text) and any(char.isalpha() for char in text) and not any(char.islower() for char in text)
 
 
-def recase(text, keep_upper=frozenset(), uppercase=None):
+def recase(text, keep_upper=frozenset(), uppercase=None, split_on=DEFAULT_SPLIT_ON):
     if not text or not any(char.isalpha() for char in text):
         return text
     if uppercase is None:
         uppercase = is_uppercase(text)
-    boundary = UPPERCASE_PART_BOUNDARY if uppercase else MIXED_CASE_PART_BOUNDARY
+    boundaries = set(split_on) | {"("} | ({"-"} if uppercase else set())
     leads_part = True
     out = []
     for token in TOKEN.findall(text):
-        if not token[:1].isalnum() and token[:1] != "'":
+        if not token[:1].isalnum():
             out.append(token)
-            leads_part = leads_part or bool(boundary.search(token))
+            leads_part = leads_part or any(char in boundaries for char in token)
             continue
         out.append(
             _from_uppercase(token, leads_part, keep_upper) if uppercase else _from_mixed_case(token, leads_part)

@@ -95,6 +95,19 @@ class TestMixedCaseNamesKeepTheirCapitals(TestCase):
         self.assertEqual(public("LAX City Bus Center", METRO), "LAX City Bus Center")
 
 
+class TestCasingReviewFindings(TestCase):
+    def test_accented_letters_stay_inside_their_words(self):
+        self.assertEqual(public("César Chávez/Main Street", METRO), "César Chávez/Main St")
+        self.assertEqual(public("CÉSAR CHÁVEZ-MAIN"), "César Chávez/Main")
+
+    def test_a_profile_separator_starts_a_street_in_a_mixed_case_name(self):
+        self.assertEqual(public("Main-del Mar"), "Main/Del Mar")
+
+    def test_any_configured_separator_starts_a_street_in_an_uppercase_name(self):
+        piped = replace(OCTA, stop_name=replace(OCTA.stop_name, split_on=("|",)))
+        self.assertEqual(public("MAIN|DEL MAR", piped), "Main/Del Mar")
+
+
 class TestSplitOnIsPerProfile(TestCase):
     def test_metro_does_not_split_on_a_hyphen(self):
         self.assertEqual(public("Wilshire - Western", METRO), "Wilshire - Western")
