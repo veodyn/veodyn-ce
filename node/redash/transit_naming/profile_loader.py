@@ -35,6 +35,7 @@ TOP_KEYS = {
     "gtfs_cache_max_age_hours",
     "gtfs_max_download_bytes",
     "aliases",
+    "extra_trip_routes",
     "route_name",
     "direction_map",
     "direction_map_by_route",
@@ -245,6 +246,31 @@ def _aliases(data, sources, carrier, file):
     return aliases
 
 
+def _extra_trip_routes(data, carrier, file):
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        raise ProfileError("extra_trip_routes must be a mapping", carrier, file, field="extra_trip_routes")
+    extra = {}
+    for route_code, route_ids in data.items():
+        if not isinstance(route_code, str) or not route_code:
+            raise ProfileError(
+                f"extra_trip_routes key {route_code!r} must be a route code string",
+                carrier,
+                file,
+                field="extra_trip_routes",
+            )
+        field = f"extra_trip_routes.{route_code}"
+        if not isinstance(route_ids, list) or not route_ids:
+            raise ProfileError("must be a non-empty list of GTFS route ids", carrier, file, field=field)
+        if not all(isinstance(route_id, str) and route_id for route_id in route_ids):
+            raise ProfileError("every GTFS route id must be a non-empty string", carrier, file, field=field)
+        if len(set(route_ids)) != len(route_ids):
+            raise ProfileError("GTFS route ids must be unique", carrier, file, field=field)
+        extra[route_code] = tuple(route_ids)
+    return extra
+
+
 def _direction_map(data):
     return {str(k): str(v) for k, v in (data or {}).items()}
 
@@ -273,6 +299,7 @@ def parse_profile_yaml(text, file):
         gtfs_cache_max_age_hours=int(data.get("gtfs_cache_max_age_hours", 24)),
         gtfs_max_download_bytes=int(data.get("gtfs_max_download_bytes", 52428800)),
         aliases=_aliases(data.get("aliases"), sources, carrier, file),
+        extra_trip_routes=_extra_trip_routes(data.get("extra_trip_routes"), carrier, file),
         direction_map=_direction_map(data.get("direction_map")),
         direction_map_by_route={str(k): _direction_map(v) for k, v in by_route.items()},
         pattern_codes={str(k): tuple(str(c) for c in v) for k, v in pattern_codes.items()},

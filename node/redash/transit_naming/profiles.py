@@ -105,6 +105,7 @@ class Profile:
     gtfs_cache_max_age_hours: int = 24
     gtfs_max_download_bytes: int = 52428800
     aliases: dict = field(default_factory=dict)
+    extra_trip_routes: dict = field(default_factory=dict)
     direction_map: dict = field(default_factory=dict)
     direction_map_by_route: dict = field(default_factory=dict)
     pattern_codes: dict = field(default_factory=dict)

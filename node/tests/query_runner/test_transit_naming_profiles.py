@@ -237,3 +237,48 @@ class TestCompleteSuffixesOption(TestCase):
     def test_an_unknown_key_or_a_non_mapping_is_refused(self):
         self.assertIn("radius_m", self.refused("  complete_suffixes: {radius_m: 5}"))
         self.assertIn("mapping", self.refused("  complete_suffixes: true"))
+
+
+class TestExtraTripRoutesOption(TestCase):
+    ANCHOR = "pattern_codes: {}"
+
+    def load(self, option):
+        text = MT_YAML.replace(self.ANCHOR, self.ANCHOR + "\n" + option) if option else MT_YAML
+        with tempfile.TemporaryDirectory() as pack:
+            write_profile_dir(pack, {"MT.yaml": text})
+            return load_profiles([CORE_PROFILE_DIR, pack]).profiles["MT"].extra_trip_routes
+
+    def refused(self, option):
+        with self.assertRaises(ProfileError) as raised:
+            self.load(option)
+        return raised.exception
+
+    def test_absent_means_empty(self):
+        self.assertEqual(self.load(""), {})
+
+    def test_a_map_of_route_codes_to_gtfs_route_ids_is_read(self):
+        option = self.load('extra_trip_routes: {MT020: ["20cw", "20x"], MT021: [a]}')
+        self.assertEqual(option, {"MT020": ("20cw", "20x"), "MT021": ("a",)})
+
+    def test_a_non_mapping_is_refused(self):
+        self.assertEqual(self.refused("extra_trip_routes: [20cw]").field, "extra_trip_routes")
+        self.assertEqual(self.refused("extra_trip_routes: 20cw").field, "extra_trip_routes")
+
+    def test_a_value_that_is_not_a_list_is_refused(self):
+        self.assertEqual(self.refused("extra_trip_routes: {MT020: 20cw}").field, "extra_trip_routes.MT020")
+
+    def test_an_empty_list_is_refused(self):
+        self.assertEqual(self.refused("extra_trip_routes: {MT020: []}").field, "extra_trip_routes.MT020")
+
+    def test_a_non_string_or_empty_element_is_refused(self):
+        self.assertEqual(self.refused("extra_trip_routes: {MT020: [20]}").field, "extra_trip_routes.MT020")
+        self.assertEqual(self.refused('extra_trip_routes: {MT020: [""]}').field, "extra_trip_routes.MT020")
+        self.assertEqual(self.refused("extra_trip_routes: {MT020: [null]}").field, "extra_trip_routes.MT020")
+
+    def test_duplicate_elements_are_refused(self):
+        error = self.refused("extra_trip_routes: {MT020: [a, b, a]}")
+        self.assertEqual(error.field, "extra_trip_routes.MT020")
+        self.assertIn("unique", str(error))
+
+    def test_a_non_string_route_code_is_refused(self):
+        self.assertEqual(self.refused("extra_trip_routes: {20: [a]}").field, "extra_trip_routes")
