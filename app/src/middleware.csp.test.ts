@@ -157,6 +157,14 @@ describe('content security policy', () => {
     expect(connect).toContain('https://*.gstatic.com')
   })
 
+  it('lets the Google Maps JavaScript API load the fonts its own controls use', async () => {
+    const middleware = await loadMiddleware('production')
+    const response = middleware(request('/embed/public/token'))
+
+    expect(directive(response, 'style-src')).toContain('https://fonts.googleapis.com')
+    expect(directive(response, 'font-src')).toContain('https://fonts.gstatic.com')
+  })
+
   it('names a configured tile host in connect-src', async () => {
     vi.stubEnv('VEODYN_MAP__TILE_URL', 'https://tiles.example/style.json')
     const middleware = await loadMiddleware('production')

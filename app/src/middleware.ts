@@ -90,7 +90,7 @@ function contentSecurityPolicy(nonce: string, pathname: string): string {
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${IS_PROD ? '' : " 'unsafe-eval'"}`,
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     // `https:` and not a host list, because two features take an image URL that
     // is not knowable here: a result cell renders one the QUERY AUTHOR wrote
     // (components/query/result-cell.tsx) and an avatar renders whatever a user
@@ -99,7 +99,7 @@ function contentSecurityPolicy(nonce: string, pathname: string): string {
     // is script-src's job, and someone who can author a query can already reach
     // an external host by other means.
     'img-src \'self\' data: blob: https:',
-    "font-src 'self'",
+    "font-src 'self' https://fonts.gstatic.com",
     `connect-src ${connect.join(' ')}${IS_PROD ? '' : ' ws: wss:'}`,
     // MapLibre builds its tile workers from a blob: URL. Without this the map
     // fails to initialise at all, rather than merely losing its basemap.
