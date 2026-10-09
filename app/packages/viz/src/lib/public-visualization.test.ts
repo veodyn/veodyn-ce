@@ -60,3 +60,24 @@ describe('normalizePublicVisualization status and retrievedAt', () => {
     expect(payload?.status).toBe('unavailable')
   })
 })
+
+describe('normalizePublicVisualization malformed results', () => {
+  it.each([
+    ['upstream data as an array', { type: 'CHART', query_result: { data: [] } }],
+    ['upstream data as a number', { type: 'CHART', query_result: { data: 42 } }],
+    ['upstream query_result as a string', { type: 'CHART', query_result: 'x' }],
+    ['served data as a number', { visualization: { type: 'CHART' }, data: 42 }],
+    ['served data as an array', { visualization: { type: 'CHART' }, data: [] }],
+  ])('returns null for %s', (_label, body) => {
+    expect(normalizePublicVisualization(body)).toBeNull()
+  })
+
+  it.each([
+    ['absent upstream data', { type: 'CHART', query_result: {} }],
+    ['null upstream data', { type: 'CHART', query_result: { data: null } }],
+    ['absent served data', { visualization: { type: 'CHART' } }],
+    ['null served data', { visualization: { type: 'CHART' }, data: null }],
+  ])('keeps %s as an empty result', (_label, body) => {
+    expect(normalizePublicVisualization(body)?.data).toBeNull()
+  })
+})

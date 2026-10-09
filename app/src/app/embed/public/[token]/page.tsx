@@ -49,11 +49,12 @@ function Unavailable() {
 
 const PARAMETER_PREFIX = 'p_'
 
-function publicParameters(search: Record<string, string | string[] | undefined>): Record<string, string> {
-  const parameters: Record<string, string> = {}
+function publicParameters(search: Record<string, string | string[] | undefined>): Record<string, string> | null {
+  const parameters: Record<string, string> = Object.create(null)
   for (const [key, value] of Object.entries(search)) {
-    const first = Array.isArray(value) ? value[0] : value
-    if (key.startsWith(PARAMETER_PREFIX) && first !== undefined) parameters[key.slice(PARAMETER_PREFIX.length)] = first
+    if (!key.startsWith(PARAMETER_PREFIX) || value === undefined) continue
+    if (Array.isArray(value)) return null
+    parameters[key.slice(PARAMETER_PREFIX.length)] = value
   }
   return parameters
 }
@@ -75,7 +76,7 @@ export default function PublicEmbedPage({
     data: payload,
     isLoading,
     isError,
-  } = usePublicVisualization(token, { refetchIntervalMs: refresh, parameters })
+  } = usePublicVisualization(parameters ? token : null, { refetchIntervalMs: refresh, parameters: parameters ?? undefined })
 
   if (isLoading || (payload?.data === null && payload.status === 'pending')) {
     return (
@@ -88,7 +89,7 @@ export default function PublicEmbedPage({
 
   // One branch for every refusal: unknown token, revoked, expired, a backend
   // that is not configured, and a request that failed outright.
-  if (isError || !payload) return <Unavailable />
+  if (isError || !payload || (payload.data === null && payload.status === 'unavailable')) return <Unavailable />
 
   // A payload can arrive without a result: the owning query has never run.
   // Whether that is fatal is the type's call, not this page's. A `needs:

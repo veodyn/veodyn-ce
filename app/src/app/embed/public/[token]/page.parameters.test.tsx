@@ -22,6 +22,18 @@ registerVisualization({
   Renderer: Stamped,
 })
 
+const NONE = 'TEST_EMBED_NONE'
+
+registerVisualization({
+  apiVersion: PLUGIN_API_VERSION,
+  type: NONE,
+  displayName: 'None',
+  icon: () => null,
+  defaultOptions: {},
+  needs: 'none',
+  Renderer: () => <p>none panel</p>,
+})
+
 const BODY = {
   visualization: { type: STAMPED, name: 'Route', description: '', options: {} },
   data: { columns: [{ name: 'n', friendly_name: 'n', type: 'integer' }], rows: [{ n: 1 }] },
@@ -89,5 +101,35 @@ describe('PublicEmbedPage parameters', () => {
     await renderPage({ p_route: 'MT020' })
 
     expect(await screen.findByText('stamped never')).toBeInTheDocument()
+  })
+
+  it('renders unavailable and fetches nothing for a repeated p_ key', async () => {
+    const spy = respondWith(BODY)
+
+    await renderPage({ p_route: ['MT020', 'MT999'] })
+
+    expect(await screen.findByText(UNAVAILABLE)).toBeInTheDocument()
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('forwards a p___proto__ key instead of dropping it', async () => {
+    const spy = respondWith(BODY)
+
+    await renderPage({ p___proto__: 'x' })
+
+    await screen.findByText('stamped never')
+    expect(spy.mock.calls[0]?.[0]).toBe(`/api/public/visualizations/${TOKEN}?p___proto__=x`)
+  })
+
+  it('shows unavailable for an unavailable payload with no data, even for a needs-none plugin', async () => {
+    respondWith(
+      { visualization: { type: NONE, name: 'Panel', description: '', options: {} }, data: null, status: 'unavailable' },
+      503
+    )
+
+    await renderPage({ p_route: 'MT020' })
+
+    expect(await screen.findByText(UNAVAILABLE)).toBeInTheDocument()
+    expect(screen.queryByText('none panel')).not.toBeInTheDocument()
   })
 })

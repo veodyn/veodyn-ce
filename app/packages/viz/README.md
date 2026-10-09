@@ -72,7 +72,7 @@ share a plugin list.
 | --- | --- | --- |
 | `token` | `string` | The share token of the visualization. |
 | `parameters` | `Record<string, string \| number>` | Values for the parameters the visualization lists as public, sent as `p_<name>`. A visualization that does not list them answers as an unavailable token. |
-| `refreshSeconds` | `number` | Re-read the latest stored result on this interval, between 15 and 3600 seconds. Without it the widget fetches once. |
+| `refreshSeconds` | `number` | Re-read the latest stored result on this interval, between 15 and 3600 seconds. Without it the widget fetches once, except that a `pending` or `unavailable` answer for a parameterised visualization keeps polling until data arrives. |
 | `className`, `style` | | Size the widget. A `style.height` such as `420`, `'60vh'` or `'calc(100vh - 4rem)'` is also the height charts and maps fill. A percentage, a keyword such as `auto` or `fit-content`, or a `var()` reference is not, because it may have nothing definite to resolve against inside the widget. Sized another way, they keep their own height inside your box. |
 | `renderLoading` | `() => ReactNode` | Replaces the default loading placeholder. |
 | `renderUnavailable` | `() => ReactNode` | Replaces the panel shown for a revoked, expired or unknown token. |

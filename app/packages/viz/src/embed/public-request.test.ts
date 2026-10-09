@@ -28,6 +28,18 @@ describe('publicVisualizationUrl', () => {
   })
 })
 
+describe('publicVisualizationUrl names', () => {
+  it.each([
+    ['route=MT020&ignored', 'p_route%3DMT020%26ignored=1'],
+    ['a#b', 'p_a%23b=1'],
+    ['a&b', 'p_a%26b=1'],
+  ])('encodes the name %s', (name, pair) => {
+    expect(publicVisualizationUrl('https://v.test', 'tok', { [name]: 1 })).toBe(
+      `https://v.test/api/public/visualizations/tok?${pair}`
+    )
+  })
+})
+
 describe('parseRetryAfterMs', () => {
   it.each([
     ['2', 2000],

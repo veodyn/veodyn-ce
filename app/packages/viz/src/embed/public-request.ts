@@ -19,7 +19,7 @@ export function canonicalParameters(parameters: PublicParameters | undefined): [
 export function publicParameterSearch(parameters: PublicParameters | undefined): string {
   const pairs = canonicalParameters(parameters)
   if (pairs.length === 0) return ''
-  return `?${pairs.map(([key, value]) => `p_${key}=${encodeURIComponent(value)}`).join('&')}`
+  return `?${pairs.map(([key, value]) => `${encodeURIComponent(`p_${key}`)}=${encodeURIComponent(value)}`).join('&')}`
 }
 
 export function parseRetryAfterMs(header: string | null): number | undefined {

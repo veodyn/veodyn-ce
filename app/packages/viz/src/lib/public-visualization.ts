@@ -63,12 +63,20 @@ function pickVisualization(root: Record<string, unknown>): Record<string, unknow
   return asRecord(root.visualization) ?? root
 }
 
-function pickResultData(root: Record<string, unknown>): Record<string, unknown> | null {
-  // Upstream nests the table under `query_result.data`; this function's own
-  // output carries it as `data`.
-  const queryResult = asRecord(root.query_result)
-  if (queryResult) return asRecord(queryResult.data)
-  return asRecord(root.data)
+const MALFORMED_RESULT = Symbol('malformed result')
+
+function pickResultData(root: Record<string, unknown>): Record<string, unknown> | null | typeof MALFORMED_RESULT {
+  const nested = root.query_result
+  if (nested !== undefined && nested !== null) {
+    const queryResult = asRecord(nested)
+    return queryResult ? presentTable(queryResult.data) : MALFORMED_RESULT
+  }
+  return presentTable(root.data)
+}
+
+function presentTable(value: unknown): Record<string, unknown> | null | typeof MALFORMED_RESULT {
+  if (value === undefined || value === null) return null
+  return asRecord(value) ?? MALFORMED_RESULT
 }
 
 export function normalizePublicVisualization(raw: unknown): PublicVisualizationPayload | null {
@@ -84,6 +92,7 @@ export function normalizePublicVisualization(raw: unknown): PublicVisualizationP
   // that is PRESENT but malformed still fails the whole payload: that is a
   // contract violation, not an empty state.
   const result = pickResultData(root)
+  if (result === MALFORMED_RESULT) return null
   let data: QueryResultData | null = null
   if (result) {
     const columns = result.columns
