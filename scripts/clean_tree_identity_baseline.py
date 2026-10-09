@@ -61,7 +61,7 @@ BASELINE = (
     ("node/tests/query_runner/test_connector_base.py", 3, ((0, 3),)),
     ("node/tests/query_runner/test_connector_query_shape.py", 4, ((10, 1), (11, 1), (12, 1), (13, 1))),
     ("node/tests/query_runner/test_db_logo_assets.py", 1, ((0, 1),)),
-    ("node/tests/query_runner/test_go511.py", 16, ((11, 16),)),
+    ("node/tests/query_runner/test_go511.py", 18, ((11, 18),)),
     ("node/tests/query_runner/test_no_embedded_credentials.py", 1, ((11, 1),)),
     ("node/tests/query_runner/test_socaltransport.py", 20, ((9, 3), (13, 17))),
     ("node/tests/query_runner/test_trafficland.py", 18, ((12, 18),)),
