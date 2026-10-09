@@ -32,7 +32,16 @@ def _unlock(query_hash, data_source_id):
     redis_connection.delete(_job_lock_id(query_hash, data_source_id))
 
 
-def enqueue_query(query, data_source, user_id, is_api_key=False, scheduled_query=None, metadata={}):
+def enqueue_query(
+    query,
+    data_source,
+    user_id,
+    is_api_key=False,
+    scheduled_query=None,
+    metadata={},
+    job_timeout=None,
+    queued_ttl=None,
+):
     query_hash = gen_query_hash(query)
     logger.info("Inserting job for %s with metadata=%s", query_hash, metadata)
     try_count = 0
@@ -90,7 +99,7 @@ def enqueue_query(query, data_source, user_id, is_api_key=False, scheduled_query
                     "user_id": user_id,
                     "scheduled_query_id": scheduled_query_id,
                     "is_api_key": is_api_key,
-                    "job_timeout": time_limit,
+                    "job_timeout": time_limit if job_timeout is None else job_timeout,
                     "failure_ttl": settings.JOB_DEFAULT_FAILURE_TTL,
                     "meta": {
                         "data_source_id": data_source.id,
@@ -100,6 +109,9 @@ def enqueue_query(query, data_source, user_id, is_api_key=False, scheduled_query
                         "user_id": user_id,
                     },
                 }
+
+                if queued_ttl is not None:
+                    enqueue_kwargs["ttl"] = queued_ttl
 
                 if not scheduled_query:
                     enqueue_kwargs["result_ttl"] = settings.JOB_EXPIRY_TIME

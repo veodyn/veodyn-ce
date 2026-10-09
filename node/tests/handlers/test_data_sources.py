@@ -219,3 +219,95 @@ class TestDataSourcePauseDelete(BaseTestCase):
     def test_requires_admin(self):
         rv = self.make_request("delete", "/api/data_sources/{}/pause".format(self.factory.data_source.id))
         self.assertEqual(rv.status_code, 403)
+
+
+class TestDataSourceQueueNames(BaseTestCase):
+    def test_admin_sets_queue_names_on_update(self):
+        admin = self.factory.create_admin()
+        rv = self.make_request(
+            "post",
+            "/api/data_sources/{}".format(self.factory.data_source.id),
+            data={
+                "name": "n",
+                "type": "pg",
+                "options": {"dbname": "x"},
+                "queue_name": "public_queries",
+                "scheduled_queue_name": "scheduled_public",
+            },
+            user=admin,
+        )
+        self.assertEqual(rv.status_code, 200)
+        ds = DataSource.query.get(self.factory.data_source.id)
+        self.assertEqual(ds.queue_name, "public_queries")
+        self.assertEqual(ds.scheduled_queue_name, "scheduled_public")
+
+    def test_update_without_queue_names_leaves_them(self):
+        admin = self.factory.create_admin()
+        before = (self.factory.data_source.queue_name, self.factory.data_source.scheduled_queue_name)
+        rv = self.make_request(
+            "post",
+            "/api/data_sources/{}".format(self.factory.data_source.id),
+            data={"name": "n", "type": "pg", "options": {"dbname": "x"}},
+            user=admin,
+        )
+        self.assertEqual(rv.status_code, 200)
+        ds = DataSource.query.get(self.factory.data_source.id)
+        self.assertEqual((ds.queue_name, ds.scheduled_queue_name), before)
+
+    def test_invalid_queue_names_are_rejected_on_update(self):
+        admin = self.factory.create_admin()
+        for bad in ["Public", "a-b", "", "x" * 65, 5, "a b"]:
+            with self.subTest(bad=bad):
+                rv = self.make_request(
+                    "post",
+                    "/api/data_sources/{}".format(self.factory.data_source.id),
+                    data={"name": "n", "type": "pg", "options": {"dbname": "x"}, "queue_name": bad},
+                    user=admin,
+                )
+                self.assertEqual(rv.status_code, 400)
+        rv = self.make_request(
+            "post",
+            "/api/data_sources/{}".format(self.factory.data_source.id),
+            data={"name": "n", "type": "pg", "options": {"dbname": "x"}, "scheduled_queue_name": "Bad"},
+            user=admin,
+        )
+        self.assertEqual(rv.status_code, 400)
+
+    def test_admin_sets_queue_names_on_create(self):
+        admin = self.factory.create_admin()
+        rv = self.make_request(
+            "post",
+            "/api/data_sources",
+            data={
+                "name": "DS q",
+                "type": "pg",
+                "options": {"dbname": "redash"},
+                "queue_name": "public_queries",
+                "scheduled_queue_name": "scheduled_public",
+            },
+            user=admin,
+        )
+        self.assertEqual(rv.status_code, 200)
+        ds = DataSource.query.get(rv.json["id"])
+        self.assertEqual(ds.queue_name, "public_queries")
+        self.assertEqual(ds.scheduled_queue_name, "scheduled_public")
+
+    def test_invalid_queue_name_is_rejected_on_create(self):
+        admin = self.factory.create_admin()
+        rv = self.make_request(
+            "post",
+            "/api/data_sources",
+            data={"name": "DS q", "type": "pg", "options": {"dbname": "redash"}, "queue_name": "Bad Name"},
+            user=admin,
+        )
+        self.assertEqual(rv.status_code, 400)
+        self.assertEqual(DataSource.query.filter_by(name="DS q").count(), 0)
+
+    def test_non_admin_cannot_set_queue_names(self):
+        rv = self.make_request(
+            "post",
+            "/api/data_sources/{}".format(self.factory.data_source.id),
+            data={"name": "n", "type": "pg", "options": {"dbname": "x"}, "queue_name": "public_queries"},
+        )
+        self.assertEqual(rv.status_code, 403)
+        self.assertEqual(DataSource.query.get(self.factory.data_source.id).queue_name, "queries")

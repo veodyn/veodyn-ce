@@ -87,7 +87,10 @@ def public_dashboard(dashboard):
     return dashboard_dict
 
 
-def public_visualization(visualization):
+_LATEST = object()
+
+
+def public_visualization(visualization, result=_LATEST, status=None, parameters=None):
     """Serialize a visualization for an anonymous reader holding a share token.
 
     Same field set public_widget already exposes, so an embed leaks no more than
@@ -112,8 +115,17 @@ def public_visualization(visualization):
         "query_result": None,
     }
 
-    if query.latest_query_data is not None:
-        res["query_result"] = serialize_query_result(query.latest_query_data, is_api_user=True)
+    if result is _LATEST:
+        result = query.latest_query_data
+
+    if status is not None:
+        res["status"] = status
+
+    if parameters is not None:
+        res["parameters"] = parameters
+
+    if result is not None:
+        res["query_result"] = serialize_query_result(result, is_api_user=True)
 
     return res
 

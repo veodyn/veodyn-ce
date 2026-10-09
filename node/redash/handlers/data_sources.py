@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 
 from flask import make_response, request
@@ -27,6 +28,21 @@ from redash.tasks.general import get_schema, test_connection
 from redash.utils import filter_none
 from redash.utils.configuration import ConfigurationContainer, ValidationError
 
+QUEUE_NAME_PATTERN = re.compile(r"[a-z_]{1,64}")
+QUEUE_NAME_FIELDS = ("queue_name", "scheduled_queue_name")
+
+
+def queue_names_from(req):
+    names = {}
+    for field in QUEUE_NAME_FIELDS:
+        if field not in req:
+            continue
+        value = req[field]
+        if not isinstance(value, str) or QUEUE_NAME_PATTERN.fullmatch(value) is None:
+            abort(400, message="{} must match ^[a-z_]{{1,64}}$".format(field))
+        names[field] = value
+    return names
+
 
 class DataSourceTypeListResource(BaseResource):
     @require_admin
@@ -53,6 +69,7 @@ class DataSourceResource(BaseResource):
     def post(self, data_source_id):
         data_source = models.DataSource.get_by_id_and_org(data_source_id, self.current_org)
         req = request.get_json(True)
+        queue_names = queue_names_from(req)
 
         schema = get_configuration_schema_for_query_runner_type(req["type"])
         if schema is None:
@@ -65,6 +82,8 @@ class DataSourceResource(BaseResource):
 
         data_source.type = req["type"]
         data_source.name = req["name"]
+        for field, value in queue_names.items():
+            setattr(data_source, field, value)
         models.db.session.add(data_source)
 
         try:
@@ -132,6 +151,7 @@ class DataSourceListResource(BaseResource):
     def post(self):
         req = request.get_json(True)
         require_fields(req, ("options", "name", "type"))
+        queue_names = queue_names_from(req)
 
         schema = get_configuration_schema_for_query_runner_type(req["type"])
         if schema is None:
@@ -145,6 +165,8 @@ class DataSourceListResource(BaseResource):
             datasource = models.DataSource.create_with_group(
                 org=self.current_org, name=req["name"], type=req["type"], options=config
             )
+            for field, value in queue_names.items():
+                setattr(datasource, field, value)
 
             models.db.session.commit()
         except IntegrityError as e:

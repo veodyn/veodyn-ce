@@ -1,7 +1,7 @@
 from flask import request
 from flask_restful import abort
 
-from redash import models
+from redash import models, public_execution
 from redash.handlers.base import (
     BaseResource,
     get_object_or_404,
@@ -179,4 +179,11 @@ class PublicVisualizationResource(BaseResource):
         if outcome != "ok":
             abort(404)
 
-        return public_visualization(vis)
+        raw = public_execution.supplied_parameters(request.args)
+        if raw is None:
+            return public_visualization(vis)
+
+        try:
+            return public_execution.respond(vis, token, raw)
+        except public_execution.Rejected:
+            abort(404)
