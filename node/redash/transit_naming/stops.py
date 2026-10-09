@@ -111,6 +111,11 @@ def _streets_spell_the_raw_name(on_street, cross_street, raw, rules):
     return True
 
 
+def raw_street_parts(stop, rules):
+    body, _ = _split_direction(_tidy(stop.get("stop_name")), rules)
+    return [normalize_part(part, rules) for part in INTERSECTION_SPLIT.split(body) if part]
+
+
 def name_stop(stop, profile):
     rules = profile.stop_name
     raw = _tidy(stop.get("stop_name"))
@@ -166,4 +171,6 @@ def stop_row(stop, name, revision, digest):
         "public_name_source": name.public_name_source,
         "normalization_revision": revision,
         "gtfs_digest": digest,
+        "original_public_name": name.original_public_name or name.public_name,
+        "suffix_completion": name.suffix_completion,
     }

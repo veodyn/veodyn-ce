@@ -34,6 +34,7 @@ from redash.query_runner.metrocloudalliance_public import (
     run_public_resource,
 )
 from redash.query_runner.metrocloudalliance_resources import EMPTY_COLUMNS, RESOURCES
+from redash.transit_naming.suffixes import source_hash
 
 DEFAULT_BASE_URL = "https://api.metrocloudalliance.com/"
 
@@ -120,7 +121,12 @@ class MetroCloudAlliance(BaseResourceRunner):
 
         if resource in PUBLIC_RESOURCES:
             records = run_public_resource(
-                resource, params, self._fetch_raw, now=time.time(), archive_fetcher=self._archive_fetcher()
+                resource,
+                params,
+                self._fetch_raw,
+                now=time.time(),
+                archive_fetcher=self._archive_fetcher(),
+                source=source_hash(self.base_url, self.api_key),
             )
             return records, {"status": "ok", "results": records}
 

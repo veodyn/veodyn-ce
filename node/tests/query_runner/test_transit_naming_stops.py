@@ -106,6 +106,8 @@ class TestNameStop(TestCase):
                 "public_name_source",
                 "normalization_revision",
                 "gtfs_digest",
+                "original_public_name",
+                "suffix_completion",
             ],
         )
         self.assertEqual((row["raw_name"], row["511_id"], row["retired"]), ("1st St/Main St", "1001166", False))

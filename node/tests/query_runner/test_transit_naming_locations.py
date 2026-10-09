@@ -6,8 +6,10 @@ from redash.transit_naming.profile_loader import CORE_PROFILE_DIR, build_profile
 from tests.query_runner.transit_naming_fixtures import MT_CSV, MT_YAML, metro_profiles
 
 
-def member(carrier, stop_id, name, id511="1000001", kind="intersection", retired=False, lat=34.0, lng=-118.0):
-    return {
+def member(
+    carrier, stop_id, name, id511="1000001", kind="intersection", retired=False, lat=34.0, lng=-118.0, original=None
+):
+    row = {
         "carrier_code": carrier,
         "stop_id": stop_id,
         "511_id": id511,
@@ -18,6 +20,9 @@ def member(carrier, stop_id, name, id511="1000001", kind="intersection", retired
         "lng": lng,
         "normalization_revision": "r1",
     }
+    if original is not None:
+        row["original_public_name"] = original
+    return row
 
 
 class TestLocationRows(TestCase):
@@ -99,3 +104,44 @@ class TestLocationRows(TestCase):
     def test_rows_carry_the_declared_columns_in_order(self):
         rows = self.rows([member("MT", "1", "A/B")])
         self.assertEqual(list(rows[0]), list(LOCATION_COLUMNS))
+
+
+class TestVotingOnOriginalNames(TestCase):
+    def setUp(self):
+        self.profiles = metro_profiles()
+
+    def rows(self, members):
+        return location_rows(members, self.profiles, {})
+
+    def test_a_majority_that_completion_would_split_stays_the_winner(self):
+        rows = self.rows(
+            [
+                member("MT", "1", "Main St/Valley", original="Main/Valley"),
+                member("MT", "2", "Main St/Valley Av", original="Main/Valley"),
+                member("SM", "5", "Other/Valley", original="Other/Valley"),
+            ]
+        )
+        self.assertEqual(
+            (rows[0]["public_name"], rows[0]["agreeing_stops"], rows[0]["public_name_source"]),
+            ("Main St/Valley", 2, "consensus"),
+        )
+        self.assertEqual(rows[0]["names"], "Main St/Valley; Main St/Valley Av; Other/Valley")
+
+    def test_an_inferred_name_cannot_manufacture_agreement(self):
+        rows = self.rows(
+            [
+                member("MT", "1", "Wilshire Bl/10th St", original="Wilshire/10th"),
+                member("SM", "2", "Wilshire Bl/10th St", original="Wilshire Bl/10th St"),
+                member("BB", "3", "Foo/Bar", original="Foo/Bar"),
+            ]
+        )
+        self.assertEqual((rows[0]["agreeing_stops"], rows[0]["public_name_source"]), (1, "tiebreak"))
+
+    def test_the_displayed_name_is_the_chosen_members_completed_name(self):
+        rows = self.rows(
+            [
+                member("MT", "1", "Wilshire Bl/10th St", original="Wilshire/10th"),
+                member("BB", "3", "Wilshire/10th", original="Wilshire/10th"),
+            ]
+        )
+        self.assertEqual((rows[0]["chosen_carrier"], rows[0]["public_name"]), ("MT", "Wilshire Bl/10th St"))

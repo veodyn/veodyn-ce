@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, replace
 
-CORE_REVISION = "2026.09.02"
+CORE_REVISION = "2026.10.08"
 
 JOIN_STRATEGIES = ("short_name", "route_id_prefix")
 BRAND_SOURCES = ("gtfs_route_long_name", "brand_bands", "carrier_display_name")
@@ -64,6 +64,12 @@ class RouteNameRules:
 
 
 @dataclass(frozen=True)
+class SuffixCompletion:
+    same_intersection_m: int = 150
+    unique_street_m: int = 2000
+
+
+@dataclass(frozen=True)
 class StopNameRules:
     separator: str
     suffixes: dict
@@ -71,6 +77,7 @@ class StopNameRules:
     station_suffix: str = " Station"
     strip_direction_parenthetical: bool = True
     strip_trailing_line_reference: bool = True
+    complete_suffixes: SuffixCompletion = None
 
 
 @dataclass(frozen=True)

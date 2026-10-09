@@ -53,6 +53,8 @@ class StopName:
     mode: str
     retired: bool
     public_name_source: str
+    original_public_name: str = ""
+    suffix_completion: str = ""
 
 
 @dataclass(frozen=True)

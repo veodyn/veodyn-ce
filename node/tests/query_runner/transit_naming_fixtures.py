@@ -81,6 +81,16 @@ def metro_profiles(with_overrides=True):
     return build_profile_set([CORE_PROFILE_DIR], extra_files={"/pack/naming_profiles": files})
 
 
+SUFFIX_OPTION = "  keep_whole: [Broadway]\n  complete_suffixes: {same_intersection_m: 150, unique_street_m: 2000}"
+
+
+def metro_suffix_profiles():
+    text = MT_YAML.replace("  keep_whole: [Broadway]", SUFFIX_OPTION)
+    return build_profile_set(
+        [CORE_PROFILE_DIR], extra_files={"/pack/naming_profiles": {"MT.yaml": text, "MT.csv": MT_CSV}}
+    )
+
+
 def metro_profile(with_overrides=True):
     return metro_profiles(with_overrides).for_carrier("MT", "Metro")
 

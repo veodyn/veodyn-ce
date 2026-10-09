@@ -23,6 +23,7 @@ from redash.transit_naming.profiles import (
     RouteNameEntry,
     RouteNameRules,
     StopNameRules,
+    SuffixCompletion,
 )
 
 CORE_PROFILE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profiles")
@@ -60,7 +61,9 @@ STOP_NAME_KEYS = {
     "station_suffix",
     "strip_direction_parenthetical",
     "strip_trailing_line_reference",
+    "complete_suffixes",
 }
+COMPLETE_SUFFIX_KEYS = {"same_intersection_m", "unique_street_m"}
 HEADSIGN_KEYS = {"title_case", "expand"}
 SOURCE_KEYS = {"name", "url", "join"}
 ALIAS_KEYS = {"source", "gtfs_route_id", "note"}
@@ -168,6 +171,31 @@ def _route_name_rules(data, carrier, file):
     )
 
 
+def _distance(data, key, carrier, file):
+    value = data.get(key, getattr(SuffixCompletion, key))
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ProfileError(
+            f"{key} must be a positive integer, got {value!r}",
+            carrier,
+            file,
+            field=f"stop_name.complete_suffixes.{key}",
+        )
+    return value
+
+
+def _complete_suffixes(data, carrier, file):
+    if "complete_suffixes" not in data:
+        return None
+    section = data["complete_suffixes"]
+    if not isinstance(section, dict):
+        raise ProfileError("complete_suffixes must be a mapping", carrier, file, field="stop_name.complete_suffixes")
+    _check_keys(section, COMPLETE_SUFFIX_KEYS, carrier, file, "stop_name.complete_suffixes.")
+    return SuffixCompletion(
+        same_intersection_m=_distance(section, "same_intersection_m", carrier, file),
+        unique_street_m=_distance(section, "unique_street_m", carrier, file),
+    )
+
+
 def _stop_name_rules(data, carrier, file):
     _check_keys(data, STOP_NAME_KEYS, carrier, file, "stop_name.")
     return StopNameRules(
@@ -177,6 +205,7 @@ def _stop_name_rules(data, carrier, file):
         station_suffix=str(data.get("station_suffix", " Station")),
         strip_direction_parenthetical=bool(data.get("strip_direction_parenthetical", True)),
         strip_trailing_line_reference=bool(data.get("strip_trailing_line_reference", True)),
+        complete_suffixes=_complete_suffixes(data, carrier, file),
     )
 
 

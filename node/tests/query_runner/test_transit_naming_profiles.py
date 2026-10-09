@@ -198,3 +198,42 @@ class TestLoaderRefusals(TestCase):
             "carrier_display_name: Metro", "carrier_display_name: Metro\ncarrier_display_name: City Metro"
         )
         self.assertEqual((error.carrier, error.field), ("MT", "carrier_display_name"))
+
+
+class TestCompleteSuffixesOption(TestCase):
+    KEEP = "  keep_whole: [Broadway]"
+
+    def load(self, option):
+        text = MT_YAML.replace(self.KEEP, self.KEEP + "\n" + option) if option else MT_YAML
+        with tempfile.TemporaryDirectory() as pack:
+            write_profile_dir(pack, {"MT.yaml": text})
+            return load_profiles([CORE_PROFILE_DIR, pack]).profiles["MT"].stop_name.complete_suffixes
+
+    def refused(self, option):
+        with self.assertRaises(ProfileError) as raised:
+            self.load(option)
+        return str(raised.exception)
+
+    def test_absent_means_off(self):
+        self.assertIsNone(self.load(""))
+
+    def test_both_distances_are_read(self):
+        option = self.load("  complete_suffixes: {same_intersection_m: 120, unique_street_m: 1800}")
+        self.assertEqual((option.same_intersection_m, option.unique_street_m), (120, 1800))
+
+    def test_missing_distances_take_the_defaults(self):
+        option = self.load("  complete_suffixes: {unique_street_m: 900}")
+        self.assertEqual((option.same_intersection_m, option.unique_street_m), (150, 900))
+
+    def test_a_non_positive_distance_is_refused(self):
+        self.assertIn("same_intersection_m", self.refused("  complete_suffixes: {same_intersection_m: 0}"))
+        self.assertIn("unique_street_m", self.refused("  complete_suffixes: {unique_street_m: -5}"))
+
+    def test_a_boolean_or_fractional_or_text_distance_is_refused(self):
+        self.assertIn("same_intersection_m", self.refused("  complete_suffixes: {same_intersection_m: true}"))
+        self.assertIn("unique_street_m", self.refused("  complete_suffixes: {unique_street_m: 1.5}"))
+        self.assertIn("unique_street_m", self.refused('  complete_suffixes: {unique_street_m: "2000"}'))
+
+    def test_an_unknown_key_or_a_non_mapping_is_refused(self):
+        self.assertIn("radius_m", self.refused("  complete_suffixes: {radius_m: 5}"))
+        self.assertIn("mapping", self.refused("  complete_suffixes: true"))

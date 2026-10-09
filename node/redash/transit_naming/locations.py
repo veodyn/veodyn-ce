@@ -24,6 +24,10 @@ LOCATION_COLUMNS = (
 )
 
 
+def _voted_name(stop):
+    return stop.get("original_public_name") or stop.get("public_name")
+
+
 def _id511(stop):
     return str(stop.get("511_id") or "").strip()
 
@@ -51,10 +55,10 @@ def _override(members, profiles, id511):
 
 
 def _choose(members, profiles):
-    counts = Counter(stop["public_name"] for stop in members if stop.get("public_name"))
-    named = [stop for stop in members if stop.get("public_name")] or members
-    chosen = min(named, key=lambda stop: _candidate_key(stop, counts.get(stop.get("public_name"), 0), profiles))
-    agreeing = counts.get(chosen.get("public_name"), 0)
+    counts = Counter(_voted_name(stop) for stop in members if _voted_name(stop))
+    named = [stop for stop in members if _voted_name(stop)] or members
+    chosen = min(named, key=lambda stop: _candidate_key(stop, counts.get(_voted_name(stop), 0), profiles))
+    agreeing = counts.get(_voted_name(chosen), 0)
     top = max(counts.values()) if counts else 0
     contested = sum(1 for count in counts.values() if count == top) > 1
     return chosen, agreeing, TIEBREAK if contested else CONSENSUS

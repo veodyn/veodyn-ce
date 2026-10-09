@@ -14,7 +14,8 @@ from redash.transit_naming.patterns import (
 from redash.transit_naming.profile_loader import load_profiles, profile_dirs
 from redash.transit_naming.routes import name_route, parse_route_number, route_row
 from redash.transit_naming.snapshot import PatternStop, RouteName, StopName
-from redash.transit_naming.stops import name_stop, stop_row
+from redash.transit_naming.stops import stop_row
+from redash.transit_naming.suffixes import CarrierIndexes
 
 archive_fetch = http_fetch
 _profile_set = {}
@@ -56,6 +57,7 @@ PUBLIC_RESOURCES = {
             "stop_kind: intersection | station | named_place | unparsed",
             "mode: bus | rail | empty; retired: boolean (empty transit_modes and no predictions)",
             "lat, lng, city, accessible, public_name_source, normalization_revision, gtfs_digest",
+            "original_public_name: the name before suffix completion; suffix_completion: same_intersection | unique_street | empty",
         ],
         "example": '{"resource": "public_stops", "params": {"carrier_code": "MT"}}',
     },
@@ -182,13 +184,24 @@ def public_routes(params, fetch, profiles, archive_fetcher=None):
     ]
 
 
-def public_stops(params, fetch, profiles, archive_fetcher=None):
+def public_stops(params, fetch, profiles, archive_fetcher=None, source=None):
     query = {}
     if _carrier(params):
         query["carrier_code"] = _carrier(params)
     if params.get("stop_id"):
         query["stop_id"] = params["stop_id"]
     stops = fetch("stops", query)
+    if params.get("stop_id"):
+
+        def load_stops(carrier):
+            return fetch("stops", {"carrier_code": carrier})
+
+    else:
+
+        def load_stops(carrier):
+            return [s for s in stops if str(s.get("carrier_code") or _carrier(params)) == carrier]
+
+    indexes = CarrierIndexes(profiles.revision, source, load_stops)
     digests = {}
     rows = []
     for stop in stops:
@@ -196,11 +209,11 @@ def public_stops(params, fetch, profiles, archive_fetcher=None):
         profile = profiles.for_carrier(carrier)
         if carrier not in digests:
             digests[carrier] = _resolver(profile, False, archive_fetcher).digest
-        rows.append(stop_row(stop, name_stop(stop, profile), profiles.revision, digests[carrier]))
+        rows.append(stop_row(stop, indexes.name(stop, profile), profiles.revision, digests[carrier]))
     return rows
 
 
-def public_route_stops(params, fetch, profiles, archive_fetcher=None):
+def public_route_stops(params, fetch, profiles, archive_fetcher=None, source=None):
     routes = fetch(
         "routes",
         {
@@ -211,11 +224,12 @@ def public_route_stops(params, fetch, profiles, archive_fetcher=None):
     stops = [s for s in fetch("stops", {"carrier_code": _carrier(params)})]
     profile = _profile(profiles, params, routes)
     resolver = _resolver(profile, True, archive_fetcher)
+    indexes = CarrierIndexes(profiles.revision, source, lambda carrier: stops)
     names = {}
     sources = {}
     live = {}
     for stop in stops:
-        named = name_stop(stop, profile)
+        named = indexes.name(stop, profile)
         if not named.retired:
             live[str(stop["stop_id"])] = stop
             names[str(stop["stop_id"])] = named.public_name
@@ -272,7 +286,7 @@ def public_route_paths(params, fetch, profiles, archive_fetcher=None):
     return rows
 
 
-def public_departures(params, fetch, profiles, now, archive_fetcher=None):
+def public_departures(params, fetch, profiles, now, archive_fetcher=None, source=None):
     query = {
         k: v
         for k, v in params.items()
@@ -284,10 +298,11 @@ def public_departures(params, fetch, profiles, now, archive_fetcher=None):
     profile = _profile(profiles, params, routes)
     resolver = _resolver(profile, False, archive_fetcher)
     by_number = {name.route_number: name for _, name in _route_names(routes, profile, resolver).values()}
+    indexes = CarrierIndexes(profiles.revision, source, lambda carrier: fetch("stops", {"carrier_code": carrier}))
     stop_names = {}
     for stop_id in sorted({str(r["stop_id"]) for r in rows if r.get("stop_id")})[: profile.departures_stop_lookup_max]:
         for stop in fetch("stops", {"carrier_code": _carrier(params), "stop_id": stop_id}):
-            stop_names[str(stop["stop_id"])] = name_stop(stop, profile)
+            stop_names[str(stop["stop_id"])] = indexes.name(stop, profile)
     return enrich_departures(rows, by_number, stop_names, profile, profiles.revision, resolver.digest)
 
 
@@ -307,19 +322,19 @@ def naming_profiles(profiles):
     return rows
 
 
-def run_public_resource(resource, params, fetch, now=None, archive_fetcher=None):
+def run_public_resource(resource, params, fetch, now=None, archive_fetcher=None, source=None):
     profiles = load_profile_set()
     if resource == "public_routes":
         return public_routes(params, fetch, profiles, archive_fetcher)
     if resource == "public_stops":
-        return public_stops(params, fetch, profiles, archive_fetcher)
+        return public_stops(params, fetch, profiles, archive_fetcher, source)
     if resource == "public_stop_locations":
-        stops = public_stops({}, fetch, profiles, archive_fetcher)
+        stops = public_stops({}, fetch, profiles, archive_fetcher, source)
         return location_rows(stops, profiles, params)
     if resource == "public_route_stops":
-        return public_route_stops(params, fetch, profiles, archive_fetcher)
+        return public_route_stops(params, fetch, profiles, archive_fetcher, source)
     if resource == "public_route_paths":
         return public_route_paths(params, fetch, profiles, archive_fetcher)
     if resource == "public_departures":
-        return public_departures(params, fetch, profiles, now, archive_fetcher)
+        return public_departures(params, fetch, profiles, now, archive_fetcher, source)
     return naming_profiles(profiles)
