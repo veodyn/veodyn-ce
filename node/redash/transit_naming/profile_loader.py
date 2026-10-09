@@ -63,6 +63,8 @@ STOP_NAME_KEYS = {
     "strip_direction_parenthetical",
     "strip_trailing_line_reference",
     "complete_suffixes",
+    "split_on",
+    "keep_upper",
 }
 COMPLETE_SUFFIX_KEYS = {"same_intersection_m", "unique_street_m"}
 HEADSIGN_KEYS = {"title_case", "expand"}
@@ -197,6 +199,25 @@ def _complete_suffixes(data, carrier, file):
     )
 
 
+def _split_on(data, carrier, file):
+    value = data.get("split_on", list(StopNameRules.split_on))
+    valid = (
+        isinstance(value, list)
+        and value
+        and all(
+            isinstance(item, str) and len(item) == 1 and not item.isalnum() and not item.isspace() for item in value
+        )
+    )
+    if not valid:
+        raise ProfileError(
+            f"split_on must be a list of single punctuation characters, got {value!r}",
+            carrier,
+            file,
+            field="stop_name.split_on",
+        )
+    return tuple(value)
+
+
 def _stop_name_rules(data, carrier, file):
     _check_keys(data, STOP_NAME_KEYS, carrier, file, "stop_name.")
     return StopNameRules(
@@ -207,6 +228,8 @@ def _stop_name_rules(data, carrier, file):
         strip_direction_parenthetical=bool(data.get("strip_direction_parenthetical", True)),
         strip_trailing_line_reference=bool(data.get("strip_trailing_line_reference", True)),
         complete_suffixes=_complete_suffixes(data, carrier, file),
+        split_on=_split_on(data, carrier, file),
+        keep_upper=frozenset(str(w).upper() for w in data.get("keep_upper") or []),
     )
 
 

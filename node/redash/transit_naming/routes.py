@@ -2,6 +2,7 @@ import re
 
 from redash.transit_naming import provenance
 from redash.transit_naming.snapshot import MODE_BY_ROUTE_TYPE, RouteName
+from redash.transit_naming.stops import normalize_text
 
 RAIL_MODES = ("light_rail", "heavy_rail")
 LETTER_LINE = re.compile(r"^(?:\S+ )*(?P<letter>[A-Z]) Line$")
@@ -140,7 +141,9 @@ def name_route(route, profile, resolved, side_channel=None):
         public_name = override.public_name
         source = provenance.OVERRIDE
     color, text_color, color_source = _color(route, profile, resolved, entry)
-    long_name = (resolved.route_long_name if resolved else "") or str(route.get("line_name") or "")
+    long_name = normalize_text(
+        (resolved.route_long_name if resolved else "") or str(route.get("line_name") or ""), profile.stop_name
+    )
     return RouteName(
         route_number=number,
         brand=brand,

@@ -165,7 +165,7 @@ class TestReviewFindings(TestCase):
 
     def test_uppercase_street_suffixes_still_parse(self):
         name = name_stop(bare_stop("MAIN ST/FIRST AVE"), PROFILE)
-        self.assertEqual((name.public_name, name.stop_kind), ("MAIN St/FIRST Av", "intersection"))
+        self.assertEqual((name.public_name, name.stop_kind), ("Main St/First Av", "intersection"))
 
     def test_structured_parts_drop_a_direction_parenthetical(self):
         stop = bare_stop("Imperial Hwy/Central Ave (Westbound)", on="Imperial Hwy", cross="Central Ave (Westbound)")

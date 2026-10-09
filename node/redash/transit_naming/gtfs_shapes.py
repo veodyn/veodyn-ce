@@ -1,6 +1,7 @@
 import json
 import math
 
+from redash.transit_naming.headsigns import normalize_headsign
 from redash.transit_naming.patterns import (
     _pattern_ids,
     _sequences,
@@ -80,7 +81,7 @@ def path_rows(carrier_code, route_code, gtfs_route_id, snapshot, profile, digest
                 "is_canonical": key in canonical_patterns,
                 "direction_id": direction_number(direction_id),
                 "direction": profile.direction_letter(route_code, direction_id),
-                "headsign": most_common_smallest(headsigns) or "",
+                "headsign": normalize_headsign(most_common_smallest(headsigns), profile.headsign),
                 "shape_id": shape_id,
                 "trip_count": len(trips),
                 "point_count": len(points) if points else 0,

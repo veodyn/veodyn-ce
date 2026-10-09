@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, replace
 
-CORE_REVISION = "2026.10.08"
+CORE_REVISION = "2026.10.09"
 
 JOIN_STRATEGIES = ("short_name", "route_id_prefix")
 BRAND_SOURCES = ("gtfs_route_long_name", "brand_bands", "carrier_display_name")
@@ -78,6 +78,8 @@ class StopNameRules:
     strip_direction_parenthetical: bool = True
     strip_trailing_line_reference: bool = True
     complete_suffixes: SuffixCompletion = None
+    split_on: tuple = ("&", "/", "\\")
+    keep_upper: frozenset = frozenset()
 
 
 @dataclass(frozen=True)
