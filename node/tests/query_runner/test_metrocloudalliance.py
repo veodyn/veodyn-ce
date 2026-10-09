@@ -56,8 +56,27 @@ class TestMetroCloudAlliance(TestCase):
                 "route",
                 "source",
                 "speed",
+                "status",
+                "transit_mode",
+                "vehicle_id",
+                "vehicle_label",
             ],
         )
+        self.assertEqual(data["rows"], [])
+
+    def test_empty_rail_vehiclelocations_keep_the_rail_columns(self):
+        with patch(
+            "redash.query_runner.metrocloudalliance.requests.get",
+            return_value=mock_response({"status": "ok", "results": []}),
+        ):
+            data, error = self.runner.run_query(
+                '{"resource": "vehiclelocations", "params": {"transit_mode": "rail", "carrier_code": "MT"}}', None
+            )
+
+        self.assertIsNone(error)
+        names = [c["name"] for c in data["columns"]]
+        for name in ("vehicle_id", "vehicle_label", "status", "transit_mode"):
+            self.assertIn(name, names)
         self.assertEqual(data["rows"], [])
 
     def test_vehiclelocations(self):

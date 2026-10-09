@@ -20,6 +20,10 @@ EMPTY_COLUMNS = {
         "route": TYPE_STRING,
         "source": TYPE_STRING,
         "speed": TYPE_FLOAT,
+        "status": TYPE_STRING,
+        "transit_mode": TYPE_STRING,
+        "vehicle_id": TYPE_STRING,
+        "vehicle_label": TYPE_STRING,
     }
 }
 
