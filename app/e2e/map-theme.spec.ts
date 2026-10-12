@@ -81,3 +81,42 @@ test('inline tokens override an ancestor .dark for the utilities beneath', async
   expect(colors.pinnedLight).toBe('rgb(247, 245, 240)')
   expect(colors.inheritedDark).toBe('rgb(11, 14, 20)')
 })
+
+function relativeLuminance(rgb: string): number {
+  const [r, g, b] = (rgb.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number).map((channel) => {
+    const unit = channel / 255
+    return unit <= 0.03928 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+function contrastRatio(first: string, second: string): number {
+  const [light, dark] = [relativeLuminance(first), relativeLuminance(second)].sort((a, b) => b - a)
+  return (light + 0.05) / (dark + 0.05)
+}
+
+test('a marker popup in the dark theme is readable and its tip matches its box', async ({ page }) => {
+  await ensureAuthed(page)
+  await page.addInitScript(() => window.localStorage.setItem('veodyn.theme', 'dark'))
+
+  await page.goto('/queries/3')
+  await page.getByRole('tab', { name: 'Station Map' }).click()
+  await page.locator('.maplibregl-marker').first().click()
+
+  const popup = page.locator('[data-veodyn-part="map-popup"]')
+  await expect(popup).toBeVisible()
+
+  const colors = await popup.evaluate((text) => {
+    const box = text.closest('.maplibregl-popup-content') as HTMLElement
+    const tip = box.parentElement?.querySelector('.maplibregl-popup-tip') as HTMLElement
+    return {
+      text: getComputedStyle(text).color,
+      box: getComputedStyle(box).backgroundColor,
+      tip: getComputedStyle(tip).borderTopColor,
+    }
+  })
+
+  expect(colors.box).not.toBe('rgb(255, 255, 255)')
+  expect(contrastRatio(colors.text, colors.box)).toBeGreaterThanOrEqual(4.5)
+  expect(colors.tip).toBe(colors.box)
+})

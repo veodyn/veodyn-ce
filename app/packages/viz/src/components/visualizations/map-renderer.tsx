@@ -165,6 +165,7 @@ export function MapRenderer({ visualization, data }: MapRendererProps) {
             closeOnClick={false}
             anchor="bottom"
             offset={12}
+            className="[&_.maplibregl-popup-content]:bg-popover! [&_.maplibregl-popup-content]:text-popover-foreground [&_.maplibregl-popup-tip]:border-t-popover!"
           >
             <div data-veodyn-part="map-popup" className="text-sm p-1 whitespace-pre-line">{selectedMarker.popupContent}</div>
           </Popup>
