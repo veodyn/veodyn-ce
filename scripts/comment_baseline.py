@@ -38,7 +38,7 @@ BASELINE = {
     "api/tests/test_ai_converse_edit.py": 36,
     "api/tests/test_ai_converse_edit_viz.py": 64,
     "api/tests/test_ai_converse_focus.py": 32,
-    "api/tests/test_ai_converse_grounding.py": 36,
+    "api/tests/test_ai_converse_grounding.py": 34,
     "api/tests/test_ai_converse_ids.py": 22,
     "api/tests/test_ai_converse_parallel.py": 56,
     "api/tests/test_ai_converse_reply.py": 50,
@@ -46,7 +46,7 @@ BASELINE = {
     "api/tests/test_ai_converse_written.py": 24,
     "api/tests/test_ai_converse_written_kpi.py": 63,
     "api/tests/test_ai_converse_written_report.py": 38,
-    "api/tests/test_ai_data_sources.py": 26,
+    "api/tests/test_ai_data_sources.py": 23,
     "api/tests/test_ai_editions.py": 43,
     "api/tests/test_ai_generate_sql_profile.py": 31,
     "api/tests/test_ai_grounding_shapes.py": 18,
@@ -147,7 +147,7 @@ BASELINE = {
     "api/veodyn_api/openapi.py": 10,
     "api/veodyn_api/registry.py": 86,
     "api/veodyn_api/routers/__init__.py": 11,
-    "api/veodyn_api/routers/ai.py": 85,
+    "api/veodyn_api/routers/ai.py": 81,
     "api/veodyn_api/routers/captures.py": 52,
     "api/veodyn_api/routers/catalog.py": 45,
     "api/veodyn_api/routers/domains.py": 13,
@@ -1732,5 +1732,5 @@ BASELINE = {
 }
 
 FILES_WITH_COMMENTS = 1730
-COMMENT_LINES = 45443
-FILES_SCANNED = 2398
+COMMENT_LINES = 45434
+FILES_SCANNED = 2479

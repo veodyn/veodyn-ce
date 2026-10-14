@@ -17,7 +17,7 @@ from tests.converse_stubs import FakeChatLlm, ask, grounding_settings, mock_data
 from veodyn_api.schemas.ai_create import CreateKind
 from veodyn_api.schemas.catalog import DatasetCoverageOut, DatasetFreshnessOut, DatasetOut
 from veodyn_api.services import ai_converse_grounding
-from veodyn_api.services.ai_converse_grounding import build_grounding, clear_grounding_cache
+from veodyn_api.services.ai_converse_grounding import build_grounding, cached_catalog, clear_grounding_cache
 from veodyn_api.services.ai_grounding import MAX_GROUNDED_DATASETS
 from veodyn_api.services.redash import RedashClient
 from veodyn_api.settings import Settings
@@ -55,8 +55,6 @@ def catalog_settings() -> Settings:
 
 @respx.mock
 def test_the_grounding_cache_is_keyed_by_kind() -> None:
-    """A single-slot cache would hand the query list to a `query` conversation,
-    whose grounding is the warehouse catalog, and do it silently."""
     mock_data_sources((1, "Warehouse"))
     listing = respx.get(f"{REDASH_TEST_URL}/api/queries").mock(
         return_value=httpx.Response(200, json={"results": [{"id": 11, "name": "Speeds", "updated_at": "2026-07-20"}]})
@@ -72,6 +70,45 @@ def test_the_grounding_cache_is_keyed_by_kind() -> None:
     # Cached: the second report build did not go back to Redash for the list.
     assert again.queries == report.queries
     assert listing.call_count == 1
+
+
+@respx.mock
+def test_a_query_conversation_is_given_the_existing_queries() -> None:
+    mock_data_sources((1, "RIITS MetroCloudAlliance"))
+    respx.get(f"{REDASH_TEST_URL}/api/queries").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "results": [
+                    {
+                        "id": 64,
+                        "name": "MCA Predictions at Union Station",
+                        "updated_at": "2026-07-20",
+                        "data_source_id": 1,
+                    }
+                ]
+            },
+        )
+    )
+
+    grounding = build_grounding(
+        "query", redash=RedashClient(REDASH_TEST_URL), api_key="k", settings=grounding_settings()
+    )
+
+    assert [(one.id, one.source) for one in grounding.queries] == [(64, "RIITS MetroCloudAlliance")]
+
+
+def test_the_catalog_alone_makes_no_redash_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    catalog = [dataset_at("regional_speeds", "2026-07-27")]
+    monkeypatch.setattr(ai_converse_grounding, "build_catalog", lambda *_args, **_kwargs: catalog)
+    monkeypatch.setattr(ai_converse_grounding, "get_clickhouse_client", lambda _settings: object())
+
+    def refuse(*_args: object, **_kwargs: object) -> list[object]:
+        raise AssertionError("the catalog must not need the Redash service account")
+
+    monkeypatch.setattr(ai_converse_grounding, "list_queries", refuse)
+
+    assert [one.id for one in cached_catalog(catalog_settings())] == ["regional_speeds"]
 
 
 def test_every_kind_is_given_the_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -163,6 +200,8 @@ def test_the_catalog_grounding_keeps_the_freshest_datasets_and_no_more(
     everything = [dataset_at(f"table_{index:03d}", f"2026-07-{index % 28 + 1:02d}") for index in range(120)]
     monkeypatch.setattr(ai_converse_grounding, "build_catalog", lambda *_args, **_kwargs: everything)
     monkeypatch.setattr(ai_converse_grounding, "get_clickhouse_client", lambda _settings: object())
+    monkeypatch.setattr(ai_converse_grounding, "list_queries", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(ai_converse_grounding, "data_source_names", lambda *_args, **_kwargs: {})
     settings = catalog_settings()
 
     grounding = build_grounding("query", redash=RedashClient(REDASH_TEST_URL), api_key="k", settings=settings)

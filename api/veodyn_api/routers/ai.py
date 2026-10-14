@@ -39,7 +39,7 @@ from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.schemas.ai import GenerateSqlIn, GenerateSqlOut
 from veodyn_api.schemas.ai_create import ConverseIn, ConverseOut
 from veodyn_api.services.ai_converse import converse
-from veodyn_api.services.ai_converse_grounding import build_grounding, with_widget_queries
+from veodyn_api.services.ai_converse_grounding import build_grounding, cached_catalog, with_widget_queries
 from veodyn_api.services.ai_grounding import (
     DashboardWidget,
     QueryVisualization,
@@ -99,27 +99,20 @@ def service_key(settings: Settings) -> str:
     return settings.redash_service_api_key
 
 
-def _profile_block(settings: Settings, redash: RedashClient, table: str) -> str | None:
+def _profile_block(settings: Settings, table: str) -> str | None:
     """What the named table currently holds, or None when nothing can say.
 
     Looked up SERVER-SIDE against this service's own catalog, never taken from
     the request: a request naming something the catalog does not have costs the
     generation its profile and can never name a table.
-
-    build_grounding rather than build_catalog, for its TTL cache. The `query`
-    kind assembles the catalog alone and makes no Redash call, which is why a
-    missing service account leaves this route working instead of 503ing.
     """
     if not settings.clickhouse_url:
         return None
-    grounding = build_grounding(
-        "query", redash=redash, api_key=settings.redash_service_api_key or "", settings=settings
-    )
     # Catalog ids are unqualified and the editor sends whichever form its dataset
     # carries, so the database part is dropped before the match. Still a lookup:
     # a name that is not in the list resolves to nothing.
     wanted = table.strip().rpartition(".")[2]
-    dataset = next((one for one in grounding.datasets if one.id == wanted), None)
+    dataset = next((one for one in cached_catalog(settings) if one.id == wanted), None)
     if dataset is None:
         return None
     profile = cached_profile(get_clickhouse_client(settings), dataset)
@@ -127,15 +120,13 @@ def _profile_block(settings: Settings, redash: RedashClient, table: str) -> str 
 
 
 @router.post("/generate-sql", response_model=GenerateSqlOut)
-def post_generate_sql(
-    payload: GenerateSqlIn, _: RelayDep, llm: LlmDep, redash: RedashDep, settings: SettingsDep
-) -> GenerateSqlOut:
+def post_generate_sql(payload: GenerateSqlIn, _: RelayDep, llm: LlmDep, settings: SettingsDep) -> GenerateSqlOut:
     """Natural language to one read-only SELECT over the given dataset.
 
     Given the same warehouse profile the interview gets, so the statement is
     written against real cardinality and real ranges.
     """
-    return generate_sql(llm, payload, profile_block=_profile_block(settings, redash, payload.dataset.table))
+    return generate_sql(llm, payload, profile_block=_profile_block(settings, payload.dataset.table))
 
 
 @router.post("/converse", response_model=ConverseOut)

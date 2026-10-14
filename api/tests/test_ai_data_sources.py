@@ -119,7 +119,4 @@ def test_the_model_is_told_a_dashboard_may_mix_data_sources() -> None:
 
 
 def test_the_rule_is_not_sent_to_a_kind_that_was_given_no_queries() -> None:
-    """It is a rule about the rows in the query list, exactly as
-    CAPTURE_SEMANTICS is a rule about the rows in the catalog. Sent to a `query`
-    conversation it describes a list that is not there."""
-    assert DATA_SOURCE_RULES not in system_prompt("query")
+    assert DATA_SOURCE_RULES not in system_prompt("snippet")

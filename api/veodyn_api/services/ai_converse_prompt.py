@@ -81,8 +81,15 @@ WRITES_SQL = (
 
 KIND_RULES: dict[CreateKind, str] = {
     "query": (
-        "You are proposing a QUERY. Settle on one table from the catalog and on what the analyst wants to "
-        f"measure, then propose it. {WRITES_SQL}"
+        "You are proposing a QUERY. Read the request against the query list and the catalog below before "
+        "choosing anything. If a query in the list already answers it, say so first: name it by its id, its "
+        "name and what it reads, and ask whether that one will do or they want a new query over a catalog "
+        "table. You can only WRITE a query over a catalog table, so check that the table actually covers what "
+        "was asked: the place, the agency or operator, and the measure. A capture of arrivals a vehicle has "
+        "already made is not a feed of predictions. When no table covers it, say so plainly, and name the "
+        "listed query that does if there is one. Never substitute a table about a different agency, region or "
+        "measure and present it as the answer. Once a table does fit, settle on it and on what the analyst "
+        f"wants to measure, then propose it. {WRITES_SQL}"
     ),
     "dashboard": (
         "You are proposing a DASHBOARD. Three to eight widgets. Each widget is EITHER an existing query, "

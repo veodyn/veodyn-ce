@@ -115,7 +115,7 @@ class Settings(BaseSettings):
     # Grounding budget. Every prompt names real queries, and the list is what
     # keeps the model from inventing an id; it is capped so a large instance
     # does not push the prompt past the context that matters.
-    ai_max_grounded_queries: int = 60
+    ai_max_grounded_queries: int = 250
     # The digest is fetched on every Home render and changes on the cadence of
     # KPI evaluation and warehouse capture, which is minutes at best. Without a
     # cache every visit to the home page would spend a model call to restate

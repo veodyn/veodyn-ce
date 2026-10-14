@@ -32,7 +32,7 @@ from veodyn_api.schemas.ai_chat import (
     ChatTurnStartedOut,
 )
 from veodyn_api.schemas.catalog import DatasetOut
-from veodyn_api.services.ai_converse_grounding import build_grounding
+from veodyn_api.services.ai_converse_grounding import cached_catalog
 from veodyn_api.services.ai_viz_catalog import catalog_from
 from veodyn_api.services.chat import store
 from veodyn_api.services.chat.bus import TurnBus, get_redis
@@ -79,14 +79,7 @@ def get_turn_runner(settings: SettingsDep, redash: RedashDep, bus: BusDep) -> Tu
     warehouse: list[int] = []
 
     async def datasets() -> tuple[DatasetOut, ...]:
-        grounding = await asyncio.to_thread(
-            build_grounding,
-            "query",
-            redash=redash,
-            api_key=settings.redash_service_api_key or "",
-            settings=settings,
-        )
-        return grounding.datasets
+        return await asyncio.to_thread(cached_catalog, settings)
 
     async def data_source_id() -> int:
         if not warehouse:

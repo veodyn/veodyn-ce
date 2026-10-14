@@ -52,7 +52,7 @@ def clear_grounding_cache() -> None:
     clear_profile_cache()
 
 
-def _cached_catalog(settings: Settings) -> tuple[DatasetOut, ...]:
+def cached_catalog(settings: Settings) -> tuple[DatasetOut, ...]:
     """The bounded warehouse catalog, built at most once per TTL."""
     global _catalog_cache
     if not settings.clickhouse_url:
@@ -75,7 +75,7 @@ def build_grounding(kind: CreateKind, *, redash: RedashClient, api_key: str, set
     """The real objects a kind may be built from, cached behind a TTL.
 
     Every kind gets the catalog. The query list varies by kind, so the cache is
-    keyed by kind: a `query` conversation must not be shown one.
+    keyed by kind.
     """
     cached = _grounding_cache.get(kind)
     now = time.monotonic()
@@ -83,8 +83,8 @@ def build_grounding(kind: CreateKind, *, redash: RedashClient, api_key: str, set
         return cached[1]
 
     queries: tuple[GroundedQuery, ...] = ()
-    datasets = _cached_catalog(settings)
-    if kind in ("dashboard", "kpi", "report"):
+    datasets = cached_catalog(settings)
+    if kind in ("query", "dashboard", "kpi", "report"):
         # Labelled with what each one reads, or the model cannot tell that two
         # queries run against different systems.
         sources = data_source_names(redash, api_key=api_key)

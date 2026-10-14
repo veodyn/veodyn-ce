@@ -9,6 +9,7 @@ from veodyn_api.schemas.catalog import (
 )
 from veodyn_api.services.ai_capture_semantics import CAPTURE_SEMANTICS
 from veodyn_api.services.ai_converse_prompt import system_prompt
+from veodyn_api.services.ai_grounding import GroundedQuery
 from veodyn_api.services.dataset_profile import ColumnProfile, DatasetProfile
 
 # The row count is deliberately absent from the description: with it there, an
@@ -58,6 +59,23 @@ def test_every_kind_is_told_how_a_capture_reads() -> None:
 def test_the_capture_contract_is_not_sent_to_a_kind_with_no_tables() -> None:
     """It is a rule about the rows in the tables, and there are none to read."""
     assert CAPTURE_SEMANTICS not in system_prompt("query")
+
+
+def test_a_query_conversation_is_told_to_point_at_a_query_that_already_answers() -> None:
+    existing = GroundedQuery(
+        id=64,
+        name="MCA Predictions at Union Station",
+        description="",
+        tags=[],
+        updated_at="",
+        source="RIITS MetroCloudAlliance",
+    )
+
+    prompt = system_prompt("query", datasets=(dataset(),), queries=(existing,))
+
+    assert "MCA Predictions at Union Station" in prompt
+    assert "already answers it, say so first" in prompt
+    assert "Never substitute a table about a different agency, region or measure" in prompt
 
 
 def test_the_profile_appears_only_when_there_is_one() -> None:
