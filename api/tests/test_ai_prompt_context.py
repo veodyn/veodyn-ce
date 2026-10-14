@@ -64,16 +64,16 @@ def test_the_capture_contract_is_not_sent_to_a_kind_with_no_tables() -> None:
 def test_a_query_conversation_is_told_to_point_at_a_query_that_already_answers() -> None:
     existing = GroundedQuery(
         id=64,
-        name="MCA Predictions at Union Station",
+        name="Predictions at Central Station",
         description="",
         tags=[],
         updated_at="",
-        source="RIITS MetroCloudAlliance",
+        source="Regional Transit Feed",
     )
 
     prompt = system_prompt("query", datasets=(dataset(),), queries=(existing,))
 
-    assert "MCA Predictions at Union Station" in prompt
+    assert "Predictions at Central Station" in prompt
     assert "already answers it, say so first" in prompt
     assert "Never substitute a table about a different agency, region or measure" in prompt
 

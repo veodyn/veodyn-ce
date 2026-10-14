@@ -74,7 +74,7 @@ def test_the_grounding_cache_is_keyed_by_kind() -> None:
 
 @respx.mock
 def test_a_query_conversation_is_given_the_existing_queries() -> None:
-    mock_data_sources((1, "RIITS MetroCloudAlliance"))
+    mock_data_sources((1, "Regional Transit Feed"))
     respx.get(f"{REDASH_TEST_URL}/api/queries").mock(
         return_value=httpx.Response(
             200,
@@ -82,7 +82,7 @@ def test_a_query_conversation_is_given_the_existing_queries() -> None:
                 "results": [
                     {
                         "id": 64,
-                        "name": "MCA Predictions at Union Station",
+                        "name": "Predictions at Central Station",
                         "updated_at": "2026-07-20",
                         "data_source_id": 1,
                     }
@@ -95,7 +95,7 @@ def test_a_query_conversation_is_given_the_existing_queries() -> None:
         "query", redash=RedashClient(REDASH_TEST_URL), api_key="k", settings=grounding_settings()
     )
 
-    assert [(one.id, one.source) for one in grounding.queries] == [(64, "RIITS MetroCloudAlliance")]
+    assert [(one.id, one.source) for one in grounding.queries] == [(64, "Regional Transit Feed")]
 
 
 def test_the_catalog_alone_makes_no_redash_call(monkeypatch: pytest.MonkeyPatch) -> None:
