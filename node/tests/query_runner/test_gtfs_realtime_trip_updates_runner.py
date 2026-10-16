@@ -125,7 +125,7 @@ class TestUrlConfiguration(TestCase):
             get.return_value = fake_response(feed.SerializeToString())
             data, error = runner.run_query('{"resource": "trip_updates", "params": {"routes": "1, 2"}}', None)
         self.assertIsNone(error)
-        self.assertEqual(data, {"columns": [], "rows": []})
+        self.assertEqual(data["rows"], [])
         self.assertEqual(get.call_args.args[0], "https://feed.example.org/gtfs-rt/trip_updates/1,2")
 
 

@@ -1,4 +1,4 @@
-from redash.query_runner import TYPE_FLOAT, TYPE_INTEGER, TYPE_STRING
+from redash.query_runner import TYPE_BOOLEAN, TYPE_FLOAT, TYPE_INTEGER, TYPE_STRING
 
 DEFAULT_SAMPLE_SECONDS = 8
 MAX_SAMPLE_SECONDS = 30
@@ -17,7 +17,37 @@ EMPTY_COLUMNS = {
         "speed": TYPE_FLOAT,
         "direction_id": TYPE_INTEGER,
         "timestamp": TYPE_STRING,
-    }
+    },
+    "trip_updates": {
+        "trip_id": TYPE_STRING,
+        "route_id": TYPE_STRING,
+        "line": TYPE_STRING,
+        "direction_id": TYPE_INTEGER,
+        "vehicle_id": TYPE_STRING,
+        "stop_id": TYPE_STRING,
+        "stop_sequence": TYPE_INTEGER,
+        "arrival_delay": TYPE_INTEGER,
+        "departure_delay": TYPE_INTEGER,
+        "arrival_time": TYPE_STRING,
+        "departure_time": TYPE_STRING,
+        "trip_schedule_relationship": TYPE_STRING,
+        "stop_schedule_relationship": TYPE_STRING,
+        "timestamp": TYPE_STRING,
+        "on_time": TYPE_BOOLEAN,
+    },
+    "service_alerts": {
+        "alert_id": TYPE_STRING,
+        "cause": TYPE_STRING,
+        "effect": TYPE_STRING,
+        "severity_level": TYPE_STRING,
+        "header": TYPE_STRING,
+        "description": TYPE_STRING,
+        "url": TYPE_STRING,
+        "active_from": TYPE_STRING,
+        "active_to": TYPE_STRING,
+        "informed_route_ids": TYPE_STRING,
+        "informed_stop_ids": TYPE_STRING,
+    },
 }
 
 RESOURCES = {
