@@ -227,3 +227,50 @@ def test_unresolvable_host_raises_static_fetch_error(tmp_path: Path) -> None:
             resolver=resolve,
             transport_factory=lambda: httpx.MockTransport(ok),
         )
+
+
+def test_idn_host_uses_ascii_host_header_and_sni(tmp_path: Path) -> None:
+    (request,) = run(
+        tmp_path, "http://xn--bcher-kva.example:8080/feed.zip", {"xn--bcher-kva.example": ["93.184.216.34"]}, ok
+    )
+    assert request.headers["host"] == "xn--bcher-kva.example:8080"
+    assert request.extensions["sni_hostname"] == "xn--bcher-kva.example"
+
+
+def test_unicode_idn_host_is_accepted(tmp_path: Path) -> None:
+    (request,) = run(tmp_path, "http://bücher.example/feed.zip", {"xn--bcher-kva.example": ["93.184.216.34"]}, ok)
+    assert request.headers["host"] == "xn--bcher-kva.example"
+
+
+def test_cookie_set_on_redirect_is_sent_to_the_same_host(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/start":
+            return httpx.Response(302, headers={"location": "/download", "set-cookie": "download_token=abc; Path=/"})
+        return httpx.Response(200, content=b"zip")
+
+    seen = run(tmp_path, "https://agency.example/start", {"agency.example": ["93.184.216.34"]}, handler)
+    assert "cookie" not in seen[0].headers
+    assert seen[1].headers["cookie"] == "download_token=abc"
+
+
+def test_cookie_does_not_cross_to_another_hostname_on_the_same_ip(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.headers["host"] == "agency.example":
+            return httpx.Response(
+                302,
+                headers={"location": "https://other.example/download", "set-cookie": "download_token=abc; Path=/"},
+            )
+        return httpx.Response(200, content=b"zip")
+
+    mapping = {"agency.example": ["93.184.216.34"], "other.example": ["93.184.216.34"]}
+    seen = run(tmp_path, "https://agency.example/start", mapping, handler)
+    assert "cookie" not in seen[1].headers
+
+
+@pytest.mark.parametrize("location", ["http://[", "http://[::1"])
+def test_malformed_location_raises_static_fetch_error(tmp_path: Path, location: str) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(302, headers={"location": location})
+
+    with pytest.raises(StaticFetchError):
+        run(tmp_path, "https://agency.example/start", {"agency.example": ["93.184.216.34"]}, handler)

@@ -70,16 +70,20 @@ def is_public(address: str) -> bool:
     return parsed.is_global and not parsed.is_multicast
 
 
+def ascii_host(url: httpx.URL) -> str:
+    return url.raw_host.decode("ascii")
+
+
 def validated_addresses(url: httpx.URL, resolver: Resolver) -> list[str]:
     if url.scheme not in DEFAULT_PORTS or not url.host:
         raise StaticFetchError(f"refusing {url}: only http and https URLs with a host are fetched")
     port = url.port or DEFAULT_PORTS[url.scheme]
     try:
-        ipaddress.ip_address(url.host)
-        addresses = [url.host]
+        ipaddress.ip_address(ascii_host(url))
+        addresses = [ascii_host(url)]
     except ValueError:
         try:
-            addresses = resolver(url.host, port)
+            addresses = resolver(ascii_host(url), port)
         except OSError as exc:
             raise StaticFetchError(f"could not resolve {url.host}: {exc}") from exc
     if not addresses:
@@ -91,7 +95,8 @@ def validated_addresses(url: httpx.URL, resolver: Resolver) -> list[str]:
 
 
 def host_header(url: httpx.URL) -> str:
-    host = f"[{url.host}]" if ":" in url.host else url.host
+    name = ascii_host(url)
+    host = f"[{name}]" if ":" in name else name
     return f"{host}:{url.port}" if url.port is not None else host
 
 
@@ -110,14 +115,18 @@ def download(
 ) -> None:
     resolve = resolver or system_resolver
     make_transport = transport_factory or default_transport_factory
+    cookies = httpx.Cookies()
     try:
         current = httpx.URL(url)
         for _ in range(MAX_REDIRECTS + 1):
             addresses = validated_addresses(current, resolve)
-            redirect = fetch_hop(current, addresses, destination, timeout, max_bytes, make_transport)
+            redirect = fetch_hop(current, addresses, destination, timeout, max_bytes, make_transport, cookies)
             if redirect is None:
                 return
-            current = httpx.URL(urljoin(str(current), redirect))
+            try:
+                current = httpx.URL(urljoin(str(current), redirect))
+            except ValueError as exc:
+                raise StaticFetchError(f"{url} redirected to a malformed location: {redirect!r}") from exc
         raise StaticFetchError(f"{url} redirected more than {MAX_REDIRECTS} times")
     except (httpx.HTTPError, httpx.InvalidURL) as exc:
         raise StaticFetchError(f"could not fetch {url}: {exc}") from exc
@@ -130,11 +139,12 @@ def fetch_hop(
     timeout: float,
     max_bytes: int,
     make_transport: TransportFactory,
+    cookies: httpx.Cookies,
 ) -> str | None:
     last_error: httpx.TransportError | None = None
     for address in addresses:
         try:
-            return fetch_from_address(url, address, destination, timeout, max_bytes, make_transport)
+            return fetch_from_address(url, address, destination, timeout, max_bytes, make_transport, cookies)
         except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
             last_error = exc
     assert last_error is not None
@@ -148,13 +158,21 @@ def fetch_from_address(
     timeout: float,
     max_bytes: int,
     make_transport: TransportFactory,
+    cookies: httpx.Cookies,
 ) -> str | None:
+    named_request = httpx.Request("GET", url)
+    cookies.set_cookie_header(named_request)
     headers = {"Host": host_header(url), "Connection": "close"}
-    extensions = {"sni_hostname": url.host}
+    if "cookie" in named_request.headers:
+        headers["Cookie"] = named_request.headers["cookie"]
+    extensions = {"sni_hostname": ascii_host(url)}
     with httpx.Client(transport=make_transport(), timeout=timeout, follow_redirects=False, trust_env=False) as client:
         with client.stream(
             "GET", pinned_request_url(url, address), headers=headers, extensions=extensions
         ) as response:
+            cookies.extract_cookies(
+                httpx.Response(response.status_code, headers=response.headers, request=named_request)
+            )
             location: str | None = response.headers.get("location")
             if response.status_code in REDIRECT_STATUSES and location:
                 return location
