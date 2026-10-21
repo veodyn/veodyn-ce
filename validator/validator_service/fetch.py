@@ -10,8 +10,12 @@ returns rather than kept alive alongside the feed it built.
 
 from __future__ import annotations
 
+import ipaddress
+import socket
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
+from urllib.parse import urljoin
 
 import httpx
 from gtfs_rt_validator.api import Mode, PreparedFeed, StaticLoadError, prepare_feed
@@ -42,20 +46,118 @@ def fetch_and_prepare(url: str, *, timeout: float, max_bytes: int) -> PreparedFe
             raise StaticFetchError(f"{url} downloaded but could not be loaded as GTFS: {exc}") from exc
 
 
-def download(url: str, destination: Path, *, timeout: float, max_bytes: int) -> None:
-    """Download `url` to `destination`. Raises `StaticFetchError` on any
-    transport failure, a malformed URL, a non-2xx response, or a response
-    exceeding `max_bytes` (checked with a running counter as bytes arrive, not
-    from a possibly-absent or lying Content-Length header). Shared by
-    `fetch_and_prepare` above and by the `/validate-static` route, which needs
-    the raw archive rather than a `PreparedFeed`.
+Resolver = Callable[[str, int], list[str]]
+TransportFactory = Callable[[], httpx.BaseTransport]
 
-    `httpx.InvalidURL` is caught alongside `httpx.HTTPError`: it is raised
-    while parsing a malformed URL like `http://[::1` and is not part of the
-    `HTTPError` hierarchy, so it would otherwise escape as an unhandled 500.
-    """
+MAX_REDIRECTS = 5
+REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def system_resolver(host: str, port: int) -> list[str]:
+    infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    return list(dict.fromkeys(str(info[4][0]) for info in infos))
+
+
+def default_transport_factory() -> httpx.BaseTransport:
+    return httpx.HTTPTransport()
+
+
+def is_public(address: str) -> bool:
+    parsed = ipaddress.ip_address(address.split("%", 1)[0])
+    if isinstance(parsed, ipaddress.IPv6Address) and parsed.ipv4_mapped is not None:
+        parsed = parsed.ipv4_mapped
+    return parsed.is_global and not parsed.is_multicast
+
+
+def validated_addresses(url: httpx.URL, resolver: Resolver) -> list[str]:
+    if url.scheme not in DEFAULT_PORTS or not url.host:
+        raise StaticFetchError(f"refusing {url}: only http and https URLs with a host are fetched")
+    port = url.port or DEFAULT_PORTS[url.scheme]
     try:
-        with httpx.stream("GET", url, timeout=timeout, follow_redirects=True) as response:
+        ipaddress.ip_address(url.host)
+        addresses = [url.host]
+    except ValueError:
+        try:
+            addresses = resolver(url.host, port)
+        except OSError as exc:
+            raise StaticFetchError(f"could not resolve {url.host}: {exc}") from exc
+    if not addresses:
+        raise StaticFetchError(f"{url.host} did not resolve to any address")
+    for address in addresses:
+        if not is_public(address):
+            raise StaticFetchError(f"refusing {url.host}: it resolves to the non-public address {address}")
+    return addresses
+
+
+def host_header(url: httpx.URL) -> str:
+    host = f"[{url.host}]" if ":" in url.host else url.host
+    return f"{host}:{url.port}" if url.port is not None else host
+
+
+def pinned_request_url(url: httpx.URL, address: str) -> httpx.URL:
+    return url.copy_with(host=address)
+
+
+def download(
+    url: str,
+    destination: Path,
+    *,
+    timeout: float,
+    max_bytes: int,
+    resolver: Resolver | None = None,
+    transport_factory: TransportFactory | None = None,
+) -> None:
+    resolve = resolver or system_resolver
+    make_transport = transport_factory or default_transport_factory
+    try:
+        current = httpx.URL(url)
+        for _ in range(MAX_REDIRECTS + 1):
+            addresses = validated_addresses(current, resolve)
+            redirect = fetch_hop(current, addresses, destination, timeout, max_bytes, make_transport)
+            if redirect is None:
+                return
+            current = httpx.URL(urljoin(str(current), redirect))
+        raise StaticFetchError(f"{url} redirected more than {MAX_REDIRECTS} times")
+    except (httpx.HTTPError, httpx.InvalidURL) as exc:
+        raise StaticFetchError(f"could not fetch {url}: {exc}") from exc
+
+
+def fetch_hop(
+    url: httpx.URL,
+    addresses: list[str],
+    destination: Path,
+    timeout: float,
+    max_bytes: int,
+    make_transport: TransportFactory,
+) -> str | None:
+    last_error: httpx.TransportError | None = None
+    for address in addresses:
+        try:
+            return fetch_from_address(url, address, destination, timeout, max_bytes, make_transport)
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            last_error = exc
+    assert last_error is not None
+    raise last_error
+
+
+def fetch_from_address(
+    url: httpx.URL,
+    address: str,
+    destination: Path,
+    timeout: float,
+    max_bytes: int,
+    make_transport: TransportFactory,
+) -> str | None:
+    headers = {"Host": host_header(url), "Connection": "close"}
+    extensions = {"sni_hostname": url.host}
+    with httpx.Client(transport=make_transport(), timeout=timeout, follow_redirects=False, trust_env=False) as client:
+        with client.stream(
+            "GET", pinned_request_url(url, address), headers=headers, extensions=extensions
+        ) as response:
+            location: str | None = response.headers.get("location")
+            if response.status_code in REDIRECT_STATUSES and location:
+                return location
             response.raise_for_status()
             total = 0
             with destination.open("wb") as out:
@@ -64,5 +166,4 @@ def download(url: str, destination: Path, *, timeout: float, max_bytes: int) -> 
                     if total > max_bytes:
                         raise StaticFetchError(f"{url} exceeded the {max_bytes} byte archive size limit")
                     out.write(chunk)
-    except (httpx.HTTPError, httpx.InvalidURL) as exc:
-        raise StaticFetchError(f"could not fetch {url}: {exc}") from exc
+            return None
