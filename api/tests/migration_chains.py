@@ -44,6 +44,9 @@ EE_TABLES = frozenset(
         "message_trigger",
         "message_trigger_firing",
         "alert_feed_artifact_content",
+        "feed_registry_source",
+        "feed_registry_feed",
+        "feed_registry_membership",
     }
 )
 """The enterprise chain's allowlist, restated rather than imported.
