@@ -2,6 +2,8 @@
 sidebar_position: 10
 title: Captures
 description: "The board of scheduled queries that write into the warehouse, and whether each one delivered on time."
+enterprise_sections:
+  - metrics-affected-is-the-blast-radius
 ---
 
 # Captures

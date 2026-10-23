@@ -2,6 +2,7 @@
 sidebar_position: 7
 title: KPIs
 description: "Named metrics with a target, thresholds, an owner, and a cadence: defining KPIs over saved queries, reading the scorecard and history, and arming breach alerts."
+edition: enterprise
 ---
 
 # KPIs

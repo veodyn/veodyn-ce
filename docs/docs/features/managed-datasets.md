@@ -2,6 +2,7 @@
 sidebar_position: 9
 title: Managed Datasets
 description: "Datasets people type into rather than capture: declaring one, the record table and its generated form, writer groups, retraction and revision history."
+edition: enterprise
 ---
 
 # Managed Datasets

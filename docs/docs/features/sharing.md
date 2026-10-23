@@ -1,7 +1,9 @@
 ---
 sidebar_position: 12
 title: Sharing & Embeds
-description: "Everything reachable without signing in: public dashboards, embedded visualizations, query API keys, enterprise public reports, and how tokens are governed and revoked."
+description: "Everything reachable without signing in: public dashboards, embedded visualizations, query API keys, and how tokens are governed and revoked."
+enterprise_sections:
+  - one-answer-for-every-refusal
 ---
 
 # Sharing & Embeds

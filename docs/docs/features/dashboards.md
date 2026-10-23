@@ -1,7 +1,10 @@
 ---
 sidebar_position: 5
 title: Dashboards
-description: "Building and watching dashboards: the widget grid, refresh rates, parameters, annotations, public sharing, and the enterprise presentation and wall modes."
+description: "Building and watching dashboards: the widget grid, refresh rates, parameters, annotations, and public sharing."
+enterprise_sections:
+  - presentation-mode
+  - wall-mode
 ---
 
 # Dashboards

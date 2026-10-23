@@ -2,6 +2,8 @@
 sidebar_position: 2
 title: Home, Search & Discover
 description: "The Home page's omnisearch, notable changes and favorites, federated search across every object type, and the Discover and Favorites pages."
+enterprise_sections:
+  - ai-digest
 ---
 
 # Home, Search & Discover

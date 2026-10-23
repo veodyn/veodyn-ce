@@ -2,6 +2,7 @@
 sidebar_position: 17
 title: Channels
 description: "Where a message can go: alert feeds and connectors, the Channels admin page, switching a channel off, and configuring a connector's credentials without touching the environment."
+edition: enterprise
 ---
 
 # Channels

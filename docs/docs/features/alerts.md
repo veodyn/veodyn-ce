@@ -2,6 +2,7 @@
 sidebar_position: 8
 title: Alerts & Destinations
 description: "Watching conditions on query results, KPI-managed alerts, team notifications and subscriptions, and the admin-configured alert destinations."
+edition: enterprise
 ---
 
 # Alerts & Destinations

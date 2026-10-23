@@ -2,6 +2,7 @@
 sidebar_position: 6
 title: Reports
 description: "Board-facing documents built from data blocks: the block editor, snapshots that freeze the numbers, the four-eyes review workflow, PDF export, and revocable public links."
+edition: enterprise
 ---
 
 # Reports

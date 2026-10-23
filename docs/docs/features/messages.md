@@ -2,6 +2,7 @@
 sidebar_position: 16
 title: Messages
 description: "Rider-facing service messages: the composer, review and approval, publishing to alert feeds and connectors, corrections, delivery records, and the messages an alert or KPI drafts on its own."
+edition: enterprise
 ---
 
 # Messages

@@ -1,7 +1,9 @@
 ---
 sidebar_position: 3
 title: System Administration
-description: "The admin pages: organization settings, plugin inventory, backend status, worker queues, outdated scheduled queries, and enterprise shared-link governance."
+description: "The admin pages: organization settings, plugin inventory, backend status, worker queues, and outdated scheduled queries."
+enterprise_sections:
+  - shared-links
 ---
 
 # System Administration

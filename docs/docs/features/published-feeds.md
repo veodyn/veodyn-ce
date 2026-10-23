@@ -2,6 +2,9 @@
 sidebar_position: 15
 title: Published Feeds
 description: "Re-publishing a query's results as a standard GTFS-Realtime or GBFS feed: the binding form, validation, the publish history, and the anonymous address consumers read."
+enterprise_sections:
+  - reading-a-private-feed
+  - publishing-on-a-cadence
 ---
 
 # Published Feeds

@@ -1,7 +1,10 @@
 ---
 sidebar_position: 11
 title: AI Features
-description: "Create with AI for queries, dashboards and snippets; SQL generation in the editor; Edit with AI on dashboards; and the enterprise digest and annotation suggestions."
+description: "Create with AI for queries, dashboards and snippets, SQL generation in the editor, and Edit with AI on dashboards."
+enterprise_sections:
+  - the-digest
+  - annotation-suggestions
 ---
 
 # AI Features
