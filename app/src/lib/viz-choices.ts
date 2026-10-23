@@ -5,7 +5,7 @@ import {
   registeredTypes,
   type VisualizationAudience,
   type VisualizationPlugin,
-} from '@veodyn/viz'
+} from '@veodyn/viz/lib/visualizations'
 
 export interface VizChoice {
   id: string
