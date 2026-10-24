@@ -27,10 +27,10 @@ from veodyn_api.schemas.ai_chat import (
     ChatThreadOut,
     ChatThreadPatchIn,
     ChatToolResultPostIn,
-    ChatTurnIn,
     ChatTurnOut,
     ChatTurnStartedOut,
 )
+from veodyn_api.schemas.ai_chat_context import ChatTurnIn
 from veodyn_api.schemas.catalog import DatasetOut
 from veodyn_api.services.ai_converse_grounding import cached_catalog
 from veodyn_api.services.ai_viz_catalog import catalog_from
@@ -39,6 +39,7 @@ from veodyn_api.services.chat.bus import TurnBus, get_redis
 from veodyn_api.services.chat.driver import get_chat_model
 from veodyn_api.services.chat.runner import TurnRunner, spawn_turn
 from veodyn_api.services.chat.tools import result_kind_for
+from veodyn_api.services.chat.turn_context import context_from
 from veodyn_api.services.redash import RedashClient
 from veodyn_api.services.redash_lookups import warehouse_data_source_id
 from veodyn_api.settings import Settings, get_settings
@@ -255,7 +256,7 @@ async def post_turn(
         await run_in_threadpool(store.fail_turn, db, turn.id, ErrorId.AI_CHAT_UNAVAILABLE.value)
         raise _unavailable() from exc
     catalog = catalog_from([shape.model_dump() for shape in payload.viz_catalog] if payload.viz_catalog else None)
-    spawn_turn(runner, turn.id, thread.id, turn.seq, payload.text, catalog)
+    spawn_turn(runner, turn.id, thread.id, turn.seq, payload.text, catalog, context_from(payload))
     return ChatTurnStartedOut(turn_id=str(turn.id), seq=turn.seq)
 
 

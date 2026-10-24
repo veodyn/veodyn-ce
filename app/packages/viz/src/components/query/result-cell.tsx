@@ -62,9 +62,6 @@ export function ResultCell({ value, row, columnType, config }: ResultCellProps) 
     if (image) {
       return (
         <TableCell data-veodyn-part="table-cell" className="px-3 py-1.5">
-          {/* Not next/image: the URL comes from the query author at runtime, so
-              there is no build-time host to configure a loader against. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={image.src}
             alt={image.alt}

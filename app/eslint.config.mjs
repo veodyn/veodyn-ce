@@ -38,6 +38,12 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-non-null-assertion": "warn",
     },
   },
+  {
+    files: ["packages/*/src/**/*.tsx"],
+    rules: {
+      "@next/next/no-img-element": "off",
+    },
+  },
 
   // ── primitive sweep guardrails ─────────────────────────────────────────────
   // Raw form and interactive elements duplicate an installed primitive and lose

@@ -185,6 +185,7 @@ def test_the_registry_lists_every_tool_and_refuses_a_duplicate() -> None:
         "open_dashboard",
         "propose_dashboard",
         "link_help",
+        "run_saved_query",
     ]
     with pytest.raises(ValueError):
         tools.register_chat_tool(tools.RUN_QUERY)

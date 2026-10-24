@@ -8,7 +8,7 @@
 // behind one "Chart" entry so the shape only became pickable later, after a run.
 import { useConfig } from '@/components/config/config-provider'
 import { RadioGroup, RadioGroupCard } from '@/components/ui/radio-group'
-import { visibleVizChoices } from '@/lib/viz-choices'
+import { visibilityOf, visibleVizChoices } from '@/lib/viz-choices'
 
 export interface VisualBuilderVizPickerProps {
   /** A viz choice id, not a Redash visualization type. */
@@ -25,8 +25,7 @@ export function VisualBuilderVizPicker({
   // Instance visibility, so a type this deployment does not want, or keeps for
   // its wall screens, has no tile here. Unset means every tile this build can
   // draw.
-  const { visualizations } = useConfig()
-  const choices = visibleVizChoices(visualizations)
+  const choices = visibleVizChoices(visibilityOf(useConfig()))
 
   // An allowlist naming only types with no builder tile (or nothing this build
   // has) leaves the grid empty. Say so, rather than showing an empty box that

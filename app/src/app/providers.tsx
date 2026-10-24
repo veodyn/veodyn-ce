@@ -6,6 +6,8 @@ import { ConfigProvider } from '@/components/config/config-provider'
 import { isAppError } from '@/lib/errorIds'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { VizAppContext } from '@/components/viz-app-context'
+import { MapProvidersContext } from '@veodyn/viz'
+import { clientMapProviders } from '@/lib/config-maps'
 import { IdentifyUser } from '@/lib/observability/IdentifyUser'
 import { reportQueryError } from '@/lib/observability/querySeam'
 import { TelemetryProvider } from '@/lib/observability/TelemetryProvider'
@@ -160,7 +162,9 @@ export function Providers({
           {/* One provider for the whole app, so icon buttons across a toolbar
               share a hover delay rather than each imposing a fresh one. */}
           <TooltipProvider>
-            <VizAppContext>{children}</VizAppContext>
+            <MapProvidersContext.Provider value={clientMapProviders(config.map)}>
+              <VizAppContext>{children}</VizAppContext>
+            </MapProvidersContext.Provider>
           </TooltipProvider>
         </IdentityScopedQueryProvider>
       </TelemetryProvider>

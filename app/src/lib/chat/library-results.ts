@@ -1,6 +1,7 @@
 import type { RedashDataSource } from '@/services/redash/data-sources'
 import type { SchemaTable } from '@/lib/mock-data'
 import type { MockDashboard, MockQuery, MockVisualization, QueryResultData } from '@/lib/mock-data'
+import { RESOURCE_SECTION_RE } from './resource-section'
 import { summarizeRows } from './shape-result'
 import type {
   ChatDashboardResult,
@@ -223,7 +224,6 @@ function sqlSchemaResult(dataSourceId: number, tables: SchemaTable[]): ChatDataS
   return { kind: 'data_source_schema', ok: true, dataSourceId, syntax: 'sql', tables: shaped }
 }
 
-const RESOURCE_SECTION_RE = /^(\d+)\.\s+(.+?)\s+>\s+(params|returns)$/
 const PARAM_NAME_RE = /^([A-Za-z_][A-Za-z0-9_]*)\s*\(/
 const EXAMPLES_TABLE_NAME = '__ Query Examples __'
 

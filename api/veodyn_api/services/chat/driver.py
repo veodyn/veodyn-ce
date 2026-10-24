@@ -31,6 +31,7 @@ class ChatModel(Protocol):
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
         on_text: TextSink,
+        forbid_tools: bool = False,
     ) -> ModelTurn: ...
 
 
@@ -63,6 +64,7 @@ class AnthropicChatModel:
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
         on_text: TextSink,
+        forbid_tools: bool = False,
     ) -> ModelTurn:
         request: dict[str, Any] = {
             "model": self.model_id,
@@ -72,7 +74,7 @@ class AnthropicChatModel:
         }
         if tools:
             request["tools"] = _cache_last(tools)
-            request["tool_choice"] = {"type": "auto"}
+            request["tool_choice"] = {"type": "none" if forbid_tools else "auto"}
         try:
             async with self._client.messages.stream(**request) as stream:
                 async for event in stream:

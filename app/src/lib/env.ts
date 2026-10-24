@@ -25,6 +25,8 @@ const envSchema = z.object({
   VEODYN_AI__KEY: z.string().default(''),
   VEODYN_AI__TOKEN_SECRET: z.string().default(''),
 
+  VEODYN_MAPS__GOOGLE__KEY: z.string().default(''),
+
   // ── Catalog backend (server-side proxy for /api/catalog + /api/domains) ────
   // Unset = the endpoints 503; mock mode never calls them (MVP spec section 4).
   CATALOG_API_URL: z.string().optional(),

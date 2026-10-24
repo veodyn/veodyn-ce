@@ -20,7 +20,7 @@ import { useDataSources } from '@/hooks/use-data-sources'
 import { useCreateQuery } from '@/hooks/use-queries'
 import { useCreateVisualization } from '@/hooks/use-visualizations'
 import { useConfig } from '@/components/config/config-provider'
-import { DEFAULT_VIZ_ID, resolveVizChoice, visibleVizChoices } from '@/lib/viz-choices'
+import { DEFAULT_VIZ_ID, resolveVizChoice, visibilityOf, visibleVizChoices } from '@/lib/viz-choices'
 import type { QueryProposal } from '@/types/ai-create'
 import { ProposalFrame } from './proposal-frame'
 import { createErrorMessage, defaultDataSourceId } from './proposal-model'
@@ -51,7 +51,7 @@ export function QueryProposalCard({
   const [name, setName] = useState(proposal.name)
   const [description, setDescription] = useState(proposal.description)
   const [vizChoiceId, setVizChoiceId] = useState(proposal.vizChoiceId)
-  const offeredVizChoices = useConfig().visualizations
+  const offeredVizChoices = visibilityOf(useConfig())
   // Null until the user overrides it, so the default follows the data sources
   // as they load instead of being frozen from an empty first render.
   const [chosenSource, setChosenSource] = useState<number | null>(null)

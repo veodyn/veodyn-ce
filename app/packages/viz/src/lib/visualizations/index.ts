@@ -31,6 +31,7 @@ export {
   type ThemeScope as VisualizationTheme,
 } from '../../components/theme/theme-scope'
 export { WidgetThemeBoundary } from '../../components/theme/widget-theme-boundary'
+export { MapProvidersContext, useMapProvider, type MapProvider } from './map-providers'
 export {
   WIDGET_THEMES,
   WIDGET_THEME_LABELS,
@@ -40,10 +41,12 @@ export {
   type WidgetTheme,
 } from '../widget-theme'
 export {
+  CHAT_GUIDE_MAX_CHARS,
   PLUGIN_API_VERSION,
   type VisualizationAudience,
   type VisualizationChoice,
   type VisualizationEditorProps,
+  type ReadinessContext,
   type VisualizationPlugin,
   type VisualizationRendererProps,
 } from './plugin'
@@ -60,6 +63,7 @@ export {
   type OptionSchema,
 } from './option-schema'
 export {
+  chatGuideProblems,
   getVisualization,
   listVisualizations,
   registerVisualization,

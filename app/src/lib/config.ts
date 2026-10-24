@@ -13,7 +13,9 @@ import { readFileSync } from 'node:fs'
 import { parse as parseYaml } from 'yaml'
 import { deriveDarkColumn, effectivePalette, formatReport, validatePalette, CHART_PALETTE_SIZE } from '@veodyn/viz/lib/chart-palette'
 import { CHART_SURFACE_DARK, CHART_SURFACE_LIGHT, veodynConfigSchema, type VeodynConfig } from '@/lib/config-schema'
+import { dropUnkeyedGoogle } from '@/lib/config-maps'
 import { warnOnHubWithoutEnterprise } from '@/lib/edition'
+import { env } from '@/lib/env'
 
 const CONFIG_PATH = process.env.VEODYN_CONFIG_PATH ?? 'veodyn.config.yaml'
 
@@ -65,7 +67,12 @@ function coerceEnvValue(value: string): unknown {
 // merged config object: VEODYN_CONFIG_PATH picks the file to read, and
 // VEODYN_AI__KEY is a secret that belongs in the env boundary (env.ts), not
 // in config that gets passed to the client via toClientConfig.
-const SKIP_ENV_KEYS = new Set(['VEODYN_CONFIG_PATH', 'VEODYN_AI__KEY', 'VEODYN_AI__TOKEN_SECRET'])
+const SKIP_ENV_KEYS = new Set([
+  'VEODYN_CONFIG_PATH',
+  'VEODYN_AI__KEY',
+  'VEODYN_AI__TOKEN_SECRET',
+  'VEODYN_MAPS__GOOGLE__KEY',
+])
 
 // An override has to name a key INSIDE a section, so it always contains the __
 // separator. Every top-level key in the schema is an object, so a VEODYN_ name
@@ -107,7 +114,8 @@ function loadConfig(): VeodynConfig {
     const lines = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`)
     throw new Error(`[config] invalid veodyn.config.yaml:\n${lines.join('\n')}`)
   }
-  return parsed.data
+  const providers = dropUnkeyedGoogle(parsed.data.map.providers, env.VEODYN_MAPS__GOOGLE__KEY, console.warn)
+  return providers ? { ...parsed.data, map: { ...parsed.data.map, providers } } : parsed.data
 }
 
 // A tenant's brand palette is their call, so a failing one still ships. What we

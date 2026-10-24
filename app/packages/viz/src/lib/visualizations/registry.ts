@@ -2,7 +2,7 @@
 // copy (the renderer switch, the editor switch, the builder choices) reads
 // from here instead. See docs/visualization-plugins.md.
 import type { QueryResultData } from '../../types/viz-data'
-import { PLUGIN_API_VERSION, type VisualizationPlugin } from './plugin'
+import { CHAT_GUIDE_MAX_CHARS, PLUGIN_API_VERSION, type VisualizationPlugin } from './plugin'
 
 /**
  * Where a type came from. Not a capability: a plugin can do everything a core
@@ -45,7 +45,34 @@ export function registerVisualization(
   if (registry.has(plugin.type)) {
     throw new Error(`Visualization type "${plugin.type}" is already registered.`)
   }
-  registry.set(plugin.type, { plugin, origin })
+  registry.set(plugin.type, { plugin: withoutOverlongGuides(plugin), origin })
+}
+
+function overlong(guide: string | undefined): boolean {
+  return guide !== undefined && guide.length > CHAT_GUIDE_MAX_CHARS
+}
+
+export function chatGuideProblems(plugin: VisualizationPlugin): string[] {
+  return (plugin.choices ?? [])
+    .filter((choice) => overlong(choice.guide))
+    .map(
+      (choice) =>
+        `Visualization plugin "${plugin.type}" choice "${choice.id}" has a guide of ${choice.guide?.length} ` +
+        `characters; the chat accepts at most ${CHAT_GUIDE_MAX_CHARS}.`
+    )
+}
+
+function withoutOverlongGuides(plugin: VisualizationPlugin): VisualizationPlugin {
+  const problems = chatGuideProblems(plugin)
+  if (problems.length === 0) return plugin
+  for (const problem of problems) console.error(`${problem} The guide is dropped.`)
+  return {
+    ...plugin,
+    choices: plugin.choices?.map((choice) => {
+      if (!overlong(choice.guide)) return choice
+      return { ...choice, guide: undefined }
+    }),
+  }
 }
 
 /**

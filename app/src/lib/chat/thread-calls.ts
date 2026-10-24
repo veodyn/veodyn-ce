@@ -1,9 +1,11 @@
 import type { ChatToolName } from './frames'
+import type { SavedRunSpec } from './run-spec'
+import type { RunView } from './thread-model'
 import { toolResultSchema, type ChatToolResult } from './tool-results'
 
 export type RunStatus = 'running' | 'done' | 'failed'
 
-export type CardToolName = Exclude<ChatToolName, 'run_query'>
+export type CardToolName = Exclude<ChatToolName, 'run_query' | 'run_saved_query'>
 
 export interface CallView {
   callId: string
@@ -28,8 +30,29 @@ export function isCardTool(name: unknown): name is CardToolName {
   return typeof name === 'string' && CARD_TOOLS.has(name)
 }
 
-function positiveId(value: unknown): number | null {
+export function positiveId(value: unknown): number | null {
   return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : null
+}
+
+export function savedRunView(
+  callId: string,
+  purpose: string,
+  saved: SavedRunSpec,
+  outcome: Partial<RunView> = {}
+): RunView {
+  return {
+    callId,
+    dataSourceId: 0,
+    purpose,
+    sql: '',
+    vizChoiceId: 'table',
+    status: 'running',
+    rowCount: null,
+    durationMs: null,
+    error: null,
+    ...outcome,
+    saved,
+  }
 }
 
 function targetOf(tool: CardToolName, input: Record<string, unknown>): CallView['target'] {

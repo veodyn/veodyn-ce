@@ -1,3 +1,4 @@
+import argparse
 import difflib
 import json
 import logging
@@ -9,6 +10,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+from veodyn_api.services.chat.help_frontmatter import flow_list, split_frontmatter
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +38,7 @@ class HelpSection:
     anchor: str
     title: str
     level: int
+    enterprise: bool = False
 
 
 @dataclass(frozen=True)
@@ -43,6 +47,7 @@ class HelpPage:
     title: str
     description: str
     sections: tuple[HelpSection, ...]
+    enterprise: bool = False
 
     def section(self, anchor: str) -> HelpSection | None:
         return next((one for one in self.sections if one.anchor == anchor), None)
@@ -73,30 +78,6 @@ def plain_text(markdown: str) -> str:
     return ESCAPE_RE.sub(r"\1", text).strip()
 
 
-def _unquote(value: str) -> str:
-    value = value.strip()
-    if len(value) >= 2 and value[0] == value[-1] == '"':
-        return str(json.loads(value))
-    if len(value) >= 2 and value[0] == value[-1] == "'":
-        return value[1:-1].replace("''", "'")
-    return value
-
-
-def _split_frontmatter(text: str) -> tuple[dict[str, str], list[str]]:
-    lines = text.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return {}, lines
-    for end, line in enumerate(lines[1:], start=1):
-        if line.strip() == "---":
-            fields = {}
-            for entry in lines[1:end]:
-                key, colon, value = entry.partition(":")
-                if colon and key.strip() and not key.startswith((" ", "\t")):
-                    fields[key.strip()] = _unquote(value)
-            return fields, lines[end + 1 :]
-    return {}, lines
-
-
 def _headings(body: list[str]) -> Iterator[tuple[int, str]]:
     fence: str | None = None
     for line in body:
@@ -114,13 +95,17 @@ def _headings(body: list[str]) -> Iterator[tuple[int, str]]:
 
 
 def parse_page(relative: str, text: str) -> dict[str, Any]:
-    fields, body = _split_frontmatter(text)
+    fields, body = split_frontmatter(text)
     slug = fields.get("slug")
     page_id = slug.strip("/") if slug is not None else relative.removesuffix(".md")
     title = fields.get("title", "")
+    marked = flow_list(fields.get("enterprise_sections", ""))
     sections: list[dict[str, Any]] = []
     seen: dict[str, int] = {}
+    marked_level: int | None = None
     for level, raw in _headings(body):
+        if marked_level is not None and level <= marked_level:
+            marked_level = None
         explicit = EXPLICIT_ID_RE.search(raw)
         shown = plain_text(raw[: explicit.start()] if explicit else raw)
         if explicit:
@@ -135,8 +120,21 @@ def parse_page(relative: str, text: str) -> dict[str, Any]:
         if level == 1 and not title:
             title = shown
         if level in (2, 3):
-            sections.append({"anchor": anchor, "title": shown, "level": level})
-    return {"id": page_id, "title": title, "description": fields.get("description", ""), "sections": sections}
+            section: dict[str, Any] = {"anchor": anchor, "title": shown, "level": level}
+            if marked_level is None and anchor in marked:
+                marked_level = level
+            if marked_level is not None:
+                section["enterprise"] = True
+            sections.append(section)
+    page: dict[str, Any] = {
+        "id": page_id,
+        "title": title,
+        "description": fields.get("description", ""),
+        "sections": sections,
+    }
+    if fields.get("edition") == "enterprise":
+        page["enterprise"] = True
+    return page
 
 
 def build_index(docs_dir: Path) -> dict[str, Any]:
@@ -175,9 +173,15 @@ def _from_json(raw: dict[str, Any]) -> HelpIndex:
                 title=str(page["title"]),
                 description=str(page["description"]),
                 sections=tuple(
-                    HelpSection(anchor=str(one["anchor"]), title=str(one["title"]), level=int(one["level"]))
+                    HelpSection(
+                        anchor=str(one["anchor"]),
+                        title=str(one["title"]),
+                        level=int(one["level"]),
+                        enterprise=bool(one.get("enterprise", False)),
+                    )
                     for one in page["sections"]
                 ),
+                enterprise=bool(page.get("enterprise", False)),
             )
             for page in raw["pages"]
         )
@@ -226,17 +230,31 @@ def _fetch(url: str) -> str:
     return response.text
 
 
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="help_index")
+    parser.add_argument("command", choices=("build", "check", "verify"))
+    parser.add_argument("target", nargs="?")
+    parser.add_argument("--docs")
+    parser.add_argument("--out")
+    return parser
+
+
 def main(argv: list[str]) -> int:
-    if len(argv) != 2 or argv[0] not in ("build", "check", "verify"):
-        print("usage: help_index build|check <docs dir> | verify <docs url>", file=sys.stderr)
+    try:
+        args = _parser().parse_args(argv)
+    except SystemExit as stop:
+        return stop.code if isinstance(stop.code, int) else 2
+    target = args.docs or args.target
+    if target is None:
+        print("usage: help_index build|check <docs dir> [--out <file>] | verify <docs url>", file=sys.stderr)
         return 2
-    command, target = argv
-    if command == "build":
-        INDEX_PATH.write_text(render(build_index(Path(target))))
-        print(f"wrote {INDEX_PATH}")
+    out = Path(args.out) if args.out else INDEX_PATH
+    if args.command == "build":
+        out.write_text(render(build_index(Path(target))))
+        print(f"wrote {out}")
         return 0
-    if command == "check":
-        lines = drift(Path(target), INDEX_PATH)
+    if args.command == "check":
+        lines = drift(Path(target), out)
         for line in lines:
             print(line)
         if lines:

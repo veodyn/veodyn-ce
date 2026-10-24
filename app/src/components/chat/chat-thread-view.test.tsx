@@ -59,6 +59,7 @@ function make(overrides: Partial<ChatThreadController> = {}): ChatThreadControll
   return {
     state: thread(),
     results: {},
+    visualizations: {},
     runErrors: {},
     loading: false,
     loadFailed: false,

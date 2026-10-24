@@ -1,6 +1,7 @@
 import { chatProposalSchema, dashboardProposalSchema } from './frames'
+import type { SavedRunSpec } from './run-spec'
 import { storedHelpLink, type HelpLinkView } from './thread-help'
-import { isCardTool, storedCall, type CallView } from './thread-calls'
+import { isCardTool, positiveId, savedRunView, storedCall, type CallView } from './thread-calls'
 import type { ActiveDashboard, DashboardDraftView, Draft, DraftView, RunView, ThreadState, TurnItem, TurnView } from './thread-model'
 import type { ChatThreadDetail } from './wire'
 
@@ -23,6 +24,12 @@ function queryBodyFrom(input: Record<string, unknown>): string {
   if (typeof input.sql === 'string') return input.sql
   if (input.resourceCall && typeof input.resourceCall === 'object') return JSON.stringify(input.resourceCall)
   return ''
+}
+
+function storedSavedRun(input: Record<string, unknown>): SavedRunSpec | null {
+  const queryId = positiveId(input.queryId)
+  if (queryId === null) return null
+  return { queryId, parameters: record(input.params), visualizationId: positiveId(input.visualizationId) }
 }
 
 export function appendText(items: TurnItem[], text: string): TurnItem[] {
@@ -85,6 +92,17 @@ function storedTurn(turn: ChatThreadDetail['turns'][number], parts: Parts): Turn
           durationMs: null,
           error: typeof content.error === 'string' ? content.error : null,
         }
+        items = [...items, { kind: 'run', callId }]
+      }
+      const browserRan = outcome !== undefined && (!outcome.is_error || content.kind === 'query_result')
+      const saved = item.name === 'run_saved_query' && browserRan ? storedSavedRun(input) : null
+      if (saved) {
+        parts.runs[callId] = savedRunView(callId, String(input.purpose ?? ''), saved, {
+          dataSourceId: typeof content.dataSourceId === 'number' ? content.dataSourceId : 0,
+          status: content.ok === true ? 'done' : 'failed',
+          rowCount: typeof content.rowCount === 'number' ? content.rowCount : null,
+          error: typeof content.error === 'string' ? content.error : null,
+        })
         items = [...items, { kind: 'run', callId }]
       }
       if (isCardTool(item.name) && outcome) {

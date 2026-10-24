@@ -2,6 +2,12 @@ import { z } from 'zod'
 
 const id = z.string().min(1).max(128)
 const positive = z.number().int().positive()
+const savedQueryParameter = z.union([
+  z.string().max(500),
+  z.number(),
+  z.array(z.string().max(500)).max(50),
+  z.object({ start: z.string().max(64), end: z.string().max(64) }).strict(),
+])
 
 export const chatProposalSchema = z
   .object({
@@ -57,6 +63,20 @@ const frameData = {
             sql: z.string().min(1).max(60_000),
             purpose: z.string().max(500),
             vizChoiceId: z.string().min(1).max(64),
+          })
+          .strict(),
+      })
+      .strict(),
+    z
+      .object({
+        callId: id,
+        tool: z.literal('run_saved_query'),
+        args: z
+          .object({
+            queryId: positive,
+            parameters: z.record(savedQueryParameter).refine((value) => Object.keys(value).length <= 20),
+            visualizationId: positive.nullable(),
+            purpose: z.string().max(500),
           })
           .strict(),
       })

@@ -64,7 +64,7 @@ export interface ChatJsonRelay<TRequest, TResponse> {
   requestSchema?: ZodType<TRequest>
   responseSchema?: ZodType<TResponse>
   maxRequestBytes?: number
-  extend?: () => Record<string, unknown>
+  extend?: (request: Request) => Promise<Record<string, unknown>>
 }
 
 export async function relayChatJson<TRequest, TResponse>(
@@ -78,7 +78,7 @@ export async function relayChatJson<TRequest, TResponse>(
   if (relay.requestSchema) {
     try {
       const payload = await parseAiRequest(request, relay.requestSchema, 'Invalid chat request', relay.maxRequestBytes)
-      body = JSON.stringify({ ...payload, ...(relay.extend?.() ?? {}) })
+      body = JSON.stringify({ ...payload, ...((await relay.extend?.(request)) ?? {}) })
     } catch (error) {
       const context = isAppError(error) ? error.context : {}
       return errorResponse(invalidRequest('Invalid chat request', context), 400)

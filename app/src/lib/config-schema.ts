@@ -2,6 +2,7 @@
 // No file or process access here (that lives in config.ts), so this module is
 // safe to import from tests and from client code for the ClientConfig type.
 import { z } from 'zod'
+import { mapProvidersSchema, withGoogleKey, type ClientMapProvider } from './config-maps.ts'
 import { DEFAULT_PALETTE, DEFAULT_PALETTE_DARK } from '../../packages/viz/src/lib/chart-palette-default.ts'
 
 export { DEFAULT_PALETTE, DEFAULT_PALETTE_DARK }
@@ -103,6 +104,7 @@ export const veodynConfigSchema = z.object({
   map: z
     .object({
       tile_url: z.string().url().default('https://demotiles.maplibre.org/style.json'),
+      providers: mapProvidersSchema.optional(),
     })
     .strict()
     .default({}),
@@ -210,7 +212,10 @@ export const veodynConfigSchema = z.object({
 export type VeodynConfig = z.infer<typeof veodynConfigSchema>
 
 // Client-safe subset: everything except server-only AI internals.
-export type ClientConfig = Omit<VeodynConfig, 'ai'> & { ai: { enabled: boolean; chat?: boolean } }
+export type ClientConfig = Omit<VeodynConfig, 'ai' | 'map'> & {
+  ai: { enabled: boolean; chat?: boolean }
+  map: Omit<VeodynConfig['map'], 'providers'> & { providers?: ClientMapProvider[] }
+}
 
 export type DemoPersona = VeodynConfig['demo']['personas'][number]
 
@@ -218,9 +223,18 @@ export function usesSharedDemoAccounts(config: Pick<ClientConfig, 'demo'>): bool
   return config.demo.personas.length > 0
 }
 
-export function toClientConfig(config: VeodynConfig): ClientConfig {
-  const { ai, ...rest } = config
-  return { ...rest, ai: { enabled: ai.enabled, chat: ai.chat } }
+export interface ClientSecrets {
+  googleMapsKey?: string
+}
+
+export function toClientConfig(config: VeodynConfig, secrets: ClientSecrets = {}): ClientConfig {
+  const { ai, map, ...rest } = config
+  const { providers, ...mapRest } = map
+  return {
+    ...rest,
+    ai: { enabled: ai.enabled, chat: ai.chat },
+    map: providers ? { ...mapRest, providers: withGoogleKey(providers, secrets.googleMapsKey) } : mapRest,
+  }
 }
 
 export const NEUTRAL_CONFIG: VeodynConfig = veodynConfigSchema.parse({})

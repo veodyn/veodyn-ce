@@ -5,8 +5,6 @@ from pydantic import Field
 
 from veodyn_api.schemas.ai import CamelModel
 
-MAX_MESSAGE_CHARS = 4_000
-
 
 class ChatThreadOut(CamelModel):
     id: str
@@ -25,18 +23,6 @@ class ChatThreadListOut(CamelModel):
 class ChatThreadPatchIn(CamelModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     pinned: bool | None = None
-
-
-class ChatVizShapeIn(CamelModel):
-    id: str = Field(max_length=64)
-    type: str = Field(max_length=64)
-    label: str = Field(max_length=80)
-    guide: str | None = Field(default=None, max_length=400)
-
-
-class ChatTurnIn(CamelModel):
-    text: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
-    viz_catalog: list[ChatVizShapeIn] | None = Field(default=None, max_length=60)
 
 
 class ChatTurnStartedOut(CamelModel):
@@ -110,11 +96,13 @@ class _ChatRowsBase(_ChatResultBase):
     truncated: bool | None = None
     columns: list[ChatResultColumnIn] | None = Field(default=None, max_length=500)
     sample: list[dict[str, Any]] | None = Field(default=None, max_length=50)
+    notice: str | None = Field(default=None, max_length=300)
 
 
 class ChatQueryResultIn(_ChatRowsBase):
     kind: Literal["query_result"]
     data_source_id: int | None = Field(default=None, gt=0)
+    saved_query_id: int | None = Field(default=None, gt=0)
 
 
 class ChatLibraryItemIn(CamelModel):

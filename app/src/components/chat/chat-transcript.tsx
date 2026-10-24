@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
 import { chatToolContributionFor, isContributedTool } from '@/features/chat-tools'
 import type { ThreadState, TurnItem, TurnView } from '@/lib/chat/thread-model'
-import type { QueryResultData } from '@/lib/mock-data'
+import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { ContributedCallCard } from './contributed-call-card'
 import { DashboardCard } from './dashboard-card'
 import { DataSourcesCard } from './data-sources-card'
@@ -32,6 +32,7 @@ export type Selection = { kind: 'run'; id: string } | { kind: 'call'; id: string
 interface ChatTranscriptProps {
   state: ThreadState
   results: Record<string, QueryResultData>
+  visualizations?: Record<string, MockVisualization | null>
   runErrors: Record<string, string>
   selection: Selection | null
   onSelect: (selection: Selection) => void
@@ -114,6 +115,7 @@ function TranscriptItem({ item, ...props }: ChatTranscriptProps & { item: Render
     <RunCard
       run={run}
       data={props.results[item.callId]}
+      visualization={props.visualizations?.[item.callId]}
       error={props.runErrors[item.callId]}
       selected={isSelected(props.selection, 'run', item.callId)}
       onSelect={() => props.onSelect({ kind: 'run', id: item.callId })}

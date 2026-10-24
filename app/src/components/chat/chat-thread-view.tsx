@@ -75,7 +75,7 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
     return <ListLoadError noun="this conversation" onRetry={chat.reload} />
   }
 
-  const pane = paneFor(selection, chat.state, results)
+  const pane = paneFor(selection, chat.state, results, chat.visualizations)
   const savedCall = selection?.kind === 'call' ? state.calls[selection.id] : undefined
   const closePane = () => setSelection(null)
   const sidePane = pane ? (
@@ -100,6 +100,7 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
                 <ChatTranscript
                   state={state}
                   results={results}
+                  visualizations={chat.visualizations}
                   runErrors={chat.runErrors}
                   selection={selection}
                   onSelect={setSelection}
@@ -141,12 +142,19 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
 function paneFor(
   selection: Selection | null,
   state: ReturnType<typeof useChatThread>['state'],
-  results: ReturnType<typeof useChatThread>['results']
+  results: ReturnType<typeof useChatThread>['results'],
+  visualizations: ReturnType<typeof useChatThread>['visualizations']
 ) {
   if (selection?.kind === 'run') {
     const run = state.runs[selection.id]
     if (!run) return null
-    return { title: run.purpose || 'Query', sql: run.sql, vizChoiceId: run.vizChoiceId, data: results[run.callId] }
+    return {
+      title: run.purpose || 'Query',
+      sql: run.sql,
+      vizChoiceId: run.vizChoiceId,
+      data: results[run.callId],
+      visualization: visualizations[run.callId],
+    }
   }
   if (selection?.kind === 'draft') {
     const latest = state.drafts[selection.id]?.versions.at(-1)

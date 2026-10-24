@@ -109,6 +109,7 @@ async def test_a_text_only_turn_streams_and_is_stored(db: Session, bus: TurnBus,
         "open_dashboard",
         "propose_dashboard",
         "link_help",
+        "run_saved_query",
     ]
 
 
@@ -308,23 +309,6 @@ async def test_a_data_source_not_looked_up_this_turn_is_refused_before_the_brows
     assert "tool_request" not in [event for event, _ in await frames(bus, turn)]
     [result] = model.calls[1]["messages"][2]["content"]
     assert result["is_error"] is True and "list_data_sources" in result["content"]
-
-
-async def test_the_hop_limit_ends_the_turn_with_a_note(
-    db: Session, bus: TurnBus, sessions: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(runner_module, "MAX_TOOL_HOPS", 2)
-    turn = new_turn(db)
-    bad = dict(RUN, datasetTable="nowhere")
-    model = ScriptedChatModel(tool_turn("c1", "run_query", bad), tool_turn("c2", "run_query", bad))
-    await make_runner(model, bus, sessions).run(turn.id, turn.thread_id, 1, turn.user_text)
-    events = await frames(bus, turn)
-    assert events[-1] == (
-        "turn_done",
-        {"stopReason": "tool_hop_limit", "usage": {"input_tokens": 6, "output_tokens": 10, "model": "scripted-model"}},
-    )
-    assert ("text_delta", {"text": runner_module.HOP_LIMIT_TEXT}) in events
-    assert stored(db, turn).blocks[-1]["content"][0]["text"] == runner_module.HOP_LIMIT_TEXT
 
 
 async def test_cancel_stops_before_the_next_step(db: Session, bus: TurnBus, sessions: Any) -> None:

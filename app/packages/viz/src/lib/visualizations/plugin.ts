@@ -2,9 +2,12 @@ import type { ComponentType } from 'react'
 import type { PlacedAnnotation } from '../annotation-overlay'
 import type { MockVisualization, QueryResultColumn, QueryResultData } from '../../types/viz-data'
 import type { VizThumbnail } from '../../components/visualizations/viz-thumbnails'
+import type { MapProvider } from './map-providers'
 import type { OptionSchema } from './option-schema'
 
 export const PLUGIN_API_VERSION = 1
+
+export const CHAT_GUIDE_MAX_CHARS = 400
 
 export interface VisualizationRendererProps {
   visualization: MockVisualization
@@ -27,9 +30,14 @@ export interface VisualizationChoice {
   options: Record<string, unknown>
   Thumbnail: VizThumbnail
   guide?: string
+  libraryTag?: string
 }
 
 export type VisualizationAudience = 'analyst' | 'internal'
+
+export interface ReadinessContext {
+  mapProviders: readonly MapProvider[]
+}
 
 export interface VisualizationPlugin {
   apiVersion: number
@@ -53,6 +61,10 @@ export interface VisualizationPlugin {
   validate?(options: Record<string, unknown>, data: QueryResultData): string[]
 
   choices?: VisualizationChoice[]
+
+  mapProvider?: string
+
+  readiness?(options: Record<string, unknown>, context: ReadinessContext): string | null
 
   publicOptions?: OptionSchema
 }

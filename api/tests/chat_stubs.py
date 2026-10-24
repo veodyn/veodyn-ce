@@ -48,8 +48,11 @@ class ScriptedChatModel:
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
         on_text: Any,
+        forbid_tools: bool = False,
     ) -> Any:
-        self.calls.append({"system": system, "messages": copy.deepcopy(messages), "tools": tools})
+        self.calls.append(
+            {"system": system, "messages": copy.deepcopy(messages), "tools": tools, "forbid_tools": forbid_tools}
+        )
         if not self.turns:
             raise AssertionError("the model was called more times than the test scripted")
         turn = self.turns.pop(0)

@@ -55,10 +55,17 @@ const rows = {
   truncated: z.boolean().optional(),
   columns: z.array(columnSchema).max(500).optional(),
   sample: z.array(z.record(z.unknown())).max(50).optional(),
+  notice: z.string().max(300).optional(),
 }
 
 export const queryResultSchema = z
-  .object({ ...base, ...rows, kind: z.literal('query_result'), dataSourceId: id.optional() })
+  .object({
+    ...base,
+    ...rows,
+    kind: z.literal('query_result'),
+    dataSourceId: id.optional(),
+    savedQueryId: id.optional(),
+  })
   .strict()
 
 export const libraryItemSchema = z

@@ -18,8 +18,8 @@ Every Veodyn instance also serves the package it was built with, beside any
 plugin packages it carries, at `/packages/<name>-<version>.tgz`:
 
 ```sh
-curl -O https://veodyn.example.org/packages/veodyn-viz-0.2.0.tgz
-npm install ./veodyn-viz-0.2.0.tgz
+curl -O https://veodyn.example.org/packages/veodyn-viz-0.4.1.tgz
+npm install ./veodyn-viz-0.4.1.tgz
 ```
 
 Keep the downloaded file in your repository. A later release of the instance

@@ -99,6 +99,19 @@ async def test_the_request_lets_the_model_choose_and_caches_the_prefix() -> None
     assert request["messages"] is MESSAGES
 
 
+async def test_a_closing_request_keeps_the_tools_but_forbids_calling_them() -> None:
+    client = FakeClient(FakeStream([], final()))
+    model = AnthropicChatModel(client, "claude-test", 1234)
+
+    async def on_text(text: str) -> None:
+        return None
+
+    await model.run(system=SYSTEM, messages=MESSAGES, tools=TOOLS, on_text=on_text, forbid_tools=True)
+    [request] = client.messages.requests
+    assert request["tool_choice"] == {"type": "none"}
+    assert request["tools"][-1]["name"] == TOOLS[-1]["name"]
+
+
 async def test_a_request_without_tools_sends_no_tool_fields() -> None:
     client = FakeClient(FakeStream([], final()))
     await run(client, [], tools=[])

@@ -14,11 +14,13 @@ export interface VizChoice {
   options: Record<string, unknown>
   Thumbnail: VizThumbnail
   guide?: string
+  libraryTag?: string
 }
 
 export interface VisualizationVisibility {
   enabled?: readonly string[] | null
   audience?: Readonly<Record<string, VisualizationAudience>> | null
+  mapProviders?: readonly string[] | null
 }
 
 export interface AdhocViz {
@@ -36,6 +38,7 @@ function choicesOf(plugins: readonly VisualizationPlugin[]): VizChoice[] {
       options: choice.options,
       Thumbnail: choice.Thumbnail,
       guide: choice.guide ?? CORE_CHOICE_GUIDES[choice.id],
+      ...(choice.libraryTag ? { libraryTag: choice.libraryTag } : {}),
     }))
   )
 }
@@ -75,8 +78,21 @@ export function visibleVisualizations(
   )
 }
 
+function providerEnabled(plugin: VisualizationPlugin, visibility?: VisualizationVisibility | null): boolean {
+  const needed = plugin.mapProvider
+  const enabled = visibility?.mapProviders
+  return needed === undefined || enabled == null || enabled.includes(needed)
+}
+
 export function visibleVizChoices(visibility?: VisualizationVisibility | null): VizChoice[] {
-  return choicesOf(visibleVisualizations(visibility))
+  return choicesOf(visibleVisualizations(visibility).filter((plugin) => providerEnabled(plugin, visibility)))
+}
+
+export function visibilityOf(config: {
+  visualizations: VisualizationVisibility
+  map?: { providers?: readonly { id: string }[] }
+}): VisualizationVisibility {
+  return { ...config.visualizations, mapProviders: config.map?.providers?.map((provider) => provider.id) }
 }
 
 export const DEFAULT_VIZ_ID = 'table'

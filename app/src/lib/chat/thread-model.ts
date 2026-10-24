@@ -1,5 +1,6 @@
 import type { ChatFrame, ChatProposal, DashboardProposal } from './frames'
-import { settledView, type CallView, type RunStatus } from './thread-calls'
+import { savedRunView, settledView, type CallView, type RunStatus } from './thread-calls'
+import type { SavedRunSpec } from './run-spec'
 import type { HelpLinkView } from './thread-help'
 import { appendText, withVersion } from './thread-stored'
 import type { ChatToolResult } from './tool-results'
@@ -21,6 +22,7 @@ export interface RunView {
   rowCount: number | null
   durationMs: number | null
   error: string | null
+  saved?: SavedRunSpec
 }
 
 export type TurnItem =
@@ -135,6 +137,16 @@ export function applyFrame(state: ThreadState, turnId: string, frame: ChatFrame)
     case 'tool_request': {
       const request = frame.data
       const { callId } = request
+      if (request.tool === 'run_saved_query') {
+        const { args } = request
+        const run = savedRunView(callId, args.purpose, {
+          queryId: args.queryId,
+          parameters: args.parameters,
+          visualizationId: args.visualizationId,
+        })
+        const next = { ...state, runs: { ...state.runs, [callId]: state.runs[callId] ?? run } }
+        return seen(withItem(next, turnId, { kind: 'run', callId }))
+      }
       if (request.tool !== 'run_query') {
         const call: CallView = {
           callId,

@@ -6,12 +6,14 @@ from typing import Any
 
 from veodyn_api.errors import ApiError
 from veodyn_api.schemas.ai import AiDatasetIn
+from veodyn_api.schemas.ai_chat_context import Edition
 from veodyn_api.schemas.catalog import DatasetOut
 from veodyn_api.services.ai_converse_prompt import picked_id, text_of
 from veodyn_api.services.ai_sql import QUERYABLE_TABLE_RE, UngroundedSql, validate_generic_sql, validate_sql
 from veodyn_api.services.ai_viz_catalog import DEFAULT_CATALOG, VizCatalog
 from veodyn_api.services.ai_viz_choice import VIZ_FIELD_DESCRIPTION
-from veodyn_api.services.chat.help_index import load_index, shown_id
+from veodyn_api.services.chat.help_filter import for_edition
+from veodyn_api.services.chat.help_index import HelpIndex, load_index, shown_id
 
 MAX_NAMED_TABLES = 20
 LIBRARY_KINDS = ("query", "dashboard")
@@ -60,6 +62,7 @@ class ToolContext:
     catalog: VizCatalog = DEFAULT_CATALOG
     refusals: int = field(default=0)
     help_links: int = field(default=0)
+    edition: Edition | None = None
 
 
 Handler = Callable[[str, dict[str, Any], ToolContext], Awaitable[ClientCall | Immediate]]
@@ -426,8 +429,7 @@ async def _open_dashboard(call_id: str, arguments: dict[str, Any], ctx: ToolCont
     return ClientCall(call_id=call_id, tool="open_dashboard", args={"dashboardId": dashboard_id})
 
 
-def _suggested_pages(wanted: str) -> list[str]:
-    index = load_index()
+def _suggested_pages(wanted: str, index: HelpIndex | None) -> list[str]:
     words = {word for word in re.split(r"[^a-z0-9]+", wanted.lower()) if len(word) >= 3}
     scored = [
         (sum(word in f"{page.id} {page.title}".lower() for word in words), shown_id(page.id))
@@ -438,7 +440,7 @@ def _suggested_pages(wanted: str) -> list[str]:
 
 
 async def _link_help(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
-    index = load_index()
+    index = for_edition(load_index(), ctx.edition)
     if index is None:
         return Immediate("the documentation is unavailable on this instance; do not link to it", is_error=True)
     if ctx.help_links >= MAX_HELP_LINKS:
@@ -452,7 +454,7 @@ async def _link_help(call_id: str, arguments: dict[str, Any], ctx: ToolContext) 
     wanted = text_of(asked, 200).strip("/")
     page = index.page(wanted)
     if page is None:
-        suggestions = _suggested_pages(wanted)
+        suggestions = _suggested_pages(wanted, index)
         hint = f" Pages that may fit: {', '.join(suggestions)}." if suggestions else " No page is close to it."
         return Immediate(f"there is no documentation page {wanted!r}.{hint} Use a page from the index.", is_error=True)
     anchor = text_of(arguments.get("section"), 200).lstrip("#") or None
@@ -749,3 +751,5 @@ for _tool in (
     LINK_HELP,
 ):
     register_chat_tool(_tool)
+
+from veodyn_api.services.chat import saved_query_tool as _saved_query_tool  # noqa: E402, F401

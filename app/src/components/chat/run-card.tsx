@@ -1,13 +1,14 @@
 'use client'
 
 import { ChevronDown, PanelRightOpen, RotateCw } from 'lucide-react'
+import Link from 'next/link'
 import { CodeBlock } from '@/components/shared/code-block'
 import { IconButton } from '@/components/shared/icon-button'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { RunView } from '@/lib/chat/thread-model'
-import type { QueryResultData } from '@/lib/mock-data'
+import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { ResultView } from './result-view'
 import { ToolCardTitle, ToolFailure } from './tool-card-parts'
@@ -23,15 +24,16 @@ export function runStatusLabel(run: RunView): string {
 interface RunCardProps {
   run: RunView
   data?: QueryResultData
+  visualization?: MockVisualization | null
   error?: string
   selected: boolean
   onSelect: () => void
   onRerun: () => void
 }
 
-export function RunCard({ run, data, error, selected, onSelect, onRerun }: RunCardProps) {
+export function RunCard({ run, data, visualization, error, selected, onSelect, onRerun }: RunCardProps) {
   const message = error ?? run.error
-  const canRerun = run.dataSourceId > 0
+  const canRerun = run.dataSourceId > 0 || run.saved !== undefined
   return (
     <Card size="sm" className={cn('w-full', selected && 'ring-2 ring-primary')}>
       <CardHeader>
@@ -48,7 +50,7 @@ export function RunCard({ run, data, error, selected, onSelect, onRerun }: RunCa
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        {data ? <ResultView data={data} vizChoiceId={run.vizChoiceId} /> : null}
+        {data ? <ResultView data={data} vizChoiceId={run.vizChoiceId} visualization={visualization} /> : null}
         {!data && run.status === 'done' && canRerun ? (
           <Button variant="outline" size="sm" className="self-start" onClick={onRerun}>
             <RotateCw aria-hidden="true" />
@@ -56,15 +58,21 @@ export function RunCard({ run, data, error, selected, onSelect, onRerun }: RunCa
           </Button>
         ) : null}
         {message ? <ToolFailure>{message}</ToolFailure> : null}
-        <Collapsible>
-          <CollapsibleTrigger render={<Button variant="ghost" size="sm" className="-ml-2" />}>
-            <ChevronDown aria-hidden="true" />
-            SQL
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CodeBlock code={run.sql} />
-          </CollapsibleContent>
-        </Collapsible>
+        {run.saved ? (
+          <Link href={`/queries/${run.saved.queryId}`} className="self-start text-sm text-muted-foreground hover:underline">
+            Open the saved query
+          </Link>
+        ) : (
+          <Collapsible>
+            <CollapsibleTrigger render={<Button variant="ghost" size="sm" className="-ml-2" />}>
+              <ChevronDown aria-hidden="true" />
+              SQL
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CodeBlock code={run.sql} />
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </CardContent>
     </Card>
   )

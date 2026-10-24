@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { isRenderableComponent } from '@/test/component-shape'
+import { CORE_CHOICE_GUIDES } from './choice-guides'
 import {
+  CHAT_GUIDE_MAX_CHARS,
+  chatGuideProblems,
   CORE_VISUALIZATIONS,
   getVisualization,
   listVisualizations,
@@ -57,6 +60,47 @@ describe('visualization registry', () => {
   it('refuses to let a plugin shadow an existing type', () => {
     registerVisualization(fakePlugin('TEST_DUPLICATE'))
     expect(() => registerVisualization(fakePlugin('TEST_DUPLICATE'))).toThrow(/already registered/)
+  })
+
+  describe('chat guide cap', () => {
+    const choiceWith = (guide: string): NonNullable<VisualizationPlugin['choices']> => [
+      { id: 'test-guide', label: 'Guide', options: {}, Thumbnail: () => null, guide },
+    ]
+
+    it('registering_a_plugin_with_an_over_long_guide_keeps_the_plugin_and_drops_the_guide', () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      const guide = 'g'.repeat(CHAT_GUIDE_MAX_CHARS + 1)
+      registerVisualization(fakePlugin('TEST_LONG_GUIDE', { choices: choiceWith(guide) }))
+      const registered = getVisualization('TEST_LONG_GUIDE')
+      expect(registered?.choices?.[0].guide).toBeUndefined()
+      expect(registered?.choices?.[0].id).toBe('test-guide')
+      expect(error).toHaveBeenCalledTimes(1)
+      expect(String(error.mock.calls[0][0])).toContain('TEST_LONG_GUIDE')
+      expect(String(error.mock.calls[0][0])).toContain('test-guide')
+      error.mockRestore()
+    })
+
+    it('chat_guide_problems_names_the_over_long_choice', () => {
+      const guide = 'g'.repeat(CHAT_GUIDE_MAX_CHARS + 1)
+      const problems = chatGuideProblems(fakePlugin('TEST_PROBLEM', { choices: choiceWith(guide) }))
+      expect(problems).toHaveLength(1)
+      expect(problems[0]).toContain('TEST_PROBLEM')
+      expect(problems[0]).toContain('test-guide')
+      expect(chatGuideProblems(fakePlugin('TEST_OK', { choices: choiceWith('short') }))).toEqual([])
+      expect(chatGuideProblems(fakePlugin('TEST_NONE'))).toEqual([])
+    })
+
+    it('accepts_a_guide_of_exactly_400_chars', () => {
+      const guide = 'g'.repeat(CHAT_GUIDE_MAX_CHARS)
+      registerVisualization(fakePlugin('TEST_EDGE_GUIDE', { choices: choiceWith(guide) }))
+      expect(registeredTypes()).toContain('TEST_EDGE_GUIDE')
+    })
+
+    it('keeps_every_core_guide_within_the_cap', () => {
+      for (const [id, guide] of Object.entries(CORE_CHOICE_GUIDES)) {
+        expect(guide.length, id).toBeLessThanOrEqual(CHAT_GUIDE_MAX_CHARS)
+      }
+    })
   })
 
   describe('listVisualizations', () => {

@@ -11,6 +11,7 @@ import { resolveVizChoice } from '@/lib/viz-choices'
 interface ResultViewProps {
   data: QueryResultData
   vizChoiceId: string
+  visualization?: MockVisualization | null
   className?: string
 }
 
@@ -28,8 +29,9 @@ export function chatVisualization(vizChoiceId: string, data: QueryResultData): M
   }
 }
 
-export function ResultView({ data, vizChoiceId, className }: ResultViewProps) {
-  const visualization = useMemo(() => chatVisualization(vizChoiceId, data), [vizChoiceId, data])
+export function ResultView({ data, vizChoiceId, visualization: saved, className }: ResultViewProps) {
+  const inferred = useMemo(() => chatVisualization(vizChoiceId, data), [vizChoiceId, data])
+  const visualization = saved ?? inferred
   const drawable = visualizationData(visualization.type, data, { requireRows: true })
   return (
     <div className={cn('h-72 min-h-0 overflow-auto rounded-md border bg-background', className)}>

@@ -5,6 +5,7 @@ import { Providers } from './providers'
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout'
 import { config } from '@/lib/config'
 import { toClientConfig } from '@/lib/config-schema'
+import { env } from '@/lib/env'
 import { appFontClassName, fontStyleFromConfig } from '@/lib/font-registry'
 import { telemetryClientConfig } from '@/lib/observability/serverConfig'
 import { readServerSession } from '@/lib/server-session'
@@ -70,7 +71,7 @@ export default async function RootLayout({
             it is read per request. This route is already force-dynamic, so one
             image serves stage with telemetry on and prod with it off. */}
         <Providers
-          config={toClientConfig(config)}
+          config={toClientConfig(config, { googleMapsKey: env.VEODYN_MAPS__GOOGLE__KEY })}
           telemetry={telemetryClientConfig()}
           initialSession={initialSession}
         >

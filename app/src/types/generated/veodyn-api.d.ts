@@ -755,6 +755,26 @@ export interface components {
             /** Visualizationtype */
             visualizationType: string;
         };
+        /** ChatDataSourceEntryIn */
+        ChatDataSourceEntryIn: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Noschema
+             * @default false
+             */
+            noSchema: boolean;
+            /** Resources */
+            resources?: string[] | null;
+            /** Syntax */
+            syntax: string;
+            /** Type */
+            type: string;
+            /** Viewonly */
+            viewOnly: boolean;
+        };
         /** ChatDataSourceRefIn */
         ChatDataSourceRefIn: {
             /** Id */
@@ -849,6 +869,22 @@ export interface components {
             turnId: string;
             /** Version */
             version: number;
+        };
+        /** ChatInstanceIn */
+        ChatInstanceIn: {
+            /**
+             * Edition
+             * @enum {string}
+             */
+            edition: "CE" | "EE" | "HUB";
+            /** Features */
+            features?: string[];
+            /** Maps */
+            maps?: components["schemas"]["ChatMapProviderIn"][];
+            /** Name */
+            name: string;
+            /** Plugins */
+            plugins?: string[];
         };
         /** ChatKpiEvaluationIn */
         ChatKpiEvaluationIn: {
@@ -1010,6 +1046,13 @@ export interface components {
             /** Ok */
             ok: boolean;
         };
+        /** ChatMapProviderIn */
+        ChatMapProviderIn: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+        };
         /** ChatPromotionIn */
         ChatPromotionIn: {
             /** Targetid */
@@ -1055,6 +1098,8 @@ export interface components {
              * @enum {string}
              */
             kind: "query_result";
+            /** Notice */
+            notice?: string | null;
             /** Ok */
             ok: boolean;
             /** Rowcount */
@@ -1063,8 +1108,48 @@ export interface components {
             sample?: {
                 [key: string]: unknown;
             }[] | null;
+            /** Savedqueryid */
+            savedQueryId?: number | null;
             /** Truncated */
             truncated?: boolean | null;
+        };
+        /** ChatReadyParamIn */
+        ChatReadyParamIn: {
+            /** Backingqueryid */
+            backingQueryId?: number | null;
+            /** Default */
+            default?: string | number | null;
+            /** Name */
+            name: string;
+            /** Type */
+            type: string;
+            /** Values */
+            values?: (string | number)[];
+            /**
+             * Valuestruncated
+             * @default false
+             */
+            valuesTruncated: boolean;
+        };
+        /** ChatReadyQueryIn */
+        ChatReadyQueryIn: {
+            /** Choiceid */
+            choiceId: string;
+            /** Datasourceid */
+            dataSourceId: number;
+            /**
+             * More
+             * @default false
+             */
+            more: boolean;
+            /** Name */
+            name: string;
+            /** Params */
+            params?: components["schemas"]["ChatReadyParamIn"][];
+            /** Queryid */
+            queryId: number;
+            /** Visualizationid */
+            visualizationId: number;
         };
         /** ChatResultColumnIn */
         ChatResultColumnIn: {
@@ -1118,6 +1203,8 @@ export interface components {
              * @enum {string}
              */
             kind: "saved_visualization";
+            /** Notice */
+            notice?: string | null;
             /** Ok */
             ok: boolean;
             query?: components["schemas"]["ChatSavedQueryIn"] | null;
@@ -1190,6 +1277,11 @@ export interface components {
         };
         /** ChatTurnIn */
         ChatTurnIn: {
+            /** Datasources */
+            dataSources?: components["schemas"]["ChatDataSourceEntryIn"][] | null;
+            instance?: components["schemas"]["ChatInstanceIn"] | null;
+            /** Readyqueries */
+            readyQueries?: components["schemas"]["ChatReadyQueryIn"][] | null;
             /** Text */
             text: string;
             /** Vizcatalog */

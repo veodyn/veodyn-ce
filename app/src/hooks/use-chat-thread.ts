@@ -19,7 +19,7 @@ import {
 } from '@/lib/chat/thread-model'
 import type { ChatToolResult } from '@/lib/chat/tool-results'
 import type { ChatPromotion } from '@/lib/chat/wire'
-import type { QueryResultData } from '@/lib/mock-data'
+import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { cancelTurn, chatErrorStatus, getThread, postTurn } from '@/services/ai/chat-client'
 import { CHAT_THREADS_KEY } from './use-chat'
 import { useToolExecutor } from './use-tool-executor'
@@ -32,6 +32,7 @@ export const SEND_FAILED_MESSAGE = 'The message could not be sent. Try again.'
 export interface ChatThreadController {
   state: ThreadState
   results: Record<string, QueryResultData>
+  visualizations: Record<string, MockVisualization | null>
   runErrors: Record<string, string>
   loading: boolean
   loadFailed: boolean
@@ -55,7 +56,7 @@ export function useChatThread(threadId: string): ChatThreadController {
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
-  const { results, errors, execute, rerun: rerunQuery } = useToolExecutor()
+  const { results, errors, visualizations, execute, rerun: rerunQuery } = useToolExecutor()
 
   const onResult = useCallback((callId: string, result: ChatToolResult) => {
     setState((current) => settleCall(current, callId, result))
@@ -188,7 +189,13 @@ export function useChatThread(threadId: string): ChatThreadController {
   const rerun = useCallback(
     (callId: string) => {
       const run = state.runs[callId]
-      if (run) rerunQuery(callId, run.sql, run.dataSourceId)
+      if (!run) return
+      rerunQuery(
+        callId,
+        run.saved
+          ? { kind: 'saved', ...run.saved }
+          : { kind: 'adhoc', sql: run.sql, dataSourceId: run.dataSourceId }
+      )
     },
     [state, rerunQuery]
   )
@@ -208,6 +215,7 @@ export function useChatThread(threadId: string): ChatThreadController {
   return {
     state,
     results,
+    visualizations,
     runErrors: errors,
     loading,
     loadFailed,

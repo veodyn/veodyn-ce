@@ -15,7 +15,9 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
+ARG HELP_INDEX=veodyn_api/services/chat/help_index.json
 COPY veodyn_api ./veodyn_api
+COPY ${HELP_INDEX} ./veodyn_api/services/chat/help_index.json
 COPY migrations ./migrations
 COPY alembic.ini ./
 RUN uv sync --frozen --no-dev

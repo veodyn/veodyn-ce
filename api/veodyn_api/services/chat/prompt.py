@@ -4,7 +4,17 @@ from veodyn_api.schemas.catalog import DatasetOut
 from veodyn_api.services.ai_capture_semantics import CAPTURE_SEMANTICS
 from veodyn_api.services.ai_viz_catalog import VizCatalog
 from veodyn_api.services.ai_viz_choice import VIZ_RULES
+from veodyn_api.services.chat.help_filter import for_edition
 from veodyn_api.services.chat.help_index import load_index, prompt_block
+from veodyn_api.services.chat.turn_context import (
+    EMPTY_CONTEXT,
+    MAP_QUESTION_RULE,
+    TurnContext,
+    has_several_maps,
+    instance_block,
+    inventory_block,
+    ready_queries_block,
+)
 from veodyn_api.services.llm import compact_json
 
 MAX_COLUMNS = 60
@@ -27,9 +37,10 @@ you could not do.
 then offer it, do not assume. To revise a query you proposed earlier, pass its `draftId`.
 - You may only read the tables listed below by giving `datasetTable`, copied exactly. When a question is about \
 data that is not in that list, call `list_data_sources` before saying the data is unavailable.
-- Before writing a query against a data source other than the warehouse, call `describe_data_source` for it in \
-the same turn: for a `sql`-syntax source it returns tables and columns, for a `json`-syntax source it returns the \
-resources you may call and their params. A `resourceCall` may only name a resource that call returned.
+- Before writing a `resourceCall` for a `json`-syntax data source, call `describe_data_source` for it: it returns \
+the resources you may call and their params, and a `resourceCall` may only name a resource that call returned. For \
+a `sql`-syntax source, call `describe_data_source` when you need its tables and columns. The data source list you \
+are given states each source's syntax and whether it is view-only, so you do not need `list_data_sources` for that.
 - To build a query on top of an existing saved query (a `results`-type data source chaining one query's stored \
 result into another), first call `show_visualization` on that query to learn its columns from its stored result, \
 before writing SQL that references it as `query_<id>`. That data source itself has no static schema to describe.
@@ -78,11 +89,20 @@ def _dataset_row(dataset: DatasetOut) -> dict[str, Any]:
 
 
 def chat_system(
-    datasets: tuple[DatasetOut, ...], *, omitted_history: bool, catalog: VizCatalog | None = None
+    datasets: tuple[DatasetOut, ...],
+    *,
+    omitted_history: bool,
+    catalog: VizCatalog | None = None,
+    context: TurnContext = EMPTY_CONTEXT,
 ) -> list[dict[str, Any]]:
-    blocks: list[dict[str, Any]] = [{"type": "text", "text": CHAT_RULES}]
+    blocks: list[dict[str, Any]] = []
+    about = instance_block(context)
+    if about is not None:
+        blocks.append({"type": "text", "text": about})
+    rules = f"{CHAT_RULES}\n{MAP_QUESTION_RULE}" if has_several_maps(context) else CHAT_RULES
+    blocks.append({"type": "text", "text": rules})
     blocks.append({"type": "text", "text": catalog.rules if catalog is not None else VIZ_RULES})
-    docs = load_index()
+    docs = for_edition(load_index(), context.instance.edition if context.instance else None)
     if docs is not None:
         blocks.append({"type": "text", "text": prompt_block(docs)})
     if datasets:
@@ -98,6 +118,9 @@ def chat_system(
                 ),
             }
         )
+    for extra in (inventory_block(context), ready_queries_block(context)):
+        if extra is not None:
+            blocks.append({"type": "text", "text": extra})
     if omitted_history:
         blocks.append({"type": "text", "text": HISTORY_OMITTED})
     return blocks
