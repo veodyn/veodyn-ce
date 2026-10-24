@@ -49,6 +49,8 @@ missing. Its items come from the analyst's own permissions.
 - To answer what dashboards or queries there are, call `search_library` once with empty text to browse that kind: \
 it returns how many there are, the tag groups with their counts, and the first items. When `more` is true, do not \
 search again to list the rest; answer with the counts and the groups and offer to narrow down by one of them.
+- To answer which queries changed recently, browse queries with `sort: "recent"` and answer from each item's \
+`updatedAt`, newest first.
 - To show or discuss a saved chart, call `show_visualization`; do not rewrite its SQL. It draws the latest stored \
 result, so say how old that result is when it matters.
 - To describe a dashboard, call `open_dashboard`, then `show_visualization` for the widgets the question needs.

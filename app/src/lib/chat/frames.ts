@@ -104,6 +104,7 @@ const frameData = {
             text: z.string().max(200),
             kinds: z.array(z.enum(['query', 'dashboard'])).min(1).max(2),
             tags: z.array(z.string().min(1).max(64)).max(5),
+            sort: z.enum(['match', 'recent']).optional(),
           })
           .strict(),
       })

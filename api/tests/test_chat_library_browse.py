@@ -12,7 +12,7 @@ pytestmark = pytest.mark.anyio
 async def test_a_search_with_no_text_and_no_tags_browses_the_kind() -> None:
     outcome = await prepare_call(call("search_library", text=" ", kinds=["dashboard"]), context())
     assert outcome == ClientCall(
-        call_id="call-1", tool="search_library", args={"text": "", "kinds": ["dashboard"], "tags": []}
+        call_id="call-1", tool="search_library", args={"text": "", "kinds": ["dashboard"], "tags": [], "sort": "match"}
     )
 
 

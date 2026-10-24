@@ -62,6 +62,7 @@ export interface QueryListParams {
   pageSize?: number
   search?: string
   tags?: string[]
+  order?: string
 }
 
 function listParams(params?: QueryListParams) {
@@ -70,6 +71,7 @@ function listParams(params?: QueryListParams) {
     page_size: params?.pageSize ?? 25,
     q: params?.search || undefined,
     tags: params?.tags?.length ? params.tags : undefined,
+    order: params?.order,
   }
 }
 
@@ -126,11 +128,11 @@ export async function search(
   // `tags` narrows server-side, so a tag facet does not depend on whatever
   // happened to land on the first page. An empty `q` with a tag set is a valid
   // search: everything carrying the tag.
-  opts?: { signal?: AbortSignal; tags?: string[] }
+  opts?: { signal?: AbortSignal; tags?: string[]; order?: string }
 ): Promise<RedashPaginatedResponse<MockQuery>> {
   return normalizePage(
     await redashApi.get<RedashPaginatedResponse<RedashQuery>>('queries', {
-      params: listParams({ search: q, tags: opts?.tags }),
+      params: listParams({ search: q, tags: opts?.tags, order: opts?.order }),
       signal: opts?.signal,
     })
   )

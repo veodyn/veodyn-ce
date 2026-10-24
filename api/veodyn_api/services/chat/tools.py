@@ -418,7 +418,10 @@ async def _search_library(call_id: str, arguments: dict[str, Any], ctx: ToolCont
             is_error=True,
         )
     ctx.library_searches += 1
-    return ClientCall(call_id=call_id, tool="search_library", args={"text": text, "kinds": kinds, "tags": tags})
+    sort = "recent" if arguments.get("sort") == "recent" else "match"
+    return ClientCall(
+        call_id=call_id, tool="search_library", args={"text": text, "kinds": kinds, "tags": tags, "sort": sort}
+    )
 
 
 async def _show_visualization(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
@@ -623,7 +626,8 @@ SEARCH_LIBRARY = ChatTool(
             "dashboards and 10 queries with ids, descriptions, tags and whether a query has a stored result, and "
             "queryCount and dashboardCount: how many matched in all. `more` means more matched than are listed. "
             "A browse also returns tagCounts, the tags in use with how many items carry each: narrow by one of "
-            "those tags rather than guessing words."
+            "those tags rather than guessing words. Each item's updatedAt is when it was last edited; a stored "
+            "result being refreshed does not change it."
         ),
         "input_schema": {
             "type": "object",
@@ -638,6 +642,11 @@ SEARCH_LIBRARY = ChatTool(
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Only items carrying all of these tags.",
+                },
+                "sort": {
+                    "type": "string",
+                    "enum": ["match", "recent"],
+                    "description": "recent lists the most recently edited queries first. match when omitted.",
                 },
             },
         },

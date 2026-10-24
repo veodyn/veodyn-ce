@@ -226,7 +226,7 @@ async def test_a_library_search_goes_to_the_browser_with_both_kinds_by_default()
     assert outcome == ClientCall(
         call_id="call-1",
         tool="search_library",
-        args={"text": "bikeshare", "kinds": ["query", "dashboard"], "tags": []},
+        args={"text": "bikeshare", "kinds": ["query", "dashboard"], "tags": [], "sort": "match"},
     )
 
 
@@ -236,7 +236,7 @@ async def test_a_library_search_keeps_known_kinds_and_caps_tags() -> None:
         call("search_library", text="", kinds=["dashboard", "report", "dashboard"], tags=tags), context()
     )
     assert isinstance(outcome, ClientCall)
-    assert outcome.args == {"text": "", "kinds": ["dashboard"], "tags": tags[:5]}
+    assert outcome.args == {"text": "", "kinds": ["dashboard"], "tags": tags[:5], "sort": "match"}
 
 
 async def test_a_library_search_with_no_known_kind_is_refused() -> None:

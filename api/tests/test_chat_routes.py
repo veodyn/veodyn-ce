@@ -387,7 +387,7 @@ def test_a_library_search_round_trip_through_the_routes(harness: Harness) -> Non
     assert request == {
         "callId": "call-1",
         "tool": "search_library",
-        "args": {"text": "bikeshare", "kinds": ["query", "dashboard"], "tags": []},
+        "args": {"text": "bikeshare", "kinds": ["query", "dashboard"], "tags": [], "sort": "match"},
     }
     query_result = {"ok": True, "kind": "query_result", "rowCount": 1}
     refused = harness.client.post(

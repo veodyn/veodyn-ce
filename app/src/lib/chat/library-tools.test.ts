@@ -76,6 +76,19 @@ describe('runLibraryTool', () => {
     expect(dashboards.search.mock.calls[0][1].pageSize).toBeUndefined()
   })
 
+  it('lists queries by their last edit when asked for the recent sort', async () => {
+    queries.search.mockResolvedValue({ results: [], count: 0 })
+    const args = { text: '', kinds: ['query' as const], tags: [], sort: 'recent' as const }
+    await runLibraryTool({ callId: 'c', tool: 'search_library', args }, signal())
+    expect(queries.search).toHaveBeenCalledWith('', expect.objectContaining({ order: '-updated_at' }))
+  })
+
+  it('leaves the query order to the search when no sort is asked for', async () => {
+    queries.search.mockResolvedValue({ results: [], count: 0 })
+    await search('trips', ['query'])
+    expect(queries.search.mock.calls[0][1].order).toBeUndefined()
+  })
+
   it('searches only the kinds asked for, passing tags through', async () => {
     queries.search.mockResolvedValue({ results: [savedQuery()], count: 1 })
     const result = await search('trips', ['query'], ['bikeshare'])

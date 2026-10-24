@@ -37,6 +37,7 @@ export const LIBRARY_RESULT_KIND = {
 } as const satisfies Record<LibraryToolRequest['tool'], ChatResultKind>
 
 const RESULTS_SOURCE_TYPE = 'results'
+const RECENTLY_EDITED_FIRST = '-updated_at'
 
 function refusal(error: unknown): string {
   if (error instanceof ApiError && (error.status === 403 || error.status === 404)) return NOT_AVAILABLE
@@ -83,11 +84,12 @@ async function searchLibrary(
   request: ChatToolRequestOf<'search_library'>,
   signal: AbortSignal
 ): Promise<ChatToolResult> {
-  const { text, kinds, tags } = request.args
+  const { text, kinds, tags, sort } = request.args
   const browsing = !text.trim() && tags.length === 0
   const options = { signal, tags: tags.length > 0 ? tags : undefined }
+  const queryOrder = sort === 'recent' ? RECENTLY_EDITED_FIRST : undefined
   const [queries, dashboards, tagGroups] = await Promise.all([
-    kinds.includes('query') ? queriesService.search(text, options) : null,
+    kinds.includes('query') ? queriesService.search(text, { ...options, order: queryOrder }) : null,
     kinds.includes('dashboard')
       ? dashboardsService.search(text, { ...options, pageSize: browsing ? DASHBOARD_LIMIT : undefined })
       : null,
