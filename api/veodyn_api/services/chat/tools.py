@@ -14,6 +14,7 @@ from veodyn_api.services.ai_viz_catalog import DEFAULT_CATALOG, VizCatalog
 from veodyn_api.services.ai_viz_choice import VIZ_FIELD_DESCRIPTION
 from veodyn_api.services.chat.help_filter import for_edition
 from veodyn_api.services.chat.help_index import HelpIndex, load_index, shown_id
+from veodyn_api.services.chat.viz_choice_check import missing_viz_choice
 
 MAX_NAMED_TABLES = 20
 LIBRARY_KINDS = ("query", "dashboard")
@@ -257,6 +258,9 @@ async def _run_query(call_id: str, arguments: dict[str, Any], ctx: ToolContext) 
     body = _checked_body(ctx, arguments, target)
     if isinstance(body, Immediate):
         return body
+    unchosen = missing_viz_choice(arguments, ctx.catalog)
+    if unchosen is not None:
+        return Immediate(unchosen, is_error=True)
     return ClientCall(
         call_id=call_id,
         tool="run_query",
@@ -276,6 +280,9 @@ async def _propose_query(call_id: str, arguments: dict[str, Any], ctx: ToolConte
     body = _checked_body(ctx, arguments, target)
     if isinstance(body, Immediate):
         return body
+    unchosen = missing_viz_choice(arguments, ctx.catalog)
+    if unchosen is not None:
+        return Immediate(unchosen, is_error=True)
     default_name = target.dataset.name if target.dataset is not None else f"data source {target.data_source_id}"
     payload: dict[str, Any] = {
         "name": text_of(arguments.get("name"), 255) or default_name,

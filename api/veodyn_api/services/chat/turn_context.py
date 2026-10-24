@@ -12,7 +12,7 @@ from veodyn_api.schemas.ai_chat_context import (
 MAP_QUESTION_RULE = (
     "- When a result could be drawn on more than one of this instance's map providers and the analyst has not "
     "said which in this conversation, ask one question naming the providers (which map do they want), then use "
-    "the answer for the rest of the conversation."
+    "the answer for the rest of the conversation: draw with the vizChoiceId of a map choice on that provider."
 )
 
 

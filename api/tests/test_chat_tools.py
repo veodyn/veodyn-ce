@@ -55,6 +55,8 @@ def context(
 
 
 def call(tool_name: str, /, **arguments: Any) -> dict[str, Any]:
+    if tool_name in ("run_query", "propose_query"):
+        arguments = {"vizChoiceId": "table", **arguments}
     return {"type": "tool_use", "id": "call-1", "name": tool_name, "input": arguments}
 
 

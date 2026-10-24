@@ -131,6 +131,7 @@
     "services/chat/store.py",
     "services/chat/tools.py",
     "services/chat/turn_context.py",
+    "services/chat/viz_choice_check.py",
     "services/clickhouse.py",
     "services/connector_compose_contract.py",
     "services/connector_configs.py",
