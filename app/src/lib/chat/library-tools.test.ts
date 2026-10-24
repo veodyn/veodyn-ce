@@ -7,11 +7,13 @@ const queries = vi.hoisted(() => ({ search: vi.fn(), get: vi.fn() }))
 const dashboards = vi.hoisted(() => ({ search: vi.fn(), get: vi.fn() }))
 const execution = vi.hoisted(() => ({ getResult: vi.fn() }))
 const dataSources = vi.hoisted(() => ({ listDataSources: vi.fn(), getDataSource: vi.fn(), getSchema: vi.fn() }))
+const tagClient = vi.hoisted(() => ({ fetchRedashTagVocabulary: vi.fn() }))
 
 vi.mock('@/services/redash/queries', () => queries)
 vi.mock('@/services/redash/dashboards', () => dashboards)
 vi.mock('@/services/redash/execution', () => execution)
 vi.mock('@/services/redash/data-sources', () => dataSources)
+vi.mock('@/services/tags/client', () => tagClient)
 
 const DATA = { columns: [{ name: 'n', type: 'integer', friendly_name: 'n' }], rows: [{ n: 4 }] }
 
@@ -47,6 +49,33 @@ beforeEach(() => {
 })
 
 describe('runLibraryTool', () => {
+  it('browses a kind with no text and no tags, asking for a full page and its tag groups', async () => {
+    dashboards.search.mockResolvedValue({ results: [], count: 34 })
+    tagClient.fetchRedashTagVocabulary.mockResolvedValue([{ name: 'traveler-site', count: 17 }])
+    const result = await search('', ['dashboard'])
+    expect(dashboards.search).toHaveBeenCalledWith('', expect.objectContaining({ pageSize: 50 }))
+    expect(tagClient.fetchRedashTagVocabulary).toHaveBeenCalledWith('dashboards', expect.anything())
+    expect(result).toMatchObject({
+      dashboardCount: 34,
+      tagCounts: [{ kind: 'dashboard', name: 'traveler-site', count: 17 }],
+    })
+  })
+
+  it('still answers a browse when the tag groups cannot be read', async () => {
+    dashboards.search.mockResolvedValue({ results: [], count: 34 })
+    tagClient.fetchRedashTagVocabulary.mockRejectedValue(new Error('tags down'))
+    const result = await search('', ['dashboard'])
+    expect(result).toMatchObject({ ok: true, dashboardCount: 34 })
+    expect(result).toMatchObject({ tagCounts: undefined })
+  })
+
+  it('does not read tag groups or widen the page for a search with words', async () => {
+    dashboards.search.mockResolvedValue({ results: [], count: 0 })
+    await search('bridge', ['dashboard'])
+    expect(tagClient.fetchRedashTagVocabulary).not.toHaveBeenCalled()
+    expect(dashboards.search.mock.calls[0][1].pageSize).toBeUndefined()
+  })
+
   it('searches only the kinds asked for, passing tags through', async () => {
     queries.search.mockResolvedValue({ results: [savedQuery()], count: 1 })
     const result = await search('trips', ['query'], ['bikeshare'])

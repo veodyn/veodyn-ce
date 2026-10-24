@@ -93,6 +93,18 @@ describe('LibraryCard', () => {
     expect(screen.getByText('Not found, or not shared with the analyst.')).toBeInTheDocument()
   })
 
+  it('says how many matched when it lists only the first of them', () => {
+    const output = {
+      kind: 'library' as const,
+      ok: true,
+      items: [{ type: 'dashboard' as const, id: 4, name: 'Bikeshare overview' }],
+      more: true,
+      dashboardCount: 34,
+    }
+    renderWithProviders(<LibraryCard call={call({ output })} />)
+    expect(screen.getByText('34 dashboards match; the first are listed.')).toBeInTheDocument()
+  })
+
   it('shows progress while the search runs', () => {
     renderWithProviders(<LibraryCard call={call({ status: 'running' })} />)
     expect(screen.getByText('Searching the library…')).toBeInTheDocument()

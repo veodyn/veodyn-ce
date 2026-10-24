@@ -1277,6 +1277,18 @@
       },
       "ChatLibraryResultIn": {
         "properties": {
+          "dashboardCount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dashboardcount"
+          },
           "error": {
             "anyOf": [
               {
@@ -1295,7 +1307,7 @@
                 "items": {
                   "$ref": "#/components/schemas/ChatLibraryItemIn"
                 },
-                "maxItems": 20,
+                "maxItems": 60,
                 "type": "array"
               },
               {
@@ -1323,6 +1335,33 @@
           "ok": {
             "title": "Ok",
             "type": "boolean"
+          },
+          "queryCount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Querycount"
+          },
+          "tagCounts": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatLibraryTagCountIn"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tagcounts"
           }
         },
         "required": [
@@ -1330,6 +1369,35 @@
           "kind"
         ],
         "title": "ChatLibraryResultIn",
+        "type": "object"
+      },
+      "ChatLibraryTagCountIn": {
+        "properties": {
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "query",
+              "dashboard"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 64,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "count"
+        ],
+        "title": "ChatLibraryTagCountIn",
         "type": "object"
       },
       "ChatMapProviderIn": {

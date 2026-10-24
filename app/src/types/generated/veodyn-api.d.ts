@@ -1032,6 +1032,8 @@ export interface components {
         };
         /** ChatLibraryResultIn */
         ChatLibraryResultIn: {
+            /** Dashboardcount */
+            dashboardCount?: number | null;
             /** Error */
             error?: string | null;
             /** Items */
@@ -1045,6 +1047,22 @@ export interface components {
             more?: boolean | null;
             /** Ok */
             ok: boolean;
+            /** Querycount */
+            queryCount?: number | null;
+            /** Tagcounts */
+            tagCounts?: components["schemas"]["ChatLibraryTagCountIn"][] | null;
+        };
+        /** ChatLibraryTagCountIn */
+        ChatLibraryTagCountIn: {
+            /** Count */
+            count: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "query" | "dashboard";
+            /** Name */
+            name: string;
         };
         /** ChatMapProviderIn */
         ChatMapProviderIn: {

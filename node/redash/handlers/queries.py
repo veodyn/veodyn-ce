@@ -508,10 +508,7 @@ class QueryRefreshResource(BaseResource):
 
 class QueryTagsResource(BaseResource):
     def get(self):
-        """
-        Returns all query tags including those for drafts.
-        """
-        tags = models.Query.all_tags(self.current_user, include_drafts=True)
+        tags = models.Query.all_tags(self.current_user, include_drafts=False)
         return {"tags": [{"name": name, "count": count} for name, count in tags]}
 
 

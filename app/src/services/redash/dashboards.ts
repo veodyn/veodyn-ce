@@ -124,11 +124,11 @@ export async function search(
   // `tags` narrows server-side, so a tag facet does not depend on whatever
   // happened to land on the first page. An empty `q` with a tag set is a valid
   // search: everything carrying the tag.
-  opts?: { signal?: AbortSignal; tags?: string[] }
+  opts?: { signal?: AbortSignal; tags?: string[]; pageSize?: number }
 ): Promise<RedashPaginatedResponse<MockDashboard>> {
   return normalizePage(
     await redashApi.get<RedashPaginatedResponse<RedashDashboard>>('dashboards', {
-      params: listParams({ search: q, tags: opts?.tags }),
+      params: listParams({ search: q, tags: opts?.tags, pageSize: opts?.pageSize }),
       signal: opts?.signal,
     })
   )

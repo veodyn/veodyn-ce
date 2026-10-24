@@ -1,6 +1,7 @@
 import type { RedashDataSource } from '@/services/redash/data-sources'
 import type { SchemaTable } from '@/lib/mock-data'
 import type { MockDashboard, MockQuery, MockVisualization, QueryResultData } from '@/lib/mock-data'
+import { tagCountsOf, type LibraryTagGroups } from './library-tag-counts'
 import { RESOURCE_SECTION_RE } from './resource-section'
 import { summarizeRows } from './shape-result'
 import type {
@@ -19,6 +20,7 @@ import type {
 import { ERROR_CHARS } from './tool-results'
 
 export const LIBRARY_LIMIT = 10
+export const DASHBOARD_LIMIT = 50
 export const DESCRIPTION_CHARS = 300
 export const TAG_LIMIT = 10
 export const SQL_CHARS = 8_000
@@ -71,20 +73,30 @@ function dashboardItem(dashboard: MockDashboard): ChatLibraryItem {
   }
 }
 
-function take<T extends { is_archived: boolean }>(page: Page<T> | null): { kept: T[]; more: boolean } {
+function take<T extends { is_archived: boolean }>(
+  page: Page<T> | null,
+  limit: number
+): { kept: T[]; more: boolean } {
   if (!page) return { kept: [], more: false }
   const live = page.results.filter((item) => !item.is_archived)
-  return { kept: live.slice(0, LIBRARY_LIMIT), more: live.length > LIBRARY_LIMIT || page.count > page.results.length }
+  return { kept: live.slice(0, limit), more: live.length > limit || page.count > page.results.length }
 }
 
-export function libraryResult(queries: Page<MockQuery> | null, dashboards: Page<MockDashboard> | null): ChatLibraryResult {
-  const foundQueries = take(queries)
-  const foundDashboards = take(dashboards)
+export function libraryResult(
+  queries: Page<MockQuery> | null,
+  dashboards: Page<MockDashboard> | null,
+  tagGroups?: LibraryTagGroups
+): ChatLibraryResult {
+  const foundQueries = take(queries, LIBRARY_LIMIT)
+  const foundDashboards = take(dashboards, DASHBOARD_LIMIT)
   return {
     kind: 'library',
     ok: true,
     items: [...foundQueries.kept.map(queryItem), ...foundDashboards.kept.map(dashboardItem)],
     more: foundQueries.more || foundDashboards.more,
+    queryCount: queries?.count,
+    dashboardCount: dashboards?.count,
+    tagCounts: tagGroups && tagCountsOf(tagGroups),
   }
 }
 

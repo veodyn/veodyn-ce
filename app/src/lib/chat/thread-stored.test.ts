@@ -126,3 +126,16 @@ describe('a live saved-query request', () => {
     expect(state.turns[0].items).toEqual([{ kind: 'run', callId: 's1' }])
   })
 })
+
+describe('a stored refusal from the sidecar', () => {
+  it('shows the refusal text on the card rather than a generic failure', () => {
+    const refusal = 'you already searched the library 5 times in this turn. Stop searching and answer.'
+    const state = fromDetail(
+      detailWith([
+        { role: 'assistant', content: [{ type: 'tool_use', id: 's1', name: 'search_library', input: { text: 'x' } }] },
+        resultMessage(refusal, true),
+      ] as never)
+    )
+    expect(state.calls.s1).toMatchObject({ status: 'failed', error: refusal })
+  })
+})

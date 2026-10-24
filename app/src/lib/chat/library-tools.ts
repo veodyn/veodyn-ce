@@ -1,11 +1,15 @@
 import { readQueryError } from '@/lib/query-error'
+import type { TagSuggestion } from '@/lib/tags'
 import { ApiError } from '@/services/api-client'
 import * as dashboardsService from '@/services/redash/dashboards'
 import * as dataSourcesService from '@/services/redash/data-sources'
 import { getResult } from '@/services/redash/execution'
 import * as queriesService from '@/services/redash/queries'
+import { fetchRedashTagVocabulary, type RedashTagScope } from '@/services/tags/client'
 import type { ChatToolRequestOf } from './frames'
+import type { LibraryTagGroups } from './library-tag-counts'
 import {
+  DASHBOARD_LIMIT,
   dashboardResult,
   dataSourcesResult,
   dataSourceSchemaResult,
@@ -18,7 +22,7 @@ import {
   savedVisualizationResult,
   UNSUPPORTED_SYNTAX,
 } from './library-results'
-import { failedResult, type ChatResultKind, type ChatToolResult } from './tool-results'
+import { failedResult, type ChatLibraryItem, type ChatResultKind, type ChatToolResult } from './tool-results'
 
 export type LibraryToolRequest = ChatToolRequestOf<
   'list_data_sources' | 'describe_data_source' | 'search_library' | 'show_visualization' | 'open_dashboard'
@@ -57,17 +61,39 @@ async function describeDataSource(
   return dataSourceSchemaResult(dataSourceId, syntax, tables)
 }
 
+function tagGroup(scope: RedashTagScope, signal: AbortSignal): Promise<TagSuggestion[] | undefined> {
+  return fetchRedashTagVocabulary(scope, { signal }).catch((error: unknown) => {
+    if (signal.aborted) throw error
+    return undefined
+  })
+}
+
+async function browseTagGroups(
+  kinds: ChatLibraryItem['type'][],
+  signal: AbortSignal
+): Promise<LibraryTagGroups | undefined> {
+  const [query, dashboard] = await Promise.all([
+    kinds.includes('query') ? tagGroup('queries', signal) : undefined,
+    kinds.includes('dashboard') ? tagGroup('dashboards', signal) : undefined,
+  ])
+  return query || dashboard ? { query, dashboard } : undefined
+}
+
 async function searchLibrary(
   request: ChatToolRequestOf<'search_library'>,
   signal: AbortSignal
 ): Promise<ChatToolResult> {
   const { text, kinds, tags } = request.args
+  const browsing = !text.trim() && tags.length === 0
   const options = { signal, tags: tags.length > 0 ? tags : undefined }
-  const [queries, dashboards] = await Promise.all([
+  const [queries, dashboards, tagGroups] = await Promise.all([
     kinds.includes('query') ? queriesService.search(text, options) : null,
-    kinds.includes('dashboard') ? dashboardsService.search(text, options) : null,
+    kinds.includes('dashboard')
+      ? dashboardsService.search(text, { ...options, pageSize: browsing ? DASHBOARD_LIMIT : undefined })
+      : null,
+    browsing ? browseTagGroups(kinds, signal) : undefined,
   ])
-  return libraryResult(queries, dashboards)
+  return libraryResult(queries, dashboards, tagGroups)
 }
 
 async function showVisualization(

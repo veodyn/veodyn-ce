@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { MockDashboard, MockDashboardWidget, MockQuery, MockVisualization } from '@/lib/mock-data'
 import {
+  DASHBOARD_LIMIT,
   dashboardResult,
   DESCRIPTION_CHARS,
   hasParameters,
@@ -116,6 +117,28 @@ describe('libraryResult', () => {
     const [item] = result.items ?? []
     expect(item.hasResult).toBe(false)
     expect(item).not.toHaveProperty('description', expect.anything())
+  })
+
+  it('lists a full page of dashboards and gives how many matched of each kind', () => {
+    const boards = Array.from({ length: DASHBOARD_LIMIT + 5 }, (_, index) => ({ ...dashboard([]), id: index + 1 }))
+    const result = libraryResult({ results: [query()], count: 204 }, { results: boards, count: 55 })
+    expect(result.items?.filter((item) => item.type === 'dashboard')).toHaveLength(DASHBOARD_LIMIT)
+    expect(result).toMatchObject({ queryCount: 204, dashboardCount: 55, more: true })
+  })
+
+  it('carries the tag groups of a browse, largest first, and leaves them out otherwise', () => {
+    const groups = {
+      dashboard: [
+        { name: 'transit-demo', count: 4 },
+        { name: 'traveler-site', count: 17 },
+      ],
+    }
+    const browsed = libraryResult(null, { results: [dashboard([])], count: 1 }, groups)
+    expect(browsed.tagCounts).toEqual([
+      { kind: 'dashboard', name: 'traveler-site', count: 17 },
+      { kind: 'dashboard', name: 'transit-demo', count: 4 },
+    ])
+    expect(libraryResult(null, { results: [], count: 0 }).tagCounts).toBeUndefined()
   })
 })
 

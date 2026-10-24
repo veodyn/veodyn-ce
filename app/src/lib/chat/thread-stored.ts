@@ -1,5 +1,6 @@
 import { chatProposalSchema, dashboardProposalSchema } from './frames'
 import type { SavedRunSpec } from './run-spec'
+import { ERROR_CHARS } from './tool-results'
 import { storedHelpLink, type HelpLinkView } from './thread-help'
 import { isCardTool, positiveId, savedRunView, storedCall, type CallView } from './thread-calls'
 import type { ActiveDashboard, DashboardDraftView, Draft, DraftView, RunView, ThreadState, TurnItem, TurnView } from './thread-model'
@@ -16,7 +17,7 @@ function parseJson(value: unknown): Record<string, unknown> {
   try {
     return record(JSON.parse(value))
   } catch {
-    return {}
+    return { error: value.slice(0, ERROR_CHARS) }
   }
 }
 

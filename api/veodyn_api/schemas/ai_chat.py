@@ -4,6 +4,8 @@ from typing import Annotated, Any, Literal
 from pydantic import Field
 
 from veodyn_api.schemas.ai import CamelModel
+from veodyn_api.schemas.ai_chat_library import ChatLibraryResultIn
+from veodyn_api.schemas.ai_chat_result_base import ChatResultBase, Tag
 
 
 class ChatThreadOut(CamelModel):
@@ -83,15 +85,7 @@ class ChatResultColumnIn(CamelModel):
     top: list[dict[str, Any]] | None = Field(default=None, max_length=3)
 
 
-Tag = Annotated[str, Field(max_length=64)]
-
-
-class _ChatResultBase(CamelModel):
-    ok: bool
-    error: str | None = Field(default=None, max_length=500)
-
-
-class _ChatRowsBase(_ChatResultBase):
+class _ChatRowsBase(ChatResultBase):
     row_count: int | None = Field(default=None, ge=0)
     truncated: bool | None = None
     columns: list[ChatResultColumnIn] | None = Field(default=None, max_length=500)
@@ -103,22 +97,6 @@ class ChatQueryResultIn(_ChatRowsBase):
     kind: Literal["query_result"]
     data_source_id: int | None = Field(default=None, gt=0)
     saved_query_id: int | None = Field(default=None, gt=0)
-
-
-class ChatLibraryItemIn(CamelModel):
-    type: Literal["query", "dashboard"]
-    id: int = Field(gt=0)
-    name: str = Field(max_length=500)
-    description: str | None = Field(default=None, max_length=300)
-    tags: list[Tag] = Field(default_factory=list, max_length=10)
-    updated_at: str | None = Field(default=None, max_length=64)
-    has_result: bool | None = None
-
-
-class ChatLibraryResultIn(_ChatResultBase):
-    kind: Literal["library"]
-    items: list[ChatLibraryItemIn] | None = Field(default=None, max_length=20)
-    more: bool | None = None
 
 
 class ChatSavedQueryIn(CamelModel):
@@ -160,7 +138,7 @@ class ChatDashboardWidgetIn(CamelModel):
     visualization_type: str = Field(max_length=64)
 
 
-class ChatDashboardResultIn(_ChatResultBase):
+class ChatDashboardResultIn(ChatResultBase):
     kind: Literal["dashboard"]
     dashboard: ChatDashboardRefIn | None = None
     widgets: list[ChatDashboardWidgetIn] | None = Field(default=None, max_length=50)
@@ -176,7 +154,7 @@ class ChatDataSourceRefIn(CamelModel):
     view_only: bool = False
 
 
-class ChatDataSourcesResultIn(_ChatResultBase):
+class ChatDataSourcesResultIn(ChatResultBase):
     kind: Literal["data_sources"]
     sources: list[ChatDataSourceRefIn] | None = Field(default=None, max_length=50)
 
@@ -193,7 +171,7 @@ class ChatDataSourceResourceIn(CamelModel):
     example: str | None = Field(default=None, max_length=500)
 
 
-class ChatDataSourceSchemaResultIn(_ChatResultBase):
+class ChatDataSourceSchemaResultIn(ChatResultBase):
     kind: Literal["data_source_schema"]
     data_source_id: int = Field(gt=0)
     syntax: str | None = Field(default=None, max_length=32)
@@ -241,7 +219,7 @@ class ChatKpiPointIn(CamelModel):
     status: MetricStatusName
 
 
-class ChatKpiResultIn(_ChatResultBase):
+class ChatKpiResultIn(ChatResultBase):
     kind: Literal["kpi"]
     kpi: ChatKpiRefIn | None = None
     evaluation: ChatKpiEvaluationIn | None = None
@@ -262,7 +240,7 @@ class ChatKpiListItemIn(CamelModel):
     stale: bool | None = None
 
 
-class ChatKpiListResultIn(_ChatResultBase):
+class ChatKpiListResultIn(ChatResultBase):
     kind: Literal["kpi_list"]
     items: list[ChatKpiListItemIn] | None = Field(default=None, max_length=50)
     more: bool | None = None

@@ -19,6 +19,7 @@ from veodyn_api.services.chat.viz_choice_check import missing_viz_choice
 MAX_NAMED_TABLES = 20
 LIBRARY_KINDS = ("query", "dashboard")
 MAX_SEARCH_TAGS = 5
+MAX_LIBRARY_SEARCHES = 5
 MAX_HELP_LINKS = 3
 MAX_HELP_SUGGESTIONS = 5
 MAX_RESOURCE_CALL_CHARS = 4_000
@@ -63,6 +64,7 @@ class ToolContext:
     catalog: VizCatalog = DEFAULT_CATALOG
     refusals: int = field(default=0)
     help_links: int = field(default=0)
+    library_searches: int = field(default=0)
     edition: Edition | None = None
 
 
@@ -409,8 +411,13 @@ async def _search_library(call_id: str, arguments: dict[str, Any], ctx: ToolCont
     kinds = [kind for kind in LIBRARY_KINDS if not isinstance(asked, list) or kind in asked]
     if not kinds:
         return Immediate(f"kinds must name at least one of {', '.join(LIBRARY_KINDS)}", is_error=True)
-    if not text and not tags:
-        return Immediate("give some text or at least one tag to search for", is_error=True)
+    if ctx.library_searches >= MAX_LIBRARY_SEARCHES:
+        return Immediate(
+            f"you already searched the library {MAX_LIBRARY_SEARCHES} times in this turn. Stop searching and answer "
+            "from what you found: give the counts and the tag groups, and offer to narrow it down.",
+            is_error=True,
+        )
+    ctx.library_searches += 1
     return ClientCall(call_id=call_id, tool="search_library", args={"text": text, "kinds": kinds, "tags": tags})
 
 
@@ -612,13 +619,16 @@ SEARCH_LIBRARY = ChatTool(
         "name": "search_library",
         "description": (
             "Search the saved queries and dashboards the analyst can see, by text in their names and descriptions "
-            "and by tag. Returns at most 10 of each kind with ids, descriptions, tags and whether a query has a "
-            "stored result."
+            "and by tag. Leave text empty and give no tags to browse everything of a kind. Returns at most 50 "
+            "dashboards and 10 queries with ids, descriptions, tags and whether a query has a stored result, and "
+            "queryCount and dashboardCount: how many matched in all. `more` means more matched than are listed. "
+            "A browse also returns tagCounts, the tags in use with how many items carry each: narrow by one of "
+            "those tags rather than guessing words."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "text": _string("Words to look for. May be empty when tags are given."),
+                "text": _string("Words to look for. Empty or left out to browse."),
                 "kinds": {
                     "type": "array",
                     "items": {"type": "string", "enum": list(LIBRARY_KINDS)},
@@ -630,7 +640,6 @@ SEARCH_LIBRARY = ChatTool(
                     "description": "Only items carrying all of these tags.",
                 },
             },
-            "required": ["text"],
         },
     },
     handler=_search_library,

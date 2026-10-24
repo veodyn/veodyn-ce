@@ -8,6 +8,7 @@ export type ChatResultColumn = Schemas['ChatResultColumnIn']
 export type ChatQueryResult = Schemas['ChatQueryResultIn']
 export type ChatLibraryResult = Schemas['ChatLibraryResultIn']
 export type ChatLibraryItem = Schemas['ChatLibraryItemIn']
+export type ChatLibraryTagCount = Schemas['ChatLibraryTagCountIn']
 export type ChatSavedVisualizationResult = Schemas['ChatSavedVisualizationResultIn']
 export type ChatVisualizationRef = Schemas['ChatVisualizationRefIn']
 export type ChatDashboardResult = Schemas['ChatDashboardResultIn']
@@ -80,12 +81,19 @@ export const libraryItemSchema = z
   })
   .strict()
 
+export const libraryTagCountSchema = z
+  .object({ kind: z.enum(['query', 'dashboard']), name: z.string().max(64), count: z.number().int().nonnegative() })
+  .strict()
+
 export const libraryResultSchema = z
   .object({
     ...base,
     kind: z.literal('library'),
-    items: z.array(libraryItemSchema).max(20).optional(),
+    items: z.array(libraryItemSchema).max(60).optional(),
     more: z.boolean().optional(),
+    queryCount: z.number().int().nonnegative().optional(),
+    dashboardCount: z.number().int().nonnegative().optional(),
+    tagCounts: z.array(libraryTagCountSchema).max(50).optional(),
   })
   .strict()
 

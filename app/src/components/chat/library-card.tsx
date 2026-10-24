@@ -5,10 +5,19 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { CallView } from '@/lib/chat/thread-model'
+import type { ChatLibraryResult } from '@/lib/chat/tool-results'
 import { ToolCardTitle, ToolFailure } from './tool-card-parts'
 
 export const NOTHING_FOUND = 'Nothing matched.'
-export const MORE_FOUND = 'More items match. Ask with more specific words to narrow it down.'
+export const MORE_FOUND = 'More items match than are listed.'
+
+function moreFound(output: Pick<ChatLibraryResult, 'queryCount' | 'dashboardCount'>): string {
+  const counts = [
+    output.dashboardCount == null ? null : `${output.dashboardCount} dashboards`,
+    output.queryCount == null ? null : `${output.queryCount} queries`,
+  ].filter((part): part is string => part !== null)
+  return counts.length > 0 ? `${counts.join(', ')} match; the first are listed.` : MORE_FOUND
+}
 
 export function itemHref(type: 'query' | 'dashboard', id: number): string {
   return type === 'query' ? `/queries/${id}` : `/dashboards/${id}`
@@ -53,7 +62,7 @@ export function LibraryCard({ call }: { call: CallView }) {
             ))}
           </ul>
         ) : null}
-        {output?.more ? <p className="text-xs text-muted-foreground">{MORE_FOUND}</p> : null}
+        {output?.more ? <p className="text-xs text-muted-foreground">{moreFound(output)}</p> : null}
       </CardContent>
     </Card>
   )
