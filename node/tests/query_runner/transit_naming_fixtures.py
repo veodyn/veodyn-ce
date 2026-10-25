@@ -47,7 +47,8 @@ pattern_codes: {}
 departures_stop_lookup_max: 50
 stop_name:
   separator: "/"
-  suffixes: {Boulevard: Bl, Blvd: Bl, Avenue: Av, Ave: Av, Street: St, Drive: Dr, Road: Rd, Highway: Hwy, Place: Pl, Parkway: Pkwy, Freeway: Fwy, Lane: Ln, Court: Ct, Way: Way}
+  suffixes: {Boulevard: Bl, Blvd: Bl, Avenue: Av, Ave: Av, Street: St, Drive: Dr, Road: Rd, Highway: Hwy, Place: Pl, Parkway: Pkwy, Freeway: Fwy, Lane: Ln, Court: Ct, Way: Way, Wy: Way}
+  spell_out: {Cir: Circle, Ter: Terrace, Terr: Terrace}
   keep_whole: [Broadway]
   station_suffix: " Station"
   strip_direction_parenthetical: true

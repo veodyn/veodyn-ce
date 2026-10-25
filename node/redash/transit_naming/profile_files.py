@@ -1,9 +1,51 @@
 import csv
 import os
 
+import yaml
+
 from redash.transit_naming.profiles import OVERRIDE_KINDS, Override, ProfileError
 
 PROFILE_SUFFIXES = (".yaml", ".csv", ".streets.json")
+INHERITED_NEVER = frozenset({"carrier_code", "carrier_display_name"})
+
+
+class StrictLoader(yaml.SafeLoader):
+    pass
+
+
+def _mapping_without_duplicates(loader, node, deep=False):
+    seen = set()
+    for key_node, _ in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in seen:
+            raise ProfileError(f"duplicate key {key!r}", field=str(key))
+        seen.add(key)
+    return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+
+StrictLoader.construct_mapping = _mapping_without_duplicates
+
+
+def load_strict_yaml(text):
+    return yaml.load(text, Loader=StrictLoader)
+
+
+def with_default_data(data, default_data, file):
+    inherit = data.get("inherit_default", False)
+    if not isinstance(inherit, bool):
+        raise ProfileError(
+            f"inherit_default must be true or false, got {inherit!r}", file=file, field="inherit_default"
+        )
+    if not inherit:
+        return data
+    if default_data is None:
+        raise ProfileError(
+            "inherit_default needs default.yaml in the same profile set", file=file, field="inherit_default"
+        )
+    merged = {key: value for key, value in default_data.items() if key not in INHERITED_NEVER}
+    merged.update(data)
+    merged["stop_name"] = {**(default_data.get("stop_name") or {}), **(data.get("stop_name") or {})}
+    return merged
 
 
 def parse_overrides_csv(text, carrier, file):

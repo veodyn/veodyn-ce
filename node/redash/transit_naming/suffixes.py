@@ -8,13 +8,11 @@ from urllib.parse import urlsplit
 import redis
 
 from redash.transit_naming import provenance
+from redash.transit_naming.directions import DIRECTION_WORDS
+from redash.transit_naming.profiles import stop_overrides_digest
 from redash.transit_naming.stops import name_stop, raw_street_parts
 
 INDEX_TTL_SECONDS = 6 * 3600
-DIRECTION_WORDS = frozenset(
-    {"n", "s", "e", "w", "ne", "nw", "se", "sw", "north", "south", "east", "west"}
-    | {"nb", "sb", "eb", "wb", "northbound", "southbound", "eastbound", "westbound"}
-)
 SAME_INTERSECTION = "same_intersection"
 UNIQUE_STREET = "unique_street"
 STREET_REFERENCE = "street_reference"
@@ -224,16 +222,19 @@ def carrier_index(profile, revision, source, load_stops):
 
 
 class CarrierIndexes:
-    def __init__(self, revision, source, load_stops):
+    def __init__(self, revision, source, load_stops, extra_overrides=None):
         self.revision = revision
         self.source = source
         self.load_stops = load_stops
+        self.extra_overrides = extra_overrides or {}
         self.built = {}
 
     def get(self, profile):
         carrier = profile.carrier_code
         if carrier not in self.built:
-            self.built[carrier] = carrier_index(profile, self.revision, self.source, lambda: self.load_stops(carrier))
+            overrides = stop_overrides_digest(self.extra_overrides.get(carrier, {}))
+            revision = f"{self.revision}+{overrides}" if overrides else self.revision
+            self.built[carrier] = carrier_index(profile, revision, self.source, lambda: self.load_stops(carrier))
         return self.built[carrier]
 
     def name(self, stop, profile):

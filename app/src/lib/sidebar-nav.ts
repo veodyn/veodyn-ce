@@ -39,6 +39,7 @@ import {
 } from 'lucide-react'
 import type { ClientConfig } from '@/lib/config-schema'
 import { featureNavRows, type NavSectionId } from '@/features'
+import { LANDING_PATH } from '@/lib/landing-path'
 
 export interface NavLink {
   label: string
@@ -116,7 +117,7 @@ export function buildSidebarSections(
     id: 'primary',
     label: null,
     items: [
-      { label: 'Home', href: '/', icon: Home },
+      { label: 'Home', href: LANDING_PATH, icon: Home },
       ...(aiChat ? [{ label: 'Chat', href: '/chat', icon: Sparkles }] : []),
       { label: 'Search', href: '/search', icon: Search },
       // Every label here is the destination page's own h1, verbatim. A nav

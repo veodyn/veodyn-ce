@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { isAnonymousPath, isEmbeddablePath } from '@/features/anonymous-routes'
+import { landingRedirect } from '@/lib/landing-path'
 
 // A configured deployment must not serve an app shell to a request that carries
 // no session. Before this, a browser with no cookies at all could open /users,
@@ -138,6 +139,13 @@ export function middleware(request: NextRequest) {
     return response
   }
   const proceed = () => withCsp(NextResponse.next({ request: { headers: requestHeaders } }))
+
+  const landing = landingRedirect(pathname)
+  if (landing) {
+    const url = request.nextUrl.clone()
+    url.pathname = landing
+    return withCsp(NextResponse.redirect(url))
+  }
 
   // Mock mode has no backend and no session to gate, but it still gets the
   // headers: a demo build is a real deployment.

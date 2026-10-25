@@ -4,6 +4,7 @@ import { useId, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
 import { useConfig } from '@/components/config/config-provider'
+import { LANDING_PATH } from '@/lib/landing-path'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
@@ -88,7 +89,7 @@ export function TokenPasswordForm({ token, mode }: TokenPasswordFormProps) {
         setFieldError(data.message ?? 'Something went wrong. Please try again.')
       } else {
         setState({ type: 'success' })
-        setTimeout(() => router.replace('/'), 2000)
+        setTimeout(() => router.replace(LANDING_PATH), 2000)
       }
     } catch {
       setFieldError('Could not reach the server. Please try again.')
@@ -124,7 +125,7 @@ export function TokenPasswordForm({ token, mode }: TokenPasswordFormProps) {
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{state.message}</span>
             </div>
-            <Button variant="outline" onClick={() => router.push('/')} className="w-full">
+            <Button variant="outline" onClick={() => router.push(LANDING_PATH)} className="w-full">
               Back to login
             </Button>
           </div>

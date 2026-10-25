@@ -234,6 +234,61 @@ describe('useChatThread', () => {
     expect(result.current.state.turns[0].status).toBe('done')
   })
 
+  it('reconnects instead of failing the turn when the stream reports chat unavailable', async () => {
+    const { result } = await mounted()
+    act(() => result.current.send('go'))
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    client.getThread.mockResolvedValue(
+      detail([
+        {
+          id: TURN,
+          seq: 1,
+          status: 'running',
+          userText: 'go',
+          blocks: [],
+          stopReason: null,
+          errorId: null,
+          createdAt: 'x',
+          finishedAt: null,
+          lastEventId: '1-1',
+        },
+      ])
+    )
+    act(() =>
+      FakeEventSource.latest().emit('error', { id: 'VEODYN_AI_CHAT_UNAVAILABLE', message: 'Chat is unavailable.' })
+    )
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(2))
+    expect(result.current.state.turns[0].status).toBe('running')
+  })
+
+  it('does not resend a failed turn the server is still running', async () => {
+    const { result } = await mounted()
+    act(() => result.current.send('go'))
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    act(() => FakeEventSource.latest().emit('error', { id: 'X', message: 'boom' }))
+    expect(result.current.state.turns[0].status).toBe('failed')
+    client.getThread.mockResolvedValue(
+      detail([
+        {
+          id: TURN,
+          seq: 1,
+          status: 'running',
+          userText: 'go',
+          blocks: [],
+          stopReason: null,
+          errorId: null,
+          createdAt: 'x',
+          finishedAt: null,
+          lastEventId: '1-1',
+        },
+      ])
+    )
+    act(() => result.current.retry())
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(2))
+    expect(client.postTurn).toHaveBeenCalledTimes(1)
+    expect(result.current.state.turns[0].status).toBe('running')
+  })
+
   it('treats an invalid frame as a lost stream', async () => {
     const { result } = await mounted()
     act(() => result.current.send('go'))

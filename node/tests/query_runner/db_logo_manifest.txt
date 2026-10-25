@@ -38,6 +38,7 @@ mongodb
 mssql
 mssql_odbc
 mysql
+nrel_afdc
 ntcip_dms
 openweathermap
 oracle

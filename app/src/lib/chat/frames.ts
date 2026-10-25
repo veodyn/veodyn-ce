@@ -203,6 +203,8 @@ export const CHAT_EVENTS = Object.keys(frameData) as ChatEvent[]
 
 export const TERMINAL_EVENTS: ReadonlySet<ChatEvent> = new Set<ChatEvent>(['turn_done', 'error'])
 
+export const CHAT_UNAVAILABLE_ERROR_ID = 'VEODYN_AI_CHAT_UNAVAILABLE'
+
 function isEvent(value: string): value is ChatEvent {
   return Object.prototype.hasOwnProperty.call(frameData, value)
 }

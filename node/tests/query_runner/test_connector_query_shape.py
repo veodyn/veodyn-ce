@@ -93,6 +93,7 @@ FAMILY_CONFIGS = {
     "gtfs_realtime": {},
     "gtfs_static": {"gtfs_url": "https://x.invalid/gtfs.zip"},
     "metrocloudalliance": {"base_url": "https://x.invalid/", "api_key": "k"},
+    "nrel_afdc": {"api_key": "k"},
     "ntcip_dms": {"community": "c", "default_devices": '[{"name":"a","host":"10.0.0.1"}]'},
     "openweathermap": {"base_url": "https://x.invalid/", "app_id": "a"},
     "socaltransport": {},

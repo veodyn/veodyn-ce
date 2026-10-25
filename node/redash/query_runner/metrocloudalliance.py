@@ -30,9 +30,10 @@ from redash.query_runner.connector_validation import (
 from redash.query_runner.metrocloudalliance_departures import flatten_departures
 from redash.query_runner.metrocloudalliance_public import (
     PUBLIC_COLUMN_NAMES,
-    PUBLIC_RESOURCES,
+    expand_stop_key,
     run_public_resource,
 )
+from redash.query_runner.metrocloudalliance_public_resources import PUBLIC_RESOURCES
 from redash.query_runner.metrocloudalliance_resources import EMPTY_COLUMNS, RESOURCES
 from redash.transit_naming.suffixes import source_hash
 
@@ -114,6 +115,8 @@ class MetroCloudAlliance(BaseResourceRunner):
         return partial(public_naming.archive_fetch, timeout=self.timeout)
 
     def _fetch(self, resource, params):
+        if resource == "public_departures":
+            params = expand_stop_key(params)
         required = self.required_resource_params.get(resource)
         if required:
             error = require_params(self.type(), params, *required)

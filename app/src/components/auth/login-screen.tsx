@@ -8,6 +8,7 @@
 import { useId, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { LANDING_PATH, ROOT_PATH } from '@/lib/landing-path'
 import { useAuthStore } from '@/stores/auth-store'
 import { useConfig } from '@/components/config/config-provider'
 import { Button } from '@/components/ui/button'
@@ -28,15 +29,16 @@ import type { DemoPersona } from '@/lib/config-schema'
 const SAFE_BASE = 'https://veodyn.invalid'
 
 export function safeNextPath(next: string | null | undefined): string {
-  if (!next) return '/'
+  if (!next) return LANDING_PATH
   try {
     const resolved = new URL(next, SAFE_BASE)
-    if (resolved.origin !== SAFE_BASE) return '/'
+    if (resolved.origin !== SAFE_BASE) return LANDING_PATH
+    if (resolved.pathname === ROOT_PATH) return `${LANDING_PATH}${resolved.search}${resolved.hash}`
     // Rebuilt from the parsed parts rather than passed through, so what the
     // router receives is exactly what was validated.
     return `${resolved.pathname}${resolved.search}${resolved.hash}`
   } catch {
-    return '/'
+    return LANDING_PATH
   }
 }
 

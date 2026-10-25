@@ -33,7 +33,7 @@ def _id511(stop):
 
 
 def _curated(profiles, carrier):
-    return not profiles.for_carrier(carrier).is_default
+    return profiles.for_carrier(carrier).curated
 
 
 def _candidate_key(stop, count, profiles):

@@ -1,28 +1,38 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import type { CSSProperties, ReactNode } from 'react'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { CHART_FILL_VAR } from '../lib/chart-marks'
 import { PUBLIC_VISUALIZATION_ID } from '../lib/public-visualization'
 import { EMPTY_QUERY_RESULT, visualizationData } from '../lib/visualizations/data-gate'
 import { getVisualization } from '../lib/visualizations/registry'
 import { VisualizationErrorBoundary } from '../components/visualizations/visualization-error-boundary'
 import { VisualizationRenderer } from '../components/visualizations/visualization-renderer'
-import { fetchPublicVisualization } from './fetch-public-visualization'
+import { applyResultFilters, detectResultFilters } from '../lib/filters/result-filters'
+import { fetchPublicVisualization, fetchPublicDashboardWidget } from './fetch-public-visualization'
 import { canonicalParameters, type PublicParameters } from './public-request'
 import { usePublicPollInterval } from './use-public-poll'
 import { clampRefreshSeconds } from './refresh'
+import { ResultFilterControls, type ResultFilterSelections } from './result-filter-controls'
 import { useVeodyn } from './veodyn-context'
 
-export interface VeodynVizProps {
-  token: string
+export interface VeodynVizAddress {
+  token?: string
+  dashboardToken?: string
+  widgetId?: number
+}
+
+export type VeodynVizProps = VeodynVizAddress & {
   parameters?: PublicParameters
+  filters?: boolean
   refreshSeconds?: number
   className?: string
   style?: CSSProperties
   renderLoading?: () => ReactNode
   renderUnavailable?: () => ReactNode
 }
+
+const NO_SELECTIONS: ResultFilterSelections = {}
 
 const INDEFINITE_HEIGHT =
   /%|var\(|calc-size\(|fill-available|-moz-available|\b(auto|none|stretch|min-content|max-content|fit-content|inherit|initial|unset|revert|revert-layer)\b/i
@@ -44,7 +54,10 @@ function DefaultUnavailable() {
 
 export function VeodynViz({
   token,
+  dashboardToken,
+  widgetId,
   parameters,
+  filters = true,
   refreshSeconds,
   className,
   style,
@@ -55,15 +68,24 @@ export function VeodynViz({
   const refresh = clampRefreshSeconds(refreshSeconds)
   const pairs = canonicalParameters(parameters)
   const refetchInterval = usePublicPollInterval(refresh == null ? null : refresh * 1000)
+  const [selections, setSelections] = useState<ResultFilterSelections>(NO_SELECTIONS)
   const { data: payload, isLoading } = useQuery({
-    queryKey: ['veodyn-public-visualization', baseUrl, token, pairs],
-    queryFn: ({ signal }) => fetchPublicVisualization(baseUrl, token, parameters, signal),
+    queryKey: ['veodyn-public-visualization', baseUrl, token ?? null, dashboardToken ?? null, widgetId ?? null, pairs],
+    queryFn: ({ signal }) =>
+      dashboardToken != null && widgetId != null
+        ? fetchPublicDashboardWidget(baseUrl, dashboardToken, widgetId, parameters, signal)
+        : fetchPublicVisualization(baseUrl, token ?? '', parameters, signal),
     retry: false,
     refetchInterval,
   })
 
   const registered = payload ? getVisualization(payload.visualization.type) !== undefined : false
-  const data = !payload ? null : registered ? visualizationData(payload.visualization.type, payload.data) : EMPTY_QUERY_RESULT
+  const resolved = !payload ? null : registered ? visualizationData(payload.visualization.type, payload.data) : EMPTY_QUERY_RESULT
+  const resultFilters = useMemo(() => (filters && resolved ? detectResultFilters(resolved) : []), [filters, resolved])
+  const data = useMemo(
+    () => (resolved && resultFilters.length > 0 ? applyResultFilters(resolved, selections) : resolved),
+    [resolved, resultFilters, selections]
+  )
 
   let body: ReactNode
   const waiting = payload?.data === null && payload.status === 'pending'
@@ -72,13 +94,16 @@ export function VeodynViz({
   else if (!payload || !data || gone) body = renderUnavailable ? renderUnavailable() : <DefaultUnavailable />
   else
     body = (
-      <VisualizationErrorBoundary>
-        <VisualizationRenderer
-          visualization={{ ...payload.visualization, id: PUBLIC_VISUALIZATION_ID, created_at: '', updated_at: '' }}
-          data={data}
-          retrievedAt={payload.retrievedAt}
-        />
-      </VisualizationErrorBoundary>
+      <>
+        <ResultFilterControls filters={resultFilters} selections={selections} onChange={setSelections} />
+        <VisualizationErrorBoundary>
+          <VisualizationRenderer
+            visualization={{ ...payload.visualization, id: PUBLIC_VISUALIZATION_ID, created_at: '', updated_at: '' }}
+            data={data}
+            retrievedAt={payload.retrievedAt}
+          />
+        </VisualizationErrorBoundary>
+      </>
     )
 
   return (

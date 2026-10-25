@@ -88,6 +88,7 @@ def _load_exceptions_module():
 _extra_allowlist = _load_extra_allowlist_module()
 _is_extra_allowlisted = _extra_allowlist.is_extra_allowlisted
 _is_gravatar_hash = _extra_allowlist.is_gravatar_hash
+_is_site_share_token = _extra_allowlist.is_site_share_token
 _coverage = _load_coverage_module()
 _exceptions = _load_exceptions_module()
 
@@ -155,6 +156,8 @@ def scan(credential_scan):
                 if _is_extra_allowlisted(rel_path, literal):
                     continue
                 if _is_gravatar_hash(literal, line):
+                    continue
+                if _is_site_share_token(rel_path, literal, line):
                     continue
                 shape = f"credential-shaped: {_shape_description(literal)}"
                 if known_exception is not None:

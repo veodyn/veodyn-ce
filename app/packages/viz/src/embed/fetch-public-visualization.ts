@@ -1,3 +1,4 @@
+import { publicDashboardWidgetUrl } from '../lib/public-dashboard'
 import { publicParameterSearch, readPublicResponse, type PublicParameters, type PublicVisualizationResult } from './public-request'
 
 export function publicVisualizationUrl(baseUrl: string, token: string, parameters?: PublicParameters): string {
@@ -11,6 +12,21 @@ export async function fetchPublicVisualization(
   signal?: AbortSignal
 ): Promise<PublicVisualizationResult | null> {
   const response = await fetch(publicVisualizationUrl(baseUrl, token, parameters), {
+    credentials: 'omit',
+    signal,
+    headers: { accept: 'application/json' },
+  })
+  return readPublicResponse(response)
+}
+
+export async function fetchPublicDashboardWidget(
+  baseUrl: string,
+  dashboardToken: string,
+  widgetId: number,
+  parameters?: PublicParameters,
+  signal?: AbortSignal
+): Promise<PublicVisualizationResult | null> {
+  const response = await fetch(`${publicDashboardWidgetUrl(baseUrl, dashboardToken, widgetId)}${publicParameterSearch(parameters)}`, {
     credentials: 'omit',
     signal,
     headers: { accept: 'application/json' },

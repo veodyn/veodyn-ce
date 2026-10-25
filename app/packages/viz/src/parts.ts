@@ -26,6 +26,18 @@ export const PARTS = [
   'heatmap',
   'heatmap-cell',
   'details',
+  'dashboard',
+  'dashboard-cell',
+  'dashboard-card',
+  'dashboard-card-title',
+  'dashboard-text',
+  'filters',
+  'filter',
+  'parameter',
+  'parameter-input',
+  'parameter-value',
+  'parameter-options',
+  'parameter-option',
 ] as const
 
 export type Part = (typeof PARTS)[number]

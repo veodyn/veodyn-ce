@@ -378,6 +378,20 @@ def test_redis_down_is_unavailable(harness: Harness, monkeypatch: pytest.MonkeyP
     assert detail["turns"][0]["status"] == "failed"
 
 
+def test_a_redis_error_while_streaming_closes_the_stream_without_failing_the_turn(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    harness.model.turns.append(text_turn("done"))
+    turn = harness.turn(harness.thread())
+    harness.wait_for(turn, "turn_done")
+
+    async def broken(self: TurnBus, turn_id: str, after: str | None, block_ms: int) -> list[Any]:
+        raise redis.exceptions.ConnectionError("blip")
+
+    monkeypatch.setattr(TurnBus, "read", broken)
+    assert read_stream(harness.client, turn) == []
+
+
 def test_a_library_search_round_trip_through_the_routes(harness: Harness) -> None:
     harness.model.turns.extend(
         [tool_turn("call-1", "search_library", {"text": "bikeshare"}), text_turn("Two queries match.")]

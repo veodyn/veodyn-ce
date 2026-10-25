@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Annotated, Any, TypeVar
@@ -32,7 +33,7 @@ from veodyn_api.schemas.ai_chat import (
 )
 from veodyn_api.schemas.ai_chat_context import ChatTurnIn
 from veodyn_api.schemas.catalog import DatasetOut
-from veodyn_api.services.ai_converse_grounding import cached_catalog
+from veodyn_api.services.ai_converse_grounding import build_grounding
 from veodyn_api.services.ai_viz_catalog import catalog_from
 from veodyn_api.services.chat import store
 from veodyn_api.services.chat.bus import TurnBus, get_redis
@@ -43,6 +44,8 @@ from veodyn_api.services.chat.turn_context import context_from
 from veodyn_api.services.redash import RedashClient
 from veodyn_api.services.redash_lookups import warehouse_data_source_id
 from veodyn_api.settings import Settings, get_settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ai/chat", tags=["ai-chat"], dependencies=[Depends(require_relay)])
 
@@ -80,7 +83,14 @@ def get_turn_runner(settings: SettingsDep, redash: RedashDep, bus: BusDep) -> Tu
     warehouse: list[int] = []
 
     async def datasets() -> tuple[DatasetOut, ...]:
-        return await asyncio.to_thread(cached_catalog, settings)
+        grounding = await asyncio.to_thread(
+            build_grounding,
+            "query",
+            redash=redash,
+            api_key=settings.redash_service_api_key or "",
+            settings=settings,
+        )
+        return grounding.datasets
 
     async def data_source_id() -> int:
         if not warehouse:
@@ -299,7 +309,7 @@ async def stream_turn(
                 batch = await bus.read(key, after, block_ms=STREAM_BLOCK_MS)
                 alive = bool(batch) or await bus.lease_alive(key)
             except (RedisError, OSError):
-                yield _sse(None, "error", {"id": ErrorId.AI_CHAT_UNAVAILABLE.value, "message": "Chat is unavailable."})
+                logger.warning("chat stream for turn %s lost its redis read", key, exc_info=True)
                 return
             for frame_id, event, data in batch:
                 after = frame_id

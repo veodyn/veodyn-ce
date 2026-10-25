@@ -37,7 +37,7 @@ class TestNameStop(TestCase):
 
     def test_direction_is_kept_beside_the_name(self):
         name = name_stop(MT_STOPS_BY_ID["1166"], PROFILE)
-        self.assertEqual((name.public_name, name.direction), ("1st St/Main St", "East"))
+        self.assertEqual((name.public_name, name.direction), ("1st St/Main St", "Eastbound"))
 
     def test_intersection_parsed_from_the_raw_name_with_a_direction_parenthetical(self):
         name = name_stop(MT_STOPS_BY_ID["7001"], PROFILE)
@@ -215,7 +215,7 @@ class TestLiveDataFindings(TestCase):
     def test_park_and_ride_spelled_out_is_a_named_place(self):
         stop = bare_stop("Fullerton Park and Ride", on="Fullerton Park & Ride", cross="Fullerton Park & Ride")
         name = name_stop(stop, PROFILE)
-        self.assertEqual((name.public_name, name.stop_kind), ("Fullerton Park and Ride", "named_place"))
+        self.assertEqual((name.public_name, name.stop_kind), ("Fullerton Park & Ride", "named_place"))
 
     def test_street_parts_naming_another_corner_are_ignored(self):
         stop = bare_stop("Imperial / Wadsworth", on="Vermont", cross="Santa Monica Bl")
@@ -233,7 +233,7 @@ class TestLiveDataFindings(TestCase):
 
     def test_multi_line_station_references_are_stripped(self):
         cases = {
-            "7th Street / City Center Station - Metro A & E Lines": "7th Street / City Center Station",
+            "7th Street / City Center Station - Metro A & E Lines": "7th Street/City Center Station",
             "Central Station - Metro B & D Lines": "Central Station",
             "Riverbrook - Park Station - Metro C-Line": "Riverbrook - Park Station",
         }

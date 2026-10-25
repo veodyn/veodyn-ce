@@ -71,6 +71,8 @@ share a plugin list.
 | Prop | Type | What it does |
 | --- | --- | --- |
 | `token` | `string` | The share token of the visualization. |
+| `dashboardToken`, `widgetId` | `string`, `number` | Instead of `token`: one widget of a shared dashboard, read under the dashboard's share token. Revoking the dashboard share closes every widget at once. |
+| `filters` | `boolean` | Draw a control for each `::filter` or `::multi-filter` column and narrow the rows the visualization renders. On by default. |
 | `parameters` | `Record<string, string \| number>` | Values for the parameters the visualization lists as public, sent as `p_<name>`. A visualization that does not list them answers as an unavailable token. |
 | `refreshSeconds` | `number` | Re-read the latest stored result on this interval, between 15 and 3600 seconds. Without it the widget fetches once, except that a `pending` or `unavailable` answer for a parameterised visualization keeps polling until data arrives. |
 | `className`, `style` | | Size the widget. A `style.height` such as `420`, `'60vh'` or `'calc(100vh - 4rem)'` is also the height charts and maps fill. A percentage, a keyword such as `auto` or `fit-content`, or a `var()` reference is not, because it may have nothing definite to resolve against inside the widget. Sized another way, they keep their own height inside your box. |
@@ -80,6 +82,64 @@ share a plugin list.
 The fetch sends no cookies and no credentials. A token revoked in Veodyn shows the
 unavailable panel on the next refresh. A refresh that fails, or that meets a
 server error or rate limit, keeps the last good render on screen.
+
+## Render a shared dashboard
+
+`VeodynDashboard` renders every widget of a shared dashboard, laid out the way
+the dashboard editor laid them out. Editing the dashboard in Veodyn changes the
+page on its next load, with nothing to redeploy.
+
+```tsx
+'use client'
+
+import { VeodynDashboard, VeodynProvider } from '@veodyn/viz'
+
+export function BridgeClosure() {
+  return (
+    <VeodynProvider baseUrl="https://veodyn.example.org">
+      <VeodynDashboard
+        token="DASHBOARD_SHARE_TOKEN"
+        refreshSeconds={60}
+        renderUnavailable={() => <p>This information is temporarily unavailable.</p>}
+      />
+    </VeodynProvider>
+  )
+}
+```
+
+- **Visualizations** are read one widget at a time through the dashboard's
+  token, and framed as a card with the visualization's name as its title. A
+  widget whose options set `hideTitle` has no title.
+- **Text boxes** render as markdown: `#` to `###` headings, paragraphs, `-`
+  lists, `**bold**`, `*italic*`, links, images (`![alt](src)`) and linked
+  images. The text is parsed into elements and never inserted as HTML. Links
+  and images must be `https:` or a path on your own site (`/traffic`).
+  Anything else stays as plain text.
+- **Layout** follows the dashboard's six-column grid. Below `stackBelow` pixels
+  of width the widgets stack in grid order instead.
+- **Public parameters** that a widget's visualization lists get a searchable
+  picker above that widget. A choice applies to every widget that lists the same
+  parameter. It is written into the page URL as `?p_<name>=` so the link can be
+  shared, unless `syncUrl` is `false`.
+
+| Prop | Type | Default | What it does |
+| --- | --- | --- | --- |
+| `token` | `string` | required | The dashboard's share token. |
+| `refreshSeconds` | `number` | none | Re-read the layout and every widget on this interval, between 15 and 3600 seconds. |
+| `initialPayload` | `PublicDashboardPayload \| null` | none | A payload fetched on the server, so the first render needs no request. |
+| `parameters` | `Record<string, string>` | `{}` | Starting values for public parameters, by name. Pass the page's `p_*` search parameters here. |
+| `onParametersChange` | `(values) => void` | none | Called when a reader picks a value. |
+| `syncUrl` | `boolean` | `true` | Mirror picked values into the page URL. |
+| `layout` | `'auto' \| 'grid' \| 'stack'` | `'auto'` | Force the grid or the stacked layout. |
+| `stackBelow` | `number` | `768` | The width, in pixels, below which `auto` stacks. |
+| `rowHeight`, `gap` | `number` | `50`, `15` | Grid row height and gap in pixels. They match the dashboard editor. |
+| `renderWidgetFrame` | `({ widget, title, children }) => ReactNode` | a card | Your own card around each visualization. |
+| `renderText` | `(text, widget) => ReactNode` | the markdown renderer | Your own text-box renderer. |
+| `renderLoading`, `renderUnavailable` | `() => ReactNode` | | Replace the loading and unavailable states. The unavailable state also covers a revoked or unknown token. |
+
+To render on the server first, fetch the payload with `publicDashboardUrl` and
+`normalizePublicDashboard` from `@veodyn/viz/normalize`, and pass it as
+`initialPayload`.
 
 ## Fetch on the server instead
 
@@ -146,6 +206,11 @@ is a breaking change.
 | `map-popup` | A point map marker's popup. |
 | `heatmap`, `heatmap-cell` | The heatmap grid. |
 | `details` | The single-record details view. |
+| `dashboard`, `dashboard-cell` | A `VeodynDashboard`, and each widget's place in it. The root also carries `data-veodyn-layout` (`grid` or `stack`), and each cell carries `data-veodyn-widget`. |
+| `dashboard-card`, `dashboard-card-title` | The default frame around a dashboard visualization, and its title. |
+| `dashboard-text` | A rendered text box. |
+| `filters`, `filter` | The result-filter controls, and each control. |
+| `parameter`, `parameter-input`, `parameter-value`, `parameter-options`, `parameter-option` | A public-parameter picker: its wrapper, search box, current value, option list and each option. |
 
 `PARTS` exports the same list.
 
@@ -203,6 +268,9 @@ dark column applies.
 | `--status-fresh` | `#2E7D4F` | `#4CAF7D` |
 | `--status-stale` | `#94671F` | `#D9A441` |
 
+`VeodynDashboard` also reads `--veodyn-dashboard-gap` for the space between
+widgets. Its default is the `gap` prop.
+
 ### Fonts
 
 The widgets inherit your page's font. To give them a different one, set
@@ -218,6 +286,7 @@ yourself.
 
 ## Not supported yet
 
-- Free-form query parameters and filters. Only the parameters a visualization
-  lists as public can be set, one value each.
+- Free-form query parameters. Only the parameters a visualization lists as
+  public can be set, one value each, and one parameter's values cannot depend
+  on another's.
 - Editing. The package renders visualizations and does not include the editors.

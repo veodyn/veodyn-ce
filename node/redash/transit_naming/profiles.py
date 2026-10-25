@@ -1,6 +1,7 @@
+import hashlib
 from dataclasses import dataclass, field, replace
 
-CORE_REVISION = "2026.10.09.2"
+CORE_REVISION = "2026.10.23.3"
 
 JOIN_STRATEGIES = ("short_name", "route_id_prefix")
 BRAND_SOURCES = ("gtfs_route_long_name", "brand_bands", "carrier_display_name")
@@ -8,6 +9,7 @@ PATTERN_PLACEHOLDERS = frozenset({"brand", "route_number", "carrier_display_name
 RAIL_PATTERN_PLACEHOLDERS = frozenset({"public_name", "legacy_color"})
 MODES = ("bus", "light_rail", "heavy_rail", "commuter_rail", "busway", "")
 OVERRIDE_KINDS = ("route", "stop", "location")
+TRAILING_COMPASS_MODES = ("keep", "street", "direction")
 
 
 class ProfileError(ValueError):
@@ -86,6 +88,10 @@ class StopNameRules:
     split_on: tuple = ("&", "/", "\\")
     keep_upper: frozenset = frozenset()
     street_reference: StreetReference = None
+    trailing_compass: str = "keep"
+    split_words: tuple = ()
+    ampersand_joins_streets: bool = False
+    spell_out: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -123,6 +129,11 @@ class Profile:
     streets: object = None
     source_file: str = ""
     is_default: bool = False
+    inherits_default: bool = False
+
+    @property
+    def curated(self):
+        return not self.is_default and not self.inherits_default
 
     def override_for(self, kind, key):
         return self.overrides.get((kind, str(key)))
@@ -132,19 +143,54 @@ class Profile:
         return by_route.get(str(direction_id)) or self.direction_map.get(str(direction_id)) or str(direction_id)
 
 
+def overrides_digest(listed):
+    return hashlib.sha256(repr(sorted(listed)).encode("utf-8")).hexdigest()[:12]
+
+
+def stop_overrides_digest(overrides):
+    listed = [(key, override.public_name) for (kind, key), override in overrides.items() if kind == "stop"]
+    return overrides_digest(listed) if listed else ""
+
+
 @dataclass(frozen=True)
 class ProfileSet:
     profiles: dict
     default: Profile
     digest: str
     files: tuple
+    extra_overrides: dict = field(default_factory=dict)
+
+    @property
+    def base_revision(self):
+        return f"{CORE_REVISION}+{self.digest[:12]}"
 
     @property
     def revision(self):
-        return f"{CORE_REVISION}+{self.digest[:12]}"
+        if not self.extra_overrides:
+            return self.base_revision
+        listed = [
+            (carrier, kind, key, override.public_name)
+            for carrier, overrides in self.extra_overrides.items()
+            for (kind, key), override in overrides.items()
+        ]
+        return f"{self.base_revision}+{overrides_digest(listed)}"
+
+    def with_overrides(self, extra_overrides):
+        return replace(self, extra_overrides=extra_overrides or {})
+
+    def merged_overrides(self, profile):
+        extra = self.extra_overrides.get(profile.carrier_code)
+        return replace(profile, overrides={**profile.overrides, **extra}) if extra else profile
 
     def for_carrier(self, carrier_code, carrier_name=""):
         profile = self.profiles.get(carrier_code)
-        if profile is not None:
-            return profile
-        return replace(self.default, carrier_code=carrier_code, carrier_display_name=carrier_name or carrier_code)
+        if profile is not None and not profile.inherits_default:
+            return self.merged_overrides(profile)
+        declared = profile.carrier_display_name if profile is not None else ""
+        return self.merged_overrides(
+            replace(
+                profile or self.default,
+                carrier_code=carrier_code,
+                carrier_display_name=declared or carrier_name or carrier_code,
+            )
+        )

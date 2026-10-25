@@ -101,3 +101,14 @@ _GRAVATAR_AVATAR_URL = re.compile(r"gravatar\.com/avatar/([0-9a-fA-F]{32})\b")
 def is_gravatar_hash(literal, line):
     match = _GRAVATAR_AVATAR_URL.search(line)
     return bool(match) and match.group(1) == literal
+
+
+_SITE_VALUES_PATH = re.compile(r"(^|/)helm/envs/[a-z0-9-]+/site-app\.yaml$")
+_SITE_SHARE_TOKEN_LINE = re.compile(r'^\s+SITE_DASH_[A-Z0-9_]+: "([A-Za-z0-9]{40})"\s*$')
+
+
+def is_site_share_token(rel_path, literal, line):
+    if not _SITE_VALUES_PATH.search(rel_path):
+        return False
+    match = _SITE_SHARE_TOKEN_LINE.match(line)
+    return bool(match) and match.group(1) == literal

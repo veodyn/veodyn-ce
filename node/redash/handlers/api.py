@@ -57,6 +57,10 @@ from redash.handlers.permissions import (
     CheckPermissionResource,
     ObjectPermissionsListResource,
 )
+from redash.handlers.public_dashboard_widgets import (
+    PublicDashboardWidgetParameterValuesResource,
+    PublicDashboardWidgetResource,
+)
 from redash.handlers.queries import (
     MyQueriesResource,
     QueryArchiveResource,
@@ -143,6 +147,16 @@ api.add_org_resource(
     PublicDashboardResource,
     "/api/dashboards/public/<token>",
     endpoint="public_dashboard",
+)
+api.add_org_resource(
+    PublicDashboardWidgetResource,
+    "/api/dashboards/public/<token>/widgets/<int:widget_id>",
+    endpoint="public_dashboard_widget",
+)
+api.add_org_resource(
+    PublicDashboardWidgetParameterValuesResource,
+    "/api/dashboards/public/<token>/widgets/<int:widget_id>/parameters/<name>/values",
+    endpoint="public_dashboard_widget_parameter_values",
 )
 api.add_org_resource(
     DashboardShareResource,

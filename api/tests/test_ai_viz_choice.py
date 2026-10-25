@@ -111,3 +111,7 @@ def test_a_kpis_written_source_query_is_a_series() -> None:
     """
     assert KPI_SOURCE_VIZ in CHOICE_IDS
     assert viz_choice(KPI_SOURCE_VIZ) == KPI_SOURCE_VIZ
+
+
+def test_a_shape_named_for_particular_columns_is_kept_to_results_that_have_them() -> None:
+    assert "fits only a result that has" in VIZ_RULES

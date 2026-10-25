@@ -13,6 +13,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { BookOpen, ChevronLeft, ChevronRight, HelpCircle, LogOut, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { LANDING_PATH } from '@/lib/landing-path'
 import { IdentitySwitcher } from '@/components/auth/identity-switcher'
 import { Slot } from '@/features/slots'
 import type { NavSection } from '@/lib/sidebar-nav'
@@ -99,7 +100,7 @@ export function BrandMark({
   return (
     <RailTooltip label={`Home · ${edition.label}`} collapsed={collapsed}>
       <Link
-        href="/"
+        href={LANDING_PATH}
         className={cn('flex items-center gap-2 h-14 shrink-0', collapsed ? 'justify-center px-0' : 'px-3')}
       >
         {logo ? (

@@ -96,9 +96,12 @@ Work from the shape of the result your intent will produce, then name the id.
 """
 
 RULES_TAIL = """
-Two things to get right, because neither is recoverable afterwards:
+Three things to get right, because none is recoverable afterwards:
 - Do not fall back to `table` for a result that has a shape. A query that groups by something and
   returns a number is a chart. Hundreds of rows in a table is not something anyone reads.
+- A shape whose guide names particular columns or a particular resource fits only a result that has
+  them. Every other result takes the core shape it matches: a series over time is a line, a lookup
+  is a table. A shape drawn from columns the result lacks shows nothing but an error.
 - Copy the id EXACTLY as written above. An id we do not recognize is shown as a table."""
 
 DEFAULT_GUIDES: dict[str, str] = {

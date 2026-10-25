@@ -9,6 +9,7 @@ from redash import models, redis_connection
 from redash.models.parameterized_query import (
     InvalidParameterError,
     QueryDetachedFromDataSourceError,
+    dropdown_values,
 )
 from redash.serializers import public_visualization
 from redash.tasks.queries import enqueue_query
@@ -21,6 +22,7 @@ MAX_KEYS = 10
 KEY_PATTERN = re.compile(r"p_[A-Za-z0-9_]{1,64}")
 MAX_VALUE_LENGTH = 200
 ALLOWED_TYPES = ("enum", "query")
+MAX_VALUES = 50
 
 QUEUED_TTL = 60
 JOB_TIMEOUT = 40
@@ -211,3 +213,43 @@ def respond(vis, token, raw):
 
 def _plain(raw):
     return {key[len(PREFIX) :]: values[0] for key, values in raw.items()}
+
+
+def _public_definition(vis, name):
+    patterns = (vis.options or {}).get("publicParameters")
+    if not isinstance(patterns, dict) or name not in patterns:
+        raise Rejected()
+    definition = next((p for p in vis.query_rel.parameters if p.get("name") == name), None)
+    if definition is None or definition.get("type") not in ALLOWED_TYPES:
+        raise Rejected()
+    if isinstance(definition.get("multiValuesOptions"), dict):
+        raise Rejected()
+    return definition, patterns[name]
+
+
+def _candidates(definition, org):
+    if definition.get("type") == "enum":
+        options = definition.get("enumOptions") or []
+        if isinstance(options, str):
+            options = options.split("\n")
+        return [{"name": str(option), "value": str(option)} for option in options]
+    _check_dropdown(definition, org)
+    try:
+        rows = dropdown_values(definition.get("queryId"), org)
+    except QueryDetachedFromDataSourceError:
+        raise Rejected()
+    return [{"name": str(row["name"]), "value": str(row["value"])} for row in rows]
+
+
+def parameter_values(vis, name, prefix):
+    if len(prefix) > MAX_VALUE_LENGTH:
+        raise Rejected()
+    definition, pattern = _public_definition(vis, name)
+    needle = prefix.casefold()
+    matches = [
+        candidate
+        for candidate in _candidates(definition, vis.query_rel.org)
+        if _matches(pattern, candidate["value"])
+        and (candidate["name"].casefold().startswith(needle) or candidate["value"].casefold().startswith(needle))
+    ]
+    return {"values": matches[:MAX_VALUES], "truncated": len(matches) > MAX_VALUES}

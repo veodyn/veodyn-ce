@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { useConfig } from '@/components/config/config-provider'
+import { LANDING_PATH } from '@/lib/landing-path'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
@@ -72,7 +73,7 @@ export function VerifyTokenView({ token }: VerifyTokenViewProps) {
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
               <span>Your email is verified.</span>
             </div>
-            <Button onClick={() => router.push('/')} className="w-full">
+            <Button onClick={() => router.push(LANDING_PATH)} className="w-full">
               Continue to {brand.name}
             </Button>
           </div>
@@ -84,7 +85,7 @@ export function VerifyTokenView({ token }: VerifyTokenViewProps) {
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>This verification link is invalid or has expired. You can request a new one from your account settings.</span>
             </div>
-            <Button variant="outline" onClick={() => router.push('/')} className="w-full">
+            <Button variant="outline" onClick={() => router.push(LANDING_PATH)} className="w-full">
               Back to login
             </Button>
           </div>
@@ -96,7 +97,7 @@ export function VerifyTokenView({ token }: VerifyTokenViewProps) {
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>Could not reach the server. Please try again.</span>
             </div>
-            <Button variant="outline" onClick={() => router.push('/')} className="w-full">
+            <Button variant="outline" onClick={() => router.push(LANDING_PATH)} className="w-full">
               Back to login
             </Button>
           </div>

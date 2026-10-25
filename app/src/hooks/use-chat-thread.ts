@@ -179,11 +179,13 @@ export function useChatThread(threadId: string): ChatThreadController {
   const retry = useCallback(() => {
     const last = state.turns[state.turns.length - 1]
     if (last?.status !== 'failed') return
-    if (last.errorMessage === LOST_TURN_MESSAGE) {
-      void resync().catch(() => undefined)
-      return
-    }
-    send(last.userText)
+    void resync().then(
+      (loaded) => {
+        const server = loaded.turns.find((turn) => turn.id === last.id)
+        if (last.errorMessage !== LOST_TURN_MESSAGE && (!server || server.status === 'failed')) send(last.userText)
+      },
+      () => undefined
+    )
   }, [state, send, resync])
 
   const rerun = useCallback(

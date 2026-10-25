@@ -69,7 +69,7 @@ class TestUppercaseNamesAreRecased(TestCase):
 
     def test_an_uppercase_named_place_is_recased_and_keeps_its_wording(self):
         name = name_stop(stop("FULLERTON PARK AND RIDE DOCK 6"), OCTA)
-        self.assertEqual((name.public_name, name.stop_kind), ("Fullerton Park and Ride Dock 6", "named_place"))
+        self.assertEqual((name.public_name, name.stop_kind), ("Fullerton Park & Ride Dock 6", "named_place"))
 
     def test_uppercase_street_parts_are_recased_with_an_uppercase_name(self):
         name = name_stop(stop("MAIN/OAK", on="MAIN STREET", cross="OAK AVENUE"), OCTA)
@@ -184,5 +184,5 @@ class TestProfileOptions(TestCase):
         self.assertIn("split_on", self.refused('  split_on: ["a"]'))
         self.assertIn("split_on", self.refused('  split_on: "/"'))
 
-    def test_the_revision_moved_with_the_casing_rules(self):
-        self.assertEqual(CORE_REVISION, "2026.10.09.2")
+    def test_the_revision_moved_with_the_style_guide_rules(self):
+        self.assertEqual(CORE_REVISION, "2026.10.23.3")

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef } from 'react'
-import { CHAT_EVENTS, TERMINAL_EVENTS, parseFrame, type ChatFrame } from '@/lib/chat/frames'
+import { CHAT_EVENTS, CHAT_UNAVAILABLE_ERROR_ID, TERMINAL_EVENTS, parseFrame, type ChatFrame } from '@/lib/chat/frames'
 import { chatStreamUrl } from '@/services/ai/chat-client'
 
 export interface TurnStreamHandlers {
@@ -52,6 +52,7 @@ export function useTurnStream(handlers: TurnStreamHandlers) {
         if (!(message instanceof MessageEvent)) return
         const frame = frameOf(event, message)
         if (frame === null) return end('invalid')
+        if (frame.event === 'error' && frame.data.id === CHAT_UNAVAILABLE_ERROR_ID) return end('disconnected')
         latest.current.onFrame(turnId, frame)
         if (TERMINAL_EVENTS.has(frame.event)) end(null)
       })

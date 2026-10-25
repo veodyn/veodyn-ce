@@ -7,71 +7,16 @@
 // revoked, expired and never-issued token identically, and telling the two
 // apart out here would rebuild the probing oracle that rule exists to close.
 import { NextResponse } from 'next/server'
-import { env } from '@/lib/env'
-import { ErrorIds } from '@/lib/errorIds'
-import { normalizePublicVisualization } from '@veodyn/viz/normalize'
-import { readerForwardingHeaders } from '@/lib/reader-forwarding'
+import { forwardPublicVisualization } from '@/app/api/public/forward-public-visualization'
 import { PUBLIC_CORS_HEADERS } from './cors'
-import { publicParameterQuery } from './parameters'
 
 export const dynamic = 'force-dynamic'
-
-const NOT_FOUND = {
-  error: 'visualization not available',
-  errorId: ErrorIds.API_NOT_FOUND,
-}
-
-const UNAVAILABLE = {
-  error: 'redash backend unavailable',
-  errorId: ErrorIds.UP_UNREACHABLE,
-}
-
-function withRetryAfter(upstream: Response): Record<string, string> {
-  const retryAfter = upstream.headers.get('retry-after')
-  return retryAfter ? { ...PUBLIC_CORS_HEADERS, 'Retry-After': retryAfter } : { ...PUBLIC_CORS_HEADERS }
-}
 
 export function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: PUBLIC_CORS_HEADERS })
 }
 
 export async function GET(request: Request, ctx: { params: Promise<{ token: string }> }) {
-  const base = env.REDASH_URL.replace(/\/+$/, '')
-  if (!base) {
-    return NextResponse.json(
-      { error: 'REDASH_URL not configured', errorId: ErrorIds.CFG_ENV_MISSING },
-      { status: 503, headers: PUBLIC_CORS_HEADERS }
-    )
-  }
-
   const { token } = await ctx.params
-  const query = publicParameterQuery(new URL(request.url).searchParams)
-  if (query === null) return NextResponse.json(NOT_FOUND, { status: 404, headers: PUBLIC_CORS_HEADERS })
-  try {
-    const upstream = await fetch(
-      `${base}/api/visualizations/public/${encodeURIComponent(token)}${query}`,
-      {
-        signal: request.signal,
-        headers: { accept: 'application/json', ...readerForwardingHeaders(request) },
-      }
-    )
-    if (upstream.status === 503) {
-      const payload = normalizePublicVisualization(await upstream.json())
-      if (!payload) return NextResponse.json(UNAVAILABLE, { status: 502, headers: PUBLIC_CORS_HEADERS })
-      return NextResponse.json(payload, { status: 503, headers: withRetryAfter(upstream) })
-    }
-    if (upstream.status >= 500 || upstream.status === 429) {
-      return NextResponse.json(UNAVAILABLE, { status: 502, headers: PUBLIC_CORS_HEADERS })
-    }
-    if (!upstream.ok) return NextResponse.json(NOT_FOUND, { status: 404, headers: PUBLIC_CORS_HEADERS })
-
-    const payload = normalizePublicVisualization(await upstream.json())
-    if (!payload) return NextResponse.json(NOT_FOUND, { status: 404, headers: PUBLIC_CORS_HEADERS })
-    return NextResponse.json(payload, { status: upstream.status === 202 ? 202 : 200, headers: withRetryAfter(upstream) })
-  } catch {
-    return NextResponse.json(
-      { error: 'redash backend unreachable', errorId: ErrorIds.UP_UNREACHABLE },
-      { status: 502, headers: PUBLIC_CORS_HEADERS }
-    )
-  }
+  return forwardPublicVisualization(request, `/api/visualizations/public/${encodeURIComponent(token)}`)
 }
