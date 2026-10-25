@@ -165,8 +165,163 @@
         "title": "ChatAcceptedOut",
         "type": "object"
       },
+      "ChatDashboardEditResultIn": {
+        "properties": {
+          "dashboardId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dashboardid"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "const": "dashboard_edit",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/ChatResolvedOperationIn"
+            },
+            "maxItems": 30,
+            "title": "Operations",
+            "type": "array"
+          },
+          "problems": {
+            "items": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Problems",
+            "type": "array"
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatDashboardSnapshotIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatDashboardEditResultIn",
+        "type": "object"
+      },
+      "ChatDashboardEditWidgetIn": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "visualization",
+              "text"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "position": {
+            "$ref": "#/components/schemas/WidgetPositionIn"
+          },
+          "title": {
+            "maxLength": 500,
+            "title": "Title",
+            "type": "string"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "widgetId": {
+            "exclusiveMinimum": 0.0,
+            "title": "Widgetid",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "widgetId",
+          "kind",
+          "title",
+          "position"
+        ],
+        "title": "ChatDashboardEditWidgetIn",
+        "type": "object"
+      },
       "ChatDashboardRefIn": {
         "properties": {
+          "canEdit": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canedit"
+          },
           "id": {
             "exclusiveMinimum": 0.0,
             "title": "Id",
@@ -197,6 +352,17 @@
               }
             ],
             "title": "Updatedat"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
           }
         },
         "required": [
@@ -286,12 +452,102 @@
         "title": "ChatDashboardResultIn",
         "type": "object"
       },
+      "ChatDashboardSnapshotIn": {
+        "properties": {
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Tags",
+            "type": "array"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "widgets": {
+            "items": {
+              "$ref": "#/components/schemas/ChatDashboardEditWidgetIn"
+            },
+            "maxItems": 500,
+            "title": "Widgets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ChatDashboardSnapshotIn",
+        "type": "object"
+      },
       "ChatDashboardWidgetIn": {
         "properties": {
+          "kind": {
+            "enum": [
+              "visualization",
+              "text"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "parameterMappings": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterMappingIn"
+                },
+                "maxProperties": 50,
+                "propertyNames": {
+                  "maxLength": 255
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parametermappings"
+          },
+          "position": {
+            "$ref": "#/components/schemas/WidgetPositionIn"
+          },
           "queryId": {
-            "exclusiveMinimum": 0.0,
-            "title": "Queryid",
-            "type": "integer"
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryid"
           },
           "queryName": {
             "anyOf": [
@@ -305,27 +561,70 @@
             ],
             "title": "Queryname"
           },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
           "title": {
             "maxLength": 500,
             "title": "Title",
             "type": "string"
           },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
           "visualizationId": {
-            "exclusiveMinimum": 0.0,
-            "title": "Visualizationid",
-            "type": "integer"
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visualizationid"
           },
           "visualizationType": {
-            "maxLength": 64,
-            "title": "Visualizationtype",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visualizationtype"
+          },
+          "widgetId": {
+            "exclusiveMinimum": 0.0,
+            "title": "Widgetid",
+            "type": "integer"
           }
         },
         "required": [
+          "widgetId",
+          "kind",
           "title",
-          "queryId",
-          "visualizationId",
-          "visualizationType"
+          "position"
         ],
         "title": "ChatDashboardWidgetIn",
         "type": "object"
@@ -617,6 +916,76 @@
         "title": "ChatDataSourcesResultIn",
         "type": "object"
       },
+      "ChatDownloadResultIn": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "csv",
+                  "xlsx"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "href": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Href"
+          },
+          "kind": {
+            "const": "download",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "queryId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryid"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatDownloadResultIn",
+        "type": "object"
+      },
       "ChatDraftOut": {
         "properties": {
           "id": {
@@ -729,6 +1098,82 @@
           "edition"
         ],
         "title": "ChatInstanceIn",
+        "type": "object"
+      },
+      "ChatKpiCheckResultIn": {
+        "properties": {
+          "columns": {
+            "items": {
+              "maxLength": 255,
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Columns",
+            "type": "array"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "const": "kpi_check",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "queryDraftId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Querydraftid"
+          },
+          "queryName": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryname"
+          },
+          "sourceQueryId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcequeryid"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatKpiCheckResultIn",
         "type": "object"
       },
       "ChatKpiEvaluationIn": {
@@ -1204,6 +1649,17 @@
       },
       "ChatLibraryItemIn": {
         "properties": {
+          "archived": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived"
+          },
           "description": {
             "anyOf": [
               {
@@ -1420,19 +1876,222 @@
         "title": "ChatMapProviderIn",
         "type": "object"
       },
-      "ChatPromotionIn": {
+      "ChatOpenResultIn": {
+        "additionalProperties": true,
         "properties": {
-          "targetId": {
-            "maxLength": 64,
-            "minLength": 1,
-            "title": "Targetid",
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "pattern": "^[a-z][a-z0-9_]{0,31}$",
+            "title": "Kind",
             "type": "string"
           },
-          "targetType": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatOpenResultIn",
+        "type": "object"
+      },
+      "ChatOperationCheckResultIn": {
+        "properties": {
+          "destructive": {
+            "default": false,
+            "title": "Destructive",
+            "type": "boolean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "const": "operation_check",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "op": {
+            "anyOf": [
+              {
+                "enum": [
+                  "fork",
+                  "archive",
+                  "restore",
+                  "favorite",
+                  "unfavorite",
+                  "share",
+                  "revoke"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Op"
+          },
+          "params": {
+            "additionalProperties": true,
+            "maxProperties": 20,
+            "title": "Params",
+            "type": "object"
+          },
+          "problems": {
+            "items": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Problems",
+            "type": "array"
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatOperationSnapshotIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatOperationTargetIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatOperationCheckResultIn",
+        "type": "object"
+      },
+      "ChatOperationSnapshotIn": {
+        "properties": {
+          "updatedAt": {
+            "maxLength": 64,
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "updatedAt"
+        ],
+        "title": "ChatOperationSnapshotIn",
+        "type": "object"
+      },
+      "ChatOperationTargetIn": {
+        "properties": {
+          "id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
             "enum": [
               "query",
-              "dashboard"
+              "dashboard",
+              "visualization"
             ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          },
+          "queryId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryid"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "name"
+        ],
+        "title": "ChatOperationTargetIn",
+        "type": "object"
+      },
+      "ChatPromotionIn": {
+        "properties": {
+          "receipts": {
+            "items": {
+              "$ref": "#/components/schemas/ChatPromotionReceipt"
+            },
+            "maxItems": 50,
+            "title": "Receipts",
+            "type": "array"
+          },
+          "status": {
+            "default": "done",
+            "enum": [
+              "pending",
+              "partial",
+              "done",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "targetId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetid"
+          },
+          "targetType": {
+            "maxLength": 64,
+            "minLength": 1,
             "title": "Targettype",
             "type": "string"
           },
@@ -1456,8 +2115,7 @@
         },
         "required": [
           "version",
-          "targetType",
-          "targetId"
+          "targetType"
         ],
         "title": "ChatPromotionIn",
         "type": "object"
@@ -1477,9 +2135,33 @@
             "title": "Promotedversion",
             "type": "integer"
           },
-          "targetId": {
-            "title": "Targetid",
+          "receipts": {
+            "items": {
+              "$ref": "#/components/schemas/ChatPromotionReceipt"
+            },
+            "title": "Receipts",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "partial",
+              "done",
+              "failed"
+            ],
+            "title": "Status",
             "type": "string"
+          },
+          "targetId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetid"
           },
           "targetType": {
             "title": "Targettype",
@@ -1495,17 +2177,353 @@
               }
             ],
             "title": "Targetversionatpromote"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
           }
         },
         "required": [
           "id",
           "targetType",
           "targetId",
+          "status",
+          "receipts",
           "promotedVersion",
           "targetVersionAtPromote",
-          "createdAt"
+          "createdAt",
+          "updatedAt"
         ],
         "title": "ChatPromotionOut",
+        "type": "object"
+      },
+      "ChatPromotionPatchIn": {
+        "properties": {
+          "receipts": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatPromotionReceipt"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipts"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pending",
+                  "partial",
+                  "done",
+                  "failed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "targetId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetid"
+          },
+          "targetVersionAtPromote": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetversionatpromote"
+          }
+        },
+        "title": "ChatPromotionPatchIn",
+        "type": "object"
+      },
+      "ChatPromotionReceipt": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "outcome": {
+            "enum": [
+              "done",
+              "failed",
+              "skipped"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "step": {
+            "minimum": 0.0,
+            "title": "Step",
+            "type": "integer"
+          },
+          "targetId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetid"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "required": [
+          "step",
+          "outcome"
+        ],
+        "title": "ChatPromotionReceipt",
+        "type": "object"
+      },
+      "ChatQueryDetailIn": {
+        "properties": {
+          "canEdit": {
+            "title": "Canedit",
+            "type": "boolean"
+          },
+          "dataSourceId": {
+            "exclusiveMinimum": 0.0,
+            "title": "Datasourceid",
+            "type": "integer"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "isDraft": {
+            "title": "Isdraft",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          },
+          "parameters": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "maxItems": 20,
+            "title": "Parameters",
+            "type": "array"
+          },
+          "schedule": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule"
+          },
+          "sql": {
+            "maxLength": 50000,
+            "title": "Sql",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Tags",
+            "type": "array"
+          },
+          "updatedAt": {
+            "maxLength": 64,
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "visualizations": {
+            "items": {
+              "$ref": "#/components/schemas/ChatVisualizationRefIn"
+            },
+            "maxItems": 20,
+            "title": "Visualizations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "sql",
+          "dataSourceId",
+          "isDraft",
+          "updatedAt",
+          "canEdit"
+        ],
+        "title": "ChatQueryDetailIn",
+        "type": "object"
+      },
+      "ChatQueryDetailResultIn": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "const": "query_detail",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatQueryDetailIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatQueryDetailResultIn",
+        "type": "object"
+      },
+      "ChatQueryEditResultIn": {
+        "properties": {
+          "changes": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "maxProperties": 8,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changes"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "const": "query_edit",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "queryId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryid"
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatQuerySnapshotIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatQueryEditResultIn",
         "type": "object"
       },
       "ChatQueryResultIn": {
@@ -1627,6 +2645,91 @@
           "kind"
         ],
         "title": "ChatQueryResultIn",
+        "type": "object"
+      },
+      "ChatQuerySnapshotIn": {
+        "properties": {
+          "dataSourceId": {
+            "exclusiveMinimum": 0.0,
+            "title": "Datasourceid",
+            "type": "integer"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "isDraft": {
+            "title": "Isdraft",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          },
+          "parameters": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "maxItems": 20,
+            "title": "Parameters",
+            "type": "array"
+          },
+          "schedule": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule"
+          },
+          "sql": {
+            "maxLength": 50000,
+            "title": "Sql",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Tags",
+            "type": "array"
+          },
+          "updatedAt": {
+            "maxLength": 64,
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "sql",
+          "dataSourceId",
+          "isDraft",
+          "updatedAt"
+        ],
+        "title": "ChatQuerySnapshotIn",
         "type": "object"
       },
       "ChatReadyParamIn": {
@@ -1752,6 +2855,135 @@
         "title": "ChatReadyQueryIn",
         "type": "object"
       },
+      "ChatResolvedOperationIn": {
+        "properties": {
+          "op": {
+            "enum": [
+              "add",
+              "addText",
+              "editText",
+              "remove",
+              "move"
+            ],
+            "title": "Op",
+            "type": "string"
+          },
+          "parameterMappings": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterMappingIn"
+                },
+                "maxProperties": 50,
+                "propertyNames": {
+                  "maxLength": 255
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parametermappings"
+          },
+          "position": {
+            "$ref": "#/components/schemas/PlacedPositionIn"
+          },
+          "queryDraftId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Querydraftid"
+          },
+          "queryId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryid"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "visualizationId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visualizationid"
+          },
+          "widgetId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Widgetid"
+          }
+        },
+        "required": [
+          "op",
+          "position"
+        ],
+        "title": "ChatResolvedOperationIn",
+        "type": "object"
+      },
       "ChatResultColumnIn": {
         "properties": {
           "distinct": {
@@ -1813,6 +3045,17 @@
       },
       "ChatSavedQueryIn": {
         "properties": {
+          "canEdit": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canedit"
+          },
           "dataSourceId": {
             "anyOf": [
               {
@@ -2032,6 +3275,196 @@
         "title": "ChatSavedVisualizationResultIn",
         "type": "object"
       },
+      "ChatSnippetCheckResultIn": {
+        "properties": {
+          "changes": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "maxProperties": 3,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changes"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "const": "snippet_check",
+            "title": "Kind",
+            "type": "string"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "edit",
+                  "delete"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatSnippetSnapshotIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "snippetId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snippetid"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatSnippetCheckResultIn",
+        "type": "object"
+      },
+      "ChatSnippetSnapshotIn": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "snippet": {
+            "maxLength": 10000,
+            "title": "Snippet",
+            "type": "string"
+          },
+          "trigger": {
+            "maxLength": 255,
+            "title": "Trigger",
+            "type": "string"
+          },
+          "updatedAt": {
+            "maxLength": 64,
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trigger",
+          "snippet",
+          "updatedAt"
+        ],
+        "title": "ChatSnippetSnapshotIn",
+        "type": "object"
+      },
+      "ChatSubjectDetailIn": {
+        "additionalProperties": false,
+        "properties": {
+          "canEdit": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canedit"
+          },
+          "id": {
+            "maxLength": 64,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "query",
+              "visualization",
+              "dashboard",
+              "widget",
+              "dataset",
+              "new"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "maxItems": 40,
+            "title": "Lines",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "name"
+        ],
+        "title": "ChatSubjectDetailIn",
+        "type": "object"
+      },
+      "ChatThreadCreateIn": {
+        "additionalProperties": false,
+        "properties": {
+          "subject": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatThreadSubject-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ChatThreadCreateIn",
+        "type": "object"
+      },
       "ChatThreadDetailOut": {
         "properties": {
           "drafts": {
@@ -2104,9 +3537,27 @@
             "title": "Lastturnat",
             "type": "string"
           },
+          "origin": {
+            "enum": [
+              "chat",
+              "mcp"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
           "pinned": {
             "title": "Pinned",
             "type": "boolean"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatThreadSubject-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "title": {
             "title": "Title",
@@ -2122,6 +3573,7 @@
           "id",
           "title",
           "pinned",
+          "origin",
           "createdAt",
           "updatedAt",
           "lastTurnAt"
@@ -2159,6 +3611,131 @@
         "title": "ChatThreadPatchIn",
         "type": "object"
       },
+      "ChatThreadSubject-Input": {
+        "additionalProperties": false,
+        "properties": {
+          "dashboardId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dashboardid"
+          },
+          "datasetId": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datasetid"
+          },
+          "kind": {
+            "enum": [
+              "query",
+              "visualization",
+              "dashboard",
+              "widget",
+              "dataset",
+              "new"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "newKind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "query",
+                  "dashboard",
+                  "snippet",
+                  "kpi",
+                  "report",
+                  "message"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Newkind"
+          },
+          "queryId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryid"
+          },
+          "visualizationId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visualizationid"
+          },
+          "widgetId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Widgetid"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "ChatThreadSubject",
+        "type": "object"
+      },
+      "ChatThreadSubject-Output": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "ChatThreadSubjectOut": {
+        "properties": {
+          "subject": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatThreadSubject-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "subject"
+        ],
+        "title": "ChatThreadSubjectOut",
+        "type": "object"
+      },
       "ChatToolResultPostIn": {
         "properties": {
           "callId": {
@@ -2168,43 +3745,86 @@
             "type": "string"
           },
           "result": {
-            "discriminator": {
-              "mapping": {
-                "dashboard": "#/components/schemas/ChatDashboardResultIn",
-                "data_source_schema": "#/components/schemas/ChatDataSourceSchemaResultIn",
-                "data_sources": "#/components/schemas/ChatDataSourcesResultIn",
-                "kpi": "#/components/schemas/ChatKpiResultIn",
-                "kpi_list": "#/components/schemas/ChatKpiListResultIn",
-                "library": "#/components/schemas/ChatLibraryResultIn",
-                "query_result": "#/components/schemas/ChatQueryResultIn",
-                "saved_visualization": "#/components/schemas/ChatSavedVisualizationResultIn"
-              },
-              "propertyName": "kind"
-            },
-            "oneOf": [
+            "anyOf": [
               {
-                "$ref": "#/components/schemas/ChatQueryResultIn"
+                "discriminator": {
+                  "mapping": {
+                    "dashboard": "#/components/schemas/ChatDashboardResultIn",
+                    "dashboard_edit": "#/components/schemas/ChatDashboardEditResultIn",
+                    "data_source_schema": "#/components/schemas/ChatDataSourceSchemaResultIn",
+                    "data_sources": "#/components/schemas/ChatDataSourcesResultIn",
+                    "download": "#/components/schemas/ChatDownloadResultIn",
+                    "kpi": "#/components/schemas/ChatKpiResultIn",
+                    "kpi_check": "#/components/schemas/ChatKpiCheckResultIn",
+                    "kpi_list": "#/components/schemas/ChatKpiListResultIn",
+                    "library": "#/components/schemas/ChatLibraryResultIn",
+                    "operation_check": "#/components/schemas/ChatOperationCheckResultIn",
+                    "query_detail": "#/components/schemas/ChatQueryDetailResultIn",
+                    "query_edit": "#/components/schemas/ChatQueryEditResultIn",
+                    "query_result": "#/components/schemas/ChatQueryResultIn",
+                    "saved_visualization": "#/components/schemas/ChatSavedVisualizationResultIn",
+                    "snippet_check": "#/components/schemas/ChatSnippetCheckResultIn",
+                    "visualization_check": "#/components/schemas/ChatVizCheckResultIn",
+                    "visualization_type": "#/components/schemas/ChatVizTypeResultIn"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ChatQueryResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatLibraryResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatSavedVisualizationResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatDashboardResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatDashboardEditResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatDataSourcesResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatDataSourceSchemaResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatKpiResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatKpiListResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatQueryDetailResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatQueryEditResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatVizTypeResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatVizCheckResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatSnippetCheckResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatKpiCheckResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatOperationCheckResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatDownloadResultIn"
+                  }
+                ]
               },
               {
-                "$ref": "#/components/schemas/ChatLibraryResultIn"
-              },
-              {
-                "$ref": "#/components/schemas/ChatSavedVisualizationResultIn"
-              },
-              {
-                "$ref": "#/components/schemas/ChatDashboardResultIn"
-              },
-              {
-                "$ref": "#/components/schemas/ChatDataSourcesResultIn"
-              },
-              {
-                "$ref": "#/components/schemas/ChatDataSourceSchemaResultIn"
-              },
-              {
-                "$ref": "#/components/schemas/ChatKpiResultIn"
-              },
-              {
-                "$ref": "#/components/schemas/ChatKpiListResultIn"
+                "$ref": "#/components/schemas/ChatOpenResultIn"
               }
             ],
             "title": "Result"
@@ -2258,6 +3878,16 @@
               }
             ],
             "title": "Readyqueries"
+          },
+          "subjectDetail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatSubjectDetailIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "text": {
             "maxLength": 4000,
@@ -2427,6 +4057,131 @@
         "title": "ChatVisualizationRefIn",
         "type": "object"
       },
+      "ChatVizCheckResultIn": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "const": "visualization_check",
+            "title": "Kind",
+            "type": "string"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "new",
+                  "edit",
+                  "delete"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatVizNextIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "problems": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Problems",
+            "type": "array"
+          },
+          "queryId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queryid"
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatVizSnapshotIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "visualizationId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visualizationid"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatVizCheckResultIn",
+        "type": "object"
+      },
+      "ChatVizNextIn": {
+        "properties": {
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          },
+          "options": {
+            "additionalProperties": true,
+            "title": "Options",
+            "type": "object"
+          },
+          "type": {
+            "maxLength": 64,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "name",
+          "options"
+        ],
+        "title": "ChatVizNextIn",
+        "type": "object"
+      },
       "ChatVizShapeIn": {
         "properties": {
           "guide": {
@@ -2463,6 +4218,109 @@
           "label"
         ],
         "title": "ChatVizShapeIn",
+        "type": "object"
+      },
+      "ChatVizSnapshotIn": {
+        "properties": {
+          "name": {
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          },
+          "options": {
+            "additionalProperties": true,
+            "title": "Options",
+            "type": "object"
+          },
+          "type": {
+            "maxLength": 64,
+            "title": "Type",
+            "type": "string"
+          },
+          "updatedAt": {
+            "maxLength": 64,
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "name",
+          "options",
+          "updatedAt"
+        ],
+        "title": "ChatVizSnapshotIn",
+        "type": "object"
+      },
+      "ChatVizTypeResultIn": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "const": "visualization_type",
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "maxItems": 80,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "required": [
+          "ok",
+          "kind"
+        ],
+        "title": "ChatVizTypeResultIn",
         "type": "object"
       },
       "ComposeContractOut": {
@@ -2743,166 +4601,6 @@
         "title": "ContentContractOut",
         "type": "object"
       },
-      "ConverseIn": {
-        "properties": {
-          "focusTable": {
-            "anyOf": [
-              {
-                "maxLength": 255,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Focustable"
-          },
-          "kind": {
-            "enum": [
-              "query",
-              "dashboard",
-              "kpi",
-              "report",
-              "snippet",
-              "message"
-            ],
-            "title": "Kind",
-            "type": "string"
-          },
-          "messages": {
-            "items": {
-              "$ref": "#/components/schemas/ConverseMessageIn"
-            },
-            "maxItems": 25,
-            "minItems": 1,
-            "title": "Messages",
-            "type": "array"
-          },
-          "targetDashboardId": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Targetdashboardid"
-          }
-        },
-        "required": [
-          "kind",
-          "messages"
-        ],
-        "title": "ConverseIn",
-        "type": "object"
-      },
-      "ConverseMessageIn": {
-        "properties": {
-          "content": {
-            "maxLength": 4000,
-            "minLength": 1,
-            "title": "Content",
-            "type": "string"
-          },
-          "role": {
-            "enum": [
-              "user",
-              "assistant"
-            ],
-            "title": "Role",
-            "type": "string"
-          }
-        },
-        "required": [
-          "role",
-          "content"
-        ],
-        "title": "ConverseMessageIn",
-        "type": "object"
-      },
-      "ConverseOut": {
-        "properties": {
-          "focusTable": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Focustable"
-          },
-          "proposal": {
-            "anyOf": [
-              {
-                "discriminator": {
-                  "mapping": {
-                    "dashboard": "#/components/schemas/DashboardProposalOut",
-                    "kpi": "#/components/schemas/KpiProposalOut",
-                    "message": "#/components/schemas/MessageProposalOut",
-                    "query": "#/components/schemas/QueryProposalOut",
-                    "report": "#/components/schemas/ReportProposalOut",
-                    "snippet": "#/components/schemas/SnippetProposalOut"
-                  },
-                  "propertyName": "kind"
-                },
-                "oneOf": [
-                  {
-                    "$ref": "#/components/schemas/QueryProposalOut"
-                  },
-                  {
-                    "$ref": "#/components/schemas/DashboardProposalOut"
-                  },
-                  {
-                    "$ref": "#/components/schemas/KpiProposalOut"
-                  },
-                  {
-                    "$ref": "#/components/schemas/ReportProposalOut"
-                  },
-                  {
-                    "$ref": "#/components/schemas/SnippetProposalOut"
-                  },
-                  {
-                    "$ref": "#/components/schemas/MessageProposalOut"
-                  }
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Proposal"
-          },
-          "ready": {
-            "title": "Ready",
-            "type": "boolean"
-          },
-          "reply": {
-            "title": "Reply",
-            "type": "string"
-          },
-          "suggestedAnswers": {
-            "items": {
-              "type": "string"
-            },
-            "maxItems": 4,
-            "title": "Suggestedanswers",
-            "type": "array"
-          }
-        },
-        "required": [
-          "reply",
-          "suggestedAnswers",
-          "ready",
-          "proposal",
-          "focusTable"
-        ],
-        "title": "ConverseOut",
-        "type": "object"
-      },
       "CredentialPropertyOut": {
         "properties": {
           "description": {
@@ -2978,94 +4676,6 @@
           "order"
         ],
         "title": "CredentialSchemaOut",
-        "type": "object"
-      },
-      "DashboardProposalOut": {
-        "properties": {
-          "kind": {
-            "const": "dashboard",
-            "default": "dashboard",
-            "title": "Kind",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "widgets": {
-            "items": {
-              "$ref": "#/components/schemas/DashboardWidgetProposalOut"
-            },
-            "title": "Widgets",
-            "type": "array"
-          }
-        },
-        "required": [
-          "name",
-          "widgets"
-        ],
-        "title": "DashboardProposalOut",
-        "type": "object"
-      },
-      "DashboardWidgetProposalOut": {
-        "description": "One widget: either a query that exists, or one to be written first.\n\nExactly one of the two, enforced below: a widget carrying both would let the\ncard create a query and then hang a different one on the dashboard, and one\ncarrying neither is a row with nothing behind it.",
-        "properties": {
-          "newQuery": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/NewQueryProposalOut"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "queryId": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Queryid"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "visualizationId": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Visualizationid"
-          },
-          "vizChoiceId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Vizchoiceid"
-          }
-        },
-        "required": [
-          "title",
-          "queryId",
-          "visualizationId",
-          "vizChoiceId",
-          "newQuery"
-        ],
-        "title": "DashboardWidgetProposalOut",
         "type": "object"
       },
       "DatasetColumnOut": {
@@ -3553,249 +5163,424 @@
         "title": "HubCounterOut",
         "type": "object"
       },
-      "KpiProposalOut": {
-        "description": "A KPI over a query that exists, or over one written for it.\n\nA KPI reads one number from one query, so it needs exactly one source. Both\nhalves are always on the wire with the unused one null, the same rule\nDashboardWidgetProposalOut follows and for the same reason.",
+      "McpCallContextIn": {
         "properties": {
-          "atRisk": {
+          "dataSources": {
             "anyOf": [
               {
-                "type": "number"
+                "items": {
+                  "$ref": "#/components/schemas/ChatDataSourceEntryIn"
+                },
+                "maxItems": 100,
+                "type": "array"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Atrisk"
+            "title": "Datasources"
           },
-          "breached": {
+          "instance": {
             "anyOf": [
               {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Breached"
-          },
-          "cadence": {
-            "enum": [
-              "hourly",
-              "daily",
-              "weekly"
-            ],
-            "title": "Cadence",
-            "type": "string"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "direction": {
-            "enum": [
-              "higher-is-better",
-              "lower-is-better"
-            ],
-            "title": "Direction",
-            "type": "string"
-          },
-          "kind": {
-            "const": "kpi",
-            "default": "kpi",
-            "title": "Kind",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "newQuery": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/NewQueryProposalOut"
+                "$ref": "#/components/schemas/ChatInstanceIn"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "sourceQueryId": {
+          "schemas": {
             "anyOf": [
               {
-                "type": "integer"
+                "items": {
+                  "$ref": "#/components/schemas/ChatDataSourceSchemaResultIn"
+                },
+                "maxItems": 20,
+                "type": "array"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Sourcequeryid"
+            "title": "Schemas"
           },
-          "target": {
+          "vizCatalog": {
             "anyOf": [
               {
-                "type": "number"
+                "items": {
+                  "$ref": "#/components/schemas/ChatVizShapeIn"
+                },
+                "maxItems": 60,
+                "type": "array"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Target"
+            "title": "Vizcatalog"
+          }
+        },
+        "title": "McpCallContextIn",
+        "type": "object"
+      },
+      "McpCallIn": {
+        "properties": {
+          "arguments": {
+            "additionalProperties": true,
+            "title": "Arguments",
+            "type": "object"
           },
-          "unit": {
+          "context": {
+            "$ref": "#/components/schemas/McpCallContextIn"
+          },
+          "name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "McpCallIn",
+        "type": "object"
+      },
+      "McpClientCallOut": {
+        "properties": {
+          "args": {
+            "additionalProperties": true,
+            "title": "Args",
+            "type": "object"
+          },
+          "callId": {
+            "title": "Callid",
+            "type": "string"
+          },
+          "kind": {
+            "const": "client_call",
+            "default": "client_call",
+            "title": "Kind",
+            "type": "string"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "callId",
+          "tool",
+          "args"
+        ],
+        "title": "McpClientCallOut",
+        "type": "object"
+      },
+      "McpDoneOut": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "draft": {
             "anyOf": [
               {
+                "$ref": "#/components/schemas/McpDraftOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isError": {
+            "title": "Iserror",
+            "type": "boolean"
+          },
+          "kind": {
+            "const": "done",
+            "default": "done",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "isError"
+        ],
+        "title": "McpDoneOut",
+        "type": "object"
+      },
+      "McpDraftOut": {
+        "properties": {
+          "draftId": {
+            "title": "Draftid",
+            "type": "string"
+          },
+          "threadId": {
+            "title": "Threadid",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "draftId",
+          "version",
+          "threadId",
+          "url"
+        ],
+        "title": "McpDraftOut",
+        "type": "object"
+      },
+      "McpResultIn": {
+        "properties": {
+          "result": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "dashboard": "#/components/schemas/ChatDashboardResultIn",
+                    "dashboard_edit": "#/components/schemas/ChatDashboardEditResultIn",
+                    "data_source_schema": "#/components/schemas/ChatDataSourceSchemaResultIn",
+                    "data_sources": "#/components/schemas/ChatDataSourcesResultIn",
+                    "download": "#/components/schemas/ChatDownloadResultIn",
+                    "kpi": "#/components/schemas/ChatKpiResultIn",
+                    "kpi_check": "#/components/schemas/ChatKpiCheckResultIn",
+                    "kpi_list": "#/components/schemas/ChatKpiListResultIn",
+                    "library": "#/components/schemas/ChatLibraryResultIn",
+                    "operation_check": "#/components/schemas/ChatOperationCheckResultIn",
+                    "query_detail": "#/components/schemas/ChatQueryDetailResultIn",
+                    "query_edit": "#/components/schemas/ChatQueryEditResultIn",
+                    "query_result": "#/components/schemas/ChatQueryResultIn",
+                    "saved_visualization": "#/components/schemas/ChatSavedVisualizationResultIn",
+                    "snippet_check": "#/components/schemas/ChatSnippetCheckResultIn",
+                    "visualization_check": "#/components/schemas/ChatVizCheckResultIn",
+                    "visualization_type": "#/components/schemas/ChatVizTypeResultIn"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ChatQueryResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatLibraryResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatSavedVisualizationResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatDashboardResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatDashboardEditResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatDataSourcesResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatDataSourceSchemaResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatKpiResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatKpiListResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatQueryDetailResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatQueryEditResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatVizTypeResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatVizCheckResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatSnippetCheckResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatKpiCheckResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatOperationCheckResultIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChatDownloadResultIn"
+                  }
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/ChatOpenResultIn"
+              }
+            ],
+            "title": "Result"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "McpResultIn",
+        "type": "object"
+      },
+      "McpToolOut": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "inputSchema": {
+            "additionalProperties": true,
+            "title": "Inputschema",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "inputSchema"
+        ],
+        "title": "McpToolOut",
+        "type": "object"
+      },
+      "McpToolsIn": {
+        "properties": {
+          "chatEnabled": {
+            "title": "Chatenabled",
+            "type": "boolean"
+          },
+          "instance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatInstanceIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "chatEnabled"
+        ],
+        "title": "McpToolsIn",
+        "type": "object"
+      },
+      "McpToolsOut": {
+        "properties": {
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/McpToolOut"
+            },
+            "title": "Tools",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tools"
+        ],
+        "title": "McpToolsOut",
+        "type": "object"
+      },
+      "ParameterMappingIn": {
+        "properties": {
+          "mapTo": {
+            "anyOf": [
+              {
+                "maxLength": 100,
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Unit"
-          },
-          "valueColumn": {
-            "title": "Valuecolumn",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "description",
-          "sourceQueryId",
-          "newQuery",
-          "valueColumn",
-          "unit",
-          "target",
-          "direction",
-          "cadence",
-          "atRisk",
-          "breached"
-        ],
-        "title": "KpiProposalOut",
-        "type": "object"
-      },
-      "MessageProposalOut": {
-        "properties": {
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "header": {
-            "title": "Header",
-            "type": "string"
-          },
-          "kind": {
-            "const": "message",
-            "default": "message",
-            "title": "Kind",
-            "type": "string"
+            "title": "Mapto"
           },
           "title": {
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "header",
-          "description"
-        ],
-        "title": "MessageProposalOut",
-        "type": "object"
-      },
-      "NewQueryProposalOut": {
-        "description": "A query the AI wrote because the instance did not have one that fits.\n\nThe output of one `generate_sql` call, so it has been through the\none-statement, read-only, right-table check and its retry-with-reason. It\nsits beside generate-sql rather than with the proposals in ai_create.py, or an\noutline section would import the conversation contract to describe a query.\n\nCarries everything QueryProposalOut does except its `kind` discriminator.",
-        "properties": {
-          "datasetTable": {
-            "title": "Datasettable",
-            "type": "string"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "sql": {
-            "title": "Sql",
-            "type": "string"
-          },
-          "vizChoiceId": {
-            "title": "Vizchoiceid",
-            "type": "string"
-          },
-          "vizOptions": {
-            "additionalProperties": true,
-            "title": "Vizoptions",
-            "type": "object"
-          }
-        },
-        "required": [
-          "name",
-          "description",
-          "sql",
-          "datasetTable",
-          "vizChoiceId",
-          "vizOptions"
-        ],
-        "title": "NewQueryProposalOut",
-        "type": "object"
-      },
-      "OutlineSectionOut": {
-        "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "intent": {
-            "title": "Intent",
-            "type": "string"
-          },
-          "newQuery": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/NewQueryProposalOut"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "sourceQueryId": {
-            "anyOf": [
-              {
-                "type": "integer"
+                "maxLength": 255,
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Sourcequeryid"
+            "title": "Title"
           },
-          "suggested": {
-            "title": "Suggested",
-            "type": "boolean"
-          },
-          "title": {
-            "title": "Title",
+          "type": {
+            "enum": [
+              "dashboard-add-new",
+              "dashboard-map-to-existing",
+              "widget-level",
+              "static-value"
+            ],
+            "title": "Type",
             "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
           }
         },
         "required": [
-          "id",
-          "title",
-          "intent",
-          "sourceQueryId",
-          "newQuery",
-          "suggested",
-          "enabled"
+          "type"
         ],
-        "title": "OutlineSectionOut",
+        "title": "ParameterMappingIn",
+        "type": "object"
+      },
+      "PlacedPositionIn": {
+        "properties": {
+          "col": {
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Col",
+            "type": "integer"
+          },
+          "row": {
+            "minimum": 0.0,
+            "title": "Row",
+            "type": "integer"
+          },
+          "sizeX": {
+            "maximum": 6.0,
+            "minimum": 1.0,
+            "title": "Sizex",
+            "type": "integer"
+          },
+          "sizeY": {
+            "maximum": 40.0,
+            "minimum": 1.0,
+            "title": "Sizey",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "col",
+          "row",
+          "sizeX",
+          "sizeY"
+        ],
+        "title": "PlacedPositionIn",
         "type": "object"
       },
       "PublishAttemptOut": {
@@ -4120,119 +5905,6 @@
         "title": "PublishedFeedOut",
         "type": "object"
       },
-      "QueryProposalOut": {
-        "properties": {
-          "datasetTable": {
-            "title": "Datasettable",
-            "type": "string"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "kind": {
-            "const": "query",
-            "default": "query",
-            "title": "Kind",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "sql": {
-            "title": "Sql",
-            "type": "string"
-          },
-          "vizChoiceId": {
-            "title": "Vizchoiceid",
-            "type": "string"
-          },
-          "vizOptions": {
-            "additionalProperties": true,
-            "title": "Vizoptions",
-            "type": "object"
-          }
-        },
-        "required": [
-          "name",
-          "description",
-          "sql",
-          "datasetTable",
-          "vizChoiceId",
-          "vizOptions"
-        ],
-        "title": "QueryProposalOut",
-        "type": "object"
-      },
-      "ReportOutlineOut": {
-        "properties": {
-          "goal": {
-            "title": "Goal",
-            "type": "string"
-          },
-          "sections": {
-            "items": {
-              "$ref": "#/components/schemas/OutlineSectionOut"
-            },
-            "title": "Sections",
-            "type": "array"
-          }
-        },
-        "required": [
-          "goal",
-          "sections"
-        ],
-        "title": "ReportOutlineOut",
-        "type": "object"
-      },
-      "ReportProposalOut": {
-        "properties": {
-          "kind": {
-            "const": "report",
-            "default": "report",
-            "title": "Kind",
-            "type": "string"
-          },
-          "outline": {
-            "$ref": "#/components/schemas/ReportOutlineOut"
-          }
-        },
-        "required": [
-          "outline"
-        ],
-        "title": "ReportProposalOut",
-        "type": "object"
-      },
-      "SnippetProposalOut": {
-        "properties": {
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "kind": {
-            "const": "snippet",
-            "default": "snippet",
-            "title": "Kind",
-            "type": "string"
-          },
-          "snippet": {
-            "title": "Snippet",
-            "type": "string"
-          },
-          "trigger": {
-            "title": "Trigger",
-            "type": "string"
-          }
-        },
-        "required": [
-          "trigger",
-          "snippet",
-          "description"
-        ],
-        "title": "SnippetProposalOut",
-        "type": "object"
-      },
       "StandardCapabilityOut": {
         "properties": {
           "entities": {
@@ -4413,6 +6085,38 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "WidgetPositionIn": {
+        "properties": {
+          "col": {
+            "minimum": 0.0,
+            "title": "Col",
+            "type": "integer"
+          },
+          "row": {
+            "minimum": 0.0,
+            "title": "Row",
+            "type": "integer"
+          },
+          "sizeX": {
+            "minimum": 0.0,
+            "title": "Sizex",
+            "type": "integer"
+          },
+          "sizeY": {
+            "minimum": 0.0,
+            "title": "Sizey",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "col",
+          "row",
+          "sizeX",
+          "sizeY"
+        ],
+        "title": "WidgetPositionIn",
+        "type": "object"
       }
     }
   },
@@ -4504,6 +6208,350 @@
         "summary": "Post Promotion",
         "tags": [
           "ai-chat"
+        ]
+      }
+    },
+    "/ai/chat/drafts/{draft_id}/promotions/{promotion_id}": {
+      "patch": {
+        "operationId": "patch_promotion_ai_chat_drafts__draft_id__promotions__promotion_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "promotion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Promotion Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-veodyn-user-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Veodyn-User-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatPromotionPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatPromotionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Promotion",
+        "tags": [
+          "ai-chat"
+        ]
+      }
+    },
+    "/ai/chat/mcp/calls": {
+      "post": {
+        "operationId": "post_call_ai_chat_mcp_calls_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-veodyn-user-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Veodyn-User-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpCallIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "discriminator": {
+                    "mapping": {
+                      "client_call": "#/components/schemas/McpClientCallOut",
+                      "done": "#/components/schemas/McpDoneOut"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/McpDoneOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/McpClientCallOut"
+                    }
+                  ],
+                  "title": "Response Post Call Ai Chat Mcp Calls Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Call",
+        "tags": [
+          "ai-chat-mcp"
+        ]
+      }
+    },
+    "/ai/chat/mcp/calls/{call_id}/result": {
+      "post": {
+        "operationId": "post_result_ai_chat_mcp_calls__call_id__result_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "title": "Call Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-veodyn-user-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Veodyn-User-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpResultIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpDoneOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Result",
+        "tags": [
+          "ai-chat-mcp"
+        ]
+      }
+    },
+    "/ai/chat/mcp/tools": {
+      "post": {
+        "operationId": "list_tools_ai_chat_mcp_tools_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-veodyn-user-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Veodyn-User-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpToolsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpToolsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tools",
+        "tags": [
+          "ai-chat-mcp"
         ]
       }
     },
@@ -4618,6 +6666,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ChatThreadCreateIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "content": {
@@ -4865,6 +6930,81 @@
           }
         },
         "summary": "Patch Thread",
+        "tags": [
+          "ai-chat"
+        ]
+      }
+    },
+    "/ai/chat/threads/{thread_id}/subject": {
+      "get": {
+        "operationId": "get_thread_subject_ai_chat_threads__thread_id__subject_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-veodyn-user-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Veodyn-User-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatThreadSubjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Thread Subject",
         "tags": [
           "ai-chat"
         ]
@@ -5199,66 +7339,6 @@
         "summary": "Post Tool Result",
         "tags": [
           "ai-chat"
-        ]
-      }
-    },
-    "/ai/converse": {
-      "post": {
-        "description": "One Create-with-AI interview turn, grounded on what actually exists.\n\nThe request carries no grounding, unlike /outline: the catalog and the query\nlist are assembled here, so a modified client cannot make the model believe\nin a table that does not exist.",
-        "operationId": "post_converse_ai_converse_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConverseIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConverseOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Post Converse",
-        "tags": [
-          "ai"
         ]
       }
     },

@@ -146,7 +146,7 @@ export interface RedashWidget {
   visualization?: RedashVisualization
   text: string
   width: number
-  options: {
+  options: Record<string, unknown> & {
     position?: {
       col: number
       row: number

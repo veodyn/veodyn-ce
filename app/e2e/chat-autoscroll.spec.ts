@@ -23,10 +23,24 @@ function storedTurn(seq: number) {
 
 const thread = { id: THREAD, title: 'Scroll', pinned: false, createdAt: STAMP, updatedAt: STAMP, lastTurnAt: STAMP }
 
+const REDASH_PORT = 3103
+const SESSION_BODY = {
+  user: { id: 1, name: 'E2E Admin', email: 'e2e@example.com', permissions: ['admin'], groups: [1], api_key: 'e2e-key' },
+  client_config: {},
+  messages: [],
+}
+
 let server: Server
+let redash: Server
 let streamUrl = ''
 
 test.beforeAll(async () => {
+  redash = createServer((request, response) => {
+    const known = request.url?.startsWith('/api/session')
+    response.writeHead(known ? 200 : 404, { 'content-type': 'application/json' })
+    response.end(JSON.stringify(known ? SESSION_BODY : {}))
+  })
+  await new Promise<void>((resolve) => redash.listen(REDASH_PORT, '127.0.0.1', resolve))
   server = createServer((request, response) => {
     response.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' })
     const frames: [string, unknown][] = [['turn_started', { turnId: TURN, seq: 9 }]]
@@ -63,16 +77,15 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await new Promise((resolve) => server.close(resolve))
+  await new Promise((resolve) => redash.close(resolve))
 })
 
 async function ensureAuthed(page: Page) {
+  await page.context().addCookies([
+    { name: 'session', value: 'e2e', url: 'http://localhost:3102' },
+    { name: 'redash_api_key', value: 'e2e-key', url: 'http://localhost:3102' },
+  ])
   await page.goto('/')
-  const email = page.getByRole('textbox', { name: /email/i })
-  if (await email.isVisible().catch(() => false)) {
-    await email.fill('admin@example.com')
-    await page.getByLabel(/password/i).fill('mock')
-    await page.getByRole('button', { name: /sign in/i }).click()
-  }
   await page.waitForLoadState('networkidle')
 }
 
@@ -110,7 +123,7 @@ test.describe.configure({ timeout: 180_000 })
 
 test.beforeEach(() => {
   const chatConfig = test.info().config.configFile?.endsWith('playwright.chat.config.ts') ?? false
-  test.skip(!chatConfig, 'runs under pnpm test:e2e:chat, where the server has ai.chat on')
+  test.skip(!chatConfig, 'runs under pnpm test:e2e:chat, where the server has a chat endpoint')
 })
 
 test('the conversation follows a streaming reply to the end', async ({ page }) => {

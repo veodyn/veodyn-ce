@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chatToolContributionFor, CONTRIBUTED_RESULT_KIND, isContributedTool } from './chat-tools'
+import { chatToolContributionFor, contributedResultKind, isContributedTool } from './chat-tools'
 import type { ChatToolContribution } from './chat-tool-types'
 import type { FeatureDescriptor } from './types'
 
@@ -26,10 +26,25 @@ describe('contributed chat tools', () => {
   })
 
   it('knows which tools are contributed and what each one answers with', () => {
-    expect(isContributedTool('show_kpi')).toBe(true)
-    expect(isContributedTool('list_kpis')).toBe(true)
-    expect(isContributedTool('search_library')).toBe(false)
-    expect(isContributedTool('toString')).toBe(false)
-    expect(CONTRIBUTED_RESULT_KIND).toEqual({ show_kpi: 'kpi', list_kpis: 'kpi_list' })
+    expect(isContributedTool('show_kpi', REGISTRY)).toBe(true)
+    expect(isContributedTool('list_kpis', REGISTRY)).toBe(true)
+    expect(isContributedTool('search_library', REGISTRY)).toBe(false)
+    expect(isContributedTool('toString', REGISTRY)).toBe(false)
+    expect(contributedResultKind('show_kpi', REGISTRY)).toBe('kpi')
+    expect(contributedResultKind('list_kpis', REGISTRY)).toBe('kpi_list')
+  })
+
+  it('takes the result kind of a tool only a pack names from the registry', () => {
+    const registry: Record<string, FeatureDescriptor> = {
+      kpis: {
+        id: 'kpis',
+        nav: [],
+        routes: [],
+        chatTools: [{ tool: 'update_kpi', resultKind: 'kpi_edit_check', execute: async () => ({ default: async () => ({ kind: 'kpi_edit_check', ok: true }) }) }],
+      },
+    }
+    expect(isContributedTool('update_kpi', registry)).toBe(true)
+    expect(contributedResultKind('update_kpi', registry)).toBe('kpi_edit_check')
+    expect(contributedResultKind('update_kpi', {})).toBeUndefined()
   })
 })

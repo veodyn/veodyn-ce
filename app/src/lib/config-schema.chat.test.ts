@@ -2,22 +2,21 @@ import { describe, expect, it } from 'vitest'
 import { NEUTRAL_CONFIG, toClientConfig, veodynConfigSchema } from './config-schema'
 import { applyEnvOverrides } from './config'
 
-describe('ai.chat', () => {
-  it('is off by default and reaches the client', () => {
-    expect(NEUTRAL_CONFIG.ai.chat).toBe(false)
-    expect(toClientConfig(NEUTRAL_CONFIG).ai).toEqual({ enabled: false, chat: false })
+describe('the retired ai.chat key', () => {
+  it('is not sent to the client', () => {
+    expect(toClientConfig(NEUTRAL_CONFIG).ai).toEqual({ enabled: false })
   })
 
-  it('turns on beside ai.enabled', () => {
+  it('still loads when an instance config sets it', () => {
     const config = veodynConfigSchema.parse({ ai: { enabled: true, endpoint: 'https://ai.example', chat: 'true' } })
-    expect(toClientConfig(config).ai).toEqual({ enabled: true, chat: true })
+    expect(toClientConfig(config).ai).toEqual({ enabled: true })
   })
 
-  it('is refused without ai.enabled', () => {
-    expect(veodynConfigSchema.safeParse({ ai: { chat: true } }).success).toBe(false)
+  it('loads without ai.enabled, which it used to refuse', () => {
+    expect(veodynConfigSchema.safeParse({ ai: { chat: true } }).success).toBe(true)
   })
 
-  it('never reads the token secret as config', () => {
+  it('is read from the environment without effect on the client', () => {
     const env = { VEODYN_AI__TOKEN_SECRET: 'secret', VEODYN_AI__CHAT: 'true' } as unknown as NodeJS.ProcessEnv
     expect(applyEnvOverrides({}, env)).toEqual({ ai: { chat: true } })
   })

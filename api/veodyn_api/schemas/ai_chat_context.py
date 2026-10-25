@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from veodyn_api.schemas.ai import CamelModel
 
@@ -60,9 +60,23 @@ class ChatReadyQueryIn(CamelModel):
     more: bool = False
 
 
+SubjectKind = Literal["query", "visualization", "dashboard", "widget", "dataset", "new"]
+
+
+class ChatSubjectDetailIn(CamelModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: SubjectKind
+    id: str = Field(max_length=64)
+    name: str = Field(max_length=500)
+    can_edit: bool | None = None
+    lines: list[Annotated[str, Field(max_length=500)]] = Field(default_factory=list, max_length=40)
+
+
 class ChatTurnIn(CamelModel):
     text: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
     viz_catalog: list[ChatVizShapeIn] | None = Field(default=None, max_length=60)
     instance: ChatInstanceIn | None = None
     data_sources: list[ChatDataSourceEntryIn] | None = Field(default=None, max_length=100)
     ready_queries: list[ChatReadyQueryIn] | None = Field(default=None, max_length=20)
+    subject_detail: ChatSubjectDetailIn | None = None

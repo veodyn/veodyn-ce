@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from tests.ai_stubs import FakeLlm
 from tests.test_ai_routes import AUTH, DATASET, GENERATED, build
-from veodyn_api.services.ai_converse_grounding import clear_grounding_cache
+from veodyn_api.services.ai_catalog_grounding import clear_grounding_cache
 from veodyn_api.services.dataset_profile_cache import clear_profile_cache
 
 WAREHOUSE = "http://clickhouse.test"

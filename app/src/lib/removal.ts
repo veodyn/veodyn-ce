@@ -11,11 +11,6 @@
 
 /**
  * The five things in the Library sidebar group (`lib/sidebar-nav.ts`).
- *
- * Deliberately not `CreateKind` from `types/ai-create.ts`, which happens to
- * hold the same five strings: that union is half of a wire contract mirrored in
- * `veodyn_api/schemas/ai.py`, and removal copy must not move when the AI
- * conversation contract does.
  */
 export type LibraryKind = 'query' | 'dashboard' | 'kpi' | 'report' | 'snippet' | 'message'
 

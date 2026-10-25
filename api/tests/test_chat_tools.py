@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from tests.converse_stubs import SPEEDS
+from tests.catalog_stubs import SPEEDS
 from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.schemas.catalog import DatasetOut
 from veodyn_api.services.chat import tools
@@ -188,6 +188,20 @@ def test_the_registry_lists_every_tool_and_refuses_a_duplicate() -> None:
         "propose_dashboard",
         "link_help",
         "run_saved_query",
+        "open_query",
+        "update_query",
+        "describe_visualization_type",
+        "propose_visualization",
+        "update_visualization",
+        "delete_visualization",
+        "update_dashboard",
+        "fork_query",
+        "archive_query",
+        "archive_dashboard",
+        "set_favorite",
+        "share_dashboard",
+        "share_visualization",
+        "download_result",
     ]
     with pytest.raises(ValueError):
         tools.register_chat_tool(tools.RUN_QUERY)
@@ -226,7 +240,7 @@ async def test_a_library_search_goes_to_the_browser_with_both_kinds_by_default()
     assert outcome == ClientCall(
         call_id="call-1",
         tool="search_library",
-        args={"text": "bikeshare", "kinds": ["query", "dashboard"], "tags": [], "sort": "match"},
+        args={"text": "bikeshare", "kinds": ["query", "dashboard"], "tags": [], "sort": "match", "archived": False},
     )
 
 
@@ -236,7 +250,7 @@ async def test_a_library_search_keeps_known_kinds_and_caps_tags() -> None:
         call("search_library", text="", kinds=["dashboard", "report", "dashboard"], tags=tags), context()
     )
     assert isinstance(outcome, ClientCall)
-    assert outcome.args == {"text": "", "kinds": ["dashboard"], "tags": tags[:5], "sort": "match"}
+    assert outcome.args == {"text": "", "kinds": ["dashboard"], "tags": tags[:5], "sort": "match", "archived": False}
 
 
 async def test_a_library_search_with_no_known_kind_is_refused() -> None:

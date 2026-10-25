@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from veodyn_api.schemas.ai_chat_context import (
     COMMUNITY,
@@ -6,6 +7,7 @@ from veodyn_api.schemas.ai_chat_context import (
     ChatInstanceIn,
     ChatReadyParamIn,
     ChatReadyQueryIn,
+    ChatSubjectDetailIn,
     ChatTurnIn,
 )
 
@@ -17,10 +19,22 @@ MAP_QUESTION_RULE = (
 
 
 @dataclass(frozen=True)
+class AppliedPromotion:
+    draft_id: str
+    kind: str
+    target_type: str
+    target_id: str | None
+    status: str
+    receipts: tuple[dict[str, Any], ...]
+
+
+@dataclass(frozen=True)
 class TurnContext:
     instance: ChatInstanceIn | None
     data_sources: tuple[ChatDataSourceEntryIn, ...] | None
     ready_queries: tuple[ChatReadyQueryIn, ...]
+    applied: tuple[AppliedPromotion, ...] = ()
+    subject_detail: ChatSubjectDetailIn | None = None
 
 
 EMPTY_CONTEXT = TurnContext(instance=None, data_sources=None, ready_queries=())
@@ -31,7 +45,19 @@ def context_from(payload: ChatTurnIn) -> TurnContext:
         instance=payload.instance,
         data_sources=tuple(payload.data_sources) if payload.data_sources is not None else None,
         ready_queries=tuple(payload.ready_queries or ()),
+        subject_detail=payload.subject_detail,
     )
+
+
+def subject_block(context: TurnContext) -> str | None:
+    subject = context.subject_detail
+    if subject is None:
+        return None
+    if subject.kind == "new":
+        return f"The analyst opened this conversation to create a new {subject.id}."
+    editable = " (the analyst can edit it)" if subject.can_edit else ""
+    head = f'This conversation was opened from {subject.kind} {subject.id} "{subject.name}"{editable}:'
+    return "\n".join([head, *(f"- {line}" for line in subject.lines)])
 
 
 def has_several_maps(context: TurnContext) -> bool:
@@ -121,4 +147,26 @@ def ready_queries_block(context: TurnContext) -> str | None:
     lines.extend(_ready_line(one) for one in context.ready_queries)
     if any(one.more for one in context.ready_queries):
         lines.append("More ready-made queries exist than are listed; use `search_library` to find them.")
+    return "\n".join(lines)
+
+
+def _step_text(receipt: dict[str, Any]) -> str:
+    text = f"{receipt.get('step')} {receipt.get('outcome')}"
+    error = receipt.get("error")
+    return f"{text} ({error})" if error else text
+
+
+def _applied_line(applied: AppliedPromotion) -> str:
+    target = applied.target_id if applied.target_id is not None else "not created"
+    line = f"- draft {applied.draft_id} ({applied.kind}) to {applied.target_type} {target}: {applied.status}."
+    if applied.receipts:
+        line += f" Steps: {', '.join(_step_text(one) for one in applied.receipts)}"
+    return line
+
+
+def applied_block(context: TurnContext) -> str | None:
+    if not context.applied:
+        return None
+    lines = ["Applied since your last turn (the analyst clicked Apply in a card; treat these as saved):"]
+    lines.extend(_applied_line(one) for one in context.applied)
     return "\n".join(lines)

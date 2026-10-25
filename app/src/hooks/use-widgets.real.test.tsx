@@ -20,13 +20,15 @@ vi.mock('@/services/redash/widgets', () => ({
   updateWidget: vi.fn(),
   deleteWidget: vi.fn(),
 }))
-vi.mock('@/services/redash/dashboards', () => ({
+vi.mock('@/services/redash/dashboards', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/redash/dashboards')>()),
   list: vi.fn(),
   get: vi.fn(),
 }))
 
 import type { MockDashboardWidget } from '@/lib/mock-data'
 import * as dashboardsService from '@/services/redash/dashboards'
+import { normalizeWidget } from '@/services/redash/dashboards'
 import * as widgetsService from '@/services/redash/widgets'
 import { useDashboard, useDashboards } from './use-dashboards'
 import { useCreateWidget, useDeleteWidget, useSaveLayout, useUpdateWidget } from './use-widgets'
@@ -194,6 +196,29 @@ describe('what a widget write puts on the wire', () => {
 
     expect(vi.mocked(widgetsService.updateWidget).mock.calls.map((c) => c[0])).toEqual([1, 2, 3])
     expect(vi.mocked(widgetsService.updateWidget).mock.calls[1][1].options).toEqual(widget(2).options)
+  })
+
+  it('layout save keeps an option it does not know about', async () => {
+    const { result } = await settled()
+    const raw = {
+      id: 4,
+      dashboard_id: DASHBOARD_ID,
+      text: '',
+      width: 1,
+      options: { position: { col: 0, row: 0, sizeX: 3, sizeY: 8 }, chatNote: 'x' },
+      created_at: '',
+      updated_at: '2026-10-24T10:00:00.123Z',
+    }
+    const loaded = normalizeWidget(raw, DASHBOARD_ID)
+    const moved = { ...loaded, options: { ...loaded.options, position: { col: 3, row: 0, sizeX: 3, sizeY: 8 } } }
+
+    await act(async () => {
+      await result.current.saveLayout.mutateAsync({ dashboardId: DASHBOARD_ID, widgets: [moved] })
+    })
+
+    const sent = vi.mocked(widgetsService.updateWidget).mock.calls[0][1].options
+    expect(sent.chatNote).toBe('x')
+    expect(sent.position).toEqual({ col: 3, row: 0, sizeX: 3, sizeY: 8 })
   })
 
   it('fails the layout save when one widget in it is refused', async () => {

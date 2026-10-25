@@ -72,7 +72,7 @@ and is licensed commercially.
 | | [Published feeds](/features/published-feeds): declaring, publishing on demand, serving publicly | ● | ● |
 | | Feed entities beyond vehicle positions, scheduled publishing, and the tokens a private feed is read with | | ● |
 | | WebSocket streaming | | ● |
-| **AI** | SQL generation, Create with AI, converse, Edit with AI | ● | ● |
+| **AI** | SQL generation, the data chat, Create with AI, Edit with AI | ● | ● |
 | | The Home digest and annotation suggestions | | ● |
 | **Notifications** | Email and webhook destinations | ● | ● |
 | | Chat and paging destinations | | ● |

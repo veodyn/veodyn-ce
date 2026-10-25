@@ -15,7 +15,7 @@
 // their own state, not a reason to close one of them: the picks are kept by the
 // page and are still there whenever the analyst comes back to them.
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CreateWithAiButton } from '@/components/ai/create-chat/create-with-ai-button'
+import { CreateWithAiButton } from '@/components/chat/create-with-ai-button'
 import type { MockDataSource, SchemaTable } from '@/lib/mock-data'
 import { AiPromptBar } from './ai-prompt-bar'
 import { aiDatasetFromSchema, sqlGenerationBlockedReason } from './query-ai-model'
@@ -36,12 +36,14 @@ interface QueryAuthoringModeTabsProps {
   mode: AuthoringMode
   onModeChange: (mode: AuthoringMode) => void
   onRequestPro: () => void
+  isDirty?: boolean
 }
 
 export function QueryAuthoringModeTabs({
   mode,
   onModeChange,
   onRequestPro,
+  isDirty = false,
 }: QueryAuthoringModeTabsProps) {
   // Leaving Visual for PRO can carry the composed SQL along, so the editor opens
   // on the query the analyst was just looking at rather than on an empty buffer
@@ -73,7 +75,7 @@ export function QueryAuthoringModeTabs({
           for a query from nothing and saves the one that comes back, which is
           why it sits beside the toggle rather than inside either column. */}
       <div className="ml-auto">
-        <CreateWithAiButton kind="query" />
+        <CreateWithAiButton kind="query" isDirty={isDirty} />
       </div>
     </div>
   )

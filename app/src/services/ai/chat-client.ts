@@ -1,13 +1,18 @@
 import { AppError, ErrorIds, isAppError } from '@/lib/errorIds'
+import type { components } from '@/types/generated/veodyn-api'
 import type {
   ChatAccepted,
   ChatPromotion,
   ChatThread,
+  ChatThreadSubject,
+  ChatThreadSubjectRead,
   ChatThreadDetail,
   ChatThreadList,
   ChatTurnStarted,
 } from '@/lib/chat/wire'
-import type { ChatToolResult } from '@/lib/chat/tool-results'
+import type { ChatToolResult, OpenToolResult } from '@/lib/chat/tool-results'
+
+type Schemas = components['schemas']
 
 const BASE = '/api/ai/chat'
 
@@ -56,8 +61,12 @@ export function listThreads(offset = 0, signal?: AbortSignal): Promise<ChatThrea
   return call(`threads?offset=${offset}`, { signal })
 }
 
-export function createThread(signal?: AbortSignal): Promise<ChatThread> {
-  return call('threads', { method: 'POST', signal })
+export function createThread(subject?: ChatThreadSubject, signal?: AbortSignal): Promise<ChatThread> {
+  return call('threads', { method: 'POST', body: subject ? { subject } : {}, signal })
+}
+
+export function getThreadSubject(id: string, signal?: AbortSignal): Promise<ChatThreadSubjectRead> {
+  return call(`threads/${encodeURIComponent(id)}/subject`, { signal })
 }
 
 export function getThread(id: string, signal?: AbortSignal): Promise<ChatThreadDetail> {
@@ -76,7 +85,11 @@ export function postTurn(threadId: string, text: string, signal?: AbortSignal): 
   return call(`threads/${encodeURIComponent(threadId)}/turns`, { method: 'POST', body: { text }, signal })
 }
 
-export function postToolResult(turnId: string, callId: string, result: ChatToolResult): Promise<ChatAccepted> {
+export function postToolResult(
+  turnId: string,
+  callId: string,
+  result: ChatToolResult | OpenToolResult
+): Promise<ChatAccepted> {
   return call(`turns/${encodeURIComponent(turnId)}/tool-results`, { method: 'POST', body: { callId, result } })
 }
 
@@ -84,14 +97,16 @@ export function cancelTurn(turnId: string): Promise<ChatAccepted> {
   return call(`turns/${encodeURIComponent(turnId)}/cancel`, { method: 'POST' })
 }
 
-export function recordPromotion(
-  draftId: string,
-  body: {
-    version: number
-    targetType: 'query' | 'dashboard'
-    targetId: string
-    targetVersionAtPromote: number | null
-  }
-): Promise<ChatPromotion> {
+export type PromotionBody = Partial<Schemas['ChatPromotionIn']> & Pick<Schemas['ChatPromotionIn'], 'version' | 'targetType'>
+export type PromotionPatch = Schemas['ChatPromotionPatchIn']
+
+export function recordPromotion(draftId: string, body: PromotionBody): Promise<ChatPromotion> {
   return call(`drafts/${encodeURIComponent(draftId)}/promotions`, { method: 'POST', body })
+}
+
+export function patchPromotion(draftId: string, promotionId: string, body: PromotionPatch): Promise<ChatPromotion> {
+  return call(`drafts/${encodeURIComponent(draftId)}/promotions/${encodeURIComponent(promotionId)}`, {
+    method: 'PATCH',
+    body,
+  })
 }

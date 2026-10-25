@@ -11,7 +11,6 @@ import logging
 
 import pytest
 
-from veodyn_api.services.ai_converse_prompt import KPI_SOURCE_VIZ, system_prompt
 from veodyn_api.services.ai_viz_choice import _ALIASES, CHOICE_IDS, CHOICE_TYPE, VIZ_RULES, viz_choice
 
 
@@ -81,36 +80,6 @@ def test_the_guide_covers_every_shape_and_invents_none() -> None:
     documented = {choice for choice in CHOICE_IDS if f"`{choice}`" in VIZ_RULES}
 
     assert documented == set(CHOICE_IDS)
-
-
-@pytest.mark.parametrize("kind", ["query", "dashboard", "report"])
-def test_the_kinds_that_carry_a_shape_are_sent_the_guide(kind: str) -> None:
-    """A report is here because a section it writes a query for becomes a chart
-    block, so the shape is a real choice with a wrong answer."""
-    assert "vizChoiceId" in system_prompt(kind)  # type: ignore[arg-type]
-    assert "`heatmap`" in system_prompt(kind)  # type: ignore[arg-type]
-
-
-@pytest.mark.parametrize("kind", ["kpi", "snippet", "message"])
-def test_a_kind_that_chooses_no_shape_is_not_sent_the_guide(kind: str) -> None:
-    """Prompt budget the transcript needs.
-
-    A snippet draws nothing. A KPI now writes its own source query, but the shape
-    is fixed by the kind (KPI_SOURCE_VIZ): the sparkline and history read a series,
-    so there is one right answer and no question to ask.
-    """
-    assert "`heatmap`" not in system_prompt(kind)  # type: ignore[arg-type]
-
-
-def test_a_kpis_written_source_query_is_a_series() -> None:
-    """The shape the KPI path passes to the generator instead of asking for one.
-
-    Read from CHOICE_IDS rather than compared to the literal "chart-line", so a
-    build that dropped or renamed the line shape fails here instead of silently
-    falling back to a table on every KPI the AI writes a query for.
-    """
-    assert KPI_SOURCE_VIZ in CHOICE_IDS
-    assert viz_choice(KPI_SOURCE_VIZ) == KPI_SOURCE_VIZ
 
 
 def test_a_shape_named_for_particular_columns_is_kept_to_results_that_have_them() -> None:

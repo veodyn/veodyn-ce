@@ -13,6 +13,7 @@ FRAME_LOG_MAXLEN = 5000
 FRAME_LOG_TTL_SECONDS = 3600
 LEASE_TTL_SECONDS = 20
 KEY_TTL_SECONDS = 3600
+MCP_CALL_TTL_SECONDS = 300
 # A stream_turn GET blocks on bus.read() for up to STREAM_BLOCK_MS (5s) at a
 # time and can sit in that loop for as long as the turn runs, so an idle
 # connection in the pool needs to be checked well inside a single turn rather
@@ -22,6 +23,10 @@ REDIS_HEALTH_CHECK_INTERVAL_SECONDS = 15
 
 def _key(turn_id: str, part: str) -> str:
     return f"chat:turn:{turn_id}:{part}"
+
+
+def _mcp_key(call_id: str) -> str:
+    return f"chat:mcp:{call_id}"
 
 
 def _text(value: Any) -> str:
@@ -90,6 +95,19 @@ class TurnBus:
             return None
         value = json.loads(_text(popped[1]))
         return value if isinstance(value, dict) else None
+
+    async def put_mcp_call(self, call_id: str, payload: dict[str, Any]) -> None:
+        await self._redis.set(_mcp_key(call_id), json.dumps(payload, separators=(",", ":")), ex=MCP_CALL_TTL_SECONDS)
+
+    async def get_mcp_call(self, call_id: str) -> dict[str, Any] | None:
+        value = await self._redis.get(_mcp_key(call_id))
+        if value is None:
+            return None
+        decoded = json.loads(_text(value))
+        return decoded if isinstance(decoded, dict) else None
+
+    async def spend_mcp_call(self, call_id: str) -> bool:
+        return bool(await self._redis.delete(_mcp_key(call_id)))
 
     async def hold_lease(self, turn_id: str) -> None:
         await self._redis.set(_key(turn_id, "lease"), "1", ex=LEASE_TTL_SECONDS)

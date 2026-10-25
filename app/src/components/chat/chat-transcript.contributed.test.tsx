@@ -8,12 +8,13 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from '@/components/ui/message-scroller'
-import type { CallView } from '@/lib/chat/thread-calls'
+import { knownOutput, type CallView } from '@/lib/chat/thread-calls'
+import type { ChatKpiResult } from '@/lib/chat/tool-results'
 import type { ThreadState } from '@/lib/chat/thread-model'
 import { renderWithProviders } from '@/test/utils'
 
 function KpiCardStub({ call }: ChatToolCardProps) {
-  return <p>{call.output?.kind === 'kpi' ? `KPI card: ${call.output.kpi?.name}` : 'KPI card: waiting'}</p>
+  return <p>{knownOutput(call)?.kind === 'kpi' ? `KPI card: ${(call.output as ChatKpiResult).kpi?.name}` : 'KPI card: waiting'}</p>
 }
 
 vi.mock('@/features/generated-registry', () => {
@@ -41,7 +42,13 @@ function thread(calls: CallView[], running = false): ThreadState {
     runs: {},
     drafts: {},
     dashboardDrafts: {},
+    editDrafts: {},
+    vizDrafts: {},
+    dashboardEditDrafts: {},
+    operationDrafts: {},
+    contributedDrafts: {},
     activeDashboard: null,
+    queryDraftSync: {},
     turns: [
       {
         id: 't1',

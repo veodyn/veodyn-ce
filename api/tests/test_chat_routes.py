@@ -1,5 +1,4 @@
 import json
-import time
 import uuid
 from collections.abc import Iterator
 from typing import Any
@@ -10,9 +9,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from tests.catalog_stubs import SPEEDS
+from tests.chat_route_harness import RELAY_KEY, RUN, SQL, Harness, headers, read_stream
 from tests.chat_stubs import TOKEN_SECRET, ScriptedChatModel, sign, text_turn, tool_turn
 from tests.conftest import REDASH_TEST_URL
-from tests.converse_stubs import SPEEDS
 from veodyn_api.errors import ErrorId
 from veodyn_api.main import create_app
 from veodyn_api.models.ai_chat import AiChatTurn
@@ -21,46 +21,6 @@ from veodyn_api.schemas.catalog import DatasetOut
 from veodyn_api.services.chat import store
 from veodyn_api.services.chat.bus import TurnBus, get_redis
 from veodyn_api.services.chat.runner import TurnRunner
-
-RELAY_KEY = "relay-secret"
-SQL = "SELECT avg(speed_mph) FROM regional_speeds"
-RUN = {"datasetTable": "regional_speeds", "sql": SQL, "purpose": "average", "vizChoiceId": "counter"}
-
-
-def headers(subject: str = "7") -> dict[str, str]:
-    return {"authorization": f"Bearer {RELAY_KEY}", "x-veodyn-user-token": sign(subject, iat=time.time())}
-
-
-class Harness:
-    def __init__(self, client: TestClient, model: ScriptedChatModel, redis_url: str) -> None:
-        self.client = client
-        self.model = model
-        self.redis = redis.Redis.from_url(redis_url)
-
-    def frames(self, turn_id: str) -> list[tuple[str, dict[str, Any]]]:
-        entries = self.redis.xrange(f"chat:turn:{turn_id}:frames")
-        return [(fields[b"event"].decode(), json.loads(fields[b"data"])) for _, fields in entries]
-
-    def wait_for(self, turn_id: str, event: str, timeout: float = 5.0) -> dict[str, Any]:
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            for name, data in self.frames(turn_id):
-                if name == event:
-                    return data
-            time.sleep(0.02)
-        raise AssertionError(f"no {event} frame for {turn_id}: {self.frames(turn_id)}")
-
-    def thread(self, subject: str = "7") -> str:
-        response = self.client.post("/ai/chat/threads", headers=headers(subject))
-        assert response.status_code == 201, response.text
-        return str(response.json()["id"])
-
-    def turn(self, thread_id: str, text: str = "how fast?", subject: str = "7") -> str:
-        response = self.client.post(
-            f"/ai/chat/threads/{thread_id}/turns", json={"text": text}, headers=headers(subject)
-        )
-        assert response.status_code == 202, response.text
-        return str(response.json()["turnId"])
 
 
 @pytest.fixture
@@ -107,20 +67,6 @@ def harness(
         assert client.portal is not None
         client.portal.call(get_redis().aclose)
         harness.redis.close()
-
-
-def read_stream(client: TestClient, turn_id: str, last_event_id: str | None = None) -> list[tuple[str, Any]]:
-    extra = {"last-event-id": last_event_id} if last_event_id else {}
-    response = client.get(f"/ai/chat/turns/{turn_id}/stream", headers={**headers(), **extra})
-    assert response.status_code == 200, response.text
-    assert response.headers["content-type"].startswith("text/event-stream")
-    assert response.headers["x-accel-buffering"] == "no"
-    events: list[tuple[str, Any]] = []
-    for chunk in response.text.split("\n\n"):
-        fields = dict(line.split(": ", 1) for line in chunk.splitlines() if not line.startswith(":") and ": " in line)
-        if "event" in fields:
-            events.append((fields["event"], {"id": fields.get("id"), "data": json.loads(fields["data"])}))
-    return events
 
 
 def test_every_route_needs_the_relay_key_and_a_user_token(harness: Harness) -> None:
@@ -296,14 +242,14 @@ def test_a_second_turn_is_refused_while_the_first_runs(harness: Harness) -> None
 def test_a_lost_turn_is_failed_and_the_thread_accepts_a_new_one(harness: Harness, db: Session) -> None:
     thread_id = harness.thread()
     thread = store.thread_for_owner(db, "7", uuid.UUID(thread_id))
-    orphan = store.start_turn(db, thread, "orphaned")
+    orphan = store.start_turn(db, thread, "orphaned")[0]
     events = read_stream(harness.client, str(orphan.id))
     assert events[-1][0] == "error"
     assert events[-1][1]["data"]["id"] == ErrorId.AI_TURN_LOST.value
     db.expire_all()
     lost = db.get(AiChatTurn, orphan.id)
     assert lost is not None and lost.status == "failed"
-    second = store.start_turn(db, thread, "orphaned again")
+    second = store.start_turn(db, thread, "orphaned again")[0]
     harness.model.turns.append(text_turn("back"))
     turn = harness.turn(thread_id, "hello")
     harness.wait_for(turn, "turn_done")
@@ -320,48 +266,6 @@ def test_a_finished_turn_whose_log_expired_still_ends_its_stream(harness: Harnes
     assert read_stream(harness.client, turn) == [
         ("turn_done", {"id": None, "data": {"stopReason": "end_turn", "usage": text_turn("x").usage}})
     ]
-
-
-def test_a_draft_is_promoted_and_shown_in_the_thread(harness: Harness) -> None:
-    proposal = {"name": "Average speed", "datasetTable": "regional_speeds", "sql": SQL, "vizChoiceId": "counter"}
-    harness.model.turns.extend([tool_turn("call-1", "propose_query", proposal), text_turn("Saved as a draft.")])
-    thread = harness.thread()
-    turn = harness.turn(thread)
-    draft = harness.wait_for(turn, "draft")
-    harness.wait_for(turn, "turn_done")
-    client = harness.client
-    promoted = client.post(
-        f"/ai/chat/drafts/{draft['draftId']}/promotions",
-        json={"version": 1, "targetType": "query", "targetId": "44", "targetVersionAtPromote": 2},
-        headers=headers(),
-    )
-    assert promoted.status_code == 201, promoted.text
-    dashboard_promotion = client.post(
-        f"/ai/chat/drafts/{draft['draftId']}/promotions",
-        json={"version": 1, "targetType": "dashboard", "targetId": "9"},
-        headers=headers(),
-    )
-    assert dashboard_promotion.status_code == 201, dashboard_promotion.text
-    bad = client.post(
-        f"/ai/chat/drafts/{draft['draftId']}/promotions",
-        json={"version": 1, "targetType": "kpi", "targetId": "44"},
-        headers=headers(),
-    )
-    assert bad.status_code == 422
-    [entry] = client.get(f"/ai/chat/threads/{thread}", headers=headers()).json()["drafts"]
-    assert entry["id"] == draft["draftId"]
-    assert entry["versions"][0]["payload"]["sql"] == SQL
-    assert [(one["targetType"], one["targetId"]) for one in entry["promotions"]] == [
-        ("query", "44"),
-        ("dashboard", "9"),
-    ]
-    assert entry["promotions"][0]["targetVersionAtPromote"] == 2
-
-
-def test_a_message_over_the_limit_is_refused(harness: Harness) -> None:
-    thread = harness.thread()
-    response = harness.client.post(f"/ai/chat/threads/{thread}/turns", json={"text": "x" * 4001}, headers=headers())
-    assert response.status_code == 422
 
 
 def test_redis_down_is_unavailable(harness: Harness, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -390,68 +294,3 @@ def test_a_redis_error_while_streaming_closes_the_stream_without_failing_the_tur
 
     monkeypatch.setattr(TurnBus, "read", broken)
     assert read_stream(harness.client, turn) == []
-
-
-def test_a_library_search_round_trip_through_the_routes(harness: Harness) -> None:
-    harness.model.turns.extend(
-        [tool_turn("call-1", "search_library", {"text": "bikeshare"}), text_turn("Two queries match.")]
-    )
-    turn = harness.turn(harness.thread())
-    request = harness.wait_for(turn, "tool_request")
-    assert request == {
-        "callId": "call-1",
-        "tool": "search_library",
-        "args": {"text": "bikeshare", "kinds": ["query", "dashboard"], "tags": [], "sort": "match"},
-    }
-    query_result = {"ok": True, "kind": "query_result", "rowCount": 1}
-    refused = harness.client.post(
-        f"/ai/chat/turns/{turn}/tool-results", json={"callId": "call-1", "result": query_result}, headers=headers()
-    )
-    assert refused.status_code == 409
-    result = {
-        "ok": True,
-        "kind": "library",
-        "items": [
-            {"type": "query", "id": 12, "name": "Trips by hour", "tags": ["bikeshare"], "hasResult": True},
-            {"type": "dashboard", "id": 4, "name": "Bikeshare overview", "tags": []},
-        ],
-        "more": False,
-    }
-    accepted = harness.client.post(
-        f"/ai/chat/turns/{turn}/tool-results", json={"callId": "call-1", "result": result}, headers=headers()
-    )
-    assert accepted.status_code == 202, accepted.text
-    settled = harness.wait_for(turn, "tool_settled")
-    assert settled["count"] == 2
-    harness.wait_for(turn, "turn_done")
-    sent = json.loads(harness.model.calls[1]["messages"][2]["content"][0]["content"])
-    assert sent["items"][0] == {
-        "type": "query",
-        "id": 12,
-        "name": "Trips by hour",
-        "tags": ["bikeshare"],
-        "hasResult": True,
-    }
-
-
-@pytest.mark.parametrize(
-    "result",
-    [
-        {"ok": True},
-        {"ok": True, "kind": "report"},
-        {"ok": True, "kind": "library", "items": [{"type": "alert", "id": 1, "name": "x"}]},
-        {"ok": True, "kind": "library", "items": [{"type": "query", "id": 0, "name": "x"}]},
-        {"ok": True, "kind": "dashboard", "widgets": [{"title": "t"}]},
-        {"ok": True, "kind": "saved_visualization", "query": {"id": 1, "name": "q", "sql": "x" * 8001}},
-    ],
-)
-def test_malformed_results_are_refused(harness: Harness, result: dict[str, Any]) -> None:
-    harness.model.turns.append(tool_turn("call-1", "search_library", {"text": "x"}))
-    turn = harness.turn(harness.thread())
-    harness.wait_for(turn, "tool_request")
-    response = harness.client.post(
-        f"/ai/chat/turns/{turn}/tool-results", json={"callId": "call-1", "result": result}, headers=headers()
-    )
-    assert response.status_code == 422, response.text
-    harness.client.post(f"/ai/chat/turns/{turn}/cancel", headers=headers())
-    harness.wait_for(turn, "turn_done")

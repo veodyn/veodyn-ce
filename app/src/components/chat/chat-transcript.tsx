@@ -6,13 +6,17 @@ import { TextboxMarkdown } from '@/components/dashboard/textbox-markdown'
 import { Button } from '@/components/ui/button'
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
 import { chatToolContributionFor, isContributedTool } from '@/features/chat-tools'
+import { isKnownToolName } from '@/lib/chat/frames'
+import { OPERATION_TOOLS } from '@/lib/chat/operation-changes'
 import type { ThreadState, TurnItem, TurnView } from '@/lib/chat/thread-model'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { ContributedCallCard } from './contributed-call-card'
 import { DashboardCard } from './dashboard-card'
 import { DataSourcesCard } from './data-sources-card'
+import { DownloadCard } from './download-card'
 import { HelpLinkCard } from './help-link-card'
 import { LibraryCard } from './library-card'
+import { QueryDetailCard } from './query-detail-card'
 import { RunCard } from './run-card'
 import { SavedVizCard } from './saved-viz-card'
 
@@ -40,6 +44,15 @@ interface ChatTranscriptProps {
   onRetry: () => void
   renderDraft: (draftId: string, version: number) => ReactNode
 }
+
+const VIZ_AUTHORING_TOOLS: ReadonlySet<string> = new Set([
+  'describe_visualization_type',
+  'propose_visualization',
+  'update_visualization',
+  'delete_visualization',
+])
+
+const PROPOSAL_CHECK_TOOLS: ReadonlySet<string> = new Set(['update_snippet', 'delete_snippet', 'propose_kpi'])
 
 function isSelected(selection: Selection | null, kind: Selection['kind'], id: string): boolean {
   return selection?.kind === kind && selection.id === id
@@ -96,11 +109,15 @@ function TranscriptItem({ item, ...props }: ChatTranscriptProps & { item: Render
   if (item.kind === 'call') {
     const call = props.state.calls[item.callId]
     if (!call) return null
-    if (isContributedTool(call.tool)) return <ContributedCallCard call={call} />
+    if (!isKnownToolName(call.tool) || isContributedTool(call.tool)) return <ContributedCallCard call={call} />
     if (call.tool === 'list_data_sources') return <DataSourcesCard call={call} />
     if (call.tool === 'describe_data_source') return null
     if (call.tool === 'search_library') return <LibraryCard call={call} />
     if (call.tool === 'open_dashboard') return <DashboardCard call={call} />
+    if (call.tool === 'open_query') return <QueryDetailCard call={call} />
+    if (call.tool === 'update_query' || call.tool === 'update_dashboard') return null
+    if (call.tool === 'download_result') return <DownloadCard call={call} />
+    if (VIZ_AUTHORING_TOOLS.has(call.tool) || PROPOSAL_CHECK_TOOLS.has(call.tool) || OPERATION_TOOLS.has(call.tool)) return null
     return (
       <SavedVizCard
         call={call}

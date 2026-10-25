@@ -180,6 +180,10 @@ export function VisualizationWidget({
             isPublic={isPublic}
             isEditing={isEditing}
             onRemove={onRemove}
+            ask={{
+              subject: { kind: 'widget', dashboardId: widget.dashboard_id, widgetId: widget.id },
+              label: title,
+            }}
           />
         </div>
         <div className="flex-1 overflow-auto">

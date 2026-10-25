@@ -8,6 +8,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { registerVisualization, registeredVisualizations } from '@veodyn/viz'
+import { authoringFor } from '@veodyn/viz/lib/visualizations'
 import { HELLO_PANEL_TYPE, helloPanelPlugin } from './hello-panel'
 
 // Same reason a tenant package's own panel test does it: registration is per
@@ -32,6 +33,10 @@ describe('helloPanelPlugin', () => {
   it('registers with origin plugin, not core', () => {
     const entry = registeredVisualizations().find((e) => e.plugin.type === HELLO_PANEL_TYPE)
     expect(entry?.origin).toBe('plugin')
+  })
+
+  it('declares that it has no authorable options', () => {
+    expect(authoringFor(HELLO_PANEL_TYPE)).toEqual({})
   })
 
   it('renders its panel', () => {

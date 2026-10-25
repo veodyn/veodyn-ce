@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import { RefreshCw, ExternalLink, Trash2, Expand, MessageSquarePlus, Pencil } from 'lucide-react'
+import { AskAboutThis } from '@/components/chat/ask-about-this'
 import { IconButton } from '@/components/shared/icon-button'
+import type { ChatThreadSubject } from '@/lib/chat/wire'
 import { ANNOTATIONS_SUPPORTED } from '@/services/redash/annotations'
 import { WidgetFreshness, WidgetRunAge } from './widget-freshness'
 
@@ -29,6 +31,7 @@ interface WidgetControlsProps {
   isPublic: boolean
   isEditing: boolean
   onRemove?: () => void
+  ask?: { subject: ChatThreadSubject; label: string }
 }
 
 export function WidgetControls({
@@ -44,6 +47,7 @@ export function WidgetControls({
   isPublic,
   isEditing,
   onRemove,
+  ask,
 }: WidgetControlsProps) {
   return (
     <div className="flex items-center gap-1 shrink-0">
@@ -104,6 +108,9 @@ export function WidgetControls({
         >
           <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
         </IconButton>
+      )}
+      {ask && !isPublic && !isEditing && (
+        <AskAboutThis subject={ask.subject} label={ask.label} variant="ghost" size="icon-sm" />
       )}
       {isEditing && (
         <IconButton tooltip="Remove widget" variant="ghost" size="icon-sm" onClick={onRemove}>

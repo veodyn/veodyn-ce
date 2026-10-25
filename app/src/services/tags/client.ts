@@ -74,7 +74,7 @@ function wrapTagError(error: unknown, message: string): Error {
  * Redash wraps, the sidecar does not. Read either rather than making the caller
  * know which backend answered.
  */
-function readVocabulary(body: unknown): TagSuggestion[] {
+export function readVocabulary(body: unknown): TagSuggestion[] {
   const raw = Array.isArray(body) ? body : (body as { tags?: unknown })?.tags
   if (!Array.isArray(raw)) return []
   return raw

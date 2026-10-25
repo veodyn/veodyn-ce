@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/services/api-client'
 import { NO_RESULTS_SCHEMA, NO_STORED_RESULT, NOT_AVAILABLE, UNSUPPORTED_SYNTAX } from './library-results'
-import { runLibraryTool } from './library-tools'
+import { runLibraryTool as runWithTransport, type LibraryToolRequest } from './library-tools'
+import type { RedashTransport } from './transport'
 
 const queries = vi.hoisted(() => ({ search: vi.fn(), get: vi.fn() }))
 const dashboards = vi.hoisted(() => ({ search: vi.fn(), get: vi.fn() }))
@@ -9,11 +10,19 @@ const execution = vi.hoisted(() => ({ getResult: vi.fn() }))
 const dataSources = vi.hoisted(() => ({ listDataSources: vi.fn(), getDataSource: vi.fn(), getSchema: vi.fn() }))
 const tagClient = vi.hoisted(() => ({ fetchRedashTagVocabulary: vi.fn() }))
 
-vi.mock('@/services/redash/queries', () => queries)
-vi.mock('@/services/redash/dashboards', () => dashboards)
-vi.mock('@/services/redash/execution', () => execution)
-vi.mock('@/services/redash/data-sources', () => dataSources)
-vi.mock('@/services/tags/client', () => tagClient)
+vi.mock('./node-calls', () => ({
+  searchQueries: (_transport: unknown, q: string, opts: unknown) => queries.search(q, opts),
+  getQuery: (_transport: unknown, id: number) => queries.get(id),
+  searchDashboards: (_transport: unknown, q: string, opts: unknown) => dashboards.search(q, opts),
+  getDashboard: (_transport: unknown, id: number) => dashboards.get(id),
+  getQueryResult: (_transport: unknown, id: number, signal: AbortSignal) => execution.getResult(id, signal),
+  listDataSources: () => dataSources.listDataSources(),
+  getDataSource: (_transport: unknown, id: number) => dataSources.getDataSource(id),
+  getSchema: (_transport: unknown, id: number, refresh: boolean, signal: AbortSignal) =>
+    dataSources.getSchema(id, refresh, signal),
+  tagVocabulary: (_transport: unknown, scope: string, signal: AbortSignal) =>
+    tagClient.fetchRedashTagVocabulary(scope, { signal }),
+}))
 
 const DATA = { columns: [{ name: 'n', type: 'integer', friendly_name: 'n' }], rows: [{ n: 4 }] }
 
@@ -35,6 +44,11 @@ function savedQuery(overrides: Record<string, unknown> = {}) {
 }
 
 const signal = () => new AbortController().signal
+const TRANSPORT = {} as RedashTransport
+
+function runLibraryTool(request: LibraryToolRequest, abort: AbortSignal) {
+  return runWithTransport(request, TRANSPORT, abort)
+}
 
 function search(text: string, kinds: ('query' | 'dashboard')[], tags: string[] = []) {
   return runLibraryTool({ callId: 'c', tool: 'search_library', args: { text, kinds, tags } }, signal())

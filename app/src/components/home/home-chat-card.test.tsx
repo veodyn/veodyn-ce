@@ -7,6 +7,8 @@ import { NEUTRAL_CONFIG, toClientConfig } from '@/lib/config-schema'
 import { renderWithProviders } from '@/test/utils'
 import { HomeChatCard, RECENT_CHATS } from './home-chat-card'
 
+vi.stubEnv('NEXT_PUBLIC_REDASH_URL', 'http://redash.test')
+
 const client = vi.hoisted(() => ({ createThread: vi.fn(), postTurn: vi.fn(), listThreads: vi.fn() }))
 const push = vi.hoisted(() => vi.fn())
 vi.mock('@/services/ai/chat-client', async (importOriginal) => ({
@@ -16,10 +18,10 @@ vi.mock('@/services/ai/chat-client', async (importOriginal) => ({
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
 
 const STAMP = '2026-09-17T00:00:00Z'
-const chatOn = { ai: { ...toClientConfig(NEUTRAL_CONFIG).ai, enabled: true, chat: true } }
+const chatOn = { ai: { ...toClientConfig(NEUTRAL_CONFIG).ai, enabled: true } }
 
 function thread(index: number, title = `Thread ${index}`) {
-  return { id: `t${index}`, title, pinned: false, createdAt: STAMP, updatedAt: STAMP, lastTurnAt: STAMP }
+  return { id: `t${index}`, title, pinned: false, createdAt: STAMP, updatedAt: STAMP, lastTurnAt: STAMP, origin: 'chat' }
 }
 
 beforeEach(() => {

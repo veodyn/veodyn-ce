@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-from veodyn_api.services.ai_converse_prompt import picked_id, text_of
+from veodyn_api.services.ai_text import picked_id, text_of
 from veodyn_api.services.chat.tools import ChatTool, ClientCall, Immediate, ToolContext, register_chat_tool
 
 MAX_PARAMS = 20
@@ -113,6 +113,7 @@ RUN_SAVED_QUERY = ChatTool(
         },
     },
     handler=_run_saved_query,
+    mcp_drop=("vizChoiceId", "purpose"),
     result_kind="query_result",
 )
 

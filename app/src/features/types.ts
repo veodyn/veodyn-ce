@@ -5,8 +5,8 @@ import type { MockDashboard } from '@/lib/mock-data'
 import type { SearchSource } from '@/services/search/types'
 import type { Dataset, HubCounter } from '@/types/catalog'
 import type { EntityNeeds } from '@/types/published-feed'
+import type { ChatDraftContribution } from './chat-draft-types'
 import type { ChatToolContribution } from './chat-tool-types'
-import type { ProposalContribution } from './proposal-types'
 
 export interface MockStandardWidening {
   standard: string
@@ -223,16 +223,15 @@ export interface FeatureDescriptor {
   searchSource?: SearchSourceFactory
   slots?: SlotContributions
   /**
-   * The proposal kinds this feature can render a create card for. An array
-   * because nothing says a feature owns exactly one kind. The type lives in
-   * ./proposal-types, split out from here for size.
-   */
-  proposals?: ProposalContribution[]
-  /**
    * The data chat tools this feature runs in the browser and draws in the
    * transcript. The type lives in ./chat-tool-types, split out for size.
    */
   chatTools?: ChatToolContribution[]
+  /**
+   * The draft kinds this feature draws a card for in the data chat, and the
+   * Apply behind it. The type lives in ./chat-draft-types.
+   */
+  chatDrafts?: ChatDraftContribution[]
   /** What this feature puts in the mock store when there is no backend. */
   mockData?: MockDataFactory
   mockCapabilities?: MockStandardWidening[]

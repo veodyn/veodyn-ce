@@ -10,6 +10,7 @@ them in `VEODYN_EXTRA_MODULES` instead.
 from veodyn_api.registry import register_router
 from veodyn_api.routers.ai import router as ai_router
 from veodyn_api.routers.ai_chat import router as ai_chat_router
+from veodyn_api.routers.ai_chat_mcp import router as ai_chat_mcp_router
 from veodyn_api.routers.captures import router as captures_router
 from veodyn_api.routers.catalog import router as catalog_router
 from veodyn_api.routers.connectors import router as connectors_router
@@ -27,6 +28,7 @@ from veodyn_api.routers.tags import router as tags_router
 for _router in (
     ai_router,
     ai_chat_router,
+    ai_chat_mcp_router,
     catalog_router,
     connectors_router,
     domains_router,

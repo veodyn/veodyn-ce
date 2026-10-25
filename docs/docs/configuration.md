@@ -76,7 +76,7 @@ ai:
   endpoint: https://your-ai-provider/ai
 ```
 
-The bearer key is a secret and comes from the environment: `VEODYN_AI__KEY`. With `enabled: false` (the default) every AI affordance is absent. `enabled: true` without an `endpoint` fails validation at startup. See [AI Provider](/operations/ai-provider).
+The bearer key is a secret and comes from the environment: `VEODYN_AI__KEY`. With `enabled: false` (the default) every AI affordance is absent. `enabled: true` without an `endpoint` fails validation at startup. The data chat is on wherever AI is; it additionally needs the token secret, `VEODYN_AI__TOKEN_SECRET`, which signs the short-lived user token the chat sends the sidecar and must equal the sidecar's `VEODYN_AI_TOKEN_SECRET`. An older `ai.chat` key is still accepted so an existing config loads, and has no effect. See [AI Provider](/operations/ai-provider).
 
 ## Other sections
 
@@ -144,6 +144,7 @@ The YAML governs identity and features. Connection strings and secrets are envir
 | `REDASH_INTERNAL_API_KEY` | A super-admin query-service API key; used only by the admin proxy routes |
 | `KPI_API_URL`, `REPORTS_API_URL`, `CATALOG_API_URL` | The veodyn-api root, one alias per surface, all three normally the same URL; each unset one leaves its surface on fixtures. The first two reach [enterprise](/editions) endpoints |
 | `VEODYN_AI__ENABLED`, `VEODYN_AI__ENDPOINT`, `VEODYN_AI__KEY` | The AI relay (the key is the shared bearer, environment-only) |
+| `VEODYN_AI__TOKEN_SECRET` | Signs the user token the data chat sends the sidecar (environment-only) |
 | `NEXT_PUBLIC_DEMO_PACK` | Which demo fixture pack the mock mode serves (`neutral` or `la`) |
 | `NEXT_PUBLIC_VEODYN_PLUGINS` | Build-time list of visualization plugin packages |
 
@@ -159,6 +160,7 @@ All prefixed `VEODYN_`:
 | `VEODYN_REDIS_URL` | Its own Redis index |
 | `VEODYN_CLICKHOUSE_URL` (+ user, password, database) | The warehouse the data catalog reads; empty means the catalog answers 503 |
 | `VEODYN_AI_RELAY_KEY`, `VEODYN_AI_API_KEY`, `VEODYN_AI_MODEL` | The AI provider half: the shared bearer, the Anthropic key, the model |
+| `VEODYN_AI_TOKEN_SECRET` | Verifies the user token the data chat arrives with; equal to the frontend's `VEODYN_AI__TOKEN_SECRET` |
 | `VEODYN_FEED_VALIDATOR_URL` | The [feed validator](/features/published-feeds#the-validator) service, which wraps our own `gtfs-rt-validator` package and is deployed by the `veodyn-validator` chart. Empty means none is configured, and every publish attempt then fails closed rather than serving bytes nothing checked |
 | `VEODYN_EXTRA_MODULES` | Dotted module paths, comma separated, imported at startup. Empty is the community edition. An [enterprise](/editions) deployment sets it to `veodyn_enterprise.registration`, and a module named here that cannot be imported raises rather than being skipped |
 | `VEODYN_REPORTS_REQUIRE_SEPARATE_APPROVER` | Enterprise: server-side enforcement of the four-eyes rule (default true) |

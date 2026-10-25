@@ -44,7 +44,7 @@ describe('config-schema', () => {
       reports: { require_separate_approver: false },
     })
     const client = toClientConfig(cfg)
-    expect(client.ai).toEqual({ enabled: true, chat: false })
+    expect(client.ai).toEqual({ enabled: true })
     expect((client.ai as Record<string, unknown>).endpoint).toBeUndefined()
     expect(client.reports).toEqual({ require_separate_approver: false })
   })

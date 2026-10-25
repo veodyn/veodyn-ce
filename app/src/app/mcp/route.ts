@@ -10,6 +10,8 @@
  */
 
 import { NextResponse } from 'next/server'
+import { config } from '@/lib/config'
+import { env } from '@/lib/env'
 import { REDASH_URL } from '@/lib/redash-server'
 import { dispatch } from '@/lib/mcp/dispatch'
 import {
@@ -20,6 +22,7 @@ import {
   type JsonRpcResponse,
 } from '@/lib/mcp/protocol'
 import { hasCredential, resolveCredential } from '@/lib/mcp/redash-caller'
+import { createMcpSession } from '@/lib/mcp/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,6 +36,24 @@ function notConfigured() {
     {
       error: 'REDASH_URL not configured.',
       detail: 'This instance has no analytics backend, so there is nothing for MCP to read.',
+    },
+    { status: 503 }
+  )
+}
+
+function missingSettings(): string[] {
+  const missing: string[] = []
+  if (!env.VEODYN_AI__KEY) missing.push('VEODYN_AI__KEY')
+  if (!env.VEODYN_AI__TOKEN_SECRET) missing.push('VEODYN_AI__TOKEN_SECRET')
+  if (!config.ai.endpoint) missing.push('ai.endpoint')
+  return missing
+}
+
+function relayUnavailable(missing: string[]) {
+  return NextResponse.json(
+    {
+      error: 'MCP is not configured.',
+      detail: `The tool registry needs ${missing.join(', ')} on this instance.`,
     },
     { status: 503 }
   )
@@ -52,6 +73,8 @@ function unauthorized() {
 // Plain Request, not NextRequest: nothing here uses what Next adds on top.
 export async function POST(request: Request) {
   if (!REDASH_URL) return notConfigured()
+  const missing = missingSettings()
+  if (missing.length > 0) return relayUnavailable(missing)
 
   const credential = resolveCredential(
     request.headers.get('authorization'),
@@ -92,6 +115,7 @@ export async function POST(request: Request) {
     )
   }
 
+  const session = createMcpSession(credential, request)
   const responses: JsonRpcResponse[] = []
   for (const raw of messages) {
     const message = parseMessage(raw)
@@ -105,8 +129,7 @@ export async function POST(request: Request) {
       const response = await dispatch(message, {
         credential,
         server: SERVER,
-        // A client that hangs up should not leave this server polling a Redash
-        // job on its behalf.
+        session,
         signal: request.signal,
       })
       if (response) responses.push(response)

@@ -11,8 +11,11 @@ vi.mock('@/services/ai/chat-client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/ai/chat-client')>()),
   postToolResult,
 }))
-vi.mock('@/services/redash/queries', () => queries)
-vi.mock('@/services/redash/execution', () => execution)
+vi.mock('@/lib/chat/node-calls', () => ({
+  getQuery: (_transport: unknown, id: number) => queries.get(id),
+  executeSavedQuery: (_transport: unknown, id: number, opts: unknown) => execution.executeSavedQuery(id, opts),
+  executeAdhoc: (_transport: unknown, ...args: unknown[]) => execution.executeAdhoc(...args),
+}))
 
 import { useToolExecutor } from './use-tool-executor'
 

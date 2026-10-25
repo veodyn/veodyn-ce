@@ -7,7 +7,6 @@ export const THREAD = '6f1f7a4e-1a4b-4a51-9c3a-3f3d0f8b1c11'
 
 export interface ChatRelayOptions {
   enabled?: boolean
-  chat?: boolean
   realMode?: boolean
   endpoint?: string | null
 }
@@ -18,7 +17,6 @@ export function mockChatModules(options: ChatRelayOptions = {}) {
     config: {
       ai: {
         enabled: options.enabled ?? true,
-        chat: options.chat ?? true,
         endpoint: options.endpoint === undefined ? ENDPOINT : options.endpoint,
       },
     },
@@ -61,6 +59,7 @@ export function thread(overrides: Record<string, unknown> = {}) {
     createdAt: '2026-09-17T00:00:00Z',
     updatedAt: '2026-09-17T00:00:00Z',
     lastTurnAt: '2026-09-17T00:00:00Z',
+    origin: 'chat',
     ...overrides,
   }
 }

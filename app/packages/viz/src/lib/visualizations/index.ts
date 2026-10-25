@@ -63,6 +63,20 @@ export {
   type OptionSchema,
 } from './option-schema'
 export {
+  applyOptionOps,
+  authoredColumnProblems,
+  CORE_AUTHORING,
+  describeAuthoring,
+  sanitizeAuthored,
+  type AuthoringColumnKind,
+  type AuthoringField,
+  type AuthoringSchema,
+  type DescribedOption,
+  type DescribedType,
+  type OptionOps,
+} from './authoring'
+export {
+  authoringFor,
   chatGuideProblems,
   getVisualization,
   listVisualizations,

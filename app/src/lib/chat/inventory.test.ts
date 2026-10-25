@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cookieReader } from './redash-get'
 
 const redashFetch = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/redash-server', () => ({ redashFetch }))
@@ -25,7 +26,7 @@ function serve(sources: unknown[], schemas: Record<number, () => Response>) {
 async function inventory(cookie: string | null = 'session=a') {
   vi.resetModules()
   const { dataSourceInventory } = await import('./inventory')
-  return dataSourceInventory(cookie, SIGNAL)
+  return dataSourceInventory(cookieReader(cookie), SIGNAL)
 }
 
 beforeEach(() => {
@@ -136,10 +137,10 @@ describe('dataSourceInventory', () => {
     serve([source(9, { type: 'json', syntax: 'json' })], {
       9: () => reply({ schema: [{ name: '1. secret_feed > params', columns: [] }] }),
     })
-    const first = await dataSourceInventory('session=a', SIGNAL)
+    const first = await dataSourceInventory(cookieReader('session=a'), SIGNAL)
     expect(first[0].resources).toEqual(['secret_feed'])
     serve([source(1)], {})
-    const second = await dataSourceInventory('session=b', SIGNAL)
+    const second = await dataSourceInventory(cookieReader('session=b'), SIGNAL)
     expect(second.map((entry) => entry.id)).toEqual([1])
     expect(JSON.stringify(second)).not.toContain('secret_feed')
   })
@@ -150,8 +151,8 @@ describe('dataSourceInventory', () => {
     serve([source(9, { type: 'json', syntax: 'json' })], {
       9: () => reply({ schema: [{ name: '1. feed > params', columns: [] }] }),
     })
-    await dataSourceInventory('session=a', SIGNAL)
-    await dataSourceInventory('session=b', SIGNAL)
+    await dataSourceInventory(cookieReader('session=a'), SIGNAL)
+    await dataSourceInventory(cookieReader('session=b'), SIGNAL)
     const schemaCalls = redashFetch.mock.calls.filter(([path]) => String(path).endsWith('/schema'))
     expect(schemaCalls).toHaveLength(1)
   })
@@ -160,8 +161,8 @@ describe('dataSourceInventory', () => {
     vi.resetModules()
     const { dataSourceInventory } = await import('./inventory')
     serve([source(9, { type: 'json', syntax: 'json' })], { 9: () => reply({ job: { id: 'j' } }) })
-    await dataSourceInventory('session=a', SIGNAL)
-    const second = await dataSourceInventory('session=b', SIGNAL)
+    await dataSourceInventory(cookieReader('session=a'), SIGNAL)
+    const second = await dataSourceInventory(cookieReader('session=b'), SIGNAL)
     expect(second[0].resources).toBeNull()
     const schemaCalls = redashFetch.mock.calls.filter(([path]) => String(path).endsWith('/schema'))
     expect(schemaCalls).toHaveLength(1)
@@ -171,8 +172,8 @@ describe('dataSourceInventory', () => {
     vi.resetModules()
     const { dataSourceInventory } = await import('./inventory')
     serve([source(9, { type: 'json', syntax: 'json' })], { 9: () => reply({ message: 'boom' }, 500) })
-    await dataSourceInventory('session=a', SIGNAL)
-    await dataSourceInventory('session=b', SIGNAL)
+    await dataSourceInventory(cookieReader('session=a'), SIGNAL)
+    await dataSourceInventory(cookieReader('session=b'), SIGNAL)
     const schemaCalls = redashFetch.mock.calls.filter(([path]) => String(path).endsWith('/schema'))
     expect(schemaCalls).toHaveLength(1)
   })
@@ -181,9 +182,9 @@ describe('dataSourceInventory', () => {
     vi.resetModules()
     const { dataSourceInventory } = await import('./inventory')
     serve([source(1)], {})
-    await dataSourceInventory('session=a', SIGNAL)
-    await dataSourceInventory('session=a', SIGNAL)
-    await dataSourceInventory('session=b', SIGNAL)
+    await dataSourceInventory(cookieReader('session=a'), SIGNAL)
+    await dataSourceInventory(cookieReader('session=a'), SIGNAL)
+    await dataSourceInventory(cookieReader('session=b'), SIGNAL)
     const lists = redashFetch.mock.calls.filter(([path]) => path === '/api/data_sources')
     expect(lists).toHaveLength(2)
   })
@@ -192,8 +193,8 @@ describe('dataSourceInventory', () => {
     vi.resetModules()
     const { dataSourceInventory } = await import('./inventory')
     redashFetch.mockResolvedValueOnce(reply({ message: 'no' }, 500))
-    await expect(dataSourceInventory('session=a', SIGNAL)).rejects.toThrow()
+    await expect(dataSourceInventory(cookieReader('session=a'), SIGNAL)).rejects.toThrow()
     serve([source(1)], {})
-    expect(await dataSourceInventory('session=a', SIGNAL)).toHaveLength(1)
+    expect(await dataSourceInventory(cookieReader('session=a'), SIGNAL)).toHaveLength(1)
   })
 })

@@ -25,7 +25,7 @@ export interface ChatUpstream {
 }
 
 export async function chatGate(request: Request): Promise<ChatUpstream | NextResponse> {
-  if (!config.ai.enabled || !config.ai.chat) {
+  if (!config.ai.enabled) {
     return errorResponse(new AppError(ErrorIds.AUTH_FORBIDDEN, 'The data chat is off on this instance'), 403)
   }
   if (!env.NEXT_PUBLIC_REDASH_URL) {
@@ -64,7 +64,8 @@ export interface ChatJsonRelay<TRequest, TResponse> {
   requestSchema?: ZodType<TRequest>
   responseSchema?: ZodType<TResponse>
   maxRequestBytes?: number
-  extend?: (request: Request) => Promise<Record<string, unknown>>
+  emptyBody?: unknown
+  extend?: (request: Request, gate: ChatUpstream) => Promise<Record<string, unknown>>
 }
 
 export async function relayChatJson<TRequest, TResponse>(
@@ -77,8 +78,8 @@ export async function relayChatJson<TRequest, TResponse>(
   let body: string | undefined
   if (relay.requestSchema) {
     try {
-      const payload = await parseAiRequest(request, relay.requestSchema, 'Invalid chat request', relay.maxRequestBytes)
-      body = JSON.stringify({ ...payload, ...((await relay.extend?.(request)) ?? {}) })
+      const payload = await parseAiRequest(request, relay.requestSchema, 'Invalid chat request', relay.maxRequestBytes, relay.emptyBody)
+      body = JSON.stringify({ ...payload, ...((await relay.extend?.(request, gate)) ?? {}) })
     } catch (error) {
       const context = isAppError(error) ? error.context : {}
       return errorResponse(invalidRequest('Invalid chat request', context), 400)

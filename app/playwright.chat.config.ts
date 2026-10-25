@@ -15,10 +15,10 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
     env: {
-      NEXT_PUBLIC_REDASH_URL: '',
+      NEXT_PUBLIC_REDASH_URL: 'http://127.0.0.1:3103',
+      REDASH_URL: 'http://127.0.0.1:3103',
       VEODYN_AI__ENABLED: 'true',
       VEODYN_AI__ENDPOINT: 'https://ai.example.invalid',
-      VEODYN_AI__CHAT: 'true',
     },
   },
 })

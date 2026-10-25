@@ -3,9 +3,10 @@ import json
 import logging
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
-from typing import Annotated, Any, TypeVar
+from dataclasses import replace
+from typing import Annotated, Any, TypeVar, cast
 
-from fastapi import APIRouter, Depends, Header, Query, Request, Response
+from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from redis.exceptions import RedisError
@@ -16,29 +17,38 @@ from veodyn_api.auth_ai import SubjectDep
 from veodyn_api.db import SessionLocal, get_db
 from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.models.ai_chat import AiChatDraftPromotion, AiChatThread, AiChatTurn
-from veodyn_api.routers.ai import require_relay, service_key
+from veodyn_api.routers.ai import require_provider, require_relay_key, service_key
 from veodyn_api.schemas.ai_chat import (
     ChatAcceptedOut,
     ChatDraftOut,
     ChatDraftVersionOut,
     ChatPromotionIn,
     ChatPromotionOut,
+    ChatPromotionPatchIn,
+    ChatPromotionReceipt,
+    ChatThreadCreateIn,
     ChatThreadDetailOut,
     ChatThreadListOut,
     ChatThreadOut,
     ChatThreadPatchIn,
-    ChatToolResultPostIn,
+    ChatThreadSubject,
+    ChatThreadSubjectOut,
     ChatTurnOut,
     ChatTurnStartedOut,
+    PromotionStatus,
+    ThreadOrigin,
 )
 from veodyn_api.schemas.ai_chat_context import ChatTurnIn
+from veodyn_api.schemas.ai_chat_results import ChatToolResultPostIn
 from veodyn_api.schemas.catalog import DatasetOut
-from veodyn_api.services.ai_converse_grounding import build_grounding
+from veodyn_api.services.ai_catalog_grounding import build_grounding
 from veodyn_api.services.ai_viz_catalog import catalog_from
 from veodyn_api.services.chat import store
 from veodyn_api.services.chat.bus import TurnBus, get_redis
 from veodyn_api.services.chat.driver import get_chat_model
+from veodyn_api.services.chat.promotion_targets import is_promotion_target
 from veodyn_api.services.chat.runner import TurnRunner, spawn_turn
+from veodyn_api.services.chat.tool_context import DatasetLoader, DataSourceLoader
 from veodyn_api.services.chat.tools import result_kind_for
 from veodyn_api.services.chat.turn_context import context_from
 from veodyn_api.services.redash import RedashClient
@@ -47,7 +57,7 @@ from veodyn_api.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/ai/chat", tags=["ai-chat"], dependencies=[Depends(require_relay)])
+router = APIRouter(prefix="/ai/chat", tags=["ai-chat"], dependencies=[Depends(require_relay_key)])
 
 PAGE_SIZE = 50
 STREAM_BLOCK_MS = 5_000
@@ -78,8 +88,7 @@ def get_turn_bus() -> TurnBus:
 BusDep = Annotated[TurnBus, Depends(get_turn_bus)]
 
 
-def get_turn_runner(settings: SettingsDep, redash: RedashDep, bus: BusDep) -> TurnRunner:
-    model = get_chat_model()
+def get_warehouse_loaders(settings: SettingsDep, redash: RedashDep) -> tuple[DatasetLoader, DataSourceLoader]:
     warehouse: list[int] = []
 
     async def datasets() -> tuple[DatasetOut, ...]:
@@ -98,10 +107,18 @@ def get_turn_runner(settings: SettingsDep, redash: RedashDep, bus: BusDep) -> Tu
             warehouse.append(await asyncio.to_thread(warehouse_data_source_id, redash, api_key=key))
         return warehouse[0]
 
-    return TurnRunner(model=model, bus=bus, sessions=SessionLocal, datasets=datasets, data_source_id=data_source_id)
+    return datasets, data_source_id
+
+
+def get_turn_runner(settings: SettingsDep, redash: RedashDep, bus: BusDep) -> TurnRunner:
+    datasets, data_source_id = get_warehouse_loaders(settings, redash)
+    return TurnRunner(
+        model=get_chat_model(), bus=bus, sessions=SessionLocal, datasets=datasets, data_source_id=data_source_id
+    )
 
 
 RunnerDep = Annotated[TurnRunner, Depends(get_turn_runner)]
+LoadersDep = Annotated[tuple[DatasetLoader, DataSourceLoader], Depends(get_warehouse_loaders)]
 Sessions = Callable[[], Session]
 
 
@@ -117,6 +134,8 @@ def _thread_out(thread: AiChatThread) -> ChatThreadOut:
         id=str(thread.id),
         title=thread.title,
         pinned=thread.pinned,
+        origin=cast(ThreadOrigin, thread.origin),
+        subject=ChatThreadSubject.model_validate(thread.subject) if thread.subject else None,
         created_at=thread.created_at,
         updated_at=thread.updated_at,
         last_turn_at=thread.last_turn_at,
@@ -157,10 +176,17 @@ def _promotion_out(promotion: AiChatDraftPromotion) -> ChatPromotionOut:
         id=str(promotion.id),
         target_type=promotion.target_type,
         target_id=promotion.target_id,
+        status=cast(PromotionStatus, promotion.status),
+        receipts=[ChatPromotionReceipt.model_validate(one) for one in promotion.receipts],
         promoted_version=promotion.promoted_version,
         target_version_at_promote=promotion.target_version_at_promote,
         created_at=promotion.created_at,
+        updated_at=promotion.updated_at,
     )
+
+
+def _receipt_rows(receipts: list[ChatPromotionReceipt]) -> list[dict[str, Any]]:
+    return [one.model_dump(by_alias=True, mode="json") for one in receipts]
 
 
 async def _settle_lost(bus: TurnBus, sessions: Sessions, turn_id: uuid.UUID) -> None:
@@ -185,8 +211,17 @@ async def list_threads(subject: SubjectDep, db: DbDep, offset: Annotated[int, Qu
 
 
 @router.post("/threads", response_model=ChatThreadOut, status_code=201)
-async def create_thread(subject: SubjectDep, db: DbDep) -> ChatThreadOut:
-    return _thread_out(await run_in_threadpool(store.create_thread, db, subject))
+async def create_thread(
+    subject: SubjectDep, db: DbDep, body: Annotated[ChatThreadCreateIn | None, Body()] = None
+) -> ChatThreadOut:
+    about = body.subject.model_dump(by_alias=True, exclude_none=True) if body and body.subject else None
+    return _thread_out(await run_in_threadpool(store.create_thread, db, subject, subject=about))
+
+
+@router.get("/threads/{thread_id}/subject", response_model=ChatThreadSubjectOut)
+async def get_thread_subject(thread_id: uuid.UUID, subject: SubjectDep, db: DbDep) -> ChatThreadSubjectOut:
+    thread = await run_in_threadpool(store.thread_for_owner, db, subject, thread_id)
+    return ChatThreadSubjectOut(subject=_thread_out(thread).subject)
 
 
 @router.get("/threads/{thread_id}", response_model=ChatThreadDetailOut)
@@ -242,7 +277,12 @@ async def delete_thread(thread_id: uuid.UUID, subject: SubjectDep, db: DbDep) ->
     return Response(status_code=204)
 
 
-@router.post("/threads/{thread_id}/turns", response_model=ChatTurnStartedOut, status_code=202)
+@router.post(
+    "/threads/{thread_id}/turns",
+    response_model=ChatTurnStartedOut,
+    status_code=202,
+    dependencies=[Depends(require_provider)],
+)
 async def post_turn(
     thread_id: uuid.UUID,
     payload: ChatTurnIn,
@@ -259,14 +299,15 @@ async def post_turn(
             raise ApiError(ErrorId.AI_TURN_CONFLICT, "a turn is already running in this conversation", 409)
         await _settle_lost(bus, sessions, running.id)
         db.expire_all()
-    turn = await run_in_threadpool(store.start_turn, db, thread, payload.text)
+    turn, applied = await run_in_threadpool(store.start_turn, db, thread, payload.text)
     try:
         await bus.hold_lease(str(turn.id))
     except (RedisError, OSError) as exc:
         await run_in_threadpool(store.fail_turn, db, turn.id, ErrorId.AI_CHAT_UNAVAILABLE.value)
         raise _unavailable() from exc
     catalog = catalog_from([shape.model_dump() for shape in payload.viz_catalog] if payload.viz_catalog else None)
-    spawn_turn(runner, turn.id, thread.id, turn.seq, payload.text, catalog, context_from(payload))
+    context = replace(context_from(payload), applied=tuple(applied))
+    spawn_turn(runner, turn.id, thread.id, turn.seq, payload.text, catalog, context)
     return ChatTurnStartedOut(turn_id=str(turn.id), seq=turn.seq)
 
 
@@ -363,6 +404,8 @@ async def cancel_turn(turn_id: uuid.UUID, subject: SubjectDep, db: DbDep, bus: B
 async def post_promotion(
     draft_id: uuid.UUID, payload: ChatPromotionIn, subject: SubjectDep, db: DbDep
 ) -> ChatPromotionOut:
+    if not is_promotion_target(payload.target_type):
+        raise ApiError(ErrorId.INVALID_REQUEST, f"{payload.target_type!r} is not something a draft can become", 422)
     draft = await run_in_threadpool(store.draft_for_owner, db, subject, draft_id)
     promotion = await run_in_threadpool(
         store.record_promotion,
@@ -371,6 +414,26 @@ async def post_promotion(
         version=payload.version,
         target_type=payload.target_type,
         target_id=payload.target_id,
+        target_version_at_promote=payload.target_version_at_promote,
+        status=payload.status,
+        receipts=_receipt_rows(payload.receipts),
+    )
+    return _promotion_out(promotion)
+
+
+@router.patch("/drafts/{draft_id}/promotions/{promotion_id}", response_model=ChatPromotionOut)
+async def patch_promotion(
+    draft_id: uuid.UUID, promotion_id: uuid.UUID, payload: ChatPromotionPatchIn, subject: SubjectDep, db: DbDep
+) -> ChatPromotionOut:
+    draft = await run_in_threadpool(store.draft_for_owner, db, subject, draft_id)
+    promotion = await run_in_threadpool(
+        store.update_promotion,
+        db,
+        draft,
+        promotion_id,
+        status=payload.status,
+        target_id=payload.target_id,
+        receipts=_receipt_rows(payload.receipts) if payload.receipts is not None else None,
         target_version_at_promote=payload.target_version_at_promote,
     )
     return _promotion_out(promotion)

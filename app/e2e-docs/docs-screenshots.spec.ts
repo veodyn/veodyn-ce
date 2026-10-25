@@ -31,7 +31,7 @@ const PAINT_SETTLE_MS = 1200
 
 // The three images that are not a plain navigation in either table, named here
 // so the completeness check at the bottom accounts for every file on disk.
-const DRIVEN_SCREENS = ['chart-editor', 'visual-builder', 'ai-create-chat', 'kpi-new-source']
+const DRIVEN_SCREENS = ['chart-editor', 'visual-builder', 'kpi-new-source']
 
 // The two images this harness cannot produce. Both managed-dataset surfaces
 // read the sidecar with no mock branch, so mock mode paints an error state
@@ -153,26 +153,6 @@ test.describe('signed in', () => {
     })
     await capture(page, 'visual-builder')
   })
-
-  test('ai-create-chat', async ({ page }) => {
-    // Captured mid-interview, on the turn features/ai.md describes: the model
-    // has asked a grounding question and offered answer chips, and has not
-    // proposed anything yet. The mock relay (src/lib/ai-mock.ts) scripts one
-    // follow-up for a single-message transcript, so this turn is reproducible.
-    await page.goto('/queries')
-    const opener = page.getByRole('button', { name: 'Create with AI' })
-    await expect(opener).toBeVisible({ timeout: SURFACE_TIMEOUT })
-    await opener.click()
-
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toHaveAccessibleName('Create a query with AI')
-    await dialog.getByLabel('Message the AI').fill('which devices report the most often')
-    await dialog.getByRole('button', { name: 'Send' }).click()
-    await expect(dialog.getByText(/Which dataset should this read/)).toBeVisible({
-      timeout: SURFACE_TIMEOUT,
-    })
-    await capture(page, 'ai-create-chat')
-  })
 })
 
 test.describe('signed out', () => {
@@ -210,7 +190,7 @@ test('every documented image is accounted for', () => {
     .concat(DRIVEN_SCREENS)
     .concat(PACK_SCREENS)
 
-  expect(expected.length).toBe(56)
+  expect(expected.length).toBe(55)
   expect(expected.filter((name) => !onDisk.has(name))).toEqual([])
   expect([...onDisk].filter((name) => !expected.includes(name))).toEqual([])
 

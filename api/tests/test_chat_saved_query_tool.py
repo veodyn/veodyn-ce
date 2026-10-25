@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from tests.converse_stubs import SPEEDS
+from tests.catalog_stubs import SPEEDS
 from veodyn_api.services.chat import tools
 from veodyn_api.services.chat.tools import ClientCall, Immediate, ToolContext, prepare_call, tool_definitions
 

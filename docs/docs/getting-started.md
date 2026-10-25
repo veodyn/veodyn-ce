@@ -155,17 +155,19 @@ The three variables are aliases for the same service; deployments may set any su
 
 ## 6. Optional: AI
 
-AI features (Create with AI, SQL generation, converse) need an AI provider. The sidecar implements one under `/ai` using an Anthropic API key. See [AI Provider](/operations/ai-provider) for the full setup; the short version for local work:
+AI features (the data chat, Create with AI, SQL generation) need an AI provider. The sidecar implements one under `/ai` using an Anthropic API key. See [AI Provider](/operations/ai-provider) for the full setup; the short version for local work:
 
 ```bash
 # api side
 export VEODYN_AI_RELAY_KEY=<any shared secret>
 export VEODYN_AI_API_KEY=<your Anthropic API key>
+export VEODYN_AI_TOKEN_SECRET=<another shared secret, for the chat>
 
 # app/.env.local
 VEODYN_AI__ENABLED=true
 VEODYN_AI__ENDPOINT=http://localhost:8090/ai
 VEODYN_AI__KEY=<the same shared secret>
+VEODYN_AI__TOKEN_SECRET=<the same as VEODYN_AI_TOKEN_SECRET>
 ```
 
 With AI off, every AI affordance is absent rather than greyed out, and every flow it assists has a manual path.

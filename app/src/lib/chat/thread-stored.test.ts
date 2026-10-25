@@ -7,7 +7,7 @@ const TURN = '11111111-1111-4111-8111-111111111111'
 
 function detailWith(blocks: ChatThreadDetail['turns'][number]['blocks']): ChatThreadDetail {
   return {
-    thread: { id: TURN, title: 't', pinned: false, createdAt: 'x', updatedAt: 'x', lastTurnAt: 'x' },
+    thread: { id: TURN, title: 't', pinned: false, createdAt: 'x', updatedAt: 'x', lastTurnAt: 'x', origin: 'chat' },
     turns: [
       {
         id: TURN,

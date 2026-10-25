@@ -4,6 +4,7 @@ import { useUpdateQuery } from '@/hooks/use-queries'
 import { useTagVocabulary } from '@/hooks/use-tag-vocabulary'
 import { useOptimisticTags } from '@/hooks/use-optimistic-tags'
 import { useConfig } from '@/components/config/config-provider'
+import { AskAboutThis } from '@/components/chat/ask-about-this'
 import { EditInPlace } from '@/components/shared/edit-in-place'
 import { TagsControl } from '@/components/shared/tags-control'
 import { FavoritesControl } from '@/components/shared/favorites-control'
@@ -96,6 +97,13 @@ export function QueryEditorHeader({
           <ScheduleIndicator
             summary={formatQuerySchedule(existingQuery.schedule)}
             onOpen={canEdit ? onOpenSchedule : null}
+          />
+        )}
+        {existingQuery && queryId && (
+          <AskAboutThis
+            subject={{ kind: 'query', queryId }}
+            label={existingQuery.name}
+            isDirty={isDirty}
           />
         )}
         {existingQuery && (

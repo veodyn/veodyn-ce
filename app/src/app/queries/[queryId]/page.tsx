@@ -2,6 +2,7 @@
 
 import { use, useState } from 'react'
 import Link from 'next/link'
+import { AskAboutThis } from '@/components/chat/ask-about-this'
 import { Pencil, Play, RefreshCw } from 'lucide-react'
 import { useQueryById } from '@/hooks/use-queries'
 import { useTagVocabulary } from '@/hooks/use-tag-vocabulary'
@@ -211,6 +212,7 @@ export default function QueryViewPage({ params }: { params: Promise<{ queryId: s
             )}
             {executeQuery.isPending ? 'Refreshing…' : 'Refresh'}
           </Button>
+          <AskAboutThis subject={{ kind: 'query', queryId: id }} label={query.name} />
           <Button variant="outline" render={<Link href={`/queries/${id}/source`} />}>
             <Pencil className="h-4 w-4" />
             Edit Source

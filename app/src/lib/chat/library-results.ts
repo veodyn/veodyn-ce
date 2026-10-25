@@ -1,12 +1,12 @@
 import type { RedashDataSource } from '@/services/redash/data-sources'
 import type { SchemaTable } from '@/lib/mock-data'
 import type { MockDashboard, MockQuery, MockVisualization, QueryResultData } from '@/lib/mock-data'
+import { chatWidget } from './dashboard-widgets'
 import { tagCountsOf, type LibraryTagGroups } from './library-tag-counts'
 import { RESOURCE_SECTION_RE } from './resource-section'
 import { summarizeRows } from './shape-result'
 import type {
   ChatDashboardResult,
-  ChatDashboardWidget,
   ChatDataSourceRef,
   ChatDataSourceResource,
   ChatDataSourceSchemaResult,
@@ -60,6 +60,7 @@ function queryItem(query: MockQuery): ChatLibraryItem {
     tags: tagsOf(query.tags),
     updatedAt: optional(query.updated_at, TYPE_CHARS),
     hasResult: query.latest_query_data_id != null,
+    archived: query.is_archived,
   }
 }
 
@@ -70,25 +71,28 @@ function dashboardItem(dashboard: MockDashboard): ChatLibraryItem {
     name: clip(dashboard.name, NAME_CHARS),
     tags: tagsOf(dashboard.tags),
     updatedAt: optional(dashboard.updated_at, TYPE_CHARS),
+    archived: dashboard.is_archived,
   }
 }
 
 function take<T extends { is_archived: boolean }>(
   page: Page<T> | null,
-  limit: number
+  limit: number,
+  archived: boolean
 ): { kept: T[]; more: boolean } {
   if (!page) return { kept: [], more: false }
-  const live = page.results.filter((item) => !item.is_archived)
+  const live = page.results.filter((item) => item.is_archived === archived)
   return { kept: live.slice(0, limit), more: live.length > limit || page.count > page.results.length }
 }
 
 export function libraryResult(
   queries: Page<MockQuery> | null,
   dashboards: Page<MockDashboard> | null,
-  tagGroups?: LibraryTagGroups
+  tagGroups?: LibraryTagGroups,
+  archived = false
 ): ChatLibraryResult {
-  const foundQueries = take(queries, LIBRARY_LIMIT)
-  const foundDashboards = take(dashboards, DASHBOARD_LIMIT)
+  const foundQueries = take(queries, LIBRARY_LIMIT, archived)
+  const foundDashboards = take(dashboards, DASHBOARD_LIMIT, archived)
   return {
     kind: 'library',
     ok: true,
@@ -142,17 +146,12 @@ export function savedVisualizationResult(
       dataSourceId: query.data_source_id > 0 ? query.data_source_id : undefined,
       parameters: (query.options?.parameters ?? []).slice(0, PARAMETER_LIMIT).map((one) => clip(one.name, 255)),
       updatedAt: optional(query.updated_at, TYPE_CHARS),
+      canEdit: query.can_edit,
     },
     visualization: visualizationRef(visualization),
     visualizations: (query.visualizations ?? []).slice(0, VISUALIZATION_LIMIT).map(visualizationRef),
     retrievedAt: optional(retrievedAt, TYPE_CHARS),
   }
-}
-
-function widgetTitle(queryName: string | undefined, visualizationName: string): string {
-  if (!queryName) return visualizationName
-  if (!visualizationName || visualizationName === 'Table') return queryName
-  return `${queryName} · ${visualizationName}`
 }
 
 function visibleWidgets(dashboard: MockDashboard) {
@@ -171,19 +170,6 @@ export function visibleWidgetCount(dashboard: MockDashboard): number {
 
 export function dashboardResult(dashboard: MockDashboard): ChatDashboardResult {
   const shown = visibleWidgets(dashboard)
-  const widgets: ChatDashboardWidget[] = []
-  for (const widget of shown) {
-    const visualization = widget.visualization
-    if (!visualization) continue
-    const queryName = optional(visualization.query.name, NAME_CHARS)
-    widgets.push({
-      title: clip(widgetTitle(queryName, visualization.name), NAME_CHARS),
-      queryId: visualization.query.id,
-      queryName,
-      visualizationId: visualization.id,
-      visualizationType: clip(visualization.type, TYPE_CHARS),
-    })
-  }
   return {
     kind: 'dashboard',
     ok: true,
@@ -191,10 +177,12 @@ export function dashboardResult(dashboard: MockDashboard): ChatDashboardResult {
       id: dashboard.id,
       name: clip(dashboard.name, NAME_CHARS),
       tags: tagsOf(dashboard.tags),
+      version: dashboard.version,
       updatedAt: optional(dashboard.updated_at, TYPE_CHARS),
+      canEdit: dashboard.can_edit,
     },
-    widgets: widgets.slice(0, WIDGET_LIMIT),
-    widgetCount: widgets.length,
+    widgets: shown.slice(0, WIDGET_LIMIT).map(chatWidget),
+    widgetCount: shown.filter((widget) => widget.visualization).length,
     textWidgets: shown.filter((widget) => !widget.visualization).length,
   }
 }

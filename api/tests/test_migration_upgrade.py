@@ -43,8 +43,8 @@ from tests.migration_chains import (
 )
 from tests.migration_revisions import CE_HEAD, CE_PREVIOUS
 
-HEAD_OBJECT = ("connector_configuration", "credentials")
-HEAD_OBJECT_DROP = ("DROP TABLE connector_configuration",)
+HEAD_OBJECT = ("ai_chat_thread", "subject")
+HEAD_OBJECT_DROP = ("ALTER TABLE ai_chat_thread DROP COLUMN subject",)
 
 BEFORE_IRREVERSIBLE = "0016"
 IRREVERSIBLE_OBJECT = ("publish_attempt", "source_version")

@@ -1,4 +1,20 @@
-CE_REVISIONS = ("0018", "0017", "0016", "0015", "0014", "0013", "0012", "0011", "0010", "0009", "0006", "0005")
+CE_REVISIONS = (
+    "0021",
+    "0020",
+    "0019",
+    "0018",
+    "0017",
+    "0016",
+    "0015",
+    "0014",
+    "0013",
+    "0012",
+    "0011",
+    "0010",
+    "0009",
+    "0006",
+    "0005",
+)
 """The community chain, newest first. Ids, not positions: these are stamped in
 every existing database, so a renumbering orphans the stamp rather than tidying
 anything.

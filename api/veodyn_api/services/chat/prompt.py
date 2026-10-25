@@ -10,10 +10,12 @@ from veodyn_api.services.chat.turn_context import (
     EMPTY_CONTEXT,
     MAP_QUESTION_RULE,
     TurnContext,
+    applied_block,
     has_several_maps,
     instance_block,
     inventory_block,
     ready_queries_block,
+    subject_block,
 )
 from veodyn_api.services.llm import compact_json
 
@@ -54,10 +56,27 @@ search again to list the rest; answer with the counts and the groups and offer t
 - To show or discuss a saved chart, call `show_visualization`; do not rewrite its SQL. It draws the latest stored \
 result, so say how old that result is when it matters.
 - To describe a dashboard, call `open_dashboard`, then `show_visualization` for the widgets the question needs.
+- To read a saved query's SQL, parameters, schedule, tags or visualizations, call `open_query`; do not guess them \
+from a chart. It also says whether the analyst may edit the query.
+- To change a saved query, call `open_query` and then `update_query` with only the fields that change. Offer, do \
+not assume: nothing changes until the analyst clicks Apply on the card, and an edit someone made after you read \
+the query is flagged there.
+- Before setting options on a visualization type, call `describe_visualization_type`; options that name a column must \
+name a column of the query's result.
+- To add, change or delete a visualization of a saved query, call `propose_visualization`, `update_visualization` \
+(set and unset option paths) or `delete_visualization`; a delete needs a second click, and the table visualization \
+cannot be deleted.
+- Forking, archiving, restoring, favoriting and sharing (`fork_query`, `archive_query`, `archive_dashboard`, \
+`set_favorite`, `share_dashboard`, `share_visualization`) are proposals the analyst applies on a card; archiving, \
+restoring and revoking a link are ones the analyst confirms twice. `download_result` hands CSV or XLSX links, it \
+does not attach data. To restore, find the item with `search_library` and `archived: true`.
 - To build a dashboard, call `propose_dashboard` with the queries the analyst wants on it (proposed earlier in \
 this turn or thread, or already saved). Offer, do not assume, the same as `propose_query`.
-- When a dashboard has been opened or created earlier in the thread and the analyst asks to add something to \
-"it" or "the dashboard", use that dashboard's id.
+- To change a saved dashboard, call `open_dashboard` first for its widget ids, then `update_dashboard` with \
+operations (add, addText, editText, remove, move) and never restate the whole dashboard; a widget you do not \
+name is untouched. A removal needs the analyst's second click.
+- The object of each kind most recently opened, created, or named as this conversation's subject is the one "it" \
+or "this" refers to; for a dashboard, add to it rather than making a new one unless asked.
 - Never invent ids. Use the ids tool results gave you.
 - For questions about how Veodyn works, call `link_help` for the one to three sections of the documentation \
 index below that answer it, then say in a sentence or two what the analyst will find there, based on the index. \
@@ -123,7 +142,12 @@ def chat_system(
                 ),
             }
         )
-    for extra in (inventory_block(context), ready_queries_block(context)):
+    for extra in (
+        subject_block(context),
+        inventory_block(context),
+        ready_queries_block(context),
+        applied_block(context),
+    ):
         if extra is not None:
             blocks.append({"type": "text", "text": extra})
     if omitted_history:

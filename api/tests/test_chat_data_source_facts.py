@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from tests.converse_stubs import SPEEDS
+from tests.catalog_stubs import SPEEDS
 from veodyn_api.schemas.ai_chat_context import ChatDataSourceEntryIn
 from veodyn_api.services.chat.data_source_facts import resolve_source_info
 from veodyn_api.services.chat.tools import ClientCall, Immediate, ToolContext, prepare_call

@@ -1,6 +1,6 @@
 from typing import Any
 
-from tests.converse_stubs import SPEEDS
+from tests.catalog_stubs import SPEEDS
 from veodyn_api.schemas.ai_chat_context import (
     ChatDataSourceEntryIn,
     ChatInstanceIn,

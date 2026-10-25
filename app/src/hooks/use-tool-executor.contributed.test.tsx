@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FeatureDescriptor } from '@/features/types'
-import type { ChatToolRequest } from '@/lib/chat/frames'
+import type { AnyToolRequest, ChatToolRequest } from '@/lib/chat/frames'
 import type { ChatToolResult } from '@/lib/chat/tool-results'
 
 const KPI: ChatToolResult = { kind: 'kpi', ok: true, kpi: { id: 'otp-weekly', name: 'On-time performance' } }
@@ -16,6 +16,7 @@ vi.mock('@/features/generated-registry', () => {
       routes: [],
       chatTools: [
         { tool: 'show_kpi', execute: async () => ({ default: runner }), card: async () => ({ default: () => null }) },
+        { tool: 'update_kpi', resultKind: 'kpi_edit_check', execute: async () => ({ default: runner }) },
       ],
     },
   }
@@ -26,7 +27,9 @@ vi.mock('@/services/ai/chat-client', async (importOriginal) => ({
   postToolResult,
 }))
 
-import { NO_CONTRIBUTOR_MESSAGE } from '@/features/chat-tools'
+import { noContributorMessage } from '@/features/chat-tools'
+import { browserSidecarTransport } from '@/lib/chat/sidecar-transport'
+import { browserTransport } from '@/lib/chat/transport'
 import { useToolExecutor } from './use-tool-executor'
 
 const SHOW: ChatToolRequest = { callId: 'k1', tool: 'show_kpi', args: { kpiId: 'otp-weekly' } }
@@ -44,7 +47,9 @@ describe('a contributed chat tool', () => {
     const { result } = renderHook(() => useToolExecutor())
     result.current.execute('turn', SHOW, onResult)
     await waitFor(() => expect(postToolResult).toHaveBeenCalledWith('turn', 'k1', KPI))
-    expect(runner).toHaveBeenCalledWith({ kpiId: 'otp-weekly' }, expect.any(AbortSignal))
+    expect(runner).toHaveBeenCalledWith({ kpiId: 'otp-weekly' }, expect.any(AbortSignal), browserTransport, {
+      sidecar: browserSidecarTransport,
+    })
     expect(onResult).toHaveBeenCalledWith('k1', KPI)
   })
 
@@ -89,8 +94,47 @@ describe('a contributed chat tool', () => {
     const onResult = vi.fn()
     const { result } = renderHook(() => useToolExecutor())
     result.current.execute('turn', LIST, onResult)
-    const failed = { kind: 'kpi_list', ok: false, error: NO_CONTRIBUTOR_MESSAGE }
+    const failed = { kind: 'kpi_list', ok: false, error: noContributorMessage('list_kpis') }
     await waitFor(() => expect(postToolResult).toHaveBeenCalledWith('turn', 'k2', failed))
     expect(onResult).toHaveBeenCalledWith('k2', failed)
+  })
+
+  it('runs a tool only a pack names, with the transports, and posts the kind that pack declared', async () => {
+    const edited = { kind: 'kpi_edit_check', ok: true, kpiId: 'otp-weekly' }
+    runner.mockResolvedValue(edited)
+    const request = { callId: 'u1', tool: 'update_kpi', args: { kpiId: 'otp-weekly' } } as unknown as AnyToolRequest
+    const onResult = vi.fn()
+    const { result } = renderHook(() => useToolExecutor())
+    result.current.execute('turn', request, onResult)
+    await waitFor(() => expect(postToolResult).toHaveBeenCalledWith('turn', 'u1', edited))
+    expect(runner).toHaveBeenCalledWith({ kpiId: 'otp-weekly' }, expect.any(AbortSignal), browserTransport, {
+      sidecar: browserSidecarTransport,
+    })
+    expect(onResult).toHaveBeenCalledWith('u1', edited)
+  })
+
+  it('posts a failure of the declared kind when the pack runner answers another kind', async () => {
+    runner.mockResolvedValue(KPI)
+    const request = { callId: 'u2', tool: 'update_kpi', args: {} } as unknown as AnyToolRequest
+    const { result } = renderHook(() => useToolExecutor())
+    result.current.execute('turn', request, vi.fn())
+    await waitFor(() =>
+      expect(postToolResult).toHaveBeenCalledWith('turn', 'u2', expect.objectContaining({ kind: 'kpi_edit_check', ok: false }))
+    )
+  })
+
+  it('answers a pack tool no feature in this build contributes', async () => {
+    const request = {
+      callId: 'u3',
+      tool: 'approve_report',
+      args: {},
+      resultKind: 'report_check',
+    } as unknown as AnyToolRequest
+    const onResult = vi.fn()
+    const { result } = renderHook(() => useToolExecutor())
+    result.current.execute('turn', request, onResult)
+    const failed = { kind: 'report_check', ok: false, error: 'This build cannot run approve_report.' }
+    await waitFor(() => expect(postToolResult).toHaveBeenCalledWith('turn', 'u3', failed))
+    expect(onResult).toHaveBeenCalledWith('u3', failed)
   })
 })

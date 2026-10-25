@@ -42,13 +42,13 @@ export async function create(data: {
 
 export async function update(
   id: number,
-  changes: { trigger?: string; description?: string; snippet?: string }
+  changes: { trigger?: string; description?: string; snippet?: string },
+  expectedUpdatedAt?: string
 ): Promise<MockQuerySnippet> {
-  return normalizeSnippet(
-    await redashApi.post<RedashSnippet>(`query_snippets/${id}`, changes)
-  )
+  const body = expectedUpdatedAt === undefined ? changes : { ...changes, expected_updated_at: expectedUpdatedAt }
+  return normalizeSnippet(await redashApi.post<RedashSnippet>(`query_snippets/${id}`, body))
 }
 
-export async function remove(id: number): Promise<void> {
-  await redashApi.delete(`query_snippets/${id}`)
+export async function remove(id: number, expectedUpdatedAt?: string): Promise<void> {
+  await redashApi.delete(`query_snippets/${id}`, { params: { expected_updated_at: expectedUpdatedAt } })
 }

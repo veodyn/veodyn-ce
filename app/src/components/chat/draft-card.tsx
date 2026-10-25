@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { DraftView } from '@/lib/chat/thread-model'
+import { vizOptionProblems } from '@/lib/chat/viz-options'
+import { resolveVizChoice } from '@/lib/viz-choices'
 import type { QueryResultData } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { ResultView } from './result-view'
@@ -27,6 +29,13 @@ export function DraftCard({ draft, version, data, selected, onSelect, children }
   if (!shown) return null
   const latest = draft.versions[draft.versions.length - 1]?.version ?? shown.version
   const { payload } = shown
+  const problems = data
+    ? vizOptionProblems(
+        resolveVizChoice(payload.vizChoiceId).type,
+        payload.vizOptions,
+        data.columns.map((column) => column.name)
+      )
+    : []
   return (
     <Card size="sm" className={cn('w-full', selected && 'ring-2 ring-primary')}>
       <CardHeader>
@@ -44,7 +53,14 @@ export function DraftCard({ draft, version, data, selected, onSelect, children }
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        {data ? <ResultView data={data} vizChoiceId={payload.vizChoiceId} /> : null}
+        {data ? <ResultView data={data} vizChoiceId={payload.vizChoiceId} vizOptions={payload.vizOptions} /> : null}
+        {problems.length > 0 ? (
+          <ul role="alert" className="list-disc pl-5 text-sm text-destructive">
+            {problems.map((problem) => (
+              <li key={problem}>{problem}</li>
+            ))}
+          </ul>
+        ) : null}
         <Collapsible>
           <CollapsibleTrigger render={<Button variant="ghost" size="sm" className="-ml-2" />}>
             <ChevronDown aria-hidden="true" />

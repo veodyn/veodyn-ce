@@ -43,6 +43,7 @@ export function createVisualization(data: {
   name: string
   description?: string
   options: Record<string, unknown>
+  idempotency_key?: string
 }): Promise<RedashVisualization> {
   return redashApi.post<RedashVisualization>('visualizations', data)
 }
@@ -54,13 +55,18 @@ export function updateVisualization(
     name?: string
     description?: string
     options?: Record<string, unknown>
-  }
+  },
+  expectedUpdatedAt?: string
 ): Promise<RedashVisualization> {
-  return redashApi.post<RedashVisualization>(`visualizations/${id}`, changes)
+  const body = expectedUpdatedAt === undefined ? changes : { ...changes, expected_updated_at: expectedUpdatedAt }
+  return redashApi.post<RedashVisualization>(`visualizations/${id}`, body)
 }
 
-export async function deleteVisualization(id: number): Promise<void> {
-  await redashApi.delete(`visualizations/${id}`)
+export async function deleteVisualization(id: number, expectedUpdatedAt?: string): Promise<void> {
+  await redashApi.delete(
+    `visualizations/${id}`,
+    expectedUpdatedAt === undefined ? undefined : { params: { expected_updated_at: expectedUpdatedAt } }
+  )
 }
 
 /**

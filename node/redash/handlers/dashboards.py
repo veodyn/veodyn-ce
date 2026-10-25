@@ -13,6 +13,13 @@ from redash.handlers.base import (
     record_public_read,
 )
 from redash.handlers.base import order_results as _order_results
+from redash.handlers.idempotency import (
+    commit_or_winner,
+    pop_key,
+    record,
+    replay_or_none,
+)
+from redash.handlers.preconditions import check_unchanged, pop_expected
 from redash.permissions import (
     can_modify,
     require_admin_or_owner,
@@ -120,6 +127,15 @@ class DashboardListResource(BaseDashboardListResource):
         Responds with a :ref:`dashboard <dashboard-response-label>`.
         """
         dashboard_properties = request.get_json(force=True)
+        key = pop_key(dashboard_properties)
+
+        def check(recorded):
+            require_object_modify_permission(recorded, self.current_user)
+
+        existing = replay_or_none(self.current_org, self.current_user, key, models.Dashboard, check)
+        if existing is not None:
+            return DashboardSerializer(existing).serialize()
+
         dashboard = models.Dashboard(
             name=dashboard_properties["name"],
             org=self.current_org,
@@ -128,7 +144,10 @@ class DashboardListResource(BaseDashboardListResource):
             layout=[],
         )
         models.db.session.add(dashboard)
-        models.db.session.commit()
+        record(self.current_org, self.current_user, key, models.Dashboard.__tablename__, dashboard)
+        winner = commit_or_winner(self.current_org, self.current_user, key, models.Dashboard, check)
+        if winner is not None:
+            return DashboardSerializer(winner).serialize()
         return DashboardSerializer(dashboard).serialize()
 
 
@@ -257,10 +276,13 @@ class DashboardResource(BaseResource):
         :status 409: Version conflict -- dashboard modified since last read
         """
         dashboard_properties = request.get_json(force=True)
+        if "is_archived" in dashboard_properties and not isinstance(dashboard_properties["is_archived"], bool):
+            abort(400, message="is_archived must be true or false.")
         # TODO: either convert all requests to use slugs or ids
         dashboard = models.Dashboard.get_by_id_and_org(dashboard_id, self.current_org)
 
         require_object_modify_permission(dashboard, self.current_user)
+        expected = pop_expected(dashboard_properties)
 
         updates = project(
             dashboard_properties,
@@ -275,6 +297,10 @@ class DashboardResource(BaseResource):
                 "options",
             ),
         )
+
+        if updates.get("is_archived") is True and not dashboard.is_archived:
+            require_admin_or_owner(dashboard.user_id)
+        check_unchanged(models.Dashboard, dashboard.id, expected)
 
         # SQLAlchemy handles the case where a concurrent transaction beats us
         # to the update. But we still have to make sure that we're not starting
@@ -307,16 +333,24 @@ class DashboardResource(BaseResource):
         Responds with the archived :ref:`dashboard <dashboard-response-label>`.
         """
         dashboard = models.Dashboard.get_by_id_and_org(dashboard_id, self.current_org)
+        require_admin_or_owner(dashboard.user_id)
+        check_unchanged(models.Dashboard, dashboard.id, request.args.get("expected_updated_at"))
         dashboard.is_archived = True
-        dashboard.record_changes(changed_by=self.current_user)
+        try:
+            dashboard.record_changes(changed_by=self.current_user)
+        except StaleDataError:
+            abort(409)
         # The public link is revoked in this same transaction by
         # revoke_share_tokens_when_target_is_archived, on the flush this commit
         # runs. Not written out here: post() can archive through its generic
         # field update as well, so a revoke that lived in this method would
         # cover one of the two ways a dashboard gets deleted.
         models.db.session.add(dashboard)
-        d = DashboardSerializer(dashboard, with_widgets=True, user=self.current_user).serialize()
-        models.db.session.commit()
+        try:
+            d = DashboardSerializer(dashboard, with_widgets=True, user=self.current_user).serialize()
+            models.db.session.commit()
+        except StaleDataError:
+            abort(409)
 
         self.record_event({"action": "archive", "object_id": dashboard.id, "object_type": "dashboard"})
 

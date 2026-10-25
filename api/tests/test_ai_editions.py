@@ -21,26 +21,25 @@ generated schema, the same way `tests/test_registry_providers.py` reads them.
 
 from pathlib import Path
 
-import httpx
-import pytest
-import respx
 from fastapi import FastAPI
 
 import veodyn_api
 from tests.ce_imports import module_file, reachable_from
-from tests.conftest import REDASH_TEST_URL
-from tests.converse_stubs import AUTH, FakeChatLlm, answer, build, mock_data_sources
 from veodyn_api.main import create_app
 
 COMMUNITY_AI_PATHS = [
     "/ai/chat/drafts/{draft_id}/promotions",
+    "/ai/chat/drafts/{draft_id}/promotions/{promotion_id}",
+    "/ai/chat/mcp/calls",
+    "/ai/chat/mcp/calls/{call_id}/result",
+    "/ai/chat/mcp/tools",
     "/ai/chat/threads",
     "/ai/chat/threads/{thread_id}",
+    "/ai/chat/threads/{thread_id}/subject",
     "/ai/chat/threads/{thread_id}/turns",
     "/ai/chat/turns/{turn_id}/cancel",
     "/ai/chat/turns/{turn_id}/stream",
     "/ai/chat/turns/{turn_id}/tool-results",
-    "/ai/converse",
     "/ai/generate-sql",
 ]
 ENTERPRISE_AI_PATHS = ["/ai/digest", "/ai/outline", "/ai/report", "/ai/suggest-annotations"]
@@ -83,50 +82,7 @@ def test_no_enterprise_ai_module_is_left_in_the_tree() -> None:
 
 def test_the_community_ai_router_still_reaches_the_service_it_needs() -> None:
     """The positive control for the closure walk that
-    `test_ce_has_no_ee_code.py` runs over the whole package.
-
-    `services/ai_outline` is deliberately still reachable and `ai_outline_ee` is
-    gone: the outline service was treated as one enterprise unit and it is two.
-    `ai_converse_schema.py` and `ai_converse_outline.py` both import from it and
-    both are on the community converse path, so `NO_QUERY` and `outline_schema`
-    stayed while `build_outline` went.
-    """
+    `test_ce_has_no_ee_code.py` runs over the whole package."""
     reachable = reachable_from("veodyn_api.routers.ai")
 
     assert "veodyn_api.services.ai_sql" in reachable
-    assert "veodyn_api.services.ai_outline" in reachable
-
-
-@respx.mock
-def test_a_community_build_can_still_propose_a_report(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`ReportOutlineOut` and `NewQueryProposalOut` stay in the community schema
-    because `schemas/ai_create.py` imports them, so a converse turn can propose a
-    report on a build that cannot generate one. A split that took them to the
-    pack would turn that turn into a 502 against the relay's strict schema.
-    """
-    mock_data_sources((1, "Warehouse"))
-    respx.get(f"{REDASH_TEST_URL}/api/queries").mock(
-        return_value=httpx.Response(
-            200, json={"results": [{"id": 11, "name": "Speeds by corridor", "updated_at": "2026-07-20"}]}
-        )
-    )
-    llm = FakeChatLlm(
-        answer(
-            outline={
-                "goal": "Weekly review",
-                "sections": [{"title": "Speeds", "intent": "speed over time", "queryId": 11, "suggested": False}],
-            }
-        )
-    )
-
-    api = build(llm, monkeypatch)
-    response = api.post(
-        "/ai/converse",
-        json={"kind": "report", "messages": [{"role": "user", "content": "a weekly review please"}]},
-        headers=AUTH,
-    )
-
-    assert response.status_code == 200
-    proposal = response.json()["proposal"]
-    assert proposal["kind"] == "report"
-    assert [section["sourceQueryId"] for section in proposal["outline"]["sections"]] == [11]

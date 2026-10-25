@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const appRoot = process.cwd()
@@ -27,6 +27,14 @@ describe('@veodyn/viz package manifest', () => {
       url: 'git+https://github.com/veodyn/veodyn-ce.git',
       directory: 'app/packages/viz',
     })
+  })
+
+  it('exposes a React-free authoring entry that has a source file', () => {
+    expect(pkg.exports['./authoring']).toEqual({
+      types: './dist/authoring.d.ts',
+      default: './dist/authoring.js',
+    })
+    expect(existsSync(join(appRoot, 'packages/viz/src/authoring.ts'))).toBe(true)
   })
 
   it('pins every dependency range to the app range', () => {

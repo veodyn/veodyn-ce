@@ -1,13 +1,13 @@
 import type { MockQuery, MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { resolveParameterValues } from '@/lib/parameters/dynamic-dates'
-import * as queriesService from '@/services/redash/queries'
-import { executeSavedQuery } from '@/services/redash/execution'
 import { NOT_AVAILABLE, pickVisualization } from './library-results'
-import type { SavedRunSpec } from './run-spec'
+import * as nodeCalls from './node-calls'
+import type { AdhocRunSpec, SavedRunSpec } from './run-spec'
 import { shapeResult } from './shape-result'
+import type { RedashTransport } from './transport'
 import type { ChatQueryResult } from './tool-results'
 
-export type { RunSpec, SavedRunSpec } from './run-spec'
+export type { AdhocRunSpec, RunSpec, SavedRunSpec } from './run-spec'
 
 export interface RunOutcome {
   data: QueryResultData
@@ -28,10 +28,14 @@ export function mergedParameters(query: MockQuery, overrides: Record<string, unk
   return { ...defaults, ...overrides }
 }
 
-export async function runSavedQuery(spec: SavedRunSpec, signal: AbortSignal): Promise<RunOutcome> {
-  const query = await queriesService.get(spec.queryId)
+export async function runSavedQuery(
+  spec: SavedRunSpec,
+  transport: RedashTransport,
+  signal: AbortSignal
+): Promise<RunOutcome> {
+  const query = await nodeCalls.getQuery(transport, spec.queryId, signal)
   if (!query || query.is_archived) throw new Error(NOT_AVAILABLE)
-  const result = await executeSavedQuery(spec.queryId, {
+  const result = await nodeCalls.executeSavedQuery(transport, spec.queryId, {
     parameters: resolveParameterValues(
       query.options?.parameters ?? [],
       mergedParameters(query, spec.parameters),
@@ -46,6 +50,18 @@ export async function runSavedQuery(spec: SavedRunSpec, signal: AbortSignal): Pr
     dataSourceId: query.data_source_id,
     visualization: typeof picked === 'string' ? null : picked,
   }
+}
+
+export async function runAdhocQuery(
+  spec: AdhocRunSpec,
+  transport: RedashTransport,
+  signal: AbortSignal
+): Promise<RunOutcome> {
+  const result = await nodeCalls.executeAdhoc(transport, spec.dataSourceId, spec.sql, {
+    applyAutoLimit: true,
+    signal,
+  })
+  return { data: result.data, dataSourceId: spec.dataSourceId, visualization: null }
 }
 
 export function savedRunResult(outcome: RunOutcome, queryId: number, notice?: string): ChatQueryResult {

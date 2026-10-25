@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Pencil, Presentation, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { AskAboutThis } from '@/components/chat/ask-about-this'
 import { IconButton } from '@/components/shared/icon-button'
 import { hasFeature } from '@/features'
 import { Slot } from '@/features/slots'
@@ -41,6 +42,7 @@ export function DashboardViewActions({ dashboard, onEdit, onShare }: DashboardVi
         <Pencil className="h-4 w-4" />
         Edit
       </Button>
+      <AskAboutThis subject={{ kind: 'dashboard', dashboardId: dashboard.id }} label={dashboard.name} />
       <IconButton tooltip="Share dashboard" variant="outline" size="icon" onClick={onShare}>
         <Share2 className="h-4 w-4" />
       </IconButton>

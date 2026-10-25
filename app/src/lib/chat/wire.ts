@@ -18,6 +18,40 @@ const timestamp = z.string().min(1).max(64)
 const block = z.record(z.unknown())
 const frameId = z.string().regex(/^[0-9]+-[0-9]+$/)
 
+export const NEW_THREAD_KINDS = ['query', 'dashboard', 'snippet', 'kpi', 'report', 'message'] as const
+export type NewThreadKind = (typeof NEW_THREAD_KINDS)[number]
+
+const positiveId = z.number().int().positive()
+
+const SUBJECT_REQUIRED = {
+  query: ['queryId'],
+  visualization: ['queryId', 'visualizationId'],
+  dashboard: ['dashboardId'],
+  widget: ['dashboardId', 'widgetId'],
+  dataset: ['datasetId'],
+  new: ['newKind'],
+} as const
+
+export const threadSubjectSchema = z
+  .object({
+    kind: z.enum(['query', 'visualization', 'dashboard', 'widget', 'dataset', 'new']),
+    queryId: positiveId.optional(),
+    visualizationId: positiveId.optional(),
+    dashboardId: positiveId.optional(),
+    widgetId: positiveId.optional(),
+    datasetId: z.string().min(1).max(200).optional(),
+    newKind: z.enum(NEW_THREAD_KINDS).optional(),
+  })
+  .strict()
+  .refine((subject) => SUBJECT_REQUIRED[subject.kind].every((field) => subject[field] !== undefined))
+
+export type ChatThreadSubject = z.infer<typeof threadSubjectSchema>
+export type ChatThreadSubjectRead = z.infer<typeof threadSubjectResponseSchema>
+
+export const createThreadRequestSchema = z.object({ subject: threadSubjectSchema.optional() }).strict()
+
+export const threadSubjectResponseSchema = z.object({ subject: threadSubjectSchema.nullable() })
+
 export const threadSchema: z.ZodType<ChatThread> = z.object({
   id: uuid,
   title: z.string().max(200),
@@ -25,6 +59,8 @@ export const threadSchema: z.ZodType<ChatThread> = z.object({
   createdAt: timestamp,
   updatedAt: timestamp,
   lastTurnAt: timestamp,
+  origin: z.enum(['chat', 'mcp']),
+  subject: threadSubjectSchema.nullable().optional(),
 })
 
 export const threadListSchema: z.ZodType<ChatThreadList> = z.object({
@@ -32,13 +68,26 @@ export const threadListSchema: z.ZodType<ChatThreadList> = z.object({
   nextOffset: z.number().int().nonnegative().nullable(),
 })
 
+const promotionStatus = z.enum(['pending', 'partial', 'done', 'failed'])
+
+const receiptSchema = z.object({
+  step: z.number().int().nonnegative(),
+  outcome: z.enum(['done', 'failed', 'skipped']),
+  targetId: z.string().max(64).nullable().optional(),
+  updatedAt: z.string().max(64).nullable().optional(),
+  error: z.string().max(500).nullable().optional(),
+})
+
 const promotionSchema: z.ZodType<ChatPromotion> = z.object({
   id: uuid,
   targetType: z.string().max(32),
-  targetId: z.string().max(64),
+  targetId: z.string().max(64).nullable(),
   promotedVersion: z.number().int().positive(),
   targetVersionAtPromote: z.number().int().nullable(),
+  status: promotionStatus,
+  receipts: z.array(receiptSchema).max(50),
   createdAt: timestamp,
+  updatedAt: timestamp,
 })
 
 export const promotionResponseSchema = promotionSchema
@@ -98,9 +147,20 @@ export const toolResultRequestSchema = z
 export const promotionRequestSchema = z
   .object({
     version: z.number().int().positive(),
-    targetType: z.enum(['query', 'dashboard']),
-    targetId: z.string().min(1).max(64),
+    targetType: z.string().min(1).max(32),
+    targetId: z.string().min(1).max(64).nullable().optional(),
     targetVersionAtPromote: z.number().int().nonnegative().nullable().optional(),
+    status: promotionStatus.optional(),
+    receipts: z.array(receiptSchema).max(50).optional(),
+  })
+  .strict()
+
+export const promotionPatchRequestSchema = z
+  .object({
+    status: promotionStatus.optional(),
+    targetId: z.string().min(1).max(64).nullable().optional(),
+    targetVersionAtPromote: z.number().int().nonnegative().nullable().optional(),
+    receipts: z.array(receiptSchema).max(50).optional(),
   })
   .strict()
 

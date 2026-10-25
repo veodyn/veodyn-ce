@@ -6,31 +6,38 @@ import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { getVisualization, inferredVizOptions } from '@veodyn/viz'
 import { visualizationData } from '@veodyn/viz/lib/visualizations/data-gate'
+import { sanitizedVizOptions } from '@/lib/chat/viz-options'
 import { resolveVizChoice } from '@/lib/viz-choices'
 
 interface ResultViewProps {
   data: QueryResultData
   vizChoiceId: string
+  vizOptions?: Record<string, unknown>
   visualization?: MockVisualization | null
   className?: string
 }
 
-export function chatVisualization(vizChoiceId: string, data: QueryResultData): MockVisualization {
+export function chatVisualization(
+  vizChoiceId: string,
+  data: QueryResultData,
+  vizOptions?: Record<string, unknown>
+): MockVisualization {
   const choice = resolveVizChoice(vizChoiceId)
   const defaults = getVisualization(choice.type)?.defaultOptions ?? {}
+  const authored = sanitizedVizOptions(choice.type, vizOptions)
   return {
     id: -1,
     type: choice.type,
     name: choice.label,
     description: '',
-    options: inferredVizOptions(choice.type, { ...defaults, ...choice.options }, data),
+    options: inferredVizOptions(choice.type, { ...defaults, ...choice.options, ...authored }, data),
     created_at: '',
     updated_at: '',
   }
 }
 
-export function ResultView({ data, vizChoiceId, visualization: saved, className }: ResultViewProps) {
-  const inferred = useMemo(() => chatVisualization(vizChoiceId, data), [vizChoiceId, data])
+export function ResultView({ data, vizChoiceId, vizOptions, visualization: saved, className }: ResultViewProps) {
+  const inferred = useMemo(() => chatVisualization(vizChoiceId, data, vizOptions), [vizChoiceId, data, vizOptions])
   const visualization = saved ?? inferred
   const drawable = visualizationData(visualization.type, data, { requireRows: true })
   return (

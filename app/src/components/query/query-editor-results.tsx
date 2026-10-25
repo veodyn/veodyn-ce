@@ -68,6 +68,7 @@ interface QueryEditorResultsProps {
   canEdit?: boolean
   /** Whether the owning query may be published. See VisualizationTabs. */
   isQuerySafe?: boolean
+  isDirty?: boolean
 }
 
 export function QueryEditorResults({
@@ -79,6 +80,7 @@ export function QueryEditorResults({
   queryId,
   canEdit = true,
   isQuerySafe = false,
+  isDirty = false,
 }: QueryEditorResultsProps) {
   const tabs =
     adhocViz != null ? adhocVisualizations(adhocViz) : (visualizations ?? ADHOC_TABLE)
@@ -114,6 +116,7 @@ export function QueryEditorResults({
           queryId={queryId}
           canEdit={canEdit}
           isQuerySafe={isQuerySafe}
+          isDirty={isDirty}
         />
       )}
     </div>

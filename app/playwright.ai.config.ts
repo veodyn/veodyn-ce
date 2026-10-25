@@ -1,7 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
-// The AI-enabled posture of every AI spec: the Create-with-AI chat on the
-// library pages (ai-create-chat.spec.ts), the editor and Visual builder
+// The AI-enabled posture of every AI spec: the editor and Visual builder
 // (ai-editor.spec.ts), the report flow (ai-report-flow.spec.ts), and the
 // visualization picker's selected state (ai-viz-picker.spec.ts).
 //
@@ -16,7 +15,7 @@ import { defineConfig, devices } from '@playwright/test'
 // listed here or its enabled half never runs.
 export default defineConfig({
   testDir: './e2e',
-  testMatch: /ai-(create-chat|editor|report-flow|viz-picker)\.spec\.ts$/,
+  testMatch: /ai-(editor|report-flow|viz-picker)\.spec\.ts$/,
   fullyParallel: false,
   retries: 0,
   use: {

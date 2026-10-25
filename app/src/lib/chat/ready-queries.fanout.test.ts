@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cookieReader } from './redash-get'
 
 const redashFetch = vi.hoisted(() => vi.fn())
 const choices = vi.hoisted(() => ({ list: [] as unknown[] }))
@@ -53,7 +54,7 @@ const detailCalls = () => redashFetch.mock.calls.filter(([path]) => /^\/api\/que
 
 async function ready(cookie: string | null = 'session=a', signal: AbortSignal = SIGNAL) {
   const { readyQueries } = await import('./ready-queries')
-  return readyQueries(cookie, signal)
+  return readyQueries(cookieReader(cookie), signal)
 }
 
 beforeEach(() => {

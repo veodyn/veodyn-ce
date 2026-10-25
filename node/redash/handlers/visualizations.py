@@ -8,6 +8,14 @@ from redash.handlers.base import (
     parse_expires_at,
     record_public_read,
 )
+from redash.handlers.idempotency import (
+    commit_or_winner,
+    pop_key,
+    record,
+    refuse_different_request,
+    replay_or_none,
+)
+from redash.handlers.preconditions import check_unchanged, pop_expected
 from redash.permissions import (
     require_admin_or_owner,
     require_any_of_permission,
@@ -22,15 +30,28 @@ class VisualizationListResource(BaseResource):
     @require_permission("edit_query")
     def post(self):
         kwargs = request.get_json(force=True)
+        key = pop_key(kwargs)
 
         query = get_object_or_404(models.Query.get_by_id_and_org, kwargs.pop("query_id"), self.current_org)
         require_object_modify_permission(query, self.current_user)
+
+        def check(recorded):
+            if recorded.query_id != query.id:
+                refuse_different_request()
+            require_object_modify_permission(recorded.query_rel, self.current_user)
+
+        existing = replay_or_none(self.current_org, self.current_user, key, models.Visualization, check)
+        if existing is not None:
+            return serialize_visualization(existing, with_query=False)
 
         kwargs["query_rel"] = query
 
         vis = models.Visualization(**kwargs)
         models.db.session.add(vis)
-        models.db.session.commit()
+        record(self.current_org, self.current_user, key, models.Visualization.__tablename__, vis)
+        winner = commit_or_winner(self.current_org, self.current_user, key, models.Visualization, check)
+        if winner is not None:
+            return serialize_visualization(winner, with_query=False)
         return serialize_visualization(vis, with_query=False)
 
 
@@ -41,19 +62,20 @@ class VisualizationResource(BaseResource):
         require_object_modify_permission(vis.query_rel, self.current_user)
 
         kwargs = request.get_json(force=True)
+        check_unchanged(models.Visualization, vis.id, pop_expected(kwargs))
 
         kwargs.pop("id", None)
         kwargs.pop("query_id", None)
 
         self.update_model(vis, kwargs)
-        d = serialize_visualization(vis, with_query=False)
         models.db.session.commit()
-        return d
+        return serialize_visualization(vis, with_query=False)
 
     @require_permission("edit_query")
     def delete(self, visualization_id):
         vis = get_object_or_404(models.Visualization.get_by_id_and_org, visualization_id, self.current_org)
         require_object_modify_permission(vis.query_rel, self.current_user)
+        check_unchanged(models.Visualization, vis.id, request.args.get("expected_updated_at"))
         self.record_event(
             {
                 "action": "delete",

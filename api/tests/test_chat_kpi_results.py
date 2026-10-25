@@ -7,7 +7,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from tests.chat_stubs import text_turn, tool_turn
 from tests.test_chat_routes import Harness, harness, headers, model
-from veodyn_api.schemas.ai_chat import ChatToolResultIn
+from veodyn_api.schemas.ai_chat_results import ChatToolResultIn
 from veodyn_api.services.chat import tools
 from veodyn_api.services.chat.tools import ChatTool, ClientCall, Immediate, ToolContext, register_chat_tool
 
@@ -93,7 +93,7 @@ def test_a_contributed_kpi_tool_round_trips_through_the_routes(harness: Harness,
     )
     turn = harness.turn(harness.thread())
     request = harness.wait_for(turn, "tool_request")
-    assert request == {"callId": "call-1", "tool": "show_kpi", "args": {"kpiId": "otp-weekly"}}
+    assert request == {"callId": "call-1", "tool": "show_kpi", "args": {"kpiId": "otp-weekly"}, "resultKind": "kpi"}
     refused = harness.client.post(
         f"/ai/chat/turns/{turn}/tool-results", json={"callId": "call-1", "result": KPI_LIST}, headers=headers()
     )

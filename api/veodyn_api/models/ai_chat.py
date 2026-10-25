@@ -31,6 +31,9 @@ class AiChatThread(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     last_turn_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    applied_reported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    origin: Mapped[str] = mapped_column(Text, nullable=False, server_default="chat")
+    subject: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
 
 class AiChatTurn(Base):
@@ -50,6 +53,7 @@ class AiChatTurn(Base):
     error_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    applied_cutoff: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class AiChatDraft(Base):
@@ -83,7 +87,10 @@ class AiChatDraftPromotion(Base):
         Uuid, ForeignKey("ai_chat_draft.id", ondelete="CASCADE"), nullable=False
     )
     target_type: Mapped[str] = mapped_column(Text, nullable=False)
-    target_id: Mapped[str] = mapped_column(Text, nullable=False)
+    target_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="done")
+    receipts: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, server_default="[]")
     promoted_version: Mapped[int] = mapped_column(Integer, nullable=False)
     target_version_at_promote: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

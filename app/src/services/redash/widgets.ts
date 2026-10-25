@@ -18,6 +18,7 @@ export async function createWidget(data: {
   text?: string
   width?: number
   options: MockDashboardWidget['options']
+  idempotency_key?: string
 }): Promise<MockDashboardWidget> {
   const raw = await redashApi.post<RedashWidget>('widgets', {
     dashboard_id: data.dashboard_id,
@@ -29,21 +30,27 @@ export async function createWidget(data: {
       ...data.options,
       position: { autoHeight: false, ...data.options.position },
     },
+    ...(data.idempotency_key ? { idempotency_key: data.idempotency_key } : {}),
   })
   return normalizeWidget(raw, data.dashboard_id)
 }
 
 export async function updateWidget(
   id: number,
-  data: { text?: string; width?: number; options: MockDashboardWidget['options'] }
+  data: { text?: string; width?: number; options: MockDashboardWidget['options'] },
+  expectedUpdatedAt?: string
 ): Promise<void> {
   await redashApi.post(`widgets/${id}`, {
     text: data.text ?? '',
     width: data.width ?? 1,
     options: data.options,
+    ...(expectedUpdatedAt === undefined ? {} : { expected_updated_at: expectedUpdatedAt }),
   })
 }
 
-export async function deleteWidget(id: number): Promise<void> {
-  await redashApi.delete(`widgets/${id}`)
+export async function deleteWidget(id: number, expectedUpdatedAt?: string): Promise<void> {
+  await redashApi.delete(
+    `widgets/${id}`,
+    expectedUpdatedAt === undefined ? undefined : { params: { expected_updated_at: expectedUpdatedAt } }
+  )
 }

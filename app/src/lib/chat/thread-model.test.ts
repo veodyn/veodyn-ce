@@ -34,7 +34,10 @@ const PROMOTION = {
   targetId: '44',
   promotedVersion: 1,
   targetVersionAtPromote: 2,
+  status: 'done' as const,
+  receipts: [],
   createdAt: '2026-09-17T00:00:00Z',
+  updatedAt: '2026-09-17T00:00:00Z',
 }
 const DASHBOARD_DRAFT = '55555555-5555-4555-8555-555555555555'
 const DASHBOARD_PROPOSAL = {
@@ -155,6 +158,7 @@ describe('fromDetail', () => {
       createdAt: 'x',
       updatedAt: 'x',
       lastTurnAt: 'x',
+      origin: 'chat',
     },
     turns: [
       {
@@ -326,7 +330,7 @@ describe('dashboard drafts', () => {
 
   it('rebuilds a dashboard draft from a stored propose_dashboard call', () => {
     const detail = {
-      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '' },
+      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '', origin: 'chat' },
       turns: [
         {
           id: TURN,
@@ -368,7 +372,7 @@ describe('dashboard drafts', () => {
 
   it('reconstructs activeDashboard as the latest of an open_dashboard call and a dashboard promotion', () => {
     const detail = {
-      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '' },
+      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '', origin: 'chat' },
       turns: [
         {
           id: TURN,
@@ -409,7 +413,7 @@ describe('dashboard drafts', () => {
 
   it('has no activeDashboard when neither an open_dashboard call nor a dashboard promotion exists', () => {
     const empty = {
-      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '' },
+      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '', origin: 'chat' },
       turns: [],
       drafts: [],
     } as ChatThreadDetail
@@ -463,7 +467,7 @@ describe('library calls', () => {
 
   it('rebuilds calls from a stored turn', () => {
     const detail = {
-      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '' },
+      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '', origin: 'chat' },
       drafts: [],
       turns: [
         {
@@ -540,7 +544,7 @@ describe('help links', () => {
 
   it('rebuilds a help link from the stored call and skips a refused one', () => {
     const detail = {
-      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '' },
+      thread: { id: TURN, title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '', origin: 'chat' },
       drafts: [],
       turns: [
         {

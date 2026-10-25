@@ -18,8 +18,12 @@ vi.mock('@/services/ai/chat-client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/ai/chat-client')>()),
   ...client,
 }))
-vi.mock('@/services/redash/execution', () => execution)
-vi.mock('@/services/redash/queries', () => queries)
+vi.mock('@/lib/chat/node-calls', () => ({
+  searchQueries: (_transport: unknown, q: string, opts: unknown) => queries.search(q, opts),
+  getQuery: (_transport: unknown, id: number) => queries.get(id),
+  executeSavedQuery: (_transport: unknown, id: number, opts: unknown) => execution.executeSavedQuery(id, opts),
+  executeAdhoc: (_transport: unknown, ...args: unknown[]) => execution.executeAdhoc(...args),
+}))
 
 const THREAD = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const TURN = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
@@ -42,7 +46,7 @@ function storedTurn(blocks: unknown[]) {
 function detail(turns: unknown[]) {
   const stamp = '2026-09-17T00:00:00Z'
   return {
-    thread: { id: THREAD, title: '', pinned: false, createdAt: stamp, updatedAt: stamp, lastTurnAt: stamp },
+    thread: { id: THREAD, title: '', pinned: false, createdAt: stamp, updatedAt: stamp, lastTurnAt: stamp, origin: 'chat' },
     turns,
     drafts: [],
   }

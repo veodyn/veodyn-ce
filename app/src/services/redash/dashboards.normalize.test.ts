@@ -93,4 +93,22 @@ describe('normalizeWidget', () => {
     })
     expect(widget.dashboard_id).toBe(3)
   })
+
+  it('keeps updated_at and unknown option keys', () => {
+    const raw = {
+      ...rawWidget({ id: 11, name: 'Weather' }),
+      updated_at: '2026-10-24T10:00:00.123Z',
+      options: { position: { col: 1, row: 2, sizeX: 3, sizeY: 4 }, chatNote: 'x', isHidden: true },
+    } as RedashWidget
+    const widget = normalizeWidget(raw, 3)
+    expect(widget.updated_at).toBe('2026-10-24T10:00:00.123Z')
+    expect(widget.options.chatNote).toBe('x')
+    expect(widget.options.isHidden).toBe(true)
+    expect(widget.options.position).toEqual({ col: 1, row: 2, sizeX: 3, sizeY: 4 })
+  })
+
+  it('defaults the position when the payload has none', () => {
+    const raw = { ...rawWidget({ id: 11 }), options: {} } as RedashWidget
+    expect(normalizeWidget(raw, 3).options.position).toEqual({ col: 0, row: 0, sizeX: 3, sizeY: 8 })
+  })
 })

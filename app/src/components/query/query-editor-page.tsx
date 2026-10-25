@@ -137,6 +137,7 @@ export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
     // An unsaved query defaults to unsafe: publishing needs a saved
     // visualization anyway, and the dialog explains itself when refused.
     isQuerySafe: existingQuery?.is_safe ?? false,
+    isDirty,
   }
 
   return (
@@ -169,6 +170,7 @@ export function QueryEditorPage({ queryId }: QueryEditorPageProps) {
           mode={visual.mode}
           onModeChange={visual.setMode}
           onRequestPro={visual.openProTab}
+          isDirty={isDirty}
         />
       )}
 

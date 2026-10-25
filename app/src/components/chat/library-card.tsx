@@ -4,6 +4,7 @@ import { FileCode2, LayoutDashboard, Search } from 'lucide-react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { knownOutput } from '@/lib/chat/thread-calls'
 import type { CallView } from '@/lib/chat/thread-model'
 import type { ChatLibraryResult } from '@/lib/chat/tool-results'
 import { ToolCardTitle, ToolFailure } from './tool-card-parts'
@@ -24,7 +25,8 @@ export function itemHref(type: 'query' | 'dashboard', id: number): string {
 }
 
 export function LibraryCard({ call }: { call: CallView }) {
-  const output = call.output?.kind === 'library' && call.output.ok ? call.output : null
+  const known = knownOutput(call)
+  const output = known?.kind === 'library' && known.ok ? known : null
   const items = output?.items ?? []
   return (
     <Card size="sm" className="w-full">

@@ -4,6 +4,7 @@ import type { MockVisualization, QueryResultColumn, QueryResultData } from '../.
 import type { VizThumbnail } from '../../components/visualizations/viz-thumbnails'
 import type { MapProvider } from './map-providers'
 import type { OptionSchema } from './option-schema'
+import type { AuthoringSchema } from './authoring/types'
 
 export const PLUGIN_API_VERSION = 1
 
@@ -67,4 +68,6 @@ export interface VisualizationPlugin {
   readiness?(options: Record<string, unknown>, context: ReadinessContext): string | null
 
   publicOptions?: OptionSchema
+
+  authoringOptions?: AuthoringSchema
 }

@@ -79,6 +79,22 @@ EXTRA_ALLOWLISTED_LITERALS = (
     ("app/src/lib/chat/thread-model.test.ts", "22222222-2222-4222-8222-222222222222"),
     ("app/src/lib/chat/thread-model.test.ts", "33333333-3333-4333-8333-333333333333"),
     ("app/src/lib/chat/thread-model.test.ts", "55555555-5555-4555-8555-555555555555"),
+    ("app/src/components/chat/chat-thread-view.query-sync.test.tsx", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+    ("app/src/components/chat/chat-thread-view.query-sync.test.tsx", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
+    ("app/src/hooks/use-chat-thread.sync.test.tsx", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+    ("app/src/lib/chat/operation-thread.test.ts", "11111111-1111-4111-8111-111111111111"),
+    ("app/src/lib/chat/operation-thread.test.ts", "22222222-2222-4222-8222-222222222222"),
+    ("app/src/lib/chat/promotion-route.test.ts", "7a1d2c1e-0b5a-4a43-9a52-2d0f4f3c9a11"),
+    ("app/src/lib/chat/thread-dashboard-edit.test.ts", "11111111-1111-4111-8111-111111111111"),
+    ("app/src/lib/chat/thread-dashboard-edit.test.ts", "22222222-2222-4222-8222-222222222222"),
+    ("app/src/lib/chat/thread-dashboard-edit.test.ts", "33333333-3333-4333-8333-333333333333"),
+    ("app/src/lib/chat/thread-stored.drafts.test.ts", "11111111-1111-4111-8111-111111111111"),
+    ("app/src/lib/chat/thread-stored.drafts.test.ts", "22222222-2222-4222-8222-222222222222"),
+    ("app/src/lib/chat/thread-stored.drafts.test.ts", "33333333-3333-4333-8333-333333333333"),
+    ("app/src/lib/chat/turn-subject.test.ts", "0b8e2a54-3a8e-4f43-9d4f-5d1c8f7a2b10"),
+    ("app/src/lib/chat/viz-thread.test.ts", "11111111-1111-4111-8111-111111111111"),
+    ("app/src/lib/chat/viz-thread.test.ts", "22222222-2222-4222-8222-222222222222"),
+    ("app/src/lib/chat/wire.test.ts", "6f1d2c1e-0b5a-4a43-9a52-2d0f4f3c9a11"),
 )
 
 

@@ -16,6 +16,14 @@ from redash.handlers.base import (
     routes,
 )
 from redash.handlers.base import order_results as _order_results
+from redash.handlers.idempotency import (
+    commit_or_winner,
+    pop_key,
+    record,
+    refuse_different_request,
+    replay_or_none,
+)
+from redash.handlers.preconditions import check_unchanged, pop_expected
 from redash.handlers.query_results import run_query
 from redash.models.parameterized_query import ParameterizedQuery
 from redash.permissions import (
@@ -132,9 +140,7 @@ class BaseQueryListResource(BaseResource):
                 multi_byte_search=current_org.get_setting("multi_byte_search_enabled"),
             )
         else:
-            results = models.Query.all_queries(
-                self.current_user.group_ids, self.current_user.id, include_drafts=False
-            )
+            results = models.Query.all_queries(self.current_user.group_ids, self.current_user.id, include_drafts=False)
         return filter_by_tags(results, models.Query.tags)
 
     @require_permission("view_query")
@@ -234,9 +240,19 @@ class QueryListResource(BaseQueryListResource):
         :>json number runtime: Runtime of last query execution, in seconds (may be null)
         """
         query_def = request.get_json(force=True)
+        key = pop_key(query_def)
         data_source = models.DataSource.get_by_id_and_org(query_def.pop("data_source_id"), self.current_org)
         require_access(data_source, self.current_user, not_view_only)
         require_access_to_dropdown_queries(self.current_user, query_def)
+
+        def check(recorded):
+            if recorded.data_source_id != data_source.id:
+                refuse_different_request()
+            require_access(recorded.data_source, self.current_user, not_view_only)
+
+        existing = replay_or_none(self.current_org, self.current_user, key, models.Query, check)
+        if existing is not None:
+            return self._serialize_created(existing)
 
         for field in [
             "id",
@@ -255,12 +271,18 @@ class QueryListResource(BaseQueryListResource):
         query_def["is_draft"] = True
         query = models.Query.create(**query_def)
         models.db.session.add(query)
-        models.db.session.commit()
+        models.db.session.flush()
         query.update_latest_result_by_query_hash()
-        models.db.session.commit()
+        record(self.current_org, self.current_user, key, models.Query.__tablename__, query)
+        winner = commit_or_winner(self.current_org, self.current_user, key, models.Query, check)
+        if winner is not None:
+            return self._serialize_created(winner)
 
         self.record_event({"action": "create", "object_id": query.id, "object_type": "query"})
 
+        return self._serialize_created(query)
+
+    def _serialize_created(self, query):
         return QuerySerializer(
             query, with_visualizations=True, with_api_key=is_admin_or_owner(query.user_id)
         ).serialize()
@@ -348,6 +370,7 @@ class QueryResource(BaseResource):
         query_def = request.get_json(force=True)
 
         require_object_modify_permission(query, self.current_user)
+        check_unchanged(models.Query, query.id, pop_expected(query_def))
         require_access_to_dropdown_queries(self.current_user, query_def)
 
         for field in [
@@ -436,6 +459,7 @@ class QueryResource(BaseResource):
         """
         query = get_object_or_404(models.Query.get_by_id_and_org, query_id, self.current_org)
         require_admin_or_owner(query.user_id)
+        check_unchanged(models.Query, query.id, request.args.get("expected_updated_at"))
         query.archive(self.current_user)
         models.db.session.commit()
 
@@ -472,13 +496,32 @@ class QueryForkResource(BaseResource):
 
         Responds with created :ref:`query <query-response-label>` object.
         """
+        key = pop_key(request.get_json(force=True, silent=True) or {})
         query = get_object_or_404(models.Query.get_by_id_and_org, query_id, self.current_org)
         require_access(query.data_source, self.current_user, not_view_only)
+
+        def check(recorded):
+            if recorded.data_source_id != query.data_source_id or not recorded.name.startswith(
+                "Copy of (#{}) ".format(query.id)
+            ):
+                refuse_different_request()
+            require_access(recorded.data_source, self.current_user, not_view_only)
+
+        existing = replay_or_none(self.current_org, self.current_user, key, models.Query, check)
+        if existing is not None:
+            return self._serialize_fork(existing)
+
         forked_query = query.fork(self.current_user)
-        models.db.session.commit()
+        record(self.current_org, self.current_user, key, models.Query.__tablename__, forked_query)
+        winner = commit_or_winner(self.current_org, self.current_user, key, models.Query, check)
+        if winner is not None:
+            return self._serialize_fork(winner)
 
         self.record_event({"action": "fork", "object_id": query_id, "object_type": "query"})
 
+        return self._serialize_fork(forked_query)
+
+    def _serialize_fork(self, forked_query):
         return QuerySerializer(
             forked_query, with_visualizations=True, with_api_key=is_admin_or_owner(forked_query.user_id)
         ).serialize()

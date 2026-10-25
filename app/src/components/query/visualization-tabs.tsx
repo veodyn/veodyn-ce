@@ -30,6 +30,7 @@ interface VisualizationTabsProps {
    * itself.
    */
   isQuerySafe?: boolean
+  isDirty?: boolean
   /**
    * Runs the query behind these tabs, from the empty state. Optional because
    * the editor never shows that state: it mounts these tabs only once a run
@@ -60,6 +61,7 @@ export function VisualizationTabs({
   queryId,
   canEdit = true,
   isQuerySafe = false,
+  isDirty = false,
   onRun,
   isRunning = false,
   runDisabled = false,
@@ -187,11 +189,13 @@ export function VisualizationTabs({
                 {queryId && effectiveActiveTab === viz.id && isSavedVisualization(viz) && (
                   <VisualizationTabActions
                     viz={viz}
+                    queryId={queryId}
                     canModify={canEdit}
                     canDelete={canEdit && viz.type !== 'TABLE'}
                     onEdit={() => handleEdit(viz)}
                     onPublish={() => setPublishingViz(viz)}
                     onDelete={() => setDeletingViz(viz)}
+                    isDirty={isDirty}
                   />
                 )}
               </div>

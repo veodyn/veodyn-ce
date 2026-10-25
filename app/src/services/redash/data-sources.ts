@@ -10,6 +10,7 @@
 
 import { redashApi, ApiError } from '@/services/api-client'
 import type { SchemaTable } from '@/lib/mock-data'
+import { mapSchemaTable } from './normalize-schema'
 import { JOB_STATUS, type RedashJob, type RedashSchemaTableRaw } from './types'
 
 export interface RedashDataSource {
@@ -100,15 +101,6 @@ export async function testConnection(
       return { ok: false, message: err.message || 'Connection test failed' }
     }
     return { ok: false, message: 'Connection test failed' }
-  }
-}
-
-function mapSchemaTable(raw: RedashSchemaTableRaw): SchemaTable {
-  return {
-    name: raw.name,
-    columns: (raw.columns || []).map((col) =>
-      typeof col === 'string' ? { name: col, type: '' } : { name: col.name, type: col.type || '' }
-    ),
   }
 }
 

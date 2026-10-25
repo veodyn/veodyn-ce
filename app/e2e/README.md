@@ -23,7 +23,7 @@ behaviour and computed style rather than pixels:
   interaction-heavy component in the product has the most coverage here.
 - **Visualization authoring**: `viz-save-flow`, `viz-dialog-size`,
   `widget-edit-viz`, `ai-viz-picker`.
-- **AI surfaces**: `ai-create-chat`, `ai-editor`, and `ai-posture.ts`, the
+- **AI surfaces**: `ai-editor`, and `ai-posture.ts`, the
   shared assertion that AI affordances are **absent** rather than greyed out
   when AI is off.
 - **Everything else**: `data-catalog`, `embed-render`, `tooltips`,

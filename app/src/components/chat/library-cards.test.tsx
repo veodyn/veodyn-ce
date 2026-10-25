@@ -121,15 +121,28 @@ describe('DashboardCard', () => {
             kind: 'dashboard',
             ok: true,
             dashboard: { id: 4, name: 'Bikeshare overview' },
-            widgets: [{ title: 'Trips by hour', queryId: 12, visualizationId: 31, visualizationType: 'CHART' }],
-            textWidgets: 2,
+            widgets: [
+              {
+                widgetId: 9,
+                kind: 'visualization',
+                title: 'Trips by hour',
+                queryId: 12,
+                visualizationId: 31,
+                visualizationType: 'CHART',
+                position: { col: 0, row: 0, sizeX: 3, sizeY: 8 },
+              },
+              { widgetId: 10, kind: 'text', title: 'Notes', text: 'Notes', position: { col: 0, row: 8, sizeX: 6, sizeY: 4 } },
+            ],
+            widgetCount: 1,
+            textWidgets: 1,
           },
         })}
       />
     )
     expect(screen.getByRole('link', { name: 'Bikeshare overview' })).toHaveAttribute('href', '/dashboards/4')
     expect(screen.getByRole('link', { name: 'Trips by hour' })).toHaveAttribute('href', '/queries/12')
-    expect(screen.getByText('Plus 2 text boxes.')).toBeInTheDocument()
+    expect(screen.getByText('Plus 1 text box.')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Notes' })).not.toBeInTheDocument()
   })
 })
 

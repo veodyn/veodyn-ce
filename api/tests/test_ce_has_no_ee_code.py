@@ -60,18 +60,6 @@ EE_PATH_PREFIXES = ("/kpis", "/reports", "/public", "/admin/shared-links", "/ai/
 # `/published-feeds/{slug}`; this exact-match list still catches it either way.
 CE_PUBLIC_PATHS = frozenset({"/public/feeds/{slug}", "/public/feeds/{slug}/{file_name}"})
 EE_SCHEMA_PREFIXES = ("Kpi", "Report", "SharedLink", "Public", "Digest", "Outline", "Annotation")
-EE_SCHEMA_KEEP = frozenset(
-    {
-        # Converse proposal shapes. They live in schemas/ai_create.py, which is
-        # community: a converse turn can converge on a proposed KPI or report on
-        # a build that has no endpoint to create one. Named here rather than
-        # loosening the prefixes, so the exception is a decision and not a gap.
-        "KpiProposalOut",
-        "ReportProposalOut",
-        "ReportOutlineOut",
-        "OutlineSectionOut",
-    }
-)
 
 
 def allowlist() -> dict[str, Any]:
@@ -226,16 +214,9 @@ def test_the_ce_openapi_names_no_ee_path() -> None:
 
 def test_the_ce_openapi_names_no_ee_schema_key() -> None:
     schema = openapi()
-    named = [
-        key
-        for key in schema["components"]["schemas"]
-        if key.startswith(EE_SCHEMA_PREFIXES) and key not in EE_SCHEMA_KEEP
-    ]
+    named = [key for key in schema["components"]["schemas"] if key.startswith(EE_SCHEMA_PREFIXES)]
 
     assert named == []
-    # The four exceptions are real keys, not a list that has gone stale. Delete
-    # one from schemas/ai_create.py and this is what says so.
-    assert EE_SCHEMA_KEEP <= set(schema["components"]["schemas"])
 
 
 @pytest.mark.parametrize("artifact", ["openapi.json"])

@@ -8,6 +8,7 @@ import { ChatThreadView } from './chat-thread-view'
 
 const controller = vi.hoisted(() => ({ current: null as unknown }))
 vi.mock('@/hooks/use-chat-thread', () => ({ useChatThread: () => controller.current }))
+vi.mock('@/hooks/use-thread-subject-label', () => ({ useThreadSubjectLabel: () => undefined }))
 
 const PROPOSAL = {
   name: 'Average speed',
@@ -71,6 +72,13 @@ function make(overrides: Partial<ChatThreadController> = {}): ChatThreadControll
     rerun: vi.fn(),
     promoted: vi.fn(),
     promotedDashboard: vi.fn(),
+    promotedEdit: vi.fn(),
+    promotedViz: vi.fn(),
+    promotedDashboardEdit: vi.fn(),
+      promotedContributed: vi.fn(),
+      promotedOperation: vi.fn(),
+      holdQueryDraftSync: vi.fn(),
+      retryQueryDraftSync: vi.fn(),
     dashboardActive: vi.fn(),
     reload: vi.fn(),
     ...overrides,

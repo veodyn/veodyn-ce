@@ -3,13 +3,15 @@
 import { Database } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { knownOutput } from '@/lib/chat/thread-calls'
 import type { CallView } from '@/lib/chat/thread-model'
 import { ToolCardTitle, ToolFailure } from './tool-card-parts'
 
 export const NO_SOURCES_FOUND = 'No data sources are available to the analyst.'
 
 export function DataSourcesCard({ call }: { call: CallView }) {
-  const output = call.output?.kind === 'data_sources' && call.output.ok ? call.output : null
+  const known = knownOutput(call)
+  const output = known?.kind === 'data_sources' && known.ok ? known : null
   const sources = output?.sources ?? []
   return (
     <Card size="sm" className="w-full">

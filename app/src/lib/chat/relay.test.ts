@@ -10,7 +10,6 @@ async function threadsRoute(options: Parameters<typeof mockChatModules>[0] = {})
 
 describe('chat relay gate', () => {
   it.each([
-    ['chat off', { chat: false }, 403],
     ['ai off', { enabled: false }, 403],
     ['mock mode', { realMode: false }, 403],
     ['no endpoint', { endpoint: null }, 503],
@@ -97,7 +96,9 @@ describe('chat JSON relay', () => {
     expect(bad.status).toBe(400)
     const good = await POST(signedIn({ method: 'POST', body: JSON.stringify({ text: 'hi' }) }), params)
     expect(good.status).toBe(202)
-    const sent = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body))
+    const turn = (fetchMock.mock.calls as unknown as [string, RequestInit][]).find(([url]) => String(url).endsWith('/turns'))
+    if (!turn) throw new Error('no turn was posted')
+    const sent = JSON.parse(String(turn[1].body))
     expect(sent.text).toBe('hi')
     expect(sent.vizCatalog).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: 'table', type: 'TABLE' })])
@@ -150,9 +151,28 @@ describe('chat JSON relay', () => {
     const dashboard = {
       kind: 'dashboard',
       ok: true,
-      widgets: [{ title: 'Trips', queryId: 1, visualizationId: 2, visualizationType: 'CHART' }],
+      widgets: [
+        {
+          widgetId: 3,
+          kind: 'visualization',
+          title: 'Trips',
+          queryId: 1,
+          visualizationId: 2,
+          visualizationType: 'CHART',
+          position: { col: 0, row: 0, sizeX: 3, sizeY: 8 },
+        },
+        { widgetId: 4, kind: 'text', title: 'Notes', text: 'Notes', position: { col: 0, row: 8, sizeX: 6, sizeY: 4 } },
+      ],
     }
-    for (const result of [library, saved, dashboard, { kind: 'dashboard', ok: false, error: 'gone' }]) {
+    const edit = {
+      kind: 'dashboard_edit',
+      ok: true,
+      dashboardId: 4,
+      snapshot: { name: 'Ops', tags: [], version: null, updatedAt: null, widgets: [] },
+      operations: [{ op: 'addText', text: 'Footer', position: { col: 0, row: 0, sizeX: 6, sizeY: 4 } }],
+      problems: [],
+    }
+    for (const result of [library, saved, dashboard, edit, { kind: 'dashboard', ok: false, error: 'gone' }]) {
       expect((await post(result)).status).toBe(202)
     }
     expect((await post({ ok: true })).status).toBe(400)

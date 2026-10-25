@@ -21,6 +21,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ai/chat/drafts/{draft_id}/promotions/{promotion_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Promotion */
+        patch: operations["patch_promotion_ai_chat_drafts__draft_id__promotions__promotion_id__patch"];
+        trace?: never;
+    };
+    "/ai/chat/mcp/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Call */
+        post: operations["post_call_ai_chat_mcp_calls_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ai/chat/mcp/calls/{call_id}/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Result */
+        post: operations["post_result_ai_chat_mcp_calls__call_id__result_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ai/chat/mcp/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** List Tools */
+        post: operations["list_tools_ai_chat_mcp_tools_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ai/chat/threads": {
         parameters: {
             query?: never;
@@ -56,6 +124,23 @@ export interface paths {
         head?: never;
         /** Patch Thread */
         patch: operations["patch_thread_ai_chat_threads__thread_id__patch"];
+        trace?: never;
+    };
+    "/ai/chat/threads/{thread_id}/subject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Thread Subject */
+        get: operations["get_thread_subject_ai_chat_threads__thread_id__subject_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/ai/chat/threads/{thread_id}/turns": {
@@ -120,30 +205,6 @@ export interface paths {
         put?: never;
         /** Post Tool Result */
         post: operations["post_tool_result_ai_chat_turns__turn_id__tool_results_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/ai/converse": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Post Converse
-         * @description One Create-with-AI interview turn, grounded on what actually exists.
-         *
-         *     The request carries no grounding, unlike /outline: the catalog and the query
-         *     list are assembled here, so a modified client cannot make the model believe
-         *     in a table that does not exist.
-         */
-        post: operations["post_converse_ai_converse_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -712,8 +773,48 @@ export interface components {
             /** Accepted */
             accepted: boolean;
         };
+        /** ChatDashboardEditResultIn */
+        ChatDashboardEditResultIn: {
+            /** Dashboardid */
+            dashboardId?: number | null;
+            /** Error */
+            error?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "dashboard_edit";
+            /** Name */
+            name?: string | null;
+            /** Ok */
+            ok: boolean;
+            /** Operations */
+            operations?: components["schemas"]["ChatResolvedOperationIn"][];
+            /** Problems */
+            problems?: string[];
+            snapshot?: components["schemas"]["ChatDashboardSnapshotIn"] | null;
+            /** Tags */
+            tags?: string[] | null;
+        };
+        /** ChatDashboardEditWidgetIn */
+        ChatDashboardEditWidgetIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "visualization" | "text";
+            position: components["schemas"]["WidgetPositionIn"];
+            /** Title */
+            title: string;
+            /** Updatedat */
+            updatedAt?: string | null;
+            /** Widgetid */
+            widgetId: number;
+        };
         /** ChatDashboardRefIn */
         ChatDashboardRefIn: {
+            /** Canedit */
+            canEdit?: boolean | null;
             /** Id */
             id: number;
             /** Name */
@@ -722,6 +823,8 @@ export interface components {
             tags?: string[];
             /** Updatedat */
             updatedAt?: string | null;
+            /** Version */
+            version?: number | null;
         };
         /** ChatDashboardResultIn */
         ChatDashboardResultIn: {
@@ -742,18 +845,47 @@ export interface components {
             /** Widgets */
             widgets?: components["schemas"]["ChatDashboardWidgetIn"][] | null;
         };
+        /** ChatDashboardSnapshotIn */
+        ChatDashboardSnapshotIn: {
+            /** Name */
+            name: string;
+            /** Tags */
+            tags?: string[];
+            /** Updatedat */
+            updatedAt?: string | null;
+            /** Version */
+            version?: number | null;
+            /** Widgets */
+            widgets?: components["schemas"]["ChatDashboardEditWidgetIn"][];
+        };
         /** ChatDashboardWidgetIn */
         ChatDashboardWidgetIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "visualization" | "text";
+            /** Parametermappings */
+            parameterMappings?: {
+                [key: string]: components["schemas"]["ParameterMappingIn"];
+            } | null;
+            position: components["schemas"]["WidgetPositionIn"];
             /** Queryid */
-            queryId: number;
+            queryId?: number | null;
             /** Queryname */
             queryName?: string | null;
+            /** Text */
+            text?: string | null;
             /** Title */
             title: string;
+            /** Updatedat */
+            updatedAt?: string | null;
             /** Visualizationid */
-            visualizationId: number;
+            visualizationId?: number | null;
             /** Visualizationtype */
-            visualizationType: string;
+            visualizationType?: string | null;
+            /** Widgetid */
+            widgetId: number;
         };
         /** ChatDataSourceEntryIn */
         ChatDataSourceEntryIn: {
@@ -843,6 +975,24 @@ export interface components {
             /** Sources */
             sources?: components["schemas"]["ChatDataSourceRefIn"][] | null;
         };
+        /** ChatDownloadResultIn */
+        ChatDownloadResultIn: {
+            /** Error */
+            error?: string | null;
+            /** Format */
+            format?: ("csv" | "xlsx") | null;
+            /** Href */
+            href?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "download";
+            /** Ok */
+            ok: boolean;
+            /** Queryid */
+            queryId?: number | null;
+        };
         /** ChatDraftOut */
         ChatDraftOut: {
             /** Id */
@@ -885,6 +1035,26 @@ export interface components {
             name: string;
             /** Plugins */
             plugins?: string[];
+        };
+        /** ChatKpiCheckResultIn */
+        ChatKpiCheckResultIn: {
+            /** Columns */
+            columns?: string[];
+            /** Error */
+            error?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "kpi_check";
+            /** Ok */
+            ok: boolean;
+            /** Querydraftid */
+            queryDraftId?: string | null;
+            /** Queryname */
+            queryName?: string | null;
+            /** Sourcequeryid */
+            sourceQueryId?: number | null;
         };
         /** ChatKpiEvaluationIn */
         ChatKpiEvaluationIn: {
@@ -1012,6 +1182,8 @@ export interface components {
         };
         /** ChatLibraryItemIn */
         ChatLibraryItemIn: {
+            /** Archived */
+            archived?: boolean | null;
             /** Description */
             description?: string | null;
             /** Hasresult */
@@ -1071,15 +1243,77 @@ export interface components {
             /** Label */
             label: string;
         };
-        /** ChatPromotionIn */
-        ChatPromotionIn: {
-            /** Targetid */
-            targetId: string;
+        /** ChatOpenResultIn */
+        ChatOpenResultIn: {
+            /** Error */
+            error?: string | null;
+            /** Kind */
+            kind: string;
+            /** Ok */
+            ok: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ChatOperationCheckResultIn */
+        ChatOperationCheckResultIn: {
             /**
-             * Targettype
+             * Destructive
+             * @default false
+             */
+            destructive: boolean;
+            /** Error */
+            error?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            targetType: "query" | "dashboard";
+            kind: "operation_check";
+            /** Ok */
+            ok: boolean;
+            /** Op */
+            op?: ("fork" | "archive" | "restore" | "favorite" | "unfavorite" | "share" | "revoke") | null;
+            /** Params */
+            params?: {
+                [key: string]: unknown;
+            };
+            /** Problems */
+            problems?: string[];
+            snapshot?: components["schemas"]["ChatOperationSnapshotIn"] | null;
+            target?: components["schemas"]["ChatOperationTargetIn"] | null;
+        };
+        /** ChatOperationSnapshotIn */
+        ChatOperationSnapshotIn: {
+            /** Updatedat */
+            updatedAt: string;
+        };
+        /** ChatOperationTargetIn */
+        ChatOperationTargetIn: {
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "query" | "dashboard" | "visualization";
+            /** Name */
+            name: string;
+            /** Queryid */
+            queryId?: number | null;
+        };
+        /** ChatPromotionIn */
+        ChatPromotionIn: {
+            /** Receipts */
+            receipts?: components["schemas"]["ChatPromotionReceipt"][];
+            /**
+             * Status
+             * @default done
+             * @enum {string}
+             */
+            status: "pending" | "partial" | "done" | "failed";
+            /** Targetid */
+            targetId?: string | null;
+            /** Targettype */
+            targetType: string;
             /** Targetversionatpromote */
             targetVersionAtPromote?: number | null;
             /** Version */
@@ -1096,12 +1330,114 @@ export interface components {
             id: string;
             /** Promotedversion */
             promotedVersion: number;
+            /** Receipts */
+            receipts: components["schemas"]["ChatPromotionReceipt"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "partial" | "done" | "failed";
             /** Targetid */
-            targetId: string;
+            targetId: string | null;
             /** Targettype */
             targetType: string;
             /** Targetversionatpromote */
             targetVersionAtPromote: number | null;
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+        };
+        /** ChatPromotionPatchIn */
+        ChatPromotionPatchIn: {
+            /** Receipts */
+            receipts?: components["schemas"]["ChatPromotionReceipt"][] | null;
+            /** Status */
+            status?: ("pending" | "partial" | "done" | "failed") | null;
+            /** Targetid */
+            targetId?: string | null;
+            /** Targetversionatpromote */
+            targetVersionAtPromote?: number | null;
+        };
+        /** ChatPromotionReceipt */
+        ChatPromotionReceipt: {
+            /** Error */
+            error?: string | null;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "done" | "failed" | "skipped";
+            /** Step */
+            step: number;
+            /** Targetid */
+            targetId?: string | null;
+            /** Updatedat */
+            updatedAt?: string | null;
+        };
+        /** ChatQueryDetailIn */
+        ChatQueryDetailIn: {
+            /** Canedit */
+            canEdit: boolean;
+            /** Datasourceid */
+            dataSourceId: number;
+            /** Description */
+            description?: string | null;
+            /** Id */
+            id: number;
+            /** Isdraft */
+            isDraft: boolean;
+            /** Name */
+            name: string;
+            /** Parameters */
+            parameters?: {
+                [key: string]: unknown;
+            }[];
+            /** Schedule */
+            schedule?: {
+                [key: string]: unknown;
+            } | null;
+            /** Sql */
+            sql: string;
+            /** Tags */
+            tags?: string[];
+            /** Updatedat */
+            updatedAt: string;
+            /** Visualizations */
+            visualizations?: components["schemas"]["ChatVisualizationRefIn"][];
+        };
+        /** ChatQueryDetailResultIn */
+        ChatQueryDetailResultIn: {
+            /** Error */
+            error?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "query_detail";
+            /** Ok */
+            ok: boolean;
+            query?: components["schemas"]["ChatQueryDetailIn"] | null;
+        };
+        /** ChatQueryEditResultIn */
+        ChatQueryEditResultIn: {
+            /** Changes */
+            changes?: {
+                [key: string]: unknown;
+            } | null;
+            /** Error */
+            error?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "query_edit";
+            /** Ok */
+            ok: boolean;
+            /** Queryid */
+            queryId?: number | null;
+            snapshot?: components["schemas"]["ChatQuerySnapshotIn"] | null;
         };
         /** ChatQueryResultIn */
         ChatQueryResultIn: {
@@ -1130,6 +1466,33 @@ export interface components {
             savedQueryId?: number | null;
             /** Truncated */
             truncated?: boolean | null;
+        };
+        /** ChatQuerySnapshotIn */
+        ChatQuerySnapshotIn: {
+            /** Datasourceid */
+            dataSourceId: number;
+            /** Description */
+            description?: string | null;
+            /** Id */
+            id: number;
+            /** Isdraft */
+            isDraft: boolean;
+            /** Name */
+            name: string;
+            /** Parameters */
+            parameters?: {
+                [key: string]: unknown;
+            }[];
+            /** Schedule */
+            schedule?: {
+                [key: string]: unknown;
+            } | null;
+            /** Sql */
+            sql: string;
+            /** Tags */
+            tags?: string[];
+            /** Updatedat */
+            updatedAt: string;
         };
         /** ChatReadyParamIn */
         ChatReadyParamIn: {
@@ -1169,6 +1532,33 @@ export interface components {
             /** Visualizationid */
             visualizationId: number;
         };
+        /** ChatResolvedOperationIn */
+        ChatResolvedOperationIn: {
+            /**
+             * Op
+             * @enum {string}
+             */
+            op: "add" | "addText" | "editText" | "remove" | "move";
+            /** Parametermappings */
+            parameterMappings?: {
+                [key: string]: components["schemas"]["ParameterMappingIn"];
+            } | null;
+            position: components["schemas"]["PlacedPositionIn"];
+            /** Querydraftid */
+            queryDraftId?: string | null;
+            /** Queryid */
+            queryId?: number | null;
+            /** Text */
+            text?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Updatedat */
+            updatedAt?: string | null;
+            /** Visualizationid */
+            visualizationId?: number | null;
+            /** Widgetid */
+            widgetId?: number | null;
+        };
         /** ChatResultColumnIn */
         ChatResultColumnIn: {
             /** Distinct */
@@ -1195,6 +1585,8 @@ export interface components {
         };
         /** ChatSavedQueryIn */
         ChatSavedQueryIn: {
+            /** Canedit */
+            canEdit?: boolean | null;
             /** Datasourceid */
             dataSourceId?: number | null;
             /** Description */
@@ -1240,6 +1632,58 @@ export interface components {
             /** Visualizations */
             visualizations?: components["schemas"]["ChatVisualizationRefIn"][] | null;
         };
+        /** ChatSnippetCheckResultIn */
+        ChatSnippetCheckResultIn: {
+            /** Changes */
+            changes?: {
+                [key: string]: unknown;
+            } | null;
+            /** Error */
+            error?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "snippet_check";
+            /** Mode */
+            mode?: ("edit" | "delete") | null;
+            /** Ok */
+            ok: boolean;
+            snapshot?: components["schemas"]["ChatSnippetSnapshotIn"] | null;
+            /** Snippetid */
+            snippetId?: number | null;
+        };
+        /** ChatSnippetSnapshotIn */
+        ChatSnippetSnapshotIn: {
+            /** Description */
+            description?: string | null;
+            /** Snippet */
+            snippet: string;
+            /** Trigger */
+            trigger: string;
+            /** Updatedat */
+            updatedAt: string;
+        };
+        /** ChatSubjectDetailIn */
+        ChatSubjectDetailIn: {
+            /** Canedit */
+            canEdit?: boolean | null;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "query" | "visualization" | "dashboard" | "widget" | "dataset" | "new";
+            /** Lines */
+            lines?: string[];
+            /** Name */
+            name: string;
+        };
+        /** ChatThreadCreateIn */
+        ChatThreadCreateIn: {
+            subject?: components["schemas"]["ChatThreadSubject-Input"] | null;
+        };
         /** ChatThreadDetailOut */
         ChatThreadDetailOut: {
             /** Drafts */
@@ -1269,8 +1713,14 @@ export interface components {
              * Format: date-time
              */
             lastTurnAt: string;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "chat" | "mcp";
             /** Pinned */
             pinned: boolean;
+            subject?: components["schemas"]["ChatThreadSubject-Output"] | null;
             /** Title */
             title: string;
             /**
@@ -1286,12 +1736,39 @@ export interface components {
             /** Title */
             title?: string | null;
         };
+        /** ChatThreadSubject */
+        "ChatThreadSubject-Input": {
+            /** Dashboardid */
+            dashboardId?: number | null;
+            /** Datasetid */
+            datasetId?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "query" | "visualization" | "dashboard" | "widget" | "dataset" | "new";
+            /** Newkind */
+            newKind?: ("query" | "dashboard" | "snippet" | "kpi" | "report" | "message") | null;
+            /** Queryid */
+            queryId?: number | null;
+            /** Visualizationid */
+            visualizationId?: number | null;
+            /** Widgetid */
+            widgetId?: number | null;
+        };
+        "ChatThreadSubject-Output": {
+            [key: string]: unknown;
+        };
+        /** ChatThreadSubjectOut */
+        ChatThreadSubjectOut: {
+            subject: components["schemas"]["ChatThreadSubject-Output"] | null;
+        };
         /** ChatToolResultPostIn */
         ChatToolResultPostIn: {
             /** Callid */
             callId: string;
             /** Result */
-            result: components["schemas"]["ChatQueryResultIn"] | components["schemas"]["ChatLibraryResultIn"] | components["schemas"]["ChatSavedVisualizationResultIn"] | components["schemas"]["ChatDashboardResultIn"] | components["schemas"]["ChatDataSourcesResultIn"] | components["schemas"]["ChatDataSourceSchemaResultIn"] | components["schemas"]["ChatKpiResultIn"] | components["schemas"]["ChatKpiListResultIn"];
+            result: (components["schemas"]["ChatQueryResultIn"] | components["schemas"]["ChatLibraryResultIn"] | components["schemas"]["ChatSavedVisualizationResultIn"] | components["schemas"]["ChatDashboardResultIn"] | components["schemas"]["ChatDashboardEditResultIn"] | components["schemas"]["ChatDataSourcesResultIn"] | components["schemas"]["ChatDataSourceSchemaResultIn"] | components["schemas"]["ChatKpiResultIn"] | components["schemas"]["ChatKpiListResultIn"] | components["schemas"]["ChatQueryDetailResultIn"] | components["schemas"]["ChatQueryEditResultIn"] | components["schemas"]["ChatVizTypeResultIn"] | components["schemas"]["ChatVizCheckResultIn"] | components["schemas"]["ChatSnippetCheckResultIn"] | components["schemas"]["ChatKpiCheckResultIn"] | components["schemas"]["ChatOperationCheckResultIn"] | components["schemas"]["ChatDownloadResultIn"]) | components["schemas"]["ChatOpenResultIn"];
         };
         /** ChatTurnIn */
         ChatTurnIn: {
@@ -1300,6 +1777,7 @@ export interface components {
             instance?: components["schemas"]["ChatInstanceIn"] | null;
             /** Readyqueries */
             readyQueries?: components["schemas"]["ChatReadyQueryIn"][] | null;
+            subjectDetail?: components["schemas"]["ChatSubjectDetailIn"] | null;
             /** Text */
             text: string;
             /** Vizcatalog */
@@ -1352,6 +1830,39 @@ export interface components {
             /** Type */
             type: string;
         };
+        /** ChatVizCheckResultIn */
+        ChatVizCheckResultIn: {
+            /** Error */
+            error?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "visualization_check";
+            /** Mode */
+            mode?: ("new" | "edit" | "delete") | null;
+            next?: components["schemas"]["ChatVizNextIn"] | null;
+            /** Ok */
+            ok: boolean;
+            /** Problems */
+            problems?: string[];
+            /** Queryid */
+            queryId?: number | null;
+            snapshot?: components["schemas"]["ChatVizSnapshotIn"] | null;
+            /** Visualizationid */
+            visualizationId?: number | null;
+        };
+        /** ChatVizNextIn */
+        ChatVizNextIn: {
+            /** Name */
+            name: string;
+            /** Options */
+            options: {
+                [key: string]: unknown;
+            };
+            /** Type */
+            type: string;
+        };
         /** ChatVizShapeIn */
         ChatVizShapeIn: {
             /** Guide */
@@ -1362,6 +1873,39 @@ export interface components {
             label: string;
             /** Type */
             type: string;
+        };
+        /** ChatVizSnapshotIn */
+        ChatVizSnapshotIn: {
+            /** Name */
+            name: string;
+            /** Options */
+            options: {
+                [key: string]: unknown;
+            };
+            /** Type */
+            type: string;
+            /** Updatedat */
+            updatedAt: string;
+        };
+        /** ChatVizTypeResultIn */
+        ChatVizTypeResultIn: {
+            /** Error */
+            error?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "visualization_type";
+            /** Label */
+            label?: string | null;
+            /** Ok */
+            ok: boolean;
+            /** Options */
+            options?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Type */
+            type?: string | null;
         };
         /** ComposeContractOut */
         ComposeContractOut: {
@@ -1463,43 +2007,6 @@ export interface components {
             /** Urlcountsascharacters */
             urlCountsAsCharacters: number | null;
         };
-        /** ConverseIn */
-        ConverseIn: {
-            /** Focustable */
-            focusTable?: string | null;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "query" | "dashboard" | "kpi" | "report" | "snippet" | "message";
-            /** Messages */
-            messages: components["schemas"]["ConverseMessageIn"][];
-            /** Targetdashboardid */
-            targetDashboardId?: number | null;
-        };
-        /** ConverseMessageIn */
-        ConverseMessageIn: {
-            /** Content */
-            content: string;
-            /**
-             * Role
-             * @enum {string}
-             */
-            role: "user" | "assistant";
-        };
-        /** ConverseOut */
-        ConverseOut: {
-            /** Focustable */
-            focusTable: string | null;
-            /** Proposal */
-            proposal: (components["schemas"]["QueryProposalOut"] | components["schemas"]["DashboardProposalOut"] | components["schemas"]["KpiProposalOut"] | components["schemas"]["ReportProposalOut"] | components["schemas"]["SnippetProposalOut"] | components["schemas"]["MessageProposalOut"]) | null;
-            /** Ready */
-            ready: boolean;
-            /** Reply */
-            reply: string;
-            /** Suggestedanswers */
-            suggestedAnswers: string[];
-        };
         /** CredentialPropertyOut */
         CredentialPropertyOut: {
             /** Description */
@@ -1523,37 +2030,6 @@ export interface components {
             required: string[];
             /** Secret */
             secret: string[];
-        };
-        /** DashboardProposalOut */
-        DashboardProposalOut: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "dashboard";
-            /** Name */
-            name: string;
-            /** Widgets */
-            widgets: components["schemas"]["DashboardWidgetProposalOut"][];
-        };
-        /**
-         * DashboardWidgetProposalOut
-         * @description One widget: either a query that exists, or one to be written first.
-         *
-         *     Exactly one of the two, enforced below: a widget carrying both would let the
-         *     card create a query and then hang a different one on the dashboard, and one
-         *     carrying neither is a row with nothing behind it.
-         */
-        DashboardWidgetProposalOut: {
-            newQuery: components["schemas"]["NewQueryProposalOut"] | null;
-            /** Queryid */
-            queryId: number | null;
-            /** Title */
-            title: string;
-            /** Visualizationid */
-            visualizationId: number | null;
-            /** Vizchoiceid */
-            vizChoiceId: string | null;
         };
         /** DatasetColumnOut */
         DatasetColumnOut: {
@@ -1734,104 +2210,117 @@ export interface components {
             /** Value */
             value: number;
         };
-        /**
-         * KpiProposalOut
-         * @description A KPI over a query that exists, or over one written for it.
-         *
-         *     A KPI reads one number from one query, so it needs exactly one source. Both
-         *     halves are always on the wire with the unused one null, the same rule
-         *     DashboardWidgetProposalOut follows and for the same reason.
-         */
-        KpiProposalOut: {
-            /** Atrisk */
-            atRisk: number | null;
-            /** Breached */
-            breached: number | null;
-            /**
-             * Cadence
-             * @enum {string}
-             */
-            cadence: "hourly" | "daily" | "weekly";
-            /** Description */
-            description: string;
-            /**
-             * Direction
-             * @enum {string}
-             */
-            direction: "higher-is-better" | "lower-is-better";
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "kpi";
-            /** Name */
-            name: string;
-            newQuery: components["schemas"]["NewQueryProposalOut"] | null;
-            /** Sourcequeryid */
-            sourceQueryId: number | null;
-            /** Target */
-            target: number | null;
-            /** Unit */
-            unit: string | null;
-            /** Valuecolumn */
-            valueColumn: string;
+        /** McpCallContextIn */
+        McpCallContextIn: {
+            /** Datasources */
+            dataSources?: components["schemas"]["ChatDataSourceEntryIn"][] | null;
+            instance?: components["schemas"]["ChatInstanceIn"] | null;
+            /** Schemas */
+            schemas?: components["schemas"]["ChatDataSourceSchemaResultIn"][] | null;
+            /** Vizcatalog */
+            vizCatalog?: components["schemas"]["ChatVizShapeIn"][] | null;
         };
-        /** MessageProposalOut */
-        MessageProposalOut: {
-            /** Description */
-            description: string;
-            /** Header */
-            header: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "message";
-            /** Title */
-            title: string;
-        };
-        /**
-         * NewQueryProposalOut
-         * @description A query the AI wrote because the instance did not have one that fits.
-         *
-         *     The output of one `generate_sql` call, so it has been through the
-         *     one-statement, read-only, right-table check and its retry-with-reason. It
-         *     sits beside generate-sql rather than with the proposals in ai_create.py, or an
-         *     outline section would import the conversation contract to describe a query.
-         *
-         *     Carries everything QueryProposalOut does except its `kind` discriminator.
-         */
-        NewQueryProposalOut: {
-            /** Datasettable */
-            datasetTable: string;
-            /** Description */
-            description: string;
-            /** Name */
-            name: string;
-            /** Sql */
-            sql: string;
-            /** Vizchoiceid */
-            vizChoiceId: string;
-            /** Vizoptions */
-            vizOptions: {
+        /** McpCallIn */
+        McpCallIn: {
+            /** Arguments */
+            arguments?: {
                 [key: string]: unknown;
             };
+            context?: components["schemas"]["McpCallContextIn"];
+            /** Name */
+            name: string;
         };
-        /** OutlineSectionOut */
-        OutlineSectionOut: {
-            /** Enabled */
-            enabled: boolean;
-            /** Id */
-            id: string;
-            /** Intent */
-            intent: string;
-            newQuery: components["schemas"]["NewQueryProposalOut"] | null;
-            /** Sourcequeryid */
-            sourceQueryId: number | null;
-            /** Suggested */
-            suggested: boolean;
+        /** McpClientCallOut */
+        McpClientCallOut: {
+            /** Args */
+            args: {
+                [key: string]: unknown;
+            };
+            /** Callid */
+            callId: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "client_call";
+            /** Tool */
+            tool: string;
+        };
+        /** McpDoneOut */
+        McpDoneOut: {
+            /** Content */
+            content: string;
+            draft?: components["schemas"]["McpDraftOut"] | null;
+            /** Iserror */
+            isError: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "done";
+        };
+        /** McpDraftOut */
+        McpDraftOut: {
+            /** Draftid */
+            draftId: string;
+            /** Threadid */
+            threadId: string;
+            /** Url */
+            url: string;
+            /** Version */
+            version: number;
+        };
+        /** McpResultIn */
+        McpResultIn: {
+            /** Result */
+            result: (components["schemas"]["ChatQueryResultIn"] | components["schemas"]["ChatLibraryResultIn"] | components["schemas"]["ChatSavedVisualizationResultIn"] | components["schemas"]["ChatDashboardResultIn"] | components["schemas"]["ChatDashboardEditResultIn"] | components["schemas"]["ChatDataSourcesResultIn"] | components["schemas"]["ChatDataSourceSchemaResultIn"] | components["schemas"]["ChatKpiResultIn"] | components["schemas"]["ChatKpiListResultIn"] | components["schemas"]["ChatQueryDetailResultIn"] | components["schemas"]["ChatQueryEditResultIn"] | components["schemas"]["ChatVizTypeResultIn"] | components["schemas"]["ChatVizCheckResultIn"] | components["schemas"]["ChatSnippetCheckResultIn"] | components["schemas"]["ChatKpiCheckResultIn"] | components["schemas"]["ChatOperationCheckResultIn"] | components["schemas"]["ChatDownloadResultIn"]) | components["schemas"]["ChatOpenResultIn"];
+        };
+        /** McpToolOut */
+        McpToolOut: {
+            /** Description */
+            description: string;
+            /** Inputschema */
+            inputSchema: {
+                [key: string]: unknown;
+            };
+            /** Name */
+            name: string;
+        };
+        /** McpToolsIn */
+        McpToolsIn: {
+            /** Chatenabled */
+            chatEnabled: boolean;
+            instance?: components["schemas"]["ChatInstanceIn"] | null;
+        };
+        /** McpToolsOut */
+        McpToolsOut: {
+            /** Tools */
+            tools: components["schemas"]["McpToolOut"][];
+        };
+        /** ParameterMappingIn */
+        ParameterMappingIn: {
+            /** Mapto */
+            mapTo?: string | null;
             /** Title */
-            title: string;
+            title?: string | null;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "dashboard-add-new" | "dashboard-map-to-existing" | "widget-level" | "static-value";
+            /** Value */
+            value?: unknown | null;
+        };
+        /** PlacedPositionIn */
+        PlacedPositionIn: {
+            /** Col */
+            col: number;
+            /** Row */
+            row: number;
+            /** Sizex */
+            sizeX: number;
+            /** Sizey */
+            sizeY: number;
         };
         /**
          * PublishAttemptOut
@@ -1953,58 +2442,6 @@ export interface components {
             /** Visibility */
             visibility: string;
         };
-        /** QueryProposalOut */
-        QueryProposalOut: {
-            /** Datasettable */
-            datasetTable: string;
-            /** Description */
-            description: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "query";
-            /** Name */
-            name: string;
-            /** Sql */
-            sql: string;
-            /** Vizchoiceid */
-            vizChoiceId: string;
-            /** Vizoptions */
-            vizOptions: {
-                [key: string]: unknown;
-            };
-        };
-        /** ReportOutlineOut */
-        ReportOutlineOut: {
-            /** Goal */
-            goal: string;
-            /** Sections */
-            sections: components["schemas"]["OutlineSectionOut"][];
-        };
-        /** ReportProposalOut */
-        ReportProposalOut: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "report";
-            outline: components["schemas"]["ReportOutlineOut"];
-        };
-        /** SnippetProposalOut */
-        SnippetProposalOut: {
-            /** Description */
-            description: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "snippet";
-            /** Snippet */
-            snippet: string;
-            /** Trigger */
-            trigger: string;
-        };
         /** StandardCapabilityOut */
         StandardCapabilityOut: {
             /** Entities */
@@ -2072,6 +2509,17 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** WidgetPositionIn */
+        WidgetPositionIn: {
+            /** Col */
+            col: number;
+            /** Row */
+            row: number;
+            /** Sizex */
+            sizeX: number;
+            /** Sizey */
+            sizeY: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -2106,6 +2554,155 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChatPromotionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_promotion_ai_chat_drafts__draft_id__promotions__promotion_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path: {
+                draft_id: string;
+                promotion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatPromotionPatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatPromotionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_call_ai_chat_mcp_calls_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpCallIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpDoneOut"] | components["schemas"]["McpClientCallOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_result_ai_chat_mcp_calls__call_id__result_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path: {
+                call_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpResultIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpDoneOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tools_ai_chat_mcp_tools_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpToolsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpToolsOut"];
                 };
             };
             /** @description Validation Error */
@@ -2163,7 +2760,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ChatThreadCreateIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             201: {
@@ -2276,6 +2877,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChatThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_thread_subject_ai_chat_threads__thread_id__subject_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "x-veodyn-user-token"?: string | null;
+            };
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadSubjectOut"];
                 };
             };
             /** @description Validation Error */
@@ -2421,41 +3056,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChatAcceptedOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_converse_ai_converse_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConverseIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConverseOut"];
                 };
             };
             /** @description Validation Error */

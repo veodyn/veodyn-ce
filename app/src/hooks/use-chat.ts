@@ -8,7 +8,7 @@ export const CHAT_THREADS_KEY = ['chat-threads'] as const
 
 export function useAiChatEnabled(): boolean {
   const { ai } = useConfig()
-  return ai.enabled && ai.chat === true
+  return ai.enabled && Boolean(process.env.NEXT_PUBLIC_REDASH_URL)
 }
 
 export function useChatThreads(enabled: boolean) {

@@ -14,6 +14,7 @@ class ChatLibraryItemIn(CamelModel):
     tags: list[Tag] = Field(default_factory=list, max_length=10)
     updated_at: str | None = Field(default=None, max_length=64)
     has_result: bool | None = None
+    archived: bool | None = None
 
 
 class ChatLibraryTagCountIn(CamelModel):

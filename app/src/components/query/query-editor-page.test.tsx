@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw/server'
@@ -8,6 +8,13 @@ import type { GenerateSqlRequest } from '@/types/ai'
 import { aiDatasetFromSchema } from './query-ai-model'
 import { renderQueryEditorPage } from './query-editor-page-test-fixtures'
 
+vi.stubEnv('NEXT_PUBLIC_REDASH_URL', 'http://redash.test')
+
+const createThread = vi.hoisted(() => vi.fn())
+vi.mock('@/services/ai/chat-client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/ai/chat-client')>()),
+  createThread,
+}))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 // Monaco does not run in jsdom, so the editor is a plain textarea here. Every
@@ -196,9 +203,11 @@ describe('QueryEditorPage with AI enabled', () => {
     expect(screen.queryByRole('textbox', { name: 'Generate SQL with AI' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create with AI' })).toBeInTheDocument()
 
-    // And it opens the same conversation the library pages open.
+    createThread.mockResolvedValue({ id: 'new-thread' })
     await user.click(screen.getByRole('button', { name: 'Create with AI' }))
-    expect(await screen.findByText('Create a query with AI')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(createThread).toHaveBeenCalledWith({ kind: 'new', newKind: 'query' }, expect.any(AbortSignal))
+    )
   })
 })
 

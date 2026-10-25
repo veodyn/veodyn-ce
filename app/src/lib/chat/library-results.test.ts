@@ -10,6 +10,7 @@ import {
   pickVisualization,
   savedVisualizationResult,
   SQL_CHARS,
+  visibleWidgetCount,
 } from './library-results'
 
 function viz(id: number, type: string, name = `${type} ${id}`): MockVisualization {
@@ -95,8 +96,16 @@ describe('libraryResult', () => {
         tags: ['bikeshare'],
         updatedAt: '2026-09-01T10:00:00Z',
         hasResult: true,
+        archived: false,
       },
-      { type: 'dashboard', id: 4, name: 'Bikeshare overview', tags: ['bikeshare'], updatedAt: '2026-08-30T08:00:00Z' },
+      {
+        type: 'dashboard',
+        id: 4,
+        name: 'Bikeshare overview',
+        tags: ['bikeshare'],
+        updatedAt: '2026-08-30T08:00:00Z',
+        archived: false,
+      },
     ])
     expect(result.more).toBe(false)
   })
@@ -181,28 +190,115 @@ describe('savedVisualizationResult', () => {
   })
 })
 
+describe('canEdit on single-object reads', () => {
+  it('saved_visualization result carries canEdit', () => {
+    const data = { columns: [], rows: [] }
+    const editable = savedVisualizationResult(query(), viz(31, 'CHART'), data, null)
+    const readOnly = savedVisualizationResult(query({ can_edit: false }), viz(31, 'CHART'), data, null)
+    expect(editable.query?.canEdit).toBe(true)
+    expect(readOnly.query?.canEdit).toBe(false)
+  })
+
+  it('dashboard result carries canEdit', () => {
+    expect(dashboardResult(dashboard([])).dashboard?.canEdit).toBe(true)
+    expect(dashboardResult({ ...dashboard([]), can_edit: false }).dashboard?.canEdit).toBe(false)
+  })
+})
+
 describe('dashboardResult', () => {
-  it('lists visible charts in layout order and counts text widgets', () => {
+  it('lists visible widgets in layout order with their ids, positions and kinds', () => {
     const result = dashboardResult(
       dashboard([
         chartWidget(2, 1, 0, ''),
         chartWidget(1, 0, 3),
-        widget(3, { text: '## Notes' }),
+        widget(3, { text: '## Notes\nmore', updated_at: 'T3', options: { position: { col: 0, row: 1, sizeX: 6, sizeY: 4 } } }),
         { ...chartWidget(4, 0, 0), options: { position: { col: 0, row: 0, sizeX: 1, sizeY: 1 }, isHidden: true } },
         chartWidget(5, 0, 0),
       ])
     )
     expect(result.widgets).toEqual([
-      { title: 'Trips by hour · Chart 5', queryId: 5, queryName: 'Trips by hour', visualizationId: 50, visualizationType: 'CHART' },
-      { title: 'Trips by hour · Chart 1', queryId: 1, queryName: 'Trips by hour', visualizationId: 10, visualizationType: 'CHART' },
-      { title: 'Chart 2', queryId: 2, visualizationId: 20, visualizationType: 'CHART' },
+      {
+        widgetId: 5,
+        kind: 'visualization',
+        title: 'Trips by hour · Chart 5',
+        queryId: 5,
+        queryName: 'Trips by hour',
+        visualizationId: 50,
+        visualizationType: 'CHART',
+        position: { col: 0, row: 0, sizeX: 3, sizeY: 8 },
+      },
+      {
+        widgetId: 1,
+        kind: 'visualization',
+        title: 'Trips by hour · Chart 1',
+        queryId: 1,
+        queryName: 'Trips by hour',
+        visualizationId: 10,
+        visualizationType: 'CHART',
+        position: { col: 3, row: 0, sizeX: 3, sizeY: 8 },
+      },
+      {
+        widgetId: 2,
+        kind: 'visualization',
+        title: 'Chart 2',
+        queryId: 2,
+        visualizationId: 20,
+        visualizationType: 'CHART',
+        position: { col: 0, row: 1, sizeX: 3, sizeY: 8 },
+      },
+      {
+        widgetId: 3,
+        kind: 'text',
+        title: '## Notes',
+        text: '## Notes\nmore',
+        position: { col: 0, row: 1, sizeX: 6, sizeY: 4 },
+        updatedAt: 'T3',
+      },
     ])
-    expect(result.textWidgets).toBe(1)
     expect(result.dashboard).toEqual({
       id: 4,
       name: 'Bikeshare overview',
       tags: ['bikeshare'],
       updatedAt: '2026-08-30T08:00:00Z',
+      canEdit: true,
     })
+  })
+
+  it('counts only charts in widgetCount, and text boxes apart', () => {
+    const result = dashboardResult(dashboard([chartWidget(1, 0, 0), widget(2, { text: 'a' }), widget(3, { text: 'b' })]))
+    expect(result.widgetCount).toBe(1)
+    expect(result.textWidgets).toBe(2)
+    expect(result.widgets).toHaveLength(3)
+    expect(visibleWidgetCount(dashboard([chartWidget(1, 0, 0), widget(2, { text: 'a' })]))).toBe(1)
+  })
+
+  it('carries the dashboard version, widget timestamps and parameter mappings', () => {
+    const mapped = chartWidget(1, 0, 0)
+    mapped.updated_at = '2026-10-01T00:00:00.123Z'
+    mapped.options = {
+      ...mapped.options,
+      parameterMappings: {
+        start: { type: 'dashboard-add-new', mapTo: 'start', value: null, title: 'Start' },
+        junk: { type: 'bogus' },
+        city: { type: 'static-value', value: 'LA' },
+      },
+    }
+    const result = dashboardResult({ ...dashboard([mapped]), version: 7 })
+    expect(result.dashboard?.version).toBe(7)
+    expect(result.widgets?.[0]).toMatchObject({
+      updatedAt: '2026-10-01T00:00:00.123Z',
+      parameterMappings: {
+        start: { type: 'dashboard-add-new', mapTo: 'start', value: null, title: 'Start' },
+        city: { type: 'static-value', value: 'LA' },
+      },
+    })
+    expect(result.widgets?.[0].parameterMappings).not.toHaveProperty('junk')
+  })
+
+  it('caps the listed widgets at 50 while still counting every chart', () => {
+    const many = Array.from({ length: 53 }, (_, index) => chartWidget(index + 1, index, 0))
+    const result = dashboardResult(dashboard(many))
+    expect(result.widgets).toHaveLength(50)
+    expect(result.widgetCount).toBe(53)
   })
 })

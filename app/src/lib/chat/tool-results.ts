@@ -1,6 +1,16 @@
 import { z } from 'zod'
 import type { components } from '@/types/generated/veodyn-api'
-import { KPI_SLUG } from './frames'
+import { KPI_SLUG, type OpenName } from './frames'
+import { dashboardEditResultSchema, dashboardResultSchema, dashboardWidgetSchema } from './tool-results-dashboard'
+import type { ChatDashboardEditResult } from './tool-results-dashboard'
+import { queryDetailResultSchema, queryEditResultSchema } from './tool-results-query'
+import type { ChatQueryDetailResult, ChatQueryEditResult } from './tool-results-query'
+import { kpiCheckResultSchema, snippetCheckResultSchema } from './tool-results-contributed'
+import type { ChatKpiCheckResult, ChatSnippetCheckResult } from './tool-results-contributed'
+import { downloadResultSchema, operationCheckResultSchema } from './tool-results-operation'
+import type { ChatDownloadResult, ChatOperationCheckResult } from './tool-results-operation'
+import { vizCheckResultSchema, vizTypeResultSchema } from './tool-results-viz'
+import type { ChatVizCheckResult, ChatVizTypeResult } from './tool-results-viz'
 
 type Schemas = components['schemas']
 
@@ -27,10 +37,19 @@ export type ChatToolResult =
   | ChatLibraryResult
   | ChatSavedVisualizationResult
   | ChatDashboardResult
+  | ChatDashboardEditResult
   | ChatDataSourcesResult
   | ChatDataSourceSchemaResult
   | ChatKpiResult
   | ChatKpiListResult
+  | ChatQueryDetailResult
+  | ChatQueryEditResult
+  | ChatVizTypeResult
+  | ChatVizCheckResult
+  | ChatSnippetCheckResult
+  | ChatKpiCheckResult
+  | ChatOperationCheckResult
+  | ChatDownloadResult
 export type ChatResultKind = ChatToolResult['kind']
 
 const id = z.number().int().positive()
@@ -78,6 +97,7 @@ export const libraryItemSchema = z
     tags: tags.optional(),
     updatedAt: stamp,
     hasResult: z.boolean().optional(),
+    archived: z.boolean().optional(),
   })
   .strict()
 
@@ -115,6 +135,7 @@ export const savedVisualizationResultSchema = z
         dataSourceId: id.optional(),
         parameters: z.array(z.string().max(255)).max(50).optional(),
         updatedAt: stamp,
+        canEdit: z.boolean().nullish(),
       })
       .strict()
       .optional(),
@@ -124,29 +145,7 @@ export const savedVisualizationResultSchema = z
   })
   .strict()
 
-export const dashboardWidgetSchema = z
-  .object({
-    title: z.string().max(500),
-    queryId: id,
-    queryName: z.string().max(500).optional(),
-    visualizationId: id,
-    visualizationType: z.string().max(64),
-  })
-  .strict()
-
-export const dashboardResultSchema = z
-  .object({
-    ...base,
-    kind: z.literal('dashboard'),
-    dashboard: z
-      .object({ id, name: z.string().max(500), tags: tags.optional(), updatedAt: stamp })
-      .strict()
-      .optional(),
-    widgets: z.array(dashboardWidgetSchema).max(50).optional(),
-    widgetCount: z.number().int().nonnegative().optional(),
-    textWidgets: z.number().int().nonnegative().optional(),
-  })
-  .strict()
+export { dashboardResultSchema, dashboardWidgetSchema }
 
 export const dataSourceRefSchema = z
   .object({ id, name: z.string().max(500), type: z.string().max(64), syntax: z.string().max(32), viewOnly: z.boolean() })
@@ -251,20 +250,62 @@ export const kpiListResultSchema = z
   })
   .strict()
 
-export const toolResultSchema = z.discriminatedUnion('kind', [
+export const knownToolResultSchema = z.discriminatedUnion('kind', [
   queryResultSchema,
   libraryResultSchema,
   savedVisualizationResultSchema,
   dashboardResultSchema,
+  dashboardEditResultSchema,
   dataSourcesResultSchema,
   dataSourceSchemaResultSchema,
   kpiResultSchema,
   kpiListResultSchema,
+  queryDetailResultSchema,
+  queryEditResultSchema,
+  vizTypeResultSchema,
+  vizCheckResultSchema,
+  snippetCheckResultSchema,
+  kpiCheckResultSchema,
+  operationCheckResultSchema,
+  downloadResultSchema,
 ]) satisfies z.ZodType<ChatToolResult, z.ZodTypeDef, unknown>
+
+const KNOWN_RESULT_KINDS: ReadonlySet<string> = new Set(knownToolResultSchema.options.map((option) => option.shape.kind.value))
+
+export const openToolResultSchema = z
+  .object({
+    kind: z
+      .string()
+      .min(1)
+      .max(64)
+      .refine((kind) => !KNOWN_RESULT_KINDS.has(kind))
+      .transform((kind) => kind as OpenName),
+    ok: z.boolean(),
+    error: z.string().max(500).optional(),
+  })
+  .passthrough()
+
+export type OpenToolResult = z.infer<typeof openToolResultSchema>
+
+export interface ContributedToolResult {
+  kind: string
+  ok: boolean
+  error?: string
+  [field: string]: unknown
+}
+
+export const toolResultSchema = z.union([knownToolResultSchema, openToolResultSchema])
+
+export function isOpenResult(result: ChatToolResult | OpenToolResult): result is OpenToolResult {
+  return !KNOWN_RESULT_KINDS.has(result.kind)
+}
 
 export const ERROR_CHARS = 500
 
-export function failedResult(kind: Exclude<ChatResultKind, 'data_source_schema'>, error: unknown): ChatToolResult {
+export function failedResult(
+  kind: Exclude<ChatResultKind, 'data_source_schema' | 'operation_check'>,
+  error: unknown
+): ChatToolResult {
   const message = error instanceof Error ? error.message : String(error)
   return { kind, ok: false, error: (message || 'The request failed.').slice(0, ERROR_CHARS) }
 }

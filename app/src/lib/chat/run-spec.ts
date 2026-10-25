@@ -4,6 +4,10 @@ export interface SavedRunSpec {
   visualizationId: number | null
 }
 
-export type RunSpec =
-  | { kind: 'adhoc'; sql: string; dataSourceId: number; vizChoiceId?: string }
-  | ({ kind: 'saved' } & SavedRunSpec)
+export interface AdhocRunSpec {
+  sql: string
+  dataSourceId: number
+  vizChoiceId?: string
+}
+
+export type RunSpec = ({ kind: 'adhoc' } & AdhocRunSpec) | ({ kind: 'saved' } & SavedRunSpec)

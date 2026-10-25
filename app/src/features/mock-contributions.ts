@@ -9,7 +9,7 @@
 // construct. An `undefined` collection reads as "this build has no KPIs" on one
 // screen and throws `Cannot read properties of undefined` on the next.
 //
-// Like features/search-sources.ts, features/slots.tsx and features/proposals.ts,
+// Like features/search-sources.ts, and features/slots.tsx,
 // this module is NOT re-exported from features/index.ts: that entry point is
 // reached from the server root layout through src/lib/theme-preference.ts.
 import { AppError, ErrorIds } from '@/lib/errorIds'

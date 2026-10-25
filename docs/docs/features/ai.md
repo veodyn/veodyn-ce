@@ -13,38 +13,26 @@ With an [AI provider configured](/operations/ai-provider), Veodyn gains a set of
 
 1. With `ai.enabled` false, no AI control renders anywhere, and every flow the AI assists still has a manual path, so switching it off leaves a product that works rather than one with holes in it.
 2. The model writes the words and code assigns the IDs. Grounding is assembled server-side from what your instance actually has, and a model's pick is looked up against that same list, so a suggestion can't link to a query that does not exist or mis-cite a source.
-3. Generated SQL lands in the editor for you to read, and proposals become objects only when you press Create. Nothing runs or saves on its own.
+3. Generated SQL lands in the editor for you to read, and proposals become objects only when you apply them. Nothing runs or saves on its own.
 
 ## Create with AI
 
-A **Create with AI** button sits on the Queries, Dashboards and Query Snippets lists (and in the query editor), and on the KPIs and Reports lists where those [enterprise](/editions) features are installed. It opens a chat scoped to that object kind: describe what you want, answer the assistant's follow-ups (replies can carry clickable suggested answers), and when the plan is concrete a proposal card appears in the transcript.
+A **Create with AI** button sits on the Queries, Dashboards and Query Snippets lists (and in the query editor), and on the KPIs, Reports and Messages lists where those [enterprise](/editions) features are installed. It opens a new thread in the data chat with that object kind as its subject, so the assistant starts out knowing what you want to make. Describe it, answer follow-ups, and when the plan is concrete a proposal card appears in the transcript.
 
-![The Create with AI chat, with a grounding question and suggested answers](/img/screenshots/ai-create-chat.png)
+The chat is on wherever AI is. It needs the token secret described in [AI Provider](/operations/ai-provider), and without it the chat answers "The data chat is not configured".
 
-Proposal cards are editable before creation, and each kind shows what it is about to make:
+Proposal cards are editable before you apply them, and each kind shows what it is about to make:
 
 - **Query**: name, description, the generated SQL in full, data source, and a visualization.
 - **Dashboard**: name and the panel list. Missing queries the AI intends to write are disclosed before creation.
-- **KPI**: name, value column, target, unit, direction, cadence.
-- **Report**: an outline with per-section Include checkboxes, each section marked as reusing an existing query or writing a new one.
-- **Snippet**: trigger, description, and the fragment.
-
-Each kind opens with its own question rather than a blank prompt, which also says plainly what that kind can do:
-
-| Kind | Opens with |
-|---|---|
-| **Query** | *Tell me what you want to find out and I will work out which table answers it.* |
-| **Dashboard** | *Tell me what this dashboard is for. I assemble it from queries that already exist.* |
-| **KPI** | *Tell me which number you want to track and what good looks like.* |
-| **Report** | *Tell me what this report should explain and who reads it.* |
-
-Note the dashboard wording. It assembles from queries that already exist, so it is not the route to getting new SQL written. These opening lines are fixed copy rather than model output, so they read the same every time.
+- **Snippet**: trigger, description, and the fragment. A snippet can also be edited or deleted from chat; a delete asks you to confirm.
+- **KPI** (enterprise): name, source query, value column, target, unit, direction, cadence. An existing KPI can be edited the same way.
+- **Report** (enterprise): an outline with per-section Include checkboxes, each section marked as reusing an existing query or writing a new one. Applying it creates a draft report; publishing still goes through review and approval, with the same separate-approver rule as everywhere else.
+- **Message** (enterprise): header and description, applied by opening the message composer prefilled.
 
 ### Nothing happens by accident
 
-Conversations are capped at 12 user turns, and the server enforces the cap as well as the interface.
-
-Nothing is saved as a side effect of talking: an object exists only once you apply its proposal. Closing the chat with a proposal still unapplied asks whether to discard it rather than dropping the work silently, and reaching the cap, or hitting a provider that will not answer, offers the manual path to build the thing yourself.
+Nothing is saved as a side effect of talking: an object exists only once you apply its proposal, and the assistant only reads what you could open yourself.
 
 ## SQL generation in the editor
 
@@ -58,7 +46,7 @@ Generated SQL passes the same guardrails as the no-code Visual builder: single s
 
 ## Edit with AI (dashboards)
 
-In a dashboard's edit mode, **Edit with AI** opens the same chat pointed at the existing dashboard. The proposal shows the change as a diff of which panels are being added, removed, or redrawn, so you can see exactly what applying it will do.
+**Edit with AI** on a dashboard opens a chat thread about that dashboard. The proposal shows the change as a diff of which panels are being added, removed, or redrawn, so you can see exactly what applying it will do.
 
 ## The digest (enterprise) {#the-digest}
 
@@ -84,5 +72,5 @@ When the AI proposes a chart (in any flow), it also authors the renderer options
 ## Privacy and authorization posture
 
 - The browser never talks to a model directly. Every AI request goes through the frontend server, which strips your session cookie before relaying to the provider with a shared instance key.
-- Grounding (the catalog of queries offered to the model) is assembled server-side, so a modified client cannot make the model write SQL against tables that do not exist.
-- Grounding runs as the instance's service account, so a suggestion can name a query you cannot open. It can never show you the contents, since reading results still happens under your own credential.
+- SQL generation is grounded on the warehouse catalog the sidecar assembles itself, so a modified client cannot make the model write SQL against tables that do not exist.
+- The data chat reads the library under your own session, so it can only name queries and dashboards you can open. SQL generation profiles the table it is asked about on the service account, so the configured provider sees a sample of that table.

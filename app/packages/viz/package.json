@@ -1,6 +1,6 @@
 {
   "name": "@veodyn/viz",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Render Veodyn visualizations natively in a React or Next.js page.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -28,6 +28,10 @@
     "./normalize": {
       "types": "./dist/normalize.d.ts",
       "default": "./dist/normalize.js"
+    },
+    "./authoring": {
+      "types": "./dist/authoring.d.ts",
+      "default": "./dist/authoring.js"
     },
     "./styles.css": "./dist/styles.css"
   },

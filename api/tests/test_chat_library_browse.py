@@ -1,7 +1,7 @@
 import pytest
 
 from tests.test_chat_tools import call, context
-from veodyn_api.schemas.ai_chat import ChatLibraryResultIn
+from veodyn_api.schemas.ai_chat_library import ChatLibraryResultIn
 from veodyn_api.services.chat import tools
 from veodyn_api.services.chat.prompt import chat_system
 from veodyn_api.services.chat.tools import ClientCall, Immediate, prepare_call
@@ -12,7 +12,9 @@ pytestmark = pytest.mark.anyio
 async def test_a_search_with_no_text_and_no_tags_browses_the_kind() -> None:
     outcome = await prepare_call(call("search_library", text=" ", kinds=["dashboard"]), context())
     assert outcome == ClientCall(
-        call_id="call-1", tool="search_library", args={"text": "", "kinds": ["dashboard"], "tags": [], "sort": "match"}
+        call_id="call-1",
+        tool="search_library",
+        args={"text": "", "kinds": ["dashboard"], "tags": [], "sort": "match", "archived": False},
     )
 
 

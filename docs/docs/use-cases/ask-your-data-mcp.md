@@ -1,33 +1,32 @@
 ---
 sidebar_position: 20
 title: Ask your data from an AI client
-description: "Wiring Claude Desktop or an IDE to your instance over MCP: the endpoint, the credential, what the assistant can and cannot reach, and the library work that decides whether it is any use."
+description: "Wiring Claude Desktop or an IDE to your instance over MCP: the endpoint, the credential, what the assistant can reach, how its proposals reach you, and the library work that decides whether it is any use."
 ---
 
 # Ask your data from an AI client
 
-The Model Context Protocol endpoint lets an AI client read your instance
-directly: list the saved queries, run one, read a dashboard. Wiring it up takes
-an endpoint and a key. How useful it turns out to be depends mostly on your
-query library rather than on the client, which is what most of this guide is
-about.
+The Model Context Protocol endpoint gives an AI client the same tools the
+in-product chat has: search the library, read a query or a dashboard, run a
+saved query or a new read-only one, and propose a new query, a dashboard or an
+edit. Wiring it up takes an endpoint and a key. How useful it turns out to be
+depends mostly on your query library rather than on the client, which is what
+most of this guide is about.
 
 ## What has to be true
 
-The endpoint is read-only: it lists and runs saved queries and reads dashboards.
-It cannot create, edit or delete anything, so connecting a client does not give
-an assistant a way to change your instance.
-
-The entire surface is saved queries. An assistant cannot write new SQL against
-your warehouse through this endpoint; it can only run what someone already
-saved. A library of eleven queries named `test 3` makes for a useless MCP
-connection, and prompting will not fix that.
-
 The credential is a person's key. It carries your permissions, so an MCP client
-can only see what you can see. Treat it like a password.
+can only see and run what you can, and every object it reads is read as you.
+Treat the key like a password.
 
-There are five tools in total: `list_queries`, `get_query`, `run_query`,
-`list_dashboards`, `get_dashboard`.
+Nothing the client does changes your instance on its own. Reads and runs return
+results; a proposal is saved as a draft in a chat conversation of yours, and the
+tool's answer carries a link to it. You open the link, see the change as a
+before and after, and click Apply. Until you do, nothing is created or edited.
+
+The tools are the chat's tools, listed by the endpoint itself, so a client sees
+whatever this instance's chat offers. Proposal tools appear only where chat is
+turned on, since their link leads to a chat conversation.
 
 A saved query can reach the history as well as the live data. A query against
 the historical warehouse is a saved query like any other, so a library that
@@ -40,7 +39,8 @@ that station has been emptying earlier than it did in June.
 ## Before you start
 
 An account on the instance, and an MCP-capable client: Claude Desktop, an IDE
-with MCP support, or anything else speaking the protocol.
+with MCP support, or anything else speaking the protocol. The instance needs its
+AI service set up, though not a model provider: the client brings its own model.
 
 ## The steps
 
@@ -79,7 +79,7 @@ makes this the step that decides the outcome.
   all. If your instance uses [domains](/features/data-catalog), the
   `domain:<key>` tags already do this work.
 - Save the warehouse queries too. A captured table with no saved query against
-  it is invisible here, however good its [catalog
+  it is harder to find here, however good its [catalog
   entry](/features/data-catalog) looks. One saved rollup per captured dataset is
   usually enough to open it up.
 - Prefer parameters to near-duplicates. One query with a route parameter can be
@@ -94,16 +94,25 @@ model.
 
 ## How you know it worked
 
-The client lists your queries, running one returns the same rows the query's own
-page shows, and a query you know you cannot open does not appear. That last
-check confirms the connection is scoped to your account rather than to the
-instance.
+The client lists the tools, finds your queries, and running one returns the same
+rows the query's own page shows. A query you know you cannot open does not
+appear, which confirms the connection is scoped to your account rather than to
+the instance. Ask it to propose a small change, open the link it returns, and
+the card shows the change waiting for your Apply.
+
+## Older clients
+
+Earlier releases offered five tools: `list_queries`, `get_query`, `run_query`,
+`list_dashboards` and `get_dashboard`. They still answer for one more release,
+each description naming the tool that replaces it, and `run_query` given a
+`query_id` behaves as it used to. Move prompts and scripts over to the new
+names; the old ones go in the release after.
 
 ## What this does not do
 
 | | |
 |---|---|
-| Write SQL against your warehouse | No. It runs saved queries |
-| Create or edit queries, dashboards or anything else | No. The endpoint is read-only in both editions |
+| Change anything without you | No. Proposals wait in a chat conversation until you click Apply |
 | Give the assistant a credential of its own | No. It uses yours, with your permissions |
-| Work without an AI provider configured on the instance | Yes, it works. This is a client of yours talking to your instance. The [in-product AI features](/features/ai) are the separate thing that needs a provider |
+| Read KPIs (Enterprise) | Not yet. The KPI tools run only inside the app for now |
+| Work without the instance's AI service | No. The endpoint lists its tools from that service. A model provider is not needed: the client brings its own |

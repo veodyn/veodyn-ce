@@ -90,15 +90,47 @@ describe('buildTurnContext', () => {
 
   it('hands_the_analysts_cookie_to_the_parts', async () => {
     mockChatModules()
+    const redashFetch = vi.fn(async () => json([]))
+    vi.doMock('@/lib/redash-server', () => ({ requireSession: vi.fn(), redashFetch }))
     const { buildTurnContext } = await import('./turn-context-builder')
-    const seen: (string | null)[] = []
+    const keys: string[] = []
     await buildTurnContext(signedIn({ method: 'POST', body: '{}', headers: { cookie: 'session=abc' } }), {
-      dataSources: async (cookie) => {
-        seen.push(cookie)
+      dataSources: async (reader, signal) => {
+        keys.push(reader.key)
+        await reader.get('/api/data_sources', signal)
         return []
       },
     })
-    expect(seen).toEqual(['session=abc'])
+    expect(keys).toEqual(['session=abc'])
+    expect(redashFetch).toHaveBeenCalledWith('/api/data_sources', expect.objectContaining({ cookie: 'session=abc' }))
+  })
+
+  it('reads_through_the_given_getter_and_never_the_requests_cookie', async () => {
+    mockChatModules()
+    const redashFetch = vi.fn(async () => json([]))
+    vi.doMock('@/lib/redash-server', () => ({ requireSession: vi.fn(), redashFetch }))
+    const { buildTurnContext } = await import('./turn-context-builder')
+    const { dataSourceInventory } = await import('./inventory')
+    const paths: string[] = []
+    const reader = {
+      key: 'mcp:42',
+      get: async <T,>(path: string): Promise<T | null> => {
+        paths.push(path)
+        const sources = [{ id: 3, name: 'Warehouse', type: 'clickhouse', syntax: 'sql' }]
+        return (path === '/api/data_sources' ? sources : null) as T | null
+      },
+    }
+    const context = await buildTurnContext(
+      signedIn({ method: 'POST', body: '{}', headers: { cookie: 'session=someone-else' } }),
+      { dataSources: dataSourceInventory },
+      4000,
+      reader
+    )
+    expect(paths).toEqual(['/api/data_sources'])
+    expect(context.dataSources).toEqual([
+      { id: 3, name: 'Warehouse', type: 'clickhouse', syntax: 'sql', viewOnly: false },
+    ])
+    expect(redashFetch).not.toHaveBeenCalled()
   })
 
   it('gives_up_on_a_part_that_never_answers', async () => {
@@ -108,7 +140,7 @@ describe('buildTurnContext', () => {
       request(),
       {
         instance: () => PROFILE,
-        dataSources: (_cookie, signal) =>
+        dataSources: (_reader, signal) =>
           new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new Error('aborted')))),
       },
       20
@@ -117,6 +149,11 @@ describe('buildTurnContext', () => {
     expect(context).not.toHaveProperty('dataSources')
   })
 })
+
+function sentTurn(fetchMock: { mock: { calls: unknown[][] } }, index: number) {
+  const turns = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/turns'))
+  return JSON.parse(String((turns[index][1] as RequestInit).body)) as { vizCatalog: unknown[] } & Record<string, unknown>
+}
 
 describe('turns route', () => {
   it('sends_the_instance_profile_with_the_catalog', async () => {
@@ -129,7 +166,7 @@ describe('turns route', () => {
       params: Promise.resolve({ id: THREAD }),
     })
     expect(response.status).toBe(202)
-    const sent = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body))
+    const sent = sentTurn(fetchMock, 0)
     expect(sent.instance).toEqual(PROFILE)
     expect(sent.vizCatalog.length).toBeGreaterThan(0)
   })
@@ -145,11 +182,11 @@ describe('turns route', () => {
     const params = { params: Promise.resolve({ id: THREAD }) }
     const body = JSON.stringify({ text: 'hi' })
     expect((await POST(signedIn({ method: 'POST', body }), params)).status).toBe(202)
-    const sent = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body))
+    const sent = sentTurn(fetchMock, 0)
     expect(sent.dataSources).toEqual([SOURCE])
     inventory.mockRejectedValue(new Error('node down'))
     expect((await POST(signedIn({ method: 'POST', body }), params)).status).toBe(202)
-    const degraded = JSON.parse(String((fetchMock.mock.calls[1] as unknown as [string, RequestInit])[1].body))
+    const degraded = sentTurn(fetchMock, 1)
     expect(degraded).not.toHaveProperty('dataSources')
     expect(degraded.instance).toEqual(PROFILE)
   })
@@ -172,7 +209,7 @@ describe('turns route', () => {
     const { POST } = await import('@/app/api/ai/chat/threads/[id]/turns/route')
     const params = { params: Promise.resolve({ id: THREAD }) }
     expect((await POST(signedIn({ method: 'POST', body: JSON.stringify({ text: 'hi' }) }), params)).status).toBe(202)
-    const sent = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body))
+    const sent = sentTurn(fetchMock, 0)
     expect(sent.readyQueries).toEqual([ready])
     vi.doUnmock('./ready-queries')
   })

@@ -7,6 +7,7 @@ from redash.handlers.base import (
     get_object_or_404,
     require_fields,
 )
+from redash.handlers.preconditions import check_unchanged, pop_expected
 from redash.permissions import require_admin_or_owner
 
 
@@ -20,9 +21,11 @@ class QuerySnippetResource(BaseResource):
 
     def post(self, snippet_id):
         req = request.get_json(True)
+        expected = pop_expected(req)
         params = project(req, ("trigger", "description", "snippet"))
         snippet = get_object_or_404(models.QuerySnippet.get_by_id_and_org, snippet_id, self.current_org)
         require_admin_or_owner(snippet.user.id)
+        check_unchanged(models.QuerySnippet, snippet.id, expected)
 
         self.update_model(snippet, params)
         models.db.session.commit()
@@ -33,6 +36,7 @@ class QuerySnippetResource(BaseResource):
     def delete(self, snippet_id):
         snippet = get_object_or_404(models.QuerySnippet.get_by_id_and_org, snippet_id, self.current_org)
         require_admin_or_owner(snippet.user.id)
+        check_unchanged(models.QuerySnippet, snippet.id, request.args.get("expected_updated_at"))
         models.db.session.delete(snippet)
         models.db.session.commit()
 

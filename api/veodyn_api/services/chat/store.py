@@ -14,6 +14,7 @@ from veodyn_api.models.ai_chat import (
     AiChatThread,
     AiChatTurn,
 )
+from veodyn_api.services.chat.turn_context import AppliedPromotion
 
 MAX_TURNS_PER_THREAD = 200
 TITLE_CHARS = 80
@@ -28,8 +29,12 @@ def _missing() -> ApiError:
     return ApiError(ErrorId.AI_CHAT_NOT_FOUND, "no such conversation", status_code=404)
 
 
-def create_thread(db: Session, owner: str) -> AiChatThread:
-    thread = AiChatThread(id=uuid.uuid4(), owner_subject=owner, title="", pinned=False)
+def create_thread(
+    db: Session, owner: str, *, origin: str = "chat", title: str = "", subject: dict[str, Any] | None = None
+) -> AiChatThread:
+    thread = AiChatThread(
+        id=uuid.uuid4(), owner_subject=owner, title=title[:TITLE_CHARS], pinned=False, origin=origin, subject=subject
+    )
     db.add(thread)
     db.commit()
     db.refresh(thread)
@@ -78,8 +83,32 @@ def running_turn(db: Session, thread_id: uuid.UUID) -> AiChatTurn | None:
     return db.scalar(select(AiChatTurn).where(AiChatTurn.thread_id == thread_id, AiChatTurn.status == "running"))
 
 
-def start_turn(db: Session, thread: AiChatThread, text: str) -> AiChatTurn:
-    db.scalar(select(AiChatThread.id).where(AiChatThread.id == thread.id).with_for_update())
+def _lock_thread(db: Session, thread_id: uuid.UUID) -> datetime | None:
+    return db.scalar(select(AiChatThread.applied_reported_at).where(AiChatThread.id == thread_id).with_for_update())
+
+
+def applied_since(db: Session, thread_id: uuid.UUID, cursor: datetime) -> list[AppliedPromotion]:
+    rows = db.execute(
+        select(AiChatDraftPromotion, AiChatDraft.kind)
+        .join(AiChatDraft, AiChatDraft.id == AiChatDraftPromotion.draft_id)
+        .where(AiChatDraft.thread_id == thread_id, AiChatDraftPromotion.updated_at > cursor)
+        .order_by(AiChatDraftPromotion.updated_at, AiChatDraftPromotion.id)
+    )
+    return [
+        AppliedPromotion(
+            draft_id=str(promotion.draft_id),
+            kind=kind,
+            target_type=promotion.target_type,
+            target_id=promotion.target_id,
+            status=promotion.status,
+            receipts=tuple(promotion.receipts),
+        )
+        for promotion, kind in rows
+    ]
+
+
+def start_turn(db: Session, thread: AiChatThread, text: str) -> tuple[AiChatTurn, list[AppliedPromotion]]:
+    cursor = _lock_thread(db, thread.id)
     if running_turn(db, thread.id) is not None:
         db.rollback()
         raise ApiError(ErrorId.AI_TURN_CONFLICT, "a turn is already running in this conversation", status_code=409)
@@ -99,12 +128,25 @@ def start_turn(db: Session, thread: AiChatThread, text: str) -> AiChatTurn:
     )
     if not thread.title:
         thread.title = " ".join(text.split())[:TITLE_CHARS]
+    applied = applied_since(db, thread.id, cursor) if cursor is not None else []
     thread.last_turn_at = _now()
     thread.updated_at = thread.last_turn_at
+    turn.applied_cutoff = thread.last_turn_at
     db.add(turn)
     db.commit()
     db.refresh(turn)
-    return turn
+    return turn, applied
+
+
+def create_mcp_turn(
+    db: Session, owner: str, *, thread_id: uuid.UUID | None, user_text: str, title: str
+) -> tuple[AiChatThread, AiChatTurn]:
+    if thread_id is None:
+        thread = create_thread(db, owner, origin="mcp", title=title)
+    else:
+        thread = thread_for_owner(db, owner, thread_id)
+    turn, _ = start_turn(db, thread, user_text)
+    return thread, turn
 
 
 def turn_for_owner(db: Session, owner: str, turn_id: uuid.UUID) -> AiChatTurn:
@@ -127,6 +169,7 @@ def finish_turn(
     usage: dict[str, Any] | None,
     stop_reason: str | None,
     error_id: str | None,
+    applied_delivered: bool = False,
 ) -> None:
     turn = db.get(AiChatTurn, turn_id)
     if turn is None:
@@ -137,6 +180,12 @@ def finish_turn(
     turn.stop_reason = stop_reason
     turn.error_id = error_id
     turn.finished_at = _now()
+    if status == "done" and applied_delivered and turn.applied_cutoff is not None:
+        thread = db.get(AiChatThread, turn.thread_id)
+        if thread is not None and (
+            thread.applied_reported_at is None or thread.applied_reported_at < turn.applied_cutoff
+        ):
+            thread.applied_reported_at = turn.applied_cutoff
     db.commit()
 
 
@@ -247,15 +296,23 @@ def draft_for_owner(db: Session, owner: str, draft_id: uuid.UUID) -> AiChatDraft
     return draft
 
 
+def _require_target(status: str, target_id: str | None) -> None:
+    if status in ("done", "partial") and target_id is None:
+        raise ApiError(ErrorId.INVALID_REQUEST, f"a {status} promotion needs a targetId", status_code=422)
+
+
 def record_promotion(
     db: Session,
     draft: AiChatDraft,
     *,
     version: int,
     target_type: str,
-    target_id: str,
+    target_id: str | None,
     target_version_at_promote: int | None,
+    status: str = "done",
+    receipts: list[dict[str, Any]] | None = None,
 ) -> AiChatDraftPromotion:
+    _require_target(status, target_id)
     exists = db.scalar(
         select(AiChatDraftVersion).where(
             AiChatDraftVersion.draft_id == draft.id, AiChatDraftVersion.version == version
@@ -263,15 +320,59 @@ def record_promotion(
     )
     if exists is None:
         raise ApiError(ErrorId.INVALID_REQUEST, f"the draft has no version {version}", status_code=422)
+    _lock_thread(db, draft.thread_id)
+    now = _now()
     promotion = AiChatDraftPromotion(
         id=uuid.uuid4(),
         draft_id=draft.id,
         target_type=target_type,
         target_id=target_id,
+        status=status,
+        receipts=receipts or [],
         promoted_version=version,
         target_version_at_promote=target_version_at_promote,
+        created_at=now,
+        updated_at=now,
     )
     db.add(promotion)
+    db.commit()
+    db.refresh(promotion)
+    return promotion
+
+
+def update_promotion(
+    db: Session,
+    draft: AiChatDraft,
+    promotion_id: uuid.UUID,
+    *,
+    status: str | None,
+    target_id: str | None,
+    receipts: list[dict[str, Any]] | None,
+    target_version_at_promote: int | None = None,
+) -> AiChatDraftPromotion:
+    _lock_thread(db, draft.thread_id)
+    promotion = db.scalar(
+        select(AiChatDraftPromotion).where(
+            AiChatDraftPromotion.id == promotion_id, AiChatDraftPromotion.draft_id == draft.id
+        )
+    )
+    if promotion is None:
+        db.rollback()
+        raise _missing()
+    if status is not None:
+        promotion.status = status
+    if target_id is not None:
+        promotion.target_id = target_id
+    if receipts is not None:
+        promotion.receipts = receipts
+    if target_version_at_promote is not None:
+        promotion.target_version_at_promote = target_version_at_promote
+    try:
+        _require_target(promotion.status, promotion.target_id)
+    except ApiError:
+        db.rollback()
+        raise
+    promotion.updated_at = _now()
     db.commit()
     db.refresh(promotion)
     return promotion

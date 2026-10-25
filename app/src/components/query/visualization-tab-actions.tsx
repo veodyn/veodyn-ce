@@ -5,6 +5,7 @@
 // the state they drive still lives; this file is the presentational cluster.
 import { MoreVertical, Pencil, ScreenShare, Trash2 } from 'lucide-react'
 import type { MockVisualization } from '@/lib/mock-data'
+import { AskAboutThis } from '@/components/chat/ask-about-this'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/shared/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -17,20 +18,24 @@ import {
 
 interface VisualizationTabActionsProps {
   viz: MockVisualization
+  queryId: number
   canModify: boolean
   canDelete: boolean
   onEdit: () => void
   onPublish: () => void
   onDelete: () => void
+  isDirty?: boolean
 }
 
 export function VisualizationTabActions({
   viz,
+  queryId,
   canModify,
   canDelete,
   onEdit,
   onPublish,
   onDelete,
+  isDirty = false,
 }: VisualizationTabActionsProps) {
   return (
     <>
@@ -62,6 +67,13 @@ export function VisualizationTabActions({
       >
         <ScreenShare className="h-3.5 w-3.5 text-muted-foreground" />
       </IconButton>
+      <AskAboutThis
+        subject={{ kind: 'visualization', queryId, visualizationId: viz.id }}
+        label={viz.name}
+        variant="ghost"
+        size="icon-xs"
+        isDirty={isDirty}
+      />
       {canDelete && (
         <DropdownMenu>
           {/* The tooltip wraps the menu trigger rather than replacing it: the

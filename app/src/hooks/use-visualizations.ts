@@ -71,9 +71,10 @@ export function useCreateVisualization() {
     mutationFn: async ({
       queryId,
       ...vizData
-    }: Partial<MockVisualization> & { queryId: number }) => {
+    }: Partial<MockVisualization> & { queryId: number; idempotencyKey?: string }) => {
       if (USE_REAL_API) {
         return vizService.createVisualization({
+          idempotency_key: vizData.idempotencyKey,
           query_id: queryId,
           type: vizData.type || 'TABLE',
           name: vizData.name || 'New Visualization',

@@ -3,8 +3,11 @@
 import Link from 'next/link'
 import { Loader2, Save } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { UnsyncedNotice } from './unsynced-notice'
 import { usePromoteDashboardDraft } from '@/hooks/use-promote-dashboard-draft'
+import { lastApplied } from '@/lib/chat/promotions'
 import type { ActiveDashboard, DashboardDraftView, DraftView } from '@/lib/chat/thread-model'
+import type { QueryDraftSync } from '@/lib/chat/thread-sync'
 import type { ChatPromotion } from '@/lib/chat/wire'
 
 export const DASHBOARD_CONFLICT_MESSAGE = 'This dashboard has changed since you opened it. Add these charts anyway?'
@@ -16,6 +19,7 @@ interface DashboardDraftActionsProps {
   onQueryPromoted: (draftId: string, promotion: ChatPromotion) => void
   onDashboardPromoted: (draftId: string, promotion: ChatPromotion) => void
   onDashboardActive: (dashboard: ActiveDashboard) => void
+  querySync: QueryDraftSync
 }
 
 export function DashboardDraftActions({
@@ -25,6 +29,7 @@ export function DashboardDraftActions({
   onQueryPromoted,
   onDashboardPromoted,
   onDashboardActive,
+  querySync,
 }: DashboardDraftActionsProps) {
   const promote = usePromoteDashboardDraft(
     draft,
@@ -32,11 +37,14 @@ export function DashboardDraftActions({
     activeDashboard,
     onQueryPromoted,
     onDashboardPromoted,
-    onDashboardActive
+    onDashboardActive,
+    querySync
   )
   const latest = draft.versions[draft.versions.length - 1]
-  const promotion = draft.promotions[draft.promotions.length - 1]
+  const promotion = lastApplied(draft.promotions)
   const saving = promote.status === 'saving'
+
+  if (promote.unsynced) return <UnsyncedNotice onRetry={promote.retrySync} />
 
   if (promote.status === 'conflict') {
     return (

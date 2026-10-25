@@ -32,6 +32,8 @@ export const helloPanelPlugin: VisualizationPlugin = {
 
   needs: 'none',
 
+  authoringOptions: {},
+
   // A type an analyst creates, not scenery an operator places.
   audience: 'analyst',
 

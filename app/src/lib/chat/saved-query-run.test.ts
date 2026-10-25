@@ -1,15 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NOT_AVAILABLE } from './library-results'
-import { mergedParameters, runSavedQuery, savedRunResult } from './saved-query-run'
+import { mergedParameters, runSavedQuery as runWithTransport, savedRunResult } from './saved-query-run'
+import type { SavedRunSpec } from './run-spec'
+import type { RedashTransport } from './transport'
 
 const queries = vi.hoisted(() => ({ get: vi.fn() }))
 const execution = vi.hoisted(() => ({ executeSavedQuery: vi.fn() }))
 
-vi.mock('@/services/redash/queries', () => queries)
-vi.mock('@/services/redash/execution', () => execution)
+vi.mock('./node-calls', () => ({
+  getQuery: (_transport: unknown, id: number) => queries.get(id),
+  executeSavedQuery: (_transport: unknown, id: number, opts: unknown) => execution.executeSavedQuery(id, opts),
+}))
 
 const DATA = { columns: [{ name: 'n', type: 'integer', friendly_name: 'n' }], rows: [{ n: 1 }] }
 const SIGNAL = new AbortController().signal
+
+function runSavedQuery(spec: SavedRunSpec, signal: AbortSignal) {
+  return runWithTransport(spec, {} as RedashTransport, signal)
+}
 
 function savedQuery(overrides: Record<string, unknown> = {}) {
   return {

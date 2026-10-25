@@ -2,6 +2,8 @@
 // copy (the renderer switch, the editor switch, the builder choices) reads
 // from here instead. See docs/visualization-plugins.md.
 import type { QueryResultData } from '../../types/viz-data'
+import { CORE_AUTHORING } from './authoring/core-authoring'
+import type { AuthoringSchema } from './authoring/types'
 import { CHAT_GUIDE_MAX_CHARS, PLUGIN_API_VERSION, type VisualizationPlugin } from './plugin'
 
 /**
@@ -100,6 +102,11 @@ export function listVisualizations(
   if (enabled == null) return all
   const wanted = new Set(enabled)
   return all.filter((plugin) => wanted.has(plugin.type))
+}
+
+export function authoringFor(type: string): AuthoringSchema | null {
+  if (Object.hasOwn(CORE_AUTHORING, type)) return CORE_AUTHORING[type]
+  return registry.get(type)?.plugin.authoringOptions ?? null
 }
 
 /** Registered types, in registration order. */

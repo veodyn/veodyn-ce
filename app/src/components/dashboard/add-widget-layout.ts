@@ -1,9 +1,11 @@
-import type { MockDashboardWidget } from '@/lib/mock-data'
+export interface PlacedWidget {
+  options: { position: { col: number; row: number; sizeX: number; sizeY: number } }
+}
 
 // ─── Position calculation ───────────────────────────────────────────────────
 
 export function calculateNewWidgetPosition(
-  existingWidgets: MockDashboardWidget[],
+  existingWidgets: readonly PlacedWidget[],
   sizeX: number,
   sizeY: number,
   cols = 6

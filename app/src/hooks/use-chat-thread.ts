@@ -2,10 +2,14 @@
 
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { draftPreviewOf } from '@/lib/chat/draft-preview'
 import { TERMINAL_EVENTS, type ChatFrame } from '@/lib/chat/frames'
+import type { DraftPreview } from '@/lib/chat/kpi-check'
+import { addContributedPromotion, addDashboardEditPromotion, addOperationPromotion } from '@/lib/chat/thread-drafts'
 import {
   addDashboardPromotion,
-  addPromotion,
+  addEditPromotion,
+  addVizPromotion,
   applyFrame,
   emptyThread,
   failTurn,
@@ -17,11 +21,13 @@ import {
   type ActiveDashboard,
   type ThreadState,
 } from '@/lib/chat/thread-model'
-import type { ChatToolResult } from '@/lib/chat/tool-results'
+import { carryQueryDraftSync, queryDraftPromoted, type HeldQuerySync } from '@/lib/chat/thread-sync'
+import type { ChatToolResult, OpenToolResult } from '@/lib/chat/tool-results'
 import type { ChatPromotion } from '@/lib/chat/wire'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { cancelTurn, chatErrorStatus, getThread, postTurn } from '@/services/ai/chat-client'
 import { CHAT_THREADS_KEY } from './use-chat'
+import { useQueryDraftSync } from './use-query-draft-sync'
 import { useToolExecutor } from './use-tool-executor'
 import { useTurnStream } from './use-turn-stream'
 
@@ -45,6 +51,13 @@ export interface ChatThreadController {
   reload: () => void
   promoted: (draftId: string, promotion: ChatPromotion) => void
   promotedDashboard: (draftId: string, promotion: ChatPromotion) => void
+  promotedEdit: (draftId: string, promotion: ChatPromotion) => void
+  promotedViz: (draftId: string, promotion: ChatPromotion) => void
+  promotedDashboardEdit: (draftId: string, promotion: ChatPromotion) => void
+  promotedContributed: (draftId: string, promotion: ChatPromotion) => void
+  promotedOperation: (draftId: string, promotion: ChatPromotion) => void
+  holdQueryDraftSync: (queryDraftId: string, held: HeldQuerySync) => void
+  retryQueryDraftSync: (queryDraftId: string) => Promise<ChatPromotion | null>
   dashboardActive: (dashboard: ActiveDashboard) => void
 }
 
@@ -56,9 +69,20 @@ export function useChatThread(threadId: string): ChatThreadController {
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
-  const { results, errors, visualizations, execute, rerun: rerunQuery } = useToolExecutor()
+  const previewOf = useRef<(draftId: string) => DraftPreview | null>(() => null)
+  const draftPreview = useCallback((draftId: string) => previewOf.current(draftId), [])
+  const { results, errors, visualizations, execute, rerun: rerunQuery } = useToolExecutor(draftPreview)
 
-  const onResult = useCallback((callId: string, result: ChatToolResult) => {
+  const stateRef = useRef(state)
+  const latestState = useCallback(() => stateRef.current, [])
+  const querySync = useQueryDraftSync(setState, latestState)
+
+  useEffect(() => {
+    previewOf.current = (draftId) => draftPreviewOf(state, results, draftId)
+    stateRef.current = state
+  }, [state, results])
+
+  const onResult = useCallback((callId: string, result: ChatToolResult | OpenToolResult) => {
     setState((current) => settleCall(current, callId, result))
   }, [])
 
@@ -92,7 +116,7 @@ export function useChatThread(threadId: string): ChatThreadController {
     (signal?: AbortSignal) =>
       getThread(threadId, signal).then((detail) => {
         const loaded = fromDetail(detail)
-        setState(loaded)
+        setState((current) => carryQueryDraftSync(loaded, current))
         const active = runningTurn(loaded)
         if (active) attach(active.id, active.lastEventId)
         return loaded
@@ -115,7 +139,7 @@ export function useChatThread(threadId: string): ChatThreadController {
           attach(stillRunning.id, stillRunning.lastEventId)
           return
         }
-        setState(fromDetail(detail))
+        setState((current) => carryQueryDraftSync(fromDetail(detail), current))
       }),
     [threadId, attach]
   )
@@ -203,11 +227,31 @@ export function useChatThread(threadId: string): ChatThreadController {
   )
 
   const promoted = useCallback((draftId: string, promotion: ChatPromotion) => {
-    setState((current) => addPromotion(current, draftId, promotion))
+    setState((current) => queryDraftPromoted(current, draftId, promotion))
   }, [])
 
   const promotedDashboard = useCallback((draftId: string, promotion: ChatPromotion) => {
     setState((current) => addDashboardPromotion(current, draftId, promotion))
+  }, [])
+
+  const promotedEdit = useCallback((draftId: string, promotion: ChatPromotion) => {
+    setState((current) => addEditPromotion(current, draftId, promotion))
+  }, [])
+
+  const promotedViz = useCallback((draftId: string, promotion: ChatPromotion) => {
+    setState((current) => addVizPromotion(current, draftId, promotion))
+  }, [])
+
+  const promotedDashboardEdit = useCallback((draftId: string, promotion: ChatPromotion) => {
+    setState((current) => addDashboardEditPromotion(current, draftId, promotion))
+  }, [])
+
+  const promotedContributed = useCallback((draftId: string, promotion: ChatPromotion) => {
+    setState((current) => addContributedPromotion(current, draftId, promotion))
+  }, [])
+
+  const promotedOperation = useCallback((draftId: string, promotion: ChatPromotion) => {
+    setState((current) => addOperationPromotion(current, draftId, promotion))
   }, [])
 
   const dashboardActive = useCallback((dashboard: ActiveDashboard) => {
@@ -230,6 +274,13 @@ export function useChatThread(threadId: string): ChatThreadController {
     reload,
     promoted,
     promotedDashboard,
+    promotedEdit,
+    promotedViz,
+    promotedDashboardEdit,
+    promotedContributed,
+    promotedOperation,
+    holdQueryDraftSync: querySync.hold,
+    retryQueryDraftSync: querySync.retry,
     dashboardActive,
   }
 }

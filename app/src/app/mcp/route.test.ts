@@ -3,14 +3,12 @@
 // Connect > MCP has always documented this URL and it returned 404, so the page
 // handed out a copyable client config for a server that did not exist.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fakeBackend, jsonResponse, loadWithRelay, unloadRelay } from '@/lib/mcp/mcp-registry-fixtures'
 
 const REDASH = 'http://redash.test'
 
 async function loadRoute(redashUrl?: string) {
-  vi.resetModules()
-  if (redashUrl) process.env.REDASH_URL = redashUrl
-  else delete process.env.REDASH_URL
-  return import('./route')
+  return loadWithRelay(() => import('./route'), { redash: redashUrl !== undefined })
 }
 
 function rpc(body: unknown, headers: Record<string, string> = { authorization: 'Key abc123' }) {
@@ -21,10 +19,7 @@ function rpc(body: unknown, headers: Record<string, string> = { authorization: '
   })
 }
 
-afterEach(() => {
-  vi.restoreAllMocks()
-  delete process.env.REDASH_URL
-})
+afterEach(unloadRelay)
 
 describe('when no analytics backend is configured', () => {
   it('says so plainly rather than 404ing like it used to', async () => {
@@ -156,15 +151,20 @@ describe('the JSON-RPC envelope', () => {
     expect(body.result.serverInfo.name).toBe('veodyn')
   })
 
-  it('lists the tools it actually implements', async () => {
+  it('lists the registry tools and keeps the legacy names alongside them', async () => {
+    fakeBackend({
+      sidecar: () =>
+        jsonResponse({ tools: [{ name: 'open_query', description: 'Open.', inputSchema: { type: 'object' } }] }),
+    })
     const { POST } = await loadRoute(REDASH)
 
     const body = await (await POST(rpc({ jsonrpc: '2.0', id: 2, method: 'tools/list' }))).json()
 
     expect(body.result.tools.map((t: { name: string }) => t.name)).toEqual([
+      'open_query',
+      'run_query',
       'list_queries',
       'get_query',
-      'run_query',
       'list_dashboards',
       'get_dashboard',
     ])

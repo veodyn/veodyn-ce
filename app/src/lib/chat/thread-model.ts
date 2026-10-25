@@ -1,13 +1,28 @@
-import type { ChatFrame, ChatProposal, DashboardProposal } from './frames'
+import type { DashboardEditPayload } from './dashboard-changes'
+import type { OperationPayload } from './operation-changes'
+import { isOpenToolRequest, type ChatFrame, type ChatProposal, type DashboardProposal, type QueryEditPayload } from './frames'
 import { savedRunView, settledView, type CallView, type RunStatus } from './thread-calls'
 import type { SavedRunSpec } from './run-spec'
+import { isAfter } from './stream-order'
 import type { HelpLinkView } from './thread-help'
-import { appendText, withVersion } from './thread-stored'
-import type { ChatToolResult } from './tool-results'
+import { putDraft } from './thread-drafts'
+import { appendText } from './thread-stored'
+import type { QueryDraftSyncs } from './thread-sync'
+import { isOpenResult, type ChatToolResult, type OpenToolResult } from './tool-results'
+import type { VizPayload } from './viz-changes'
 import type { ChatPromotion } from './wire'
 
 export type { CallView, CardToolName, RunStatus } from './thread-calls'
+export {
+  addContributedPromotion,
+  addDashboardPromotion,
+  addEditPromotion,
+  addOperationPromotion,
+  addPromotion,
+  addVizPromotion,
+} from './thread-drafts'
 export type { HelpLinkView } from './thread-help'
+export { isAfter } from './stream-order'
 export { FAILED_TURN_MESSAGE, fromDetail } from './thread-stored'
 
 export type TurnStatus = 'running' | 'done' | 'failed'
@@ -52,6 +67,13 @@ export interface Draft<Payload> {
 
 export type DraftView = Draft<ChatProposal>
 export type DashboardDraftView = Draft<DashboardProposal>
+export type EditDraftView = Draft<QueryEditPayload>
+export type VizDraftView = Draft<VizPayload>
+export type DashboardEditDraftView = Draft<DashboardEditPayload>
+export type OperationDraftView = Draft<OperationPayload>
+export interface ContributedDraftView extends Draft<unknown> {
+  kind: string
+}
 
 export interface ActiveDashboard {
   id: number
@@ -66,7 +88,13 @@ export interface ThreadState {
   helpLinks: Record<string, HelpLinkView>
   drafts: Record<string, DraftView>
   dashboardDrafts: Record<string, DashboardDraftView>
+  editDrafts: Record<string, EditDraftView>
+  vizDrafts: Record<string, VizDraftView>
+  dashboardEditDrafts: Record<string, DashboardEditDraftView>
+  operationDrafts: Record<string, OperationDraftView>
+  contributedDrafts: Record<string, ContributedDraftView>
   activeDashboard: ActiveDashboard | null
+  queryDraftSync: QueryDraftSyncs
 }
 
 export function emptyThread(): ThreadState {
@@ -77,20 +105,14 @@ export function emptyThread(): ThreadState {
     helpLinks: {},
     drafts: {},
     dashboardDrafts: {},
+    editDrafts: {},
+    vizDrafts: {},
+    dashboardEditDrafts: {},
+    operationDrafts: {},
+    contributedDrafts: {},
     activeDashboard: null,
+    queryDraftSync: {},
   }
-}
-
-function streamOrder(id: string): [number, number] {
-  const [time, seq] = id.split('-').map(Number)
-  return [time || 0, seq || 0]
-}
-
-export function isAfter(id: string, previous: string | null): boolean {
-  if (previous === null) return true
-  const [a, b] = streamOrder(id)
-  const [c, d] = streamOrder(previous)
-  return a > c || (a === c && b > d)
 }
 
 export function startTurn(state: ThreadState, id: string, seq: number, userText: string): ThreadState {
@@ -137,6 +159,11 @@ export function applyFrame(state: ThreadState, turnId: string, frame: ChatFrame)
     case 'tool_request': {
       const request = frame.data
       const { callId } = request
+      if (isOpenToolRequest(request)) {
+        const call: CallView = { callId, tool: request.tool, status: 'running', target: null, output: null, error: null }
+        const next = { ...state, calls: { ...state.calls, [callId]: state.calls[callId] ?? call } }
+        return seen(withItem(next, turnId, { kind: 'call', callId }))
+      }
       if (request.tool === 'run_saved_query') {
         const { args } = request
         const run = savedRunView(callId, args.purpose, {
@@ -178,7 +205,8 @@ export function applyFrame(state: ThreadState, turnId: string, frame: ChatFrame)
       const { callId, ok, rowCount, durationMs } = frame.data
       const call = state.calls[callId]
       if (call) {
-        const status = call.output ? call.status : ok ? 'done' : 'failed'
+        const keepsOwnStatus = call.output && !(isOpenResult(call.output) && !ok)
+        const status = keepsOwnStatus ? call.status : ok ? 'done' : 'failed'
         return seen({ ...state, calls: { ...state.calls, [callId]: { ...call, status } } })
       }
       const current = state.runs[callId]
@@ -196,21 +224,8 @@ export function applyFrame(state: ThreadState, turnId: string, frame: ChatFrame)
       return seen(withItem(next, turnId, { kind: 'help', callId: link.callId }))
     }
     case 'draft': {
-      const { draftId, version, kind, payload } = frame.data
-      const next =
-        kind === 'dashboard'
-          ? {
-              ...state,
-              dashboardDrafts: {
-                ...state.dashboardDrafts,
-                [draftId]: withVersion(state.dashboardDrafts[draftId], draftId, version, payload),
-              },
-            }
-          : {
-              ...state,
-              drafts: { ...state.drafts, [draftId]: withVersion(state.drafts[draftId], draftId, version, payload) },
-            }
-      return seen(withItem(next, turnId, { kind: 'draft', draftId, version }))
+      const { draftId, version } = frame.data
+      return seen(withItem(putDraft(state, frame.data), turnId, { kind: 'draft', draftId, version }))
     }
     case 'turn_done':
       return seen(
@@ -229,11 +244,11 @@ export function failTurn(state: ThreadState, turnId: string, message: string): T
   )
 }
 
-export function settleCall(state: ThreadState, callId: string, result: ChatToolResult): ThreadState {
+export function settleCall(state: ThreadState, callId: string, result: ChatToolResult | OpenToolResult): ThreadState {
   const call = state.calls[callId]
   if (!call) return state
   const next = { ...state, calls: { ...state.calls, [callId]: settledView(call, result) } }
-  if (call.tool === 'open_dashboard' && result.kind === 'dashboard' && result.ok && result.dashboard) {
+  if (!isOpenResult(result) && call.tool === 'open_dashboard' && result.kind === 'dashboard' && result.ok && result.dashboard) {
     return setActiveDashboard(next, {
       id: result.dashboard.id,
       name: result.dashboard.name,
@@ -245,21 +260,6 @@ export function settleCall(state: ThreadState, callId: string, result: ChatToolR
 
 export function setRunError(state: ThreadState, callId: string, error: string): ThreadState {
   return updateRun(state, callId, { error })
-}
-
-export function addPromotion(state: ThreadState, draftId: string, promotion: ChatPromotion): ThreadState {
-  const draft = state.drafts[draftId]
-  if (!draft) return state
-  return { ...state, drafts: { ...state.drafts, [draftId]: { ...draft, promotions: [...draft.promotions, promotion] } } }
-}
-
-export function addDashboardPromotion(state: ThreadState, draftId: string, promotion: ChatPromotion): ThreadState {
-  const draft = state.dashboardDrafts[draftId]
-  if (!draft) return state
-  return {
-    ...state,
-    dashboardDrafts: { ...state.dashboardDrafts, [draftId]: { ...draft, promotions: [...draft.promotions, promotion] } },
-  }
 }
 
 export function setActiveDashboard(state: ThreadState, dashboard: ActiveDashboard): ThreadState {

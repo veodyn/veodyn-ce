@@ -11,8 +11,8 @@
 // halves of this suite are src/app/kpis/library-conventions.test.tsx and
 // src/app/reports/library-conventions.test.tsx, which make the same two
 // assertions.
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ComponentType } from 'react'
 import { ConfigProvider } from '@/components/config/config-provider'
@@ -24,6 +24,14 @@ import QueriesPage from './queries/page'
 // instance config.
 import { QuerySnippetsPage } from './query-snippets/query-snippets-page'
 
+vi.stubEnv('NEXT_PUBLIC_REDASH_URL', 'http://redash.test')
+
+const createThread = vi.hoisted(() => vi.fn())
+vi.mock('@/services/ai/chat-client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/ai/chat-client')>()),
+  createThread,
+}))
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(''),
@@ -34,23 +42,22 @@ interface LibraryPage {
   Page: ComponentType
   /** The manual button that was there before this feature, and still is. */
   manual: RegExp
-  /** The dialog title that proves which `kind` this page passed. */
-  chatTitle: string
+  newKind: 'query' | 'dashboard' | 'snippet'
 }
 
 const LIBRARY_PAGES: LibraryPage[] = [
-  { label: '/queries', Page: QueriesPage, manual: /new query/i, chatTitle: 'Create a query with AI' },
+  { label: '/queries', Page: QueriesPage, manual: /new query/i, newKind: 'query' },
   {
     label: '/dashboards',
     Page: DashboardsPage,
     manual: /new dashboard/i,
-    chatTitle: 'Create a dashboard with AI',
+    newKind: 'dashboard',
   },
   {
     label: '/query-snippets',
     Page: QuerySnippetsPage,
     manual: /new snippet/i,
-    chatTitle: 'Create a snippet with AI',
+    newKind: 'snippet',
   },
 ]
 
@@ -61,6 +68,8 @@ function renderPage(Page: ComponentType, aiEnabled: boolean) {
     </ConfigProvider>
   )
 }
+
+beforeEach(() => createThread.mockResolvedValue({ id: 'new-thread' }))
 
 afterEach(() => resetStores())
 
@@ -82,8 +91,8 @@ describe('the Create-with-AI entry point on the library pages', () => {
   )
 
   it.each(LIBRARY_PAGES)(
-    '$label puts Create with AI before its manual button and opens the chat for its own kind',
-    async ({ Page, manual, chatTitle }) => {
+    '$label puts Create with AI before its manual button and starts a chat about a new object of its own kind',
+    async ({ Page, manual, newKind }) => {
       const user = userEvent.setup()
       renderPage(Page, true)
 
@@ -97,7 +106,9 @@ describe('the Create-with-AI entry point on the library pages', () => {
       )
 
       await user.click(aiButton)
-      expect(await screen.findByRole('dialog')).toHaveAccessibleName(chatTitle)
+      await waitFor(() =>
+        expect(createThread).toHaveBeenCalledWith({ kind: 'new', newKind }, expect.any(AbortSignal))
+      )
     }
   )
 })

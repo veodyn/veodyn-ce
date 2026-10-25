@@ -1,4 +1,4 @@
-import { getJson, type Access } from './redash-get'
+import { getJson, type Access, type ContextReader } from './redash-get'
 import { RESOURCE_SECTION_RE } from './resource-section'
 import { TURN_CONTEXT_LIMITS, type DataSourceEntry } from './turn-context'
 import { ttlCache } from './ttl-cache'
@@ -62,17 +62,16 @@ async function entryFor(source: RawDataSource, access: Access): Promise<DataSour
 }
 
 async function sourceList(access: Access): Promise<RawDataSource[]> {
-  const key = access.cookie ?? ''
-  const cached = sourceListCache.get(key)
+  const cached = sourceListCache.get(access.key)
   if (cached) return cached
   const sources = await getJson<RawDataSource[]>('/api/data_sources', access)
   if (!Array.isArray(sources)) throw new Error('data source list unavailable')
-  if (!access.signal.aborted) sourceListCache.set(key, sources)
+  if (!access.signal.aborted) sourceListCache.set(access.key, sources)
   return sources
 }
 
-export async function dataSourceInventory(cookie: string | null, signal: AbortSignal): Promise<DataSourceEntry[]> {
-  const access: Access = { cookie, signal }
+export async function dataSourceInventory(reader: ContextReader, signal: AbortSignal): Promise<DataSourceEntry[]> {
+  const access: Access = { ...reader, signal }
   const sources = await sourceList(access)
   return Promise.all(sources.slice(0, TURN_CONTEXT_LIMITS.dataSources).map((source) => entryFor(source, access)))
 }

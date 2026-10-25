@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cookieReader } from './redash-get'
 
 const redashFetch = vi.hoisted(() => vi.fn())
 const choices = vi.hoisted(() => ({ list: [] as unknown[] }))
@@ -60,7 +61,7 @@ function serve(stub: Stub) {
 
 async function ready(cookie: string | null = 'session=a') {
   const { readyQueries } = await import('./ready-queries')
-  return readyQueries(cookie, SIGNAL)
+  return readyQueries(cookieReader(cookie), SIGNAL)
 }
 
 beforeEach(() => {

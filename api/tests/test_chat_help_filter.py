@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from tests.converse_stubs import SPEEDS
+from tests.catalog_stubs import SPEEDS
 from veodyn_api.schemas.ai_chat_context import ChatInstanceIn
 from veodyn_api.services.chat import help_index
 from veodyn_api.services.chat.help_filter import for_edition

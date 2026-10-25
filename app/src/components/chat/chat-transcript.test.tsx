@@ -31,7 +31,13 @@ function state(overrides: Partial<ThreadState['turns'][number]> = {}, run: RunVi
     runs: { c1: run },
     drafts: {},
     dashboardDrafts: {},
+    editDrafts: {},
+    vizDrafts: {},
+    dashboardEditDrafts: {},
+    operationDrafts: {},
+    contributedDrafts: {},
     activeDashboard: null,
+    queryDraftSync: {},
     turns: [
       {
         id: 't1',

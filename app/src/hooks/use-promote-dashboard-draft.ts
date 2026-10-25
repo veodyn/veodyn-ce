@@ -1,16 +1,23 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { useWriteProposedQuery } from '@/components/ai/create-chat/proposals/use-write-proposed-query'
-import { pickVisualization, visibleWidgetCount } from '@/lib/chat/library-results'
+import { useWriteProposedQuery } from '@/components/chat/proposal-kit/use-write-proposed-query'
+import { calculateNewWidgetPosition, getDefaultSize, type PlacedWidget } from '@/components/dashboard/add-widget-layout'
+import { visibleWidgetCount } from '@/lib/chat/library-results'
+import {
+  abandonPromotion,
+  finishPromotion,
+  idempotencyKey,
+  type PromotionReceipt,
+} from '@/lib/chat/promotion-lifecycle'
 import type { ActiveDashboard, DashboardDraftView, DraftView } from '@/lib/chat/thread-model'
 import type { ChatPromotion } from '@/lib/chat/wire'
 import { readQueryError } from '@/lib/query-error'
 import { recordPromotion } from '@/services/ai/chat-client'
 import * as dashboardsService from '@/services/redash/dashboards'
-import * as queriesService from '@/services/redash/queries'
 import { createWidget } from '@/services/redash/widgets'
-import { promoteQueryDraft } from './promote-query-draft'
+import { resolveDraftChart, resolveExistingChart, type QueryDraftHold, type QueryPromoted } from './resolve-draft-chart'
+import { useUnsyncedRecord } from './use-unsynced-record'
 
 export type DashboardPromoteStatus = 'idle' | 'saving' | 'conflict'
 
@@ -18,44 +25,27 @@ export interface DashboardPromotion {
   status: DashboardPromoteStatus
   error: string | null
   skipped: string[]
+  unsynced: boolean
+  retrySync: () => void
   save: () => void
   append: (overwrite: boolean) => void
   keep: () => void
 }
 
-type QueryPromoted = (draftId: string, promotion: ChatPromotion) => void
 type DashboardPromoted = (draftId: string, promotion: ChatPromotion) => void
 type DashboardActivated = (dashboard: ActiveDashboard) => void
 
-const WIDGET_SIZE = { sizeX: 3, sizeY: 8 }
+const TEXT_SIZE = { sizeX: 6, sizeY: 4 }
+const DASHBOARD_STEP = 0
+const FIRST_WIDGET_STEP = 1
 
-interface ResolvedItem {
-  visualizationId: number
-  title?: string
-}
+type ResolvedItem =
+  | { kind: 'chart'; visualizationId: number; visualizationType?: string; step: number }
+  | { kind: 'text'; text: string; step: number }
 
-async function resolveDraftItem(
-  write: ReturnType<typeof useWriteProposedQuery>['write'],
-  queryDraft: DraftView | undefined,
-  onQueryPromoted: QueryPromoted
-): Promise<ResolvedItem | null> {
-  if (!queryDraft) return null
-  const promoted = queryDraft.promotions[queryDraft.promotions.length - 1]
-  if (promoted) {
-    const query = await queriesService.get(Number(promoted.targetId)).catch(() => null)
-    if (!query) return null
-    const visualization = pickVisualization(query, null)
-    return typeof visualization === 'string' ? null : { visualizationId: visualization.id }
-  }
-  const written = await promoteQueryDraft(write, queryDraft)
-  onQueryPromoted(queryDraft.id, written.promotion)
-  return written.visualizationId === null ? null : { visualizationId: written.visualizationId }
-}
-
-async function resolveExistingItem(queryId: number, visualizationId: number): Promise<ResolvedItem | null> {
-  const query = await queriesService.get(queryId).catch(() => null)
-  const found = query?.visualizations.find((one) => one.id === visualizationId)
-  return found ? { visualizationId } : null
+interface Progress {
+  receipts: PromotionReceipt[]
+  step: number
 }
 
 export function usePromoteDashboardDraft(
@@ -64,13 +54,16 @@ export function usePromoteDashboardDraft(
   activeDashboard: ActiveDashboard | null,
   onQueryPromoted: QueryPromoted,
   onDashboardPromoted: DashboardPromoted,
-  onDashboardActive: DashboardActivated
+  onDashboardActive: DashboardActivated,
+  querySync: QueryDraftHold
 ): DashboardPromotion {
   const { write } = useWriteProposedQuery()
   const [status, setStatus] = useState<DashboardPromoteStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [skipped, setSkipped] = useState<string[]>([])
   const latest = draft.versions[draft.versions.length - 1]
+  const unsynced = useUnsyncedRecord(draft.id, (record) => onDashboardPromoted(draft.id, record))
+  const { hold } = unsynced
 
   const fail = useCallback((cause: unknown) => {
     setError(readQueryError(cause).message)
@@ -80,29 +73,68 @@ export function usePromoteDashboardDraft(
   const resolveItems = useCallback(async () => {
     const widgets: ResolvedItem[] = []
     const skippedTitles: string[] = []
-    for (const item of latest?.payload.items ?? []) {
+    const items = latest?.payload.items ?? []
+    for (const [index, item] of items.entries()) {
+      const step = FIRST_WIDGET_STEP + index
+      if (item.kind === 'text') {
+        widgets.push({ kind: 'text', text: item.text, step })
+        continue
+      }
       const resolved =
         item.kind === 'draft'
-          ? await resolveDraftItem(write, queryDrafts[item.queryDraftId], onQueryPromoted)
-          : await resolveExistingItem(item.queryId, item.visualizationId)
-      if (resolved) widgets.push({ ...resolved, title: item.title })
-      else skippedTitles.push(item.title ?? (item.kind === 'draft' ? item.queryDraftId : `query ${item.queryId}`))
+          ? await resolveDraftChart(write, queryDrafts[item.queryDraftId], onQueryPromoted, querySync)
+          : await resolveExistingChart(item.queryId, item.visualizationId)
+      const label = item.title ?? (item.kind === 'draft' ? item.queryDraftId : `query ${item.queryId}`)
+      if (resolved && 'visualizationId' in resolved) {
+        widgets.push({
+          kind: 'chart',
+          visualizationId: resolved.visualizationId,
+          visualizationType: resolved.visualizationType,
+          step,
+        })
+      } else {
+        skippedTitles.push(resolved ? `${label} (${resolved.reason})` : label)
+      }
     }
     return { widgets, skippedTitles }
-  }, [latest, queryDrafts, write, onQueryPromoted])
+  }, [latest, queryDrafts, write, onQueryPromoted, querySync])
 
-  const writeWidgets = useCallback(async (dashboardId: number, startIndex: number, widgets: ResolvedItem[]) => {
-    let created = 0
-    for (const widget of widgets) {
-      await createWidget({
-        dashboard_id: dashboardId,
-        visualization_id: widget.visualizationId,
-        options: { position: { col: 0, row: (startIndex + created) * WIDGET_SIZE.sizeY, ...WIDGET_SIZE } },
-      })
-      created += 1
-    }
-    return created
-  }, [])
+  const writeWidgets = useCallback(
+    async (
+      dashboardId: number,
+      existing: readonly PlacedWidget[],
+      widgets: ResolvedItem[],
+      progress: Progress,
+      keyPrefix: string,
+      knownWidgetIds: ReadonlySet<number> = new Set()
+    ) => {
+      if (!latest) return 0
+      const layout = [...existing]
+      let charts = 0
+      for (const widget of widgets) {
+        progress.step = widget.step
+        const size = widget.kind === 'text' ? TEXT_SIZE : getDefaultSize(widget.visualizationType ?? '')
+        const position = { ...calculateNewWidgetPosition(layout, size.sizeX, size.sizeY), ...size }
+        layout.push({ options: { position } })
+        const widgetRecord = await createWidget({
+          dashboard_id: dashboardId,
+          visualization_id: widget.kind === 'chart' ? widget.visualizationId : null,
+          ...(widget.kind === 'text' ? { text: widget.text } : {}),
+          options: { position },
+          idempotency_key: `${keyPrefix}${widget.step}`,
+        })
+        progress.receipts.push({
+          step: widget.step,
+          outcome: 'done',
+          targetId: String(widgetRecord.id),
+          updatedAt: widgetRecord.updated_at,
+        })
+        if (widget.kind === 'chart' && !knownWidgetIds.has(widgetRecord.id)) charts += 1
+      }
+      return charts
+    },
+    [latest]
+  )
 
   const save = useCallback(() => {
     if (!latest) return
@@ -110,22 +142,40 @@ export function usePromoteDashboardDraft(
     setError(null)
     setSkipped([])
     const run = async () => {
-      const { widgets, skippedTitles } = await resolveItems()
-      const dashboard = await dashboardsService.create({ name: latest.payload.name })
-      const created = await writeWidgets(dashboard.id, 0, widgets)
-      const promotion = await recordPromotion(draft.id, {
+      const pending = await recordPromotion(draft.id, {
         version: latest.version,
         targetType: 'dashboard',
-        targetId: String(dashboard.id),
-        targetVersionAtPromote: created,
+        status: 'pending',
       })
-      onDashboardPromoted(draft.id, promotion)
-      onDashboardActive({ id: dashboard.id, name: dashboard.name, widgetCount: created })
-      setSkipped(skippedTitles)
-      setStatus('idle')
+      const progress: Progress = { receipts: [], step: DASHBOARD_STEP }
+      let dashboardId: string | null = null
+      try {
+        const { widgets, skippedTitles } = await resolveItems()
+        const dashboard = await dashboardsService.create({
+          name: latest.payload.name,
+          idempotency_key: idempotencyKey(draft.id, latest.version, DASHBOARD_STEP),
+        })
+        dashboardId = String(dashboard.id)
+        progress.receipts.push({
+          step: DASHBOARD_STEP,
+          outcome: 'done',
+          targetId: dashboardId,
+          updatedAt: dashboard.updated_at,
+        })
+        const created = await writeWidgets(dashboard.id, [], widgets, progress, `${draft.id}:${latest.version}:`)
+        const sync = await finishPromotion(draft.id, pending, dashboardId, progress.receipts, created)
+        if (sync.synced) onDashboardPromoted(draft.id, sync.promotion)
+        else hold(sync.promotion, sync.patch)
+        onDashboardActive({ id: dashboard.id, name: dashboard.name, widgetCount: created })
+        setSkipped(skippedTitles)
+        setStatus('idle')
+      } catch (cause) {
+        await abandonPromotion(draft.id, pending, progress.receipts, progress.step, cause, dashboardId)
+        throw cause
+      }
     }
     run().catch(fail)
-  }, [latest, resolveItems, writeWidgets, draft.id, onDashboardPromoted, onDashboardActive, fail])
+  }, [latest, resolveItems, writeWidgets, draft.id, onDashboardPromoted, onDashboardActive, hold, fail])
 
   const append = useCallback(
     (overwrite: boolean) => {
@@ -145,26 +195,45 @@ export function usePromoteDashboardDraft(
           setStatus('conflict')
           return
         }
-        const { widgets, skippedTitles } = await resolveItems()
-        const created = await writeWidgets(activeDashboard.id, currentCount, widgets)
-        const widgetCount = currentCount + created
-        const promotion = await recordPromotion(draft.id, {
+        const targetId = String(activeDashboard.id)
+        const pending = await recordPromotion(draft.id, {
           version: latest.version,
           targetType: 'dashboard',
-          targetId: String(activeDashboard.id),
-          targetVersionAtPromote: widgetCount,
+          targetId,
+          status: 'pending',
         })
-        onDashboardPromoted(draft.id, promotion)
-        onDashboardActive({ id: activeDashboard.id, name: activeDashboard.name, widgetCount })
-        setSkipped(skippedTitles)
-        setStatus('idle')
+        const progress: Progress = {
+          receipts: [{ step: DASHBOARD_STEP, outcome: 'skipped', targetId }],
+          step: DASHBOARD_STEP,
+        }
+        try {
+          const { widgets, skippedTitles } = await resolveItems()
+          const created = await writeWidgets(
+            activeDashboard.id,
+            current.widgets,
+            widgets,
+            progress,
+            `${draft.id}:${latest.version}:d${activeDashboard.id}:`,
+            new Set(current.widgets.map((widget) => widget.id))
+          )
+          const widgetCount = currentCount + created
+          const sync = await finishPromotion(draft.id, pending, targetId, progress.receipts, widgetCount)
+          if (sync.synced) onDashboardPromoted(draft.id, sync.promotion)
+          else hold(sync.promotion, sync.patch)
+          onDashboardActive({ id: activeDashboard.id, name: activeDashboard.name, widgetCount })
+          setSkipped(skippedTitles)
+          setStatus('idle')
+        } catch (cause) {
+          await abandonPromotion(draft.id, pending, progress.receipts, progress.step, cause, targetId)
+          throw cause
+        }
       }
       run().catch(fail)
     },
-    [latest, activeDashboard, resolveItems, writeWidgets, draft.id, onDashboardPromoted, onDashboardActive, fail]
+    [latest, activeDashboard, resolveItems, writeWidgets, draft.id, onDashboardPromoted, onDashboardActive, hold, fail]
   )
 
   const keep = useCallback(() => setStatus('idle'), [])
 
-  return { status, error, skipped, save, append, keep }
+  return { status, error, skipped, unsynced: unsynced.held, retrySync: unsynced.retry, save, append, keep }
 }

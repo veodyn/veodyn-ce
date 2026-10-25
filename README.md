@@ -22,7 +22,7 @@ node: open source, self-hosted, and complete on its own.
 | | |
 |---|---|
 | ![Home: feed freshness, favorites and recent queries](docs/static/img/screenshots/home.png) | ![A dashboard of live transit and traffic widgets](docs/static/img/screenshots/dashboard-view.png) |
-| ![The SQL editor with schema browser and live preview](docs/static/img/screenshots/query-editor.png) | ![Create with AI drafting a query from a question](docs/static/img/screenshots/ai-create-chat.png) |
+| ![The SQL editor with schema browser and live preview](docs/static/img/screenshots/query-editor.png) | ![Discover: the data catalog](docs/static/img/screenshots/discover.png) |
 
 More captures of every screen are in [`docs/static/img/screenshots/`](docs/static/img/screenshots/),
 and the [documentation](https://docs.veodyn.com) walks through each one.

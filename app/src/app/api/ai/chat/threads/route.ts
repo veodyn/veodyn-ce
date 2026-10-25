@@ -1,5 +1,5 @@
 import { notFound, relayChatJson } from '@/lib/chat/relay'
-import { threadListSchema, threadSchema } from '@/lib/chat/wire'
+import { createThreadRequestSchema, threadListSchema, threadSchema } from '@/lib/chat/wire'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,5 +10,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  return relayChatJson(request, { method: 'POST', path: 'threads', responseSchema: threadSchema })
+  return relayChatJson(request, {
+    method: 'POST',
+    path: 'threads',
+    requestSchema: createThreadRequestSchema,
+    emptyBody: {},
+    responseSchema: threadSchema,
+  })
 }

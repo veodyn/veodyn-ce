@@ -1,10 +1,3 @@
-// What this server offers an assistant client.
-//
-// Read-only, deliberately. An MCP client acts on a model's judgement, and the
-// blast radius of a mistaken write against a shared analytics instance is not
-// worth the convenience. Creating and editing stay in the app, where a person
-// is looking at the screen.
-
 export interface McpToolSchema {
   name: string
   title: string
@@ -21,12 +14,19 @@ const PAGE_SIZE = {
   description: 'How many rows to return. Defaults to 25, capped at 100.',
 } as const
 
+export const LEGACY_TOOL_NAMES: ReadonlySet<string> = new Set([
+  'list_queries',
+  'get_query',
+  'list_dashboards',
+  'get_dashboard',
+])
+
 export const MCP_TOOLS: McpToolSchema[] = [
   {
     name: 'list_queries',
     title: 'List queries',
     description:
-      'List the saved queries this instance holds, newest first. Use the search argument to narrow by name. Returns id, name, description and schedule for each.',
+      'Deprecated, use search_library. List the saved queries this instance holds, newest first. Use the search argument to narrow by name. Returns id, name, description and schedule for each.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -39,7 +39,7 @@ export const MCP_TOOLS: McpToolSchema[] = [
     name: 'get_query',
     title: 'Get a query',
     description:
-      'Read one saved query in full, including its SQL and any parameters it declares. Call this before run_query when you need to know what parameters to pass.',
+      'Deprecated, use open_query. Read one saved query in full, including its SQL and any parameters it declares. Call this before run_query when you need to know what parameters to pass.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -52,7 +52,7 @@ export const MCP_TOOLS: McpToolSchema[] = [
     name: 'run_query',
     title: 'Run a query',
     description:
-      "Execute a saved query and return its rows. Runs as the credential you authenticated with, so it can only reach data that identity may read. Prefer leaving max_age unset: the instance's cached result is usually what you want and costs the warehouse nothing.",
+      "Deprecated for saved queries, use run_saved_query. Execute a saved query and return its rows. Runs as the credential you authenticated with, so it can only reach data that identity may read. Prefer leaving max_age unset: the instance's cached result is usually what you want and costs the warehouse nothing.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -74,7 +74,7 @@ export const MCP_TOOLS: McpToolSchema[] = [
     name: 'list_dashboards',
     title: 'List dashboards',
     description:
-      'List the dashboards this instance holds. Returns id, name and slug for each, so a dashboard can then be read with get_dashboard. Prefer passing the id back to get_dashboard: a slug costs an extra lookup.',
+      'Deprecated, use search_library. List the dashboards this instance holds. Returns id, name and slug for each, so a dashboard can then be read with get_dashboard. Prefer passing the id back to get_dashboard: a slug costs an extra lookup.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -90,7 +90,7 @@ export const MCP_TOOLS: McpToolSchema[] = [
     name: 'get_dashboard',
     title: 'Get a dashboard',
     description:
-      'Read one dashboard: its widgets, and for each widget the query behind it. Use this to find which queries answer a question, then run them.',
+      'Deprecated, use open_dashboard. Read one dashboard: its widgets, and for each widget the query behind it. Use this to find which queries answer a question, then run them.',
     inputSchema: {
       type: 'object',
       properties: {

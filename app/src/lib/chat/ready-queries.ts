@@ -1,7 +1,7 @@
 import '@/plugins'
 import { config } from '@/lib/config'
 import { visibilityOf, visibleVizChoices, type VizChoice } from '@/lib/viz-choices'
-import { getJson, type Access } from './redash-get'
+import { getJson, type Access, type ContextReader } from './redash-get'
 import { TURN_CONTEXT_LIMITS, type ReadyParam, type ReadyQuery } from './turn-context'
 import { ttlCache } from './ttl-cache'
 
@@ -173,15 +173,15 @@ async function fanOut(choices: VizChoice[], access: Access): Promise<{ queries: 
   return { queries, clean: !run.failed && !access.signal.aborted }
 }
 
-export async function readyQueries(cookie: string | null, signal: AbortSignal): Promise<ReadyQuery[]> {
+export async function readyQueries(reader: ContextReader, signal: AbortSignal): Promise<ReadyQuery[]> {
   const tagged = visibleVizChoices(visibilityOf(config)).filter((choice) => choice.libraryTag)
   if (tagged.length === 0) return []
-  const key = cookie ?? ''
+  const { key } = reader
   const hit = cache.get(key)
   if (hit) return hit
   const pending = inflight.get(key)
   if (pending) return pending
-  const job = fanOut(tagged, { cookie, signal })
+  const job = fanOut(tagged, { ...reader, signal })
     .then(({ queries, clean }) => {
       if (clean) cache.set(key, queries)
       return queries

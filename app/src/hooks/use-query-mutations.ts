@@ -20,7 +20,7 @@ export function useCreateQuery() {
   const qc = useQueryClient()
   const store = useMockDataStore()
   return useMutation({
-    mutationFn: async (data: Partial<MockQuery>) => {
+    mutationFn: async (data: queriesService.CreateQueryData) => {
       if (USE_REAL_API) {
         return queriesService.create(data)
       }

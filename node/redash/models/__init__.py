@@ -40,6 +40,7 @@ from redash.models.base import (
     primary_key,
 )
 from redash.models.changes import Change, ChangeTrackingMixin  # noqa
+from redash.models.client_operations import ClientOperation
 from redash.models.mixins import BelongsToOrgMixin, TimestampMixin
 from redash.models.organizations import Organization
 from redash.models.parameterized_query import (
@@ -1534,10 +1535,28 @@ class ApiKey(TimestampMixin, GFKBase, db.Model):
         once does not queue. hashtext gives the object type a stable int4 to sit
         in the first half of the advisory lock key.
         """
+        cls._lock_by_id(object.__class__.__tablename__, object.id)
+
+    @classmethod
+    def _lock_by_id(cls, object_type, object_id):
         db.session.execute(
             text("SELECT pg_advisory_xact_lock(hashtext(:object_type), :object_id)"),
-            {"object_type": object.__class__.__tablename__, "object_id": object.id},
+            {"object_type": object_type, "object_id": object_id},
         )
+
+    @classmethod
+    def lock_before_row_lock(cls, model_cls, object_id):
+        if model_cls is Query:
+            visualization_ids = [
+                row.id
+                for row in db.session.query(Visualization.id)
+                .filter(Visualization.query_id == object_id)
+                .order_by(Visualization.id)
+            ]
+            for visualization_id in visualization_ids:
+                cls._lock_by_id(Visualization.__tablename__, visualization_id)
+        elif model_cls in (Dashboard, Visualization):
+            cls._lock_by_id(model_cls.__tablename__, object_id)
 
     @classmethod
     def get_by_api_key(cls, api_key):
@@ -1783,7 +1802,7 @@ def revoke_share_tokens_when_target_is_archived(session, flush_context, instance
         else:
             # A query is not shared itself. Its visualizations are, and they
             # survive its archive with no flag of their own to go by.
-            for visualization in object.visualizations:
+            for visualization in sorted(object.visualizations, key=lambda visualization: visualization.id):
                 ApiKey.deactivate_for_object(visualization)
 
 

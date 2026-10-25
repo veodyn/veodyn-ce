@@ -4,6 +4,7 @@ import { use } from 'react'
 import Link from 'next/link'
 import { Play } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
+import { AskAboutThis } from '@/components/chat/ask-about-this'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { NoData } from '@/components/ui/no-data'
@@ -95,6 +96,7 @@ export default function DatasetDetailPage({ params }: { params: Promise<{ datase
                 community build, which is the intended state, same rule as
                 dataset.records below. */}
             <Slot id="dataset.headerActions" props={{ dataset }} fallback={null} />
+            <AskAboutThis subject={{ kind: 'dataset', datasetId: dataset.id }} label={dataset.name} />
             <Button render={<Link href={queryHref} />}>
               <Play className="h-4 w-4" />
               Query this dataset

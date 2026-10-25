@@ -116,13 +116,17 @@ function declaredBodyLength(request: Request, message: string): number | null {
 async function readRequestText(
   request: Request,
   message: string,
-  maxBytes: number = MAX_REQUEST_BYTES
+  maxBytes: number = MAX_REQUEST_BYTES,
+  allowEmpty = false
 ): Promise<string> {
   const declaredLength = declaredBodyLength(request, message)
   if (declaredLength !== null && declaredLength > maxBytes) {
     throw invalidRequest(message, { reason: 'body too large' })
   }
-  if (request.body === null) throw invalidRequest(message, { reason: 'missing body' })
+  if (request.body === null) {
+    if (allowEmpty) return ''
+    throw invalidRequest(message, { reason: 'missing body' })
+  }
   try {
     return await readCappedStream(request.body, maxBytes)
   } catch (error) {
@@ -137,11 +141,12 @@ export async function parseAiRequest<T>(
   request: Request,
   schema: ZodType<T>,
   message: string,
-  maxBytes: number = MAX_REQUEST_BYTES
+  maxBytes: number = MAX_REQUEST_BYTES,
+  emptyAs?: unknown
 ): Promise<T> {
   let text: string
   try {
-    text = await readRequestText(request, message, maxBytes)
+    text = await readRequestText(request, message, maxBytes, emptyAs !== undefined)
   } catch (error) {
     if (isAppError(error)) throw error
     throw invalidRequest(message, { reason: 'unreadable body' })
@@ -149,7 +154,7 @@ export async function parseAiRequest<T>(
 
   let parsed: unknown
   try {
-    parsed = JSON.parse(text)
+    parsed = emptyAs !== undefined && text.trim() === '' ? emptyAs : JSON.parse(text)
   } catch {
     throw invalidRequest(message, { reason: 'malformed JSON' })
   }

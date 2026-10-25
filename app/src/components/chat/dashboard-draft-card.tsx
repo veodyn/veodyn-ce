@@ -4,6 +4,7 @@ import { LayoutDashboard } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { textTitle } from '@/lib/chat/dashboard-widgets'
 import type { DashboardDraftView, DraftView } from '@/lib/chat/thread-model'
 import type { QueryResultData } from '@/lib/mock-data'
 import { ResultView } from './result-view'
@@ -20,10 +21,16 @@ function itemTitle(
   item: DashboardDraftView['versions'][number]['payload']['items'][number],
   queryDrafts: Record<string, DraftView>
 ): string {
+  if (item.kind === 'text') return `Text: ${textTitle(item.text)}`
   if (item.title) return item.title
   if (item.kind === 'existing') return `Query ${item.queryId}`
   const queryDraft = queryDrafts[item.queryDraftId]
   return queryDraft?.versions[queryDraft.versions.length - 1]?.payload.name ?? item.queryDraftId
+}
+
+function itemKey(item: DashboardDraftView['versions'][number]['payload']['items'][number], index: number): string {
+  if (item.kind === 'text') return `text-${index}`
+  return item.kind === 'draft' ? item.queryDraftId : `${item.queryId}-${item.visualizationId}`
 }
 
 export function DashboardDraftCard({ draft, version, queryDrafts, resultForSql, children }: DashboardDraftCardProps) {
@@ -31,6 +38,8 @@ export function DashboardDraftCard({ draft, version, queryDrafts, resultForSql, 
   if (!shown) return null
   const latest = draft.versions[draft.versions.length - 1]?.version ?? shown.version
   const { payload } = shown
+  const charts = payload.items.filter((item) => item.kind !== 'text').length
+  const textBoxes = payload.items.length - charts
   return (
     <Card size="sm" className="w-full">
       <CardHeader>
@@ -43,8 +52,9 @@ export function DashboardDraftCard({ draft, version, queryDrafts, resultForSql, 
         {payload.description ? <CardDescription>{payload.description}</CardDescription> : null}
         <CardAction>
           <Badge variant="outline">
-            {payload.items.length} {payload.items.length === 1 ? 'chart' : 'charts'}
+            {charts} {charts === 1 ? 'chart' : 'charts'}
           </Badge>
+          {textBoxes > 0 ? <Badge variant="outline">{`${textBoxes} ${textBoxes === 1 ? 'text box' : 'text boxes'}`}</Badge> : null}
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -55,7 +65,7 @@ export function DashboardDraftCard({ draft, version, queryDrafts, resultForSql, 
             const data = draftPayload ? resultForSql(draftPayload.sql) : undefined
             return (
               <li
-                key={item.kind === 'draft' ? item.queryDraftId : `${item.queryId}-${item.visualizationId}`}
+                key={itemKey(item, index)}
                 className="flex flex-col gap-1"
               >
                 <span className="truncate text-sm">

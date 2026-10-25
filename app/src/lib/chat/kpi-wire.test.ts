@@ -79,7 +79,7 @@ describe('the KPI tool results', () => {
 describe('a stored KPI call', () => {
   it('comes back as a settled card with the result it was drawn from', () => {
     const detail = {
-      thread: { id: 't', title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '' },
+      thread: { id: 't', title: '', pinned: false, createdAt: '', updatedAt: '', lastTurnAt: '', origin: 'chat' },
       turns: [
         {
           id: 'turn',

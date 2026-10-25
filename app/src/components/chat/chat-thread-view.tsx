@@ -14,20 +14,32 @@ import {
   MessageScrollerViewport,
 } from '@/components/ui/message-scroller'
 import { useChatThread } from '@/hooks/use-chat-thread'
+import { useThreadSubjectLabel } from '@/hooks/use-thread-subject-label'
 import { ChatComposer } from './chat-composer'
 import { ChatTranscript, type Selection } from './chat-transcript'
+import { ContributedDraft } from './contributed-draft'
 import { DashboardDraftActions } from './dashboard-draft-actions'
+import { DashboardEditActions } from './dashboard-edit-actions'
+import { DashboardEditCard } from './dashboard-edit-card'
 import { DashboardDraftCard } from './dashboard-draft-card'
 import { DetailPane } from './detail-pane'
 import { DraftActions } from './draft-actions'
 import { DraftCard } from './draft-card'
 import { FollowNewTurns } from './follow-new-turns'
+import { OperationActions } from './operation-actions'
+import { OperationCard } from './operation-card'
+import { QueryEditActions } from './query-edit-actions'
+import { QueryEditCard } from './query-edit-card'
 import { SavedVizPane } from './saved-viz-pane'
+import { VizDraftActions } from './viz-draft-actions'
+import { VizDraftCard } from './viz-draft-card'
 
 export function ChatThreadView({ threadId }: { threadId: string }) {
   const chat = useChatThread(threadId)
+  const subjectLabel = useThreadSubjectLabel(threadId)
   const [selection, setSelection] = useState<Selection | null>(null)
   const { state, results } = chat
+  const querySync = { held: state.queryDraftSync, hold: chat.holdQueryDraftSync, retry: chat.retryQueryDraftSync }
 
   const resultForSql = (sql: string) => {
     const run = Object.values(state.runs).find((one) => one.sql === sql && results[one.callId])
@@ -51,8 +63,63 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
             onQueryPromoted={chat.promoted}
             onDashboardPromoted={chat.promotedDashboard}
             onDashboardActive={chat.dashboardActive}
+            querySync={querySync}
           />
         </DashboardDraftCard>
+      )
+    }
+    const dashboardEdit = state.dashboardEditDrafts[draftId]
+    if (dashboardEdit) {
+      return (
+        <DashboardEditCard draft={dashboardEdit} version={version} queryDrafts={state.drafts}>
+          <DashboardEditActions
+            draft={dashboardEdit}
+            version={version}
+            queryDrafts={state.drafts}
+            onQueryPromoted={chat.promoted}
+            onApplied={chat.promotedDashboardEdit}
+            onDashboardActive={chat.dashboardActive}
+            querySync={querySync}
+          />
+        </DashboardEditCard>
+      )
+    }
+    const editDraft = state.editDrafts[draftId]
+    if (editDraft) {
+      return (
+        <QueryEditCard draft={editDraft} version={version}>
+          <QueryEditActions draft={editDraft} version={version} onApplied={chat.promotedEdit} />
+        </QueryEditCard>
+      )
+    }
+    const vizDraft = state.vizDrafts[draftId]
+    if (vizDraft) {
+      return (
+        <VizDraftCard draft={vizDraft} version={version}>
+          <VizDraftActions draft={vizDraft} version={version} onApplied={chat.promotedViz} />
+        </VizDraftCard>
+      )
+    }
+    const operation = state.operationDrafts[draftId]
+    if (operation) {
+      return (
+        <OperationCard draft={operation} version={version}>
+          <OperationActions draft={operation} version={version} onApplied={chat.promotedOperation} />
+        </OperationCard>
+      )
+    }
+    const contributed = state.contributedDrafts[draftId]
+    if (contributed) {
+      return (
+        <ContributedDraft
+          threadId={threadId}
+          draft={contributed}
+          version={version}
+          queryDrafts={state.drafts}
+          onPromoted={chat.promotedContributed}
+          onQueryDraftPromoted={chat.promoted}
+          querySync={querySync}
+        />
       )
     }
     const draft = state.drafts[draftId]
@@ -66,7 +133,7 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
         selected={selection?.kind === 'draft' && selection.id === draftId}
         onSelect={() => setSelection({ kind: 'draft', id: draftId })}
       >
-        <DraftActions draft={draft} onPromoted={chat.promoted} />
+        <DraftActions draft={draft} onPromoted={chat.promoted} querySync={querySync} />
       </DraftCard>
     )
   }
@@ -119,6 +186,7 @@ export function ChatThreadView({ threadId }: { threadId: string }) {
             disabled={chat.busy || chat.loading}
             sending={chat.busy}
             notice={chat.sendError}
+            placeholder={subjectLabel}
           />
           {chat.busy && !chat.loading ? (
             <IconButton tooltip="Stop" variant="outline" size="icon" className="mb-2 rounded-full" onClick={chat.stop}>

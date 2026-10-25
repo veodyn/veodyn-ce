@@ -47,10 +47,6 @@ const aiSchema = z
     message: 'ai.endpoint is required when ai.enabled is true',
     path: ['endpoint'],
   })
-  .refine((ai) => !ai.chat || ai.enabled, {
-    message: 'ai.chat needs ai.enabled',
-    path: ['chat'],
-  })
 
 // The unbranded instance is Veodyn's own, so it ships Veodyn's mark.
 export const DEFAULT_BRAND_NAME = 'Veodyn'
@@ -213,7 +209,7 @@ export type VeodynConfig = z.infer<typeof veodynConfigSchema>
 
 // Client-safe subset: everything except server-only AI internals.
 export type ClientConfig = Omit<VeodynConfig, 'ai' | 'map'> & {
-  ai: { enabled: boolean; chat?: boolean }
+  ai: { enabled: boolean }
   map: Omit<VeodynConfig['map'], 'providers'> & { providers?: ClientMapProvider[] }
 }
 
@@ -232,7 +228,7 @@ export function toClientConfig(config: VeodynConfig, secrets: ClientSecrets = {}
   const { providers, ...mapRest } = map
   return {
     ...rest,
-    ai: { enabled: ai.enabled, chat: ai.chat },
+    ai: { enabled: ai.enabled },
     map: providers ? { ...mapRest, providers: withGoogleKey(providers, secrets.googleMapsKey) } : mapRest,
   }
 }

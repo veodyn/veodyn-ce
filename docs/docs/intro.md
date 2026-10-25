@@ -47,7 +47,7 @@ services that deliver it.
 - **[Visualizations](/features/visualizations)**: 15 core types, each with a live-preview editor. Instances can allowlist types and install custom visualization plugins.
 - **[Data catalog](/features/data-catalog)**: browsable datasets with schema, coverage and freshness, organized into domains your instance defines.
 - **[Feed health](/features/captures)**: whether each upstream feed is current, judged against a cadence you declare, with the datasets it populates named beside it.
-- **[Create with AI](/features/ai)**: a chat that drafts queries, dashboards and snippets, grounded in what your instance actually has, plus SQL generation in the editor.
+- **[Create with AI](/features/ai)**: the data chat, which drafts queries, dashboards and snippets as cards you apply, grounded in what your instance actually has, plus SQL generation in the editor.
 - **[Search everything](/features/home)**: one federated search over queries, dashboards and datasets, with a tag vocabulary shared across object types.
 - **[White-label](/configuration)**: brand name, logo, accent color, chart palette, fonts, domains and feature flags come from instance configuration rather than from code.
 

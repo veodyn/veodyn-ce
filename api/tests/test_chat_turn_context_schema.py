@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from veodyn_api.schemas.ai_chat import ChatQueryResultIn, ChatSavedVisualizationResultIn
 from veodyn_api.schemas.ai_chat_context import ChatTurnIn
+from veodyn_api.schemas.ai_chat_results import ChatQueryResultIn, ChatSavedVisualizationResultIn
 
 FULL = {
     "text": "Show me route 720",

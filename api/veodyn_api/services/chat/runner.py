@@ -1,27 +1,36 @@
 import asyncio
-import json
 import logging
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from typing import Any, TypeVar
 
 from sqlalchemy.orm import Session
 
 from veodyn_api.errors import ApiError, ErrorId
-from veodyn_api.schemas.catalog import DatasetOut
 from veodyn_api.services.ai_viz_catalog import DEFAULT_CATALOG, VizCatalog
 from veodyn_api.services.chat import store
 from veodyn_api.services.chat.bus import TurnBus
 from veodyn_api.services.chat.closing import CLOSING_RESERVE_SECONDS, close_turn, settle_pending
-from veodyn_api.services.chat.data_source_facts import resolve_source_info
 from veodyn_api.services.chat.driver import ChatModel
 from veodyn_api.services.chat.prompt import chat_system
+from veodyn_api.services.chat.tool_context import (
+    DatasetLoader,
+    DataSourceLoader,
+    DraftHooks,
+    build_tool_context,
+    complete_result,
+    fixed_scope,
+    settled_content,
+    tool_result_block,
+    visible_datasets,
+)
 from veodyn_api.services.chat.tools import (
     ClientCall,
-    DataSourceInfo,
     Immediate,
     ToolContext,
+    completer_for,
     prepare_call,
+    result_kind_for,
     tool_definitions,
 )
 from veodyn_api.services.chat.turn_context import EMPTY_CONTEXT, TurnContext
@@ -41,8 +50,6 @@ CANCELLED_RESULT = {"ok": False, "error": "the analyst stopped this turn"}
 
 T = TypeVar("T")
 Sessions = Callable[[], Session]
-DatasetLoader = Callable[[], Awaitable[tuple[DatasetOut, ...]]]
-DataSourceLoader = Callable[[], Awaitable[int]]
 
 _RUNNING: set[asyncio.Task[None]] = set()
 
@@ -51,28 +58,12 @@ def _monotonic() -> float:
     return asyncio.get_running_loop().time()
 
 
-def _tool_result(call_id: str, content: str, is_error: bool) -> dict[str, Any]:
-    block: dict[str, Any] = {"type": "tool_result", "tool_use_id": call_id, "content": content}
-    if is_error:
-        block["is_error"] = True
-    return block
-
-
 def _merge_usage(total: dict[str, Any], usage: dict[str, Any]) -> None:
     for key, value in usage.items():
         if isinstance(value, int) and not isinstance(value, bool):
             total[key] = int(total.get(key, 0)) + value
         elif key == "model":
             total[key] = value
-
-
-def _parse_uuid(value: str | None) -> uuid.UUID | None:
-    if not value:
-        return None
-    try:
-        return uuid.UUID(value)
-    except ValueError:
-        return None
 
 
 class TurnRunner:
@@ -132,6 +123,7 @@ class TurnRunner:
                 usage=usage or None,
                 stop_reason=stop_reason,
                 error_id=None,
+                applied_delivered=bool(blocks),
             )
             await self._bus.emit(key, "turn_done", {"stopReason": stop_reason, "usage": usage})
         except TimeoutError:
@@ -188,35 +180,28 @@ class TurnRunner:
         context: TurnContext,
     ) -> str:
         history, omitted = await self._db(store.replay, thread_id, seq, HISTORY_BUDGET)
-        datasets = await self._datasets()
+        datasets = await visible_datasets(self._datasets, self._data_source_id, context.data_sources)
         system = chat_system(datasets, omitted_history=omitted, catalog=catalog, context=context)
-        tools = tool_definitions(catalog)
+        instance = context.instance
+        tools = tool_definitions(
+            catalog, instance.edition if instance else None, instance.features if instance else None
+        )
         opening = [*history, {"role": "user", "content": [{"type": "text", "text": text}]}]
 
-        async def save_draft(kind: str, draft_id: str | None, payload: dict[str, Any]) -> tuple[str, int]:
-            saved, version = await self._db(store.save_draft, thread_id, turn_id, _parse_uuid(draft_id), kind, payload)
-            return str(saved), version
-
-        async def query_draft_exists(draft_id: str) -> bool:
-            parsed = _parse_uuid(draft_id)
-            if parsed is None:
-                return False
-            return await self._db(store.query_draft_exists, thread_id, parsed)
+        hooks = DraftHooks(self._db, fixed_scope(thread_id, turn_id), thread_id)
 
         async def on_text(delta: str) -> None:
             await self._bus.emit(key, "text_delta", {"text": delta})
 
-        def data_source_info(source_id: int) -> DataSourceInfo | None:
-            return resolve_source_info(source_id, context.data_sources, blocks)
-
-        ctx = ToolContext(
+        ctx = build_tool_context(
             datasets=datasets,
             data_source_id=self._data_source_id,
-            data_source_info=data_source_info,
-            save_draft=save_draft,
-            query_draft_exists=query_draft_exists,
+            sources=context.data_sources,
+            transcript=blocks,
+            hooks=hooks,
             catalog=catalog,
-            edition=context.instance.edition if context.instance else None,
+            edition=instance.edition if instance else None,
+            features=tuple(instance.features) if instance else None,
         )
         deadline = _monotonic() + TURN_SECONDS
         wait_until = deadline - CLOSING_RESERVE_SECONDS
@@ -260,20 +245,36 @@ class TurnRunner:
                 await self._bus.emit(key, "draft", outcome.draft)
             if outcome.frame is not None:
                 await self._bus.emit(key, *outcome.frame)
-            return _tool_result(call_id, outcome.content, outcome.is_error)
-        return await self._round_trip(key, outcome, wait_until)
+            return tool_result_block(call_id, outcome.content, outcome.is_error)
+        return await self._round_trip(key, outcome, ctx, wait_until)
 
-    async def _round_trip(self, key: str, request: ClientCall, wait_until: float) -> dict[str, Any]:
+    async def _complete(
+        self, key: str, request: ClientCall, result: dict[str, Any], ctx: ToolContext
+    ) -> tuple[dict[str, Any], Immediate | None]:
+        if result.get("ok") is True and completer_for(request.tool) is not None:
+            if await self._bus.cancel_requested(key):
+                return dict(CANCELLED_RESULT), None
+        return result, await complete_result(request, result, ctx)
+
+    async def _round_trip(self, key: str, request: ClientCall, ctx: ToolContext, wait_until: float) -> dict[str, Any]:
         await self._bus.set_pending(key, request.call_id, request.tool)
         await self._bus.emit(key, "status", {"phase": "waiting_for_browser"})
-        await self._bus.emit(
-            key, "tool_request", {"callId": request.call_id, "tool": request.tool, "args": request.args}
-        )
+        frame: dict[str, Any] = {"callId": request.call_id, "tool": request.tool, "args": request.args}
+        expected_kind = result_kind_for(request.tool)
+        if expected_kind is not None:
+            frame["resultKind"] = expected_kind
+        await self._bus.emit(key, "tool_request", frame)
         started = _monotonic()
         result = await self._await_result(key, request.call_id, wait_until)
         await self._bus.clear_pending(key)
+        result, completed = await self._complete(key, request, result, ctx)
+        if completed is not None:
+            if completed.draft is not None:
+                await self._bus.emit(key, "draft", completed.draft)
+            if completed.frame is not None:
+                await self._bus.emit(key, *completed.frame)
         elapsed_ms = int((_monotonic() - started) * 1000)
-        ok = result.get("ok") is True
+        ok = result.get("ok") is True and not (completed is not None and completed.is_error)
         settled: dict[str, Any] = {"callId": request.call_id, "ok": ok, "durationMs": elapsed_ms}
         if isinstance(result.get("rowCount"), int):
             settled["rowCount"] = result["rowCount"]
@@ -285,7 +286,8 @@ class TurnRunner:
             settled["sourceCount"] = len(sources)
         await self._bus.emit(key, "status", {"phase": "reading_result"})
         await self._bus.emit(key, "tool_settled", settled)
-        return _tool_result(request.call_id, json.dumps(result, separators=(",", ":")), not ok)
+        content, is_error = settled_content(result, completed)
+        return tool_result_block(request.call_id, content, is_error)
 
     async def _await_result(self, key: str, call_id: str, wait_until: float) -> dict[str, Any]:
         deadline = min(_monotonic() + TOOL_WAIT_SECONDS, wait_until)

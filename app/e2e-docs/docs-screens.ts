@@ -10,9 +10,9 @@
  * `.png`, and it has to keep matching, because the docs pages reference these
  * by name and `cd docs && pnpm build` fails on a broken reference.
  *
- * Nine more images are not in here because they are not plain navigations:
- * login, invite and reset are captured signed out, chart-editor,
- * visual-builder and ai-create-chat each need a surface driven open, and three
+ * Eight more images are not in here because they are not plain navigations:
+ * login, invite and reset are captured signed out, chart-editor and
+ * visual-builder each need a surface driven open, and three
  * are pack-only states this harness cannot reach. The spec carries those and
  * asserts the total.
  */

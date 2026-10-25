@@ -2,7 +2,7 @@
 
 import { useId, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
-import { CreateWithAiButton } from '@/components/ai/create-chat/create-with-ai-button'
+import { CreateWithAiButton } from '@/components/chat/create-with-ai-button'
 import { PageHeader } from '@/components/layout/page-header'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { RowActionsMenu, type RowAction } from '@/components/shared/row-actions-menu'

@@ -14,7 +14,7 @@ OTHER = "8"
 
 def answered(db: Session, owner_thread: uuid.UUID, text: str, reply: str) -> AiChatTurn:
     thread = store.thread_for_owner(db, OWNER, owner_thread)
-    turn = store.start_turn(db, thread, text)
+    turn = store.start_turn(db, thread, text)[0]
     store.finish_turn(
         db,
         turn.id,
@@ -29,7 +29,7 @@ def answered(db: Session, owner_thread: uuid.UUID, text: str, reply: str) -> AiC
 
 def test_every_reader_hides_another_owners_rows(db: Session) -> None:
     thread = store.create_thread(db, OWNER)
-    turn = store.start_turn(db, thread, "hello")
+    turn = store.start_turn(db, thread, "hello")[0]
     draft_id, _ = store.save_draft(db, thread.id, turn.id, None, "query", {"name": "q"})
     for read in (
         lambda: store.thread_for_owner(db, OTHER, thread.id),
@@ -61,7 +61,7 @@ def test_threads_list_pinned_first_then_most_recent(db: Session) -> None:
 
 def test_the_first_message_names_the_thread(db: Session) -> None:
     thread = store.create_thread(db, OWNER)
-    first = store.start_turn(db, thread, "  revenue   by route " + "x" * 200)
+    first = store.start_turn(db, thread, "  revenue   by route " + "x" * 200)[0]
     store.fail_turn(db, first.id, "X")
     store.start_turn(db, thread, "second message")
     title = store.thread_for_owner(db, OWNER, thread.id).title
@@ -73,18 +73,18 @@ def test_turns_are_numbered_per_thread(db: Session) -> None:
     thread = store.create_thread(db, OWNER)
     numbers = []
     for n in range(3):
-        turn = store.start_turn(db, thread, str(n))
+        turn = store.start_turn(db, thread, str(n))[0]
         store.finish_turn(db, turn.id, status="done", blocks=[], usage=None, stop_reason=None, error_id=None)
         numbers.append(turn.seq)
     assert numbers == [1, 2, 3]
-    assert store.start_turn(db, store.create_thread(db, OWNER), "a").seq == 1
+    assert store.start_turn(db, store.create_thread(db, OWNER), "a")[0].seq == 1
 
 
 def test_a_full_thread_refuses_another_turn(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(store, "MAX_TURNS_PER_THREAD", 2)
     thread = store.create_thread(db, OWNER)
     for text in ("a", "b"):
-        turn = store.start_turn(db, thread, text)
+        turn = store.start_turn(db, thread, text)[0]
         store.fail_turn(db, turn.id, "X")
     with pytest.raises(ApiError) as refused:
         store.start_turn(db, thread, "c")
@@ -94,7 +94,7 @@ def test_a_full_thread_refuses_another_turn(db: Session, monkeypatch: pytest.Mon
 
 def test_running_turn_is_found_until_it_finishes(db: Session) -> None:
     thread = store.create_thread(db, OWNER)
-    turn = store.start_turn(db, thread, "a")
+    turn = store.start_turn(db, thread, "a")[0]
     running = store.running_turn(db, thread.id)
     assert running is not None and running.id == turn.id
     store.finish_turn(db, turn.id, status="done", blocks=[], usage=None, stop_reason="end_turn", error_id=None)
@@ -108,7 +108,7 @@ def test_fail_turn_leaves_a_finished_turn_alone(db: Session) -> None:
     db.expire_all()
     kept = db.get(AiChatTurn, finished.id)
     assert kept is not None and kept.status == "done"
-    running = store.start_turn(db, thread, "c")
+    running = store.start_turn(db, thread, "c")[0]
     assert store.fail_turn(db, running.id, ErrorId.AI_TURN_LOST.value) is True
     db.expire_all()
     failed = db.get(AiChatTurn, running.id)
@@ -117,7 +117,7 @@ def test_fail_turn_leaves_a_finished_turn_alone(db: Session) -> None:
 
 def test_replay_carries_done_turns_in_order_without_thinking(db: Session) -> None:
     thread = store.create_thread(db, OWNER)
-    first = store.start_turn(db, thread, "one")
+    first = store.start_turn(db, thread, "one")[0]
     store.finish_turn(
         db,
         first.id,
@@ -138,10 +138,10 @@ def test_replay_carries_done_turns_in_order_without_thinking(db: Session) -> Non
         stop_reason="end_turn",
         error_id=None,
     )
-    failed = store.start_turn(db, thread, "broken")
+    failed = store.start_turn(db, thread, "broken")[0]
     store.fail_turn(db, failed.id, "X")
     answered(db, thread.id, "two", "answer two")
-    current = store.start_turn(db, thread, "three")
+    current = store.start_turn(db, thread, "three")[0]
 
     messages, omitted = store.replay(db, thread.id, current.seq, 100_000)
 
@@ -158,7 +158,7 @@ def test_replay_drops_the_oldest_turns_whole_past_the_budget(db: Session) -> Non
     thread = store.create_thread(db, OWNER)
     answered(db, thread.id, "old " + "x" * 500, "old reply")
     answered(db, thread.id, "new", "new reply")
-    current = store.start_turn(db, thread, "now")
+    current = store.start_turn(db, thread, "now")[0]
 
     messages, omitted = store.replay(db, thread.id, current.seq, 300)
 
@@ -168,7 +168,7 @@ def test_replay_drops_the_oldest_turns_whole_past_the_budget(db: Session) -> Non
 
 def test_draft_versions_count_up_and_an_unknown_draft_starts_a_new_one(db: Session) -> None:
     thread = store.create_thread(db, OWNER)
-    turn = store.start_turn(db, thread, "a")
+    turn = store.start_turn(db, thread, "a")[0]
     draft_id, first = store.save_draft(db, thread.id, turn.id, None, "query", {"v": 1})
     same, second = store.save_draft(db, thread.id, turn.id, draft_id, "query", {"v": 2})
     fresh, fresh_version = store.save_draft(db, thread.id, turn.id, uuid.uuid4(), "query", {"v": 3})
@@ -176,14 +176,14 @@ def test_draft_versions_count_up_and_an_unknown_draft_starts_a_new_one(db: Sessi
     assert same == draft_id
     assert fresh != draft_id
     other = store.create_thread(db, OWNER)
-    other_turn = store.start_turn(db, other, "b")
+    other_turn = store.start_turn(db, other, "b")[0]
     moved, _ = store.save_draft(db, other.id, other_turn.id, draft_id, "query", {"v": 4})
     assert moved != draft_id
 
 
 def test_query_draft_exists_checks_thread_kind_and_a_version(db: Session) -> None:
     thread = store.create_thread(db, OWNER)
-    turn = store.start_turn(db, thread, "a")
+    turn = store.start_turn(db, thread, "a")[0]
     query_draft, _ = store.save_draft(db, thread.id, turn.id, None, "query", {"v": 1})
     dashboard_draft, _ = store.save_draft(db, thread.id, turn.id, None, "dashboard", {"items": []})
 
@@ -197,7 +197,7 @@ def test_query_draft_exists_checks_thread_kind_and_a_version(db: Session) -> Non
 
 def test_promotions_are_recorded_against_an_existing_version(db: Session) -> None:
     thread = store.create_thread(db, OWNER)
-    turn = store.start_turn(db, thread, "a")
+    turn = store.start_turn(db, thread, "a")[0]
     draft_id, version = store.save_draft(db, thread.id, turn.id, None, "query", {"name": "q"})
     draft = store.draft_for_owner(db, OWNER, draft_id)
     store.record_promotion(
@@ -219,7 +219,7 @@ def test_promotions_are_recorded_against_an_existing_version(db: Session) -> Non
 
 def test_deleting_a_thread_takes_its_turns_and_drafts(db: Session) -> None:
     thread = store.create_thread(db, OWNER)
-    turn = store.start_turn(db, thread, "a")
+    turn = store.start_turn(db, thread, "a")[0]
     store.save_draft(db, thread.id, turn.id, None, "query", {})
     store.delete_thread(db, OWNER, thread.id)
     db.expire_all()
@@ -237,7 +237,7 @@ def test_update_thread_trims_the_title_and_sets_pinned(db: Session) -> None:
 
 def test_replay_skips_a_turn_that_stopped_inside_a_tool_call(db: Session) -> None:
     thread = store.create_thread(db, OWNER)
-    stopped = store.start_turn(db, thread, "stopped")
+    stopped = store.start_turn(db, thread, "stopped")[0]
     store.finish_turn(
         db,
         stopped.id,
@@ -248,7 +248,7 @@ def test_replay_skips_a_turn_that_stopped_inside_a_tool_call(db: Session) -> Non
         error_id=None,
     )
     answered(db, thread.id, "kept", "kept reply")
-    current = store.start_turn(db, thread, "now")
+    current = store.start_turn(db, thread, "now")[0]
 
     messages, _ = store.replay(db, thread.id, current.seq, 100_000)
 

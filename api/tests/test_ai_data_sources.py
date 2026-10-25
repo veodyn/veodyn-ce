@@ -15,11 +15,9 @@ import httpx
 import pytest
 import respx
 
+from tests.catalog_stubs import grounding_settings, mock_data_sources
 from tests.conftest import REDASH_TEST_URL
-from tests.converse_stubs import grounding_settings, mock_data_sources
-from veodyn_api.services.ai_converse_grounding import build_grounding, clear_grounding_cache
-from veodyn_api.services.ai_converse_prompt import system_prompt
-from veodyn_api.services.ai_data_sources import DATA_SOURCE_RULES
+from veodyn_api.services.ai_catalog_grounding import build_grounding, clear_grounding_cache
 from veodyn_api.services.ai_grounding import GroundedQuery
 from veodyn_api.services.redash import RedashClient
 from veodyn_api.services.redash_lookups import data_source_names
@@ -105,18 +103,3 @@ def test_the_listed_queries_arrive_labelled_with_what_each_one_reads() -> None:
     # Two queries, two different sources: a version that labelled everything
     # with the first source it found would pass a one-source fixture.
     assert {one.id: one.source for one in grounding.queries} == {11: "Warehouse", 12: "Ops Postgres"}
-
-
-def test_the_model_is_told_a_dashboard_may_mix_data_sources() -> None:
-    queries = (GroundedQuery(id=11, name="Speeds", description="", tags=[], updated_at="", source="Warehouse"),)
-
-    system = system_prompt("dashboard", queries=queries)
-
-    assert DATA_SOURCE_RULES in system
-    # The claim itself, not just that some paragraph arrived. This is the
-    # sentence the analyst's question turns on.
-    assert "one dashboard can hold widgets reading different systems" in system
-
-
-def test_the_rule_is_not_sent_to_a_kind_that_was_given_no_queries() -> None:
-    assert DATA_SOURCE_RULES not in system_prompt("snippet")

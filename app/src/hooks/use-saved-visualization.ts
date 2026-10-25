@@ -2,6 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
+import { knownOutput } from '@/lib/chat/thread-calls'
 import type { CallView } from '@/lib/chat/thread-model'
 import { hasParameters, pickVisualization } from '@/lib/chat/library-results'
 import type { MockQuery, MockVisualization, QueryResultData } from '@/lib/mock-data'
@@ -23,7 +24,7 @@ export interface SavedVisualization {
 }
 
 function wantedVisualization(call: CallView): number | null {
-  const output = call.output
+  const output = knownOutput(call)
   if (output?.kind === 'saved_visualization' && output.visualization) return output.visualization.id
   return call.target?.visualizationId ?? null
 }

@@ -44,7 +44,8 @@ export interface MockDashboardWidget {
   }
   text?: string
   width: number
-  options: {
+  updated_at?: string
+  options: Record<string, unknown> & {
     position: { col: number; row: number; sizeX: number; sizeY: number }
     parameterMappings?: Record<string, unknown>
     isHidden?: boolean

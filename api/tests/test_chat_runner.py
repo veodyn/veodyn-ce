@@ -1,5 +1,6 @@
 import asyncio
 import json
+import uuid
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 from typing import Any
@@ -9,17 +10,20 @@ from redis.asyncio import Redis
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from tests.catalog_stubs import SPEEDS
 from tests.chat_stubs import ScriptedChatModel, text_turn, tool_turn
-from tests.converse_stubs import SPEEDS
 from veodyn_api.errors import ApiError, ErrorId
 from veodyn_api.models.ai_chat import AiChatTurn
+from veodyn_api.schemas.ai_chat_context import ChatDataSourceEntryIn
 from veodyn_api.schemas.catalog import DatasetOut
+from veodyn_api.services.ai_viz_catalog import DEFAULT_CATALOG, VizCatalog
 from veodyn_api.services.chat import help_index, store
 from veodyn_api.services.chat import runner as runner_module
 from veodyn_api.services.chat.bus import TurnBus
 from veodyn_api.services.chat.driver import ModelTurn
 from veodyn_api.services.chat.help_index import build_index, load_index, render
 from veodyn_api.services.chat.runner import TurnRunner
+from veodyn_api.services.chat.turn_context import TurnContext
 
 pytestmark = pytest.mark.anyio
 
@@ -41,19 +45,42 @@ def sessions(engine: Engine, db: Session) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, expire_on_commit=False)
 
 
+WAREHOUSE_ID = 5
+WAREHOUSE_CONTEXT = TurnContext(
+    instance=None,
+    data_sources=(
+        ChatDataSourceEntryIn(id=WAREHOUSE_ID, name="Warehouse", type="clickhouse", syntax="sql", view_only=False),
+    ),
+    ready_queries=(),
+)
+
+
+class WarehouseRunner(TurnRunner):
+    async def run(
+        self,
+        turn_id: uuid.UUID,
+        thread_id: uuid.UUID,
+        seq: int,
+        text: str,
+        catalog: VizCatalog = DEFAULT_CATALOG,
+        context: TurnContext = WAREHOUSE_CONTEXT,
+    ) -> None:
+        await super().run(turn_id, thread_id, seq, text, catalog, context)
+
+
 def make_runner(model: ScriptedChatModel, bus: TurnBus, sessions: sessionmaker[Session]) -> TurnRunner:
     async def datasets() -> tuple[DatasetOut, ...]:
         return (SPEEDS,)
 
     async def data_source_id() -> int:
-        return 5
+        return WAREHOUSE_ID
 
-    return TurnRunner(model=model, bus=bus, sessions=sessions, datasets=datasets, data_source_id=data_source_id)
+    return WarehouseRunner(model=model, bus=bus, sessions=sessions, datasets=datasets, data_source_id=data_source_id)
 
 
 def new_turn(db: Session, text: str = "how fast?") -> AiChatTurn:
     thread = store.create_thread(db, OWNER)
-    return store.start_turn(db, thread, text)
+    return store.start_turn(db, thread, text)[0]
 
 
 async def frames(bus: TurnBus, turn: AiChatTurn) -> list[tuple[str, dict[str, Any]]]:
@@ -110,6 +137,20 @@ async def test_a_text_only_turn_streams_and_is_stored(db: Session, bus: TurnBus,
         "propose_dashboard",
         "link_help",
         "run_saved_query",
+        "open_query",
+        "update_query",
+        "describe_visualization_type",
+        "propose_visualization",
+        "update_visualization",
+        "delete_visualization",
+        "update_dashboard",
+        "fork_query",
+        "archive_query",
+        "archive_dashboard",
+        "set_favorite",
+        "share_dashboard",
+        "share_visualization",
+        "download_result",
     ]
 
 
@@ -126,6 +167,7 @@ async def test_a_query_round_trips_through_the_browser(db: Session, bus: TurnBus
         {
             "callId": "call-1",
             "tool": "run_query",
+            "resultKind": "query_result",
             "args": {"dataSourceId": 5, "sql": SQL, "purpose": "average", "vizChoiceId": "counter"},
         }
     ]
@@ -242,7 +284,7 @@ async def test_a_dashboard_can_reference_a_query_draft_proposed_earlier_in_the_t
     [query_draft] = [data for event, data in await frames(bus, turn) if event == "draft"]
 
     thread = store.thread_for_owner(db, OWNER, turn.thread_id)
-    next_turn = store.start_turn(db, thread, "and a dashboard of it")
+    next_turn = store.start_turn(db, thread, "and a dashboard of it")[0]
     dashboard = dict(name="Speeds", items=[{"kind": "draft", "queryDraftId": query_draft["draftId"]}])
     model2 = ScriptedChatModel(tool_turn("c2", "propose_dashboard", dashboard), text_turn("Here it is."))
     await make_runner(model2, bus, sessions).run(next_turn.id, next_turn.thread_id, next_turn.seq, next_turn.user_text)
@@ -281,11 +323,17 @@ async def test_a_data_source_looked_up_this_turn_can_then_be_queried(db: Session
     requests = await browser(bus, turn, [sources_result, schema_result, dict(RESULT)])
     await run
 
-    assert requests[0] == {"callId": "c1", "tool": "list_data_sources", "args": {}}
-    assert requests[1] == {"callId": "c2", "tool": "describe_data_source", "args": {"dataSourceId": 7}}
+    assert requests[0] == {"callId": "c1", "tool": "list_data_sources", "args": {}, "resultKind": "data_sources"}
+    assert requests[1] == {
+        "callId": "c2",
+        "tool": "describe_data_source",
+        "args": {"dataSourceId": 7},
+        "resultKind": "data_source_schema",
+    }
     assert requests[2] == {
         "callId": "c3",
         "tool": "run_query",
+        "resultKind": "query_result",
         "args": {
             "dataSourceId": 7,
             "sql": '{"resource":"predictions","params":{"stop_id":"80101"}}',
@@ -378,7 +426,7 @@ async def test_earlier_turns_are_replayed(db: Session, bus: TurnBus, sessions: A
         earlier.id, earlier.thread_id, 1, earlier.user_text
     )
     thread = store.thread_for_owner(db, OWNER, earlier.thread_id)
-    later = store.start_turn(db, thread, "second question")
+    later = store.start_turn(db, thread, "second question")[0]
     model = ScriptedChatModel(text_turn("second answer"))
     await make_runner(model, bus, sessions).run(later.id, later.thread_id, later.seq, later.user_text)
     assert [message["content"][0]["text"] for message in model.calls[0]["messages"]] == [

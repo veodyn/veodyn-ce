@@ -1,11 +1,9 @@
-// The registry seam for data chat tools a feature runs and draws. The wire
-// shape of each tool is community (see chat-tool-types.ts); this finds the
-// feature behind one, runs it, and hands back its card.
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
-import type { ChatToolRequest, ChatToolRequestOf } from '@/lib/chat/frames'
-import { failedResult, toolResultSchema, type ChatResultKind, type ChatToolResult } from '@/lib/chat/tool-results'
+import { isOpenToolRequest, type AnyToolRequest, type ChatToolRequestOf, type OpenToolRequest } from '@/lib/chat/frames'
+import { toolResultSchema, type ChatToolResult, type OpenToolResult } from '@/lib/chat/tool-results'
+import type { RedashTransport } from '@/lib/chat/transport'
 import { AppError, ErrorIds } from '@/lib/errorIds'
-import type { ChatToolCardProps, ChatToolContribution, ContributedChatTool } from './chat-tool-types'
+import type { ChatToolCardProps, ChatToolContext, ChatToolContribution } from './chat-tool-types'
 import { FEATURES } from './generated-registry'
 import { featureList } from './index'
 import type { FeatureDescriptor } from './types'
@@ -13,22 +11,29 @@ import type { FeatureDescriptor } from './types'
 type Registry = Record<string, FeatureDescriptor>
 type Card = LazyExoticComponent<ComponentType<ChatToolCardProps>>
 
-export type ContributedToolRequest = ChatToolRequestOf<ContributedChatTool>
-
-export const CONTRIBUTED_RESULT_KIND = {
-  show_kpi: 'kpi',
-  list_kpis: 'kpi_list',
-} as const satisfies Record<ContributedChatTool, ChatResultKind>
-
-export const NO_CONTRIBUTOR_MESSAGE = 'This build cannot read KPIs.'
-export const UNREADABLE_RESULT_MESSAGE = 'The result could not be read.'
-
-export function isContributedTool(tool: string): tool is ContributedChatTool {
-  return Object.hasOwn(CONTRIBUTED_RESULT_KIND, tool)
+export type KpiToolRequest = ChatToolRequestOf<'show_kpi' | 'list_kpis'>
+export type ContributedToolRequest = OpenToolRequest | KpiToolRequest
+export interface ContributedToolCall {
+  callId: string
+  tool: string
+  args: Record<string, unknown>
+  resultKind?: string
 }
 
-export function isContributedRequest(request: ChatToolRequest): request is ContributedToolRequest {
-  return isContributedTool(request.tool)
+const KPI_RESULT_KIND: Record<string, string> = {
+  show_kpi: 'kpi',
+  list_kpis: 'kpi_list',
+}
+
+export function noContributorMessage(tool: string): string {
+  return `This build cannot run ${tool}.`
+}
+export const UNREADABLE_RESULT_MESSAGE = 'The result could not be read.'
+export const UNAVAILABLE_RESULT_KIND = 'unavailable'
+const ERROR_CHARS = 500
+
+function isKpiTool(tool: string): boolean {
+  return Object.hasOwn(KPI_RESULT_KIND, tool)
 }
 
 export function chatToolContributionFor(tool: string, registry: Registry = FEATURES): ChatToolContribution | undefined {
@@ -39,38 +44,49 @@ export function chatToolContributionFor(tool: string, registry: Registry = FEATU
   return undefined
 }
 
-/**
- * Always resolves to a result of the kind the sidecar is waiting for, except on
- * an abort, which is rethrown. A sidecar that offers a tool this build has no
- * feature for would otherwise leave the turn waiting out its whole tool
- * timeout, and so would a feature that returned the wrong kind: the relay
- * refuses it and nothing else ever answers the call.
- */
+export function contributedResultKind(tool: string, registry: Registry = FEATURES): string | undefined {
+  return chatToolContributionFor(tool, registry)?.resultKind ?? (isKpiTool(tool) ? KPI_RESULT_KIND[tool] : undefined)
+}
+
+export function isContributedTool(tool: string, registry: Registry = FEATURES): boolean {
+  return isKpiTool(tool) || chatToolContributionFor(tool, registry) !== undefined
+}
+
+export function isContributedRequest(request: AnyToolRequest): request is ContributedToolRequest {
+  return isOpenToolRequest(request) || isKpiTool(request.tool)
+}
+
+function failure(kind: string, error: unknown): ChatToolResult | OpenToolResult {
+  const message = error instanceof Error ? error.message : String(error)
+  return { kind, ok: false, error: (message || 'The request failed.').slice(0, ERROR_CHARS) } as OpenToolResult
+}
+
 export async function runContributedTool(
-  request: ContributedToolRequest,
+  request: ContributedToolCall,
   signal: AbortSignal,
+  transport: RedashTransport,
+  context: ChatToolContext,
   registry: Registry = FEATURES
-): Promise<ChatToolResult> {
-  const kind = CONTRIBUTED_RESULT_KIND[request.tool]
+): Promise<ChatToolResult | OpenToolResult> {
+  const kind = contributedResultKind(request.tool, registry) ?? request.resultKind ?? UNAVAILABLE_RESULT_KIND
   const contribution = chatToolContributionFor(request.tool, registry)
-  if (!contribution) return failedResult(kind, new Error(NO_CONTRIBUTOR_MESSAGE))
+  if (!contribution) return failure(kind, new Error(noContributorMessage(request.tool)))
   try {
     const { default: run } = await contribution.execute()
-    const parsed = toolResultSchema.safeParse(await run(request.args, signal))
+    const parsed = toolResultSchema.safeParse(await run(request.args, signal, transport, context))
     if (parsed.success && parsed.data.kind === kind) return parsed.data
-    return failedResult(kind, new Error(UNREADABLE_RESULT_MESSAGE))
+    return failure(kind, new Error(UNREADABLE_RESULT_MESSAGE))
   } catch (error) {
     if (signal.aborted) throw error
-    return failedResult(kind, error)
+    return failure(kind, error)
   }
 }
 
 const cards = new WeakMap<Registry, Map<string, Card>>()
 
-/** The contributed card for a tool, cached per registry so a render never remounts it. */
 export function chatToolCardFor(tool: string, registry: Registry = FEATURES): Card | undefined {
-  const contribution = chatToolContributionFor(tool, registry)
-  if (!contribution) return undefined
+  const load = chatToolContributionFor(tool, registry)?.card
+  if (!load) return undefined
   let byTool = cards.get(registry)
   if (!byTool) {
     byTool = new Map()
@@ -81,7 +97,7 @@ export function chatToolCardFor(tool: string, registry: Registry = FEATURES): Ca
 
   const card = lazy(async () => {
     try {
-      return await contribution.card()
+      return await load()
     } catch (reason) {
       const error = new AppError(
         ErrorIds.CHAT_TOOL_CARD_UNAVAILABLE,
