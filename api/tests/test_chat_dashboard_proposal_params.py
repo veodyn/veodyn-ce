@@ -14,7 +14,7 @@ LIVE_ROUTE = {"kind": "existing", "queryId": 137, "visualizationId": 240, "title
 
 async def propose(*items: dict[str, Any], drafts: Drafts | None = None) -> Immediate:
     outcome = await prepare_call(
-        call("propose_dashboard", name="Union Station & Route 720", items=list(items)),
+        call("propose_dashboard", name="Main Terminal & Route 7", items=list(items)),
         context(drafts, known_query_drafts={"d-1"}),
     )
     assert isinstance(outcome, Immediate)

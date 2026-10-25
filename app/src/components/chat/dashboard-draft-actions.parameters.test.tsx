@@ -51,7 +51,7 @@ const PINNED_MAPPINGS = {
 }
 
 function draft(items: DashboardDraftView['versions'][number]['payload']['items']): DashboardDraftView {
-  return { id: 'dd1', versions: [{ version: 1, payload: { name: 'Union Station & Route 720', description: '', items } }], promotions: [] }
+  return { id: 'dd1', versions: [{ version: 1, payload: { name: 'Main Terminal & Route 7', description: '', items } }], promotions: [] }
 }
 
 function render(
