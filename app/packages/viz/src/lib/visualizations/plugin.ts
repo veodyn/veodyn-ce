@@ -51,6 +51,8 @@ export interface VisualizationPlugin {
 
   needs?: 'query-result' | 'none'
 
+  defaultSize?: { sizeX: number; sizeY: number }
+
   Renderer: ComponentType<VisualizationRendererProps>
   Editor?: ComponentType<VisualizationEditorProps>
 

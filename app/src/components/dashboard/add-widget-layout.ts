@@ -1,3 +1,5 @@
+import { getVisualization } from '@veodyn/viz'
+
 export interface PlacedWidget {
   options: { position: { col: number; row: number; sizeX: number; sizeY: number } }
 }
@@ -45,9 +47,9 @@ export function calculateNewWidgetPosition(
   return { col: 0, row: maxRow }
 }
 
-// ─── Default widget size per viz type ───────────────────────────────────────
-
 export function getDefaultSize(vizType: string): { sizeX: number; sizeY: number } {
+  const declared = getVisualization(vizType)?.defaultSize
+  if (declared) return { sizeX: declared.sizeX, sizeY: declared.sizeY }
   switch (vizType) {
     case 'COUNTER': return { sizeX: 2, sizeY: 5 }
     case 'MAP': return { sizeX: 3, sizeY: 10 }
