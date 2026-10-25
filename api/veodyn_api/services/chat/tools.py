@@ -16,6 +16,7 @@ from veodyn_api.services.ai_viz_choice import VIZ_FIELD_DESCRIPTION
 from veodyn_api.services.chat.help_filter import for_edition
 from veodyn_api.services.chat.help_index import HelpIndex, load_index, shown_id
 from veodyn_api.services.chat.parameter_rules import PARAMETERS_SCHEMA, check_parameters
+from veodyn_api.services.chat.saved_query_params import params_problem
 from veodyn_api.services.chat.viz_choice_check import missing_viz_choice
 from veodyn_api.services.chat.viz_options_check import options_problem
 
@@ -370,6 +371,11 @@ async def _dashboard_item(raw: Any, ctx: ToolContext) -> dict[str, Any] | Immedi
         return Immediate("each item must be an object", is_error=True)
     title = text_of(raw.get("title"), MAX_ITEM_TITLE_CHARS)
     kind = raw.get("kind")
+    params = raw.get("params")
+    if params is not None and kind != "existing":
+        return Immediate(
+            "params go only on an existing item, a saved query you ran with run_saved_query", is_error=True
+        )
     if kind == "text":
         text = raw.get("text")
         text = text.strip() if isinstance(text, str) else ""
@@ -392,6 +398,11 @@ async def _dashboard_item(raw: Any, ctx: ToolContext) -> dict[str, Any] | Immedi
                 "an existing item needs queryId and visualizationId, both from a search result", is_error=True
             )
         item = {"kind": "existing", "queryId": query_id, "visualizationId": visualization_id}
+        problem = None if params is None else params_problem(params)
+        if problem is not None:
+            return Immediate(f"params for query {query_id}: {problem}", is_error=True)
+        if params:
+            item["parameters"] = params
     else:
         return Immediate('each item\'s kind must be "draft", "existing" or "text"', is_error=True)
     if title:
@@ -782,7 +793,8 @@ PROPOSE_DASHBOARD = ChatTool(
             "Offer a dashboard of charts the analyst can save to the platform. Nothing is saved until they click "
             "Save. Each item is a query proposed earlier in this conversation (queryDraftId) or an already-saved "
             "query and one of its visualizations (queryId, visualizationId), or a text note (kind text, with text). "
-            "Pass draftId to revise a dashboard "
+            "Give an existing item the params you ran it with in run_saved_query, or its widget shows the query's "
+            "saved defaults instead of what you previewed. Pass draftId to revise a dashboard "
             "you proposed earlier in this conversation."
         ),
         "input_schema": {
@@ -812,6 +824,13 @@ PROPOSE_DASHBOARD = ChatTool(
                             "visualizationId": schema_integer(
                                 "For kind existing: one of that query's visualization ids."
                             ),
+                            "params": {
+                                "type": "object",
+                                "description": (
+                                    "For kind existing: the parameter values by name you gave run_saved_query for "
+                                    "this query, kept on the widget. Omit to use the query's saved defaults."
+                                ),
+                            },
                             "title": schema_string(
                                 "A label for this item on the dashboard. Omit to use the query's own name."
                             ),

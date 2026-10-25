@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { savedQueryParametersSchema } from './saved-query-parameters'
 
 const id = z.string().min(1).max(128)
 const positive = z.number().int().positive()
@@ -151,6 +152,7 @@ export const dashboardItemSchema = z.discriminatedUnion('kind', [
       queryId: positive,
       visualizationId: positive,
       title: z.string().max(500).optional(),
+      parameters: savedQueryParametersSchema.optional(),
     })
     .strict(),
   z.object({ kind: z.literal('text'), text }).strict(),

@@ -1,5 +1,7 @@
 import type { useWriteProposedQuery } from '@/components/chat/proposal-kit/use-write-proposed-query'
 import { pickVisualization } from '@/lib/chat/library-results'
+import type { SavedQueryParameters } from '@/lib/chat/saved-query-parameters'
+import { staticParameterMappings, type ParameterMappings } from '@/lib/chat/static-parameter-mappings'
 import type { DraftView } from '@/lib/chat/thread-model'
 import { lastApplied } from '@/lib/chat/promotions'
 import type { QueryDraftSync } from '@/lib/chat/thread-sync'
@@ -14,6 +16,7 @@ export interface ResolvedChart {
   queryId: number
   visualizationId: number
   visualizationType?: string
+  parameterMappings?: ParameterMappings
 }
 
 export type ChartResolution = ResolvedChart | { reason: string } | null
@@ -86,8 +89,14 @@ export async function resolveDraftChart(
   }
 }
 
-export async function resolveExistingChart(queryId: number, visualizationId: number): Promise<ChartResolution> {
+export async function resolveExistingChart(
+  queryId: number,
+  visualizationId: number,
+  parameters?: SavedQueryParameters
+): Promise<ChartResolution> {
   const query = await queriesService.get(queryId).catch(() => null)
   const found = query?.visualizations.find((one) => one.id === visualizationId)
-  return found ? { queryId, visualizationId, visualizationType: found.type } : null
+  if (!query || !found) return null
+  const parameterMappings = staticParameterMappings(query.options?.parameters ?? [], parameters)
+  return { queryId, visualizationId, visualizationType: found.type, ...(parameterMappings ? { parameterMappings } : {}) }
 }

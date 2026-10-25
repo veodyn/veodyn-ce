@@ -140,7 +140,9 @@ UPDATE_DASHBOARD = ChatTool(
             "analyst clicks Apply on the card; removing a widget needs a second click. Give at least one of name, "
             "tags or operations. Operations: add a chart (queryId and visualizationId, or a queryDraftId you "
             "proposed in this conversation), addText (markdown), editText, remove, move (a widget id and its new "
-            "position). A new widget without a position is placed in the next free spot."
+            "position). A new widget without a position is placed in the next free spot. For a saved query you ran "
+            "with run_saved_query and params, give its add a static-value parameterMapping per param with the same "
+            "value, or the widget shows the query's saved defaults."
         ),
         "input_schema": {
             "type": "object",

@@ -2,16 +2,11 @@ import { z } from 'zod'
 import { dashboardEditPayloadSchema, dashboardProposalSchema, dashboardUpdateArgsShape } from './dashboard-changes'
 import { operationArgs, operationPayloadSchema, type OperationToolName } from './operation-changes'
 import { parameterListSchema, queryChangesSchema, queryEditPayloadSchema } from './query-changes'
+import { savedQueryParametersSchema } from './saved-query-parameters'
 import { vizNextSchema, vizOperationsShape, vizPayloadSchema } from './viz-changes'
 
 const id = z.string().min(1).max(128)
 const positive = z.number().int().positive()
-const savedQueryParameter = z.union([
-  z.string().max(500),
-  z.number(),
-  z.array(z.string().max(500)).max(50),
-  z.object({ start: z.string().max(64), end: z.string().max(64) }).strict(),
-])
 
 export const chatProposalSchema = z
   .object({
@@ -74,7 +69,7 @@ const knownToolRequest = z.discriminatedUnion('tool', [
         args: z
           .object({
             queryId: positive,
-            parameters: z.record(savedQueryParameter).refine((value) => Object.keys(value).length <= 20),
+            parameters: savedQueryParametersSchema,
             visualizationId: positive.nullable(),
             purpose: z.string().max(500),
           })

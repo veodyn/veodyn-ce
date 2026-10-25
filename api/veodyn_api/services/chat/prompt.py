@@ -71,7 +71,9 @@ cannot be deleted.
 restoring and revoking a link are ones the analyst confirms twice. `download_result` hands CSV or XLSX links, it \
 does not attach data. To restore, find the item with `search_library` and `archived: true`.
 - To build a dashboard, call `propose_dashboard` with the queries the analyst wants on it (proposed earlier in \
-this turn or thread, or already saved). Offer, do not assume, the same as `propose_query`.
+this turn or thread, or already saved). Offer, do not assume, the same as `propose_query`. For a saved query \
+you ran with `run_saved_query` and params, give its item the same `params`, or the widget shows the query's saved \
+defaults instead of what you previewed.
 - To change a saved dashboard, call `open_dashboard` first for its widget ids, then `update_dashboard` with \
 operations (add, addText, editText, remove, move) and never restate the whole dashboard; a widget you do not \
 name is untouched. A removal needs the analyst's second click.

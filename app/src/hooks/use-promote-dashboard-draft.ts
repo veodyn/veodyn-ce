@@ -11,6 +11,7 @@ import {
   type PromotionReceipt,
 } from '@/lib/chat/promotion-lifecycle'
 import type { ActiveDashboard, DashboardDraftView, DraftView } from '@/lib/chat/thread-model'
+import type { ParameterMappings } from '@/lib/chat/static-parameter-mappings'
 import type { ChatPromotion } from '@/lib/chat/wire'
 import { readQueryError } from '@/lib/query-error'
 import { recordPromotion } from '@/services/ai/chat-client'
@@ -40,7 +41,7 @@ const DASHBOARD_STEP = 0
 const FIRST_WIDGET_STEP = 1
 
 type ResolvedItem =
-  | { kind: 'chart'; visualizationId: number; visualizationType?: string; step: number }
+  | { kind: 'chart'; visualizationId: number; visualizationType?: string; parameterMappings?: ParameterMappings; step: number }
   | { kind: 'text'; text: string; step: number }
 
 interface Progress {
@@ -83,13 +84,14 @@ export function usePromoteDashboardDraft(
       const resolved =
         item.kind === 'draft'
           ? await resolveDraftChart(write, queryDrafts[item.queryDraftId], onQueryPromoted, querySync)
-          : await resolveExistingChart(item.queryId, item.visualizationId)
+          : await resolveExistingChart(item.queryId, item.visualizationId, item.parameters)
       const label = item.title ?? (item.kind === 'draft' ? item.queryDraftId : `query ${item.queryId}`)
       if (resolved && 'visualizationId' in resolved) {
         widgets.push({
           kind: 'chart',
           visualizationId: resolved.visualizationId,
           visualizationType: resolved.visualizationType,
+          ...(resolved.parameterMappings ? { parameterMappings: resolved.parameterMappings } : {}),
           step,
         })
       } else {
@@ -120,7 +122,10 @@ export function usePromoteDashboardDraft(
           dashboard_id: dashboardId,
           visualization_id: widget.kind === 'chart' ? widget.visualizationId : null,
           ...(widget.kind === 'text' ? { text: widget.text } : {}),
-          options: { position },
+          options: {
+            position,
+            ...(widget.kind === 'chart' && widget.parameterMappings ? { parameterMappings: widget.parameterMappings } : {}),
+          },
           idempotency_key: `${keyPrefix}${widget.step}`,
         })
         progress.receipts.push({

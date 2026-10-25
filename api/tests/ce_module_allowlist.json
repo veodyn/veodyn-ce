@@ -143,6 +143,7 @@
     "services/chat/query_edit_tool.py",
     "services/chat/report_message_tools.py",
     "services/chat/runner.py",
+    "services/chat/saved_query_params.py",
     "services/chat/saved_query_tool.py",
     "services/chat/snippet_tools.py",
     "services/chat/store.py",
