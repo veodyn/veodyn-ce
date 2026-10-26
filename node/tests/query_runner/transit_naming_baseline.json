@@ -629,7 +629,7 @@
     "names": "Pico/Rimpau",
     "normalization_revision": "2026.09.02+866c793cefef",
     "public_name": "Pico/Rimpau",
-    "public_name_source": "consensus",
+    "public_name_source": "override",
     "retired_stops": 0,
     "source_stop_ids": "MT 3000001",
     "source_stops": 1,

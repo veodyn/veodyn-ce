@@ -24,7 +24,7 @@ PUBLIC_RESOURCES = {
             "stop_kind: intersection | station | named_place | unparsed",
             "mode: bus | rail | empty; retired: boolean (empty transit_modes and no predictions)",
             "lat, lng, city, accessible, public_name_source, normalization_revision, gtfs_digest",
-            "original_public_name: the name before suffix completion; suffix_completion: street_reference | same_intersection | unique_street | empty",
+            "original_public_name: the rules' name, before suffix completion or an override; suffix_completion: street_reference | same_intersection | unique_street | empty",
         ],
         "example": '{"resource": "public_stops", "params": {"carrier_code": "MT"}}',
     },
@@ -88,7 +88,7 @@ PUBLIC_RESOURCES = {
             "stop_511_id (optional): string - one 511 stop id; default every location on the account's network",
         ],
         "doc_returns": [
-            "511_id, public_name, public_name_source: consensus | tiebreak | override",
+            "511_id, public_name, public_name_source: consensus | tiebreak | override (a member stop's override wins)",
             "chosen_carrier, chosen_stop_id, agreeing_stops, source_stops, carriers",
             "source_stop_ids: '<carrier> <stop_id>, ...'; names: every distinct public name, '; ' separated",
             "stop_kind, retired_stops, lat, lng (mean of the active members), normalization_revision",

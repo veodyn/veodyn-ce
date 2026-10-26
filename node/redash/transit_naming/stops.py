@@ -243,6 +243,7 @@ def name_stop(stop, profile):
             mode,
             retired,
             provenance.OVERRIDE,
+            original_public_name=result.public_name,
         )
     return result
 

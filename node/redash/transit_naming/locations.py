@@ -54,7 +54,21 @@ def _override(members, profiles, id511):
     return None
 
 
+def _corrected(members, profiles):
+    corrected = [
+        stop for stop in members if stop.get("public_name_source") == provenance.OVERRIDE and stop.get("public_name")
+    ]
+    if not corrected:
+        return None
+    chosen = min(corrected, key=lambda stop: _candidate_key(stop, 0, profiles))
+    agreeing = sum(1 for stop in members if stop.get("public_name") == chosen["public_name"])
+    return chosen, agreeing, provenance.OVERRIDE
+
+
 def _choose(members, profiles):
+    corrected = _corrected(members, profiles)
+    if corrected is not None:
+        return corrected
     counts = Counter(_voted_name(stop) for stop in members if _voted_name(stop))
     named = [stop for stop in members if _voted_name(stop)] or members
     chosen = min(named, key=lambda stop: _candidate_key(stop, counts.get(_voted_name(stop), 0), profiles))
@@ -99,11 +113,16 @@ def _location_row(id511, members, profiles):
     }
 
 
-def location_rows(stops, profiles, params):
+def location_member_filter(params):
     wanted = str(params.get("stop_511_id") or "").strip()
+    return (lambda stop: _id511(stop) == wanted) if wanted else None
+
+
+def location_rows(stops, profiles, params):
+    keep = location_member_filter(params)
     grouped = defaultdict(list)
     for stop in stops:
         id511 = _id511(stop)
-        if id511 and (not wanted or id511 == wanted):
+        if id511 and (keep is None or keep(stop)):
             grouped[id511].append(stop)
     return [_location_row(id511, grouped[id511], profiles) for id511 in sorted(grouped)]

@@ -6,7 +6,11 @@ from redash.transit_naming.departures import PUBLIC_DEPARTURE_COLUMNS, enrich_de
 from redash.transit_naming.gtfs_cache import http_fetch
 from redash.transit_naming.gtfs_routes import GtfsResolver
 from redash.transit_naming.gtfs_shapes import PATH_COLUMNS, path_rows
-from redash.transit_naming.locations import LOCATION_COLUMNS, location_rows
+from redash.transit_naming.locations import (
+    LOCATION_COLUMNS,
+    location_member_filter,
+    location_rows,
+)
 from redash.transit_naming.override_table import override_table
 from redash.transit_naming.patterns import (
     StopIndex,
@@ -112,7 +116,7 @@ def public_routes(params, fetch, profiles, archive_fetcher=None):
     ]
 
 
-def public_stops(params, fetch, profiles, archive_fetcher=None, source=None):
+def public_stops(params, fetch, profiles, archive_fetcher=None, source=None, keep=None):
     query = {}
     if _carrier(params):
         query["carrier_code"] = _carrier(params)
@@ -132,7 +136,7 @@ def public_stops(params, fetch, profiles, archive_fetcher=None, source=None):
     indexes = CarrierIndexes(profiles.base_revision, source, load_stops, profiles.extra_overrides)
     digests = {}
     rows = []
-    for stop in stops:
+    for stop in stops if keep is None else filter(keep, stops):
         carrier = str(stop.get("carrier_code") or _carrier(params))
         profile = profiles.for_carrier(carrier)
         if carrier not in digests:
@@ -272,7 +276,7 @@ def run_public_resource(resource, params, fetch, now=None, archive_fetcher=None,
     if resource == "public_stops":
         return public_stops(params, fetch, profiles, archive_fetcher, source)
     if resource == "public_stop_locations":
-        stops = public_stops({}, fetch, profiles, archive_fetcher, source)
+        stops = public_stops({}, fetch, profiles, archive_fetcher, source, location_member_filter(params))
         return location_rows(stops, profiles, params)
     if resource == "public_route_stops":
         return public_route_stops(params, fetch, profiles, archive_fetcher, source)
