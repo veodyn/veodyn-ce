@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useWriteProposedQuery } from '@/components/chat/proposal-kit/use-write-proposed-query'
 import { calculateNewWidgetPosition, getDefaultSize, type PlacedWidget } from '@/components/dashboard/add-widget-layout'
 import { visibleWidgetCount } from '@/lib/chat/library-results'
@@ -62,6 +62,7 @@ export function usePromoteDashboardDraft(
   const [status, setStatus] = useState<DashboardPromoteStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [skipped, setSkipped] = useState<string[]>([])
+  const inFlight = useRef(false)
   const latest = draft.versions[draft.versions.length - 1]
   const unsynced = useUnsyncedRecord(draft.id, (record) => onDashboardPromoted(draft.id, record))
   const { hold } = unsynced
@@ -69,6 +70,10 @@ export function usePromoteDashboardDraft(
   const fail = useCallback((cause: unknown) => {
     setError(readQueryError(cause).message)
     setStatus('idle')
+  }, [])
+
+  const settle = useCallback(() => {
+    inFlight.current = false
   }, [])
 
   const resolveItems = useCallback(async () => {
@@ -142,7 +147,8 @@ export function usePromoteDashboardDraft(
   )
 
   const save = useCallback(() => {
-    if (!latest) return
+    if (!latest || inFlight.current) return
+    inFlight.current = true
     setStatus('saving')
     setError(null)
     setSkipped([])
@@ -179,12 +185,13 @@ export function usePromoteDashboardDraft(
         throw cause
       }
     }
-    run().catch(fail)
-  }, [latest, resolveItems, writeWidgets, draft.id, onDashboardPromoted, onDashboardActive, hold, fail])
+    run().catch(fail).finally(settle)
+  }, [latest, resolveItems, writeWidgets, draft.id, onDashboardPromoted, onDashboardActive, hold, fail, settle])
 
   const append = useCallback(
     (overwrite: boolean) => {
-      if (!latest || !activeDashboard) return
+      if (!latest || !activeDashboard || inFlight.current) return
+      inFlight.current = true
       setStatus('saving')
       setError(null)
       setSkipped([])
@@ -233,9 +240,9 @@ export function usePromoteDashboardDraft(
           throw cause
         }
       }
-      run().catch(fail)
+      run().catch(fail).finally(settle)
     },
-    [latest, activeDashboard, resolveItems, writeWidgets, draft.id, onDashboardPromoted, onDashboardActive, hold, fail]
+    [latest, activeDashboard, resolveItems, writeWidgets, draft.id, onDashboardPromoted, onDashboardActive, hold, fail, settle]
   )
 
   const keep = useCallback(() => setStatus('idle'), [])

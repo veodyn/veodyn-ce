@@ -5,7 +5,7 @@ import { Loader2, Save } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { UnsyncedNotice } from './unsynced-notice'
 import { usePromoteDashboardDraft } from '@/hooks/use-promote-dashboard-draft'
-import { lastApplied } from '@/lib/chat/promotions'
+import { appliedPromotions, lastApplied } from '@/lib/chat/promotions'
 import type { ActiveDashboard, DashboardDraftView, DraftView } from '@/lib/chat/thread-model'
 import type { QueryDraftSync } from '@/lib/chat/thread-sync'
 import type { ChatPromotion } from '@/lib/chat/wire'
@@ -43,6 +43,9 @@ export function DashboardDraftActions({
   const latest = draft.versions[draft.versions.length - 1]
   const promotion = lastApplied(draft.promotions)
   const saving = promote.status === 'saving'
+  const thisVersion = appliedPromotions(draft.promotions).filter((one) => one.promotedVersion === latest?.version)
+  const savedThisVersion = thisVersion.length > 0
+  const addedToActive = activeDashboard !== null && thisVersion.some((one) => one.targetId === String(activeDashboard.id))
 
   if (promote.unsynced) return <UnsyncedNotice onRetry={promote.retrySync} />
 
@@ -64,11 +67,13 @@ export function DashboardDraftActions({
 
   return (
     <>
-      <Button size="sm" onClick={promote.save} disabled={saving || !latest}>
-        {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
-        Save as new dashboard
-      </Button>
-      {activeDashboard ? (
+      {savedThisVersion ? null : (
+        <Button size="sm" onClick={promote.save} disabled={saving || !latest}>
+          {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
+          Save as new dashboard
+        </Button>
+      )}
+      {activeDashboard && !addedToActive ? (
         <Button size="sm" variant="outline" onClick={() => promote.append(false)} disabled={saving || !latest}>
           {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
           {`Add to ${activeDashboard.name}`}
