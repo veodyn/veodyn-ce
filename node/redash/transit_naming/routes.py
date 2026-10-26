@@ -1,9 +1,11 @@
 import re
 
 from redash.transit_naming import provenance
+from redash.transit_naming.profile_loader import HEX_COLOR
 from redash.transit_naming.snapshot import MODE_BY_ROUTE_TYPE, RouteName
 from redash.transit_naming.stops import normalize_text
 
+CARRIER_UNSET_COLOR = "000000"
 RAIL_MODES = ("light_rail", "heavy_rail")
 LETTER_LINE = re.compile(r"^(?:\S+ )*(?P<letter>[A-Z]) Line$")
 LETTER_IN_NAME = re.compile(r"\b([A-Z]) Line\b")
@@ -86,12 +88,17 @@ def _rail_name(name, rules):
     return name
 
 
+def _carrier_color(route):
+    value = str(route.get("line_color") or "").strip().lstrip("#").upper()
+    return value if HEX_COLOR.match(value) and value != CARRIER_UNSET_COLOR else ""
+
+
 def _color(route, profile, resolved, entry):
     if resolved is not None and (resolved.route_color or resolved.route_text_color):
         return resolved.route_color, resolved.route_text_color, resolved.provenance
-    mca = str(route.get("line_color") or "").strip().lstrip("#")
+    mca = _carrier_color(route)
     if mca:
-        return mca.upper(), "", provenance.PASSTHROUGH
+        return mca, "", provenance.PASSTHROUGH
     if entry is not None and entry.color:
         return entry.color, "", provenance.RULE
     return "", "", ""

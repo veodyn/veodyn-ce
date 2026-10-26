@@ -2,6 +2,11 @@ import math
 from collections import Counter
 
 from redash.transit_naming import provenance
+from redash.transit_naming.passenger_stops import (
+    is_layover,
+    passenger_positions,
+    trips_by_pattern,
+)
 from redash.transit_naming.snapshot import PatternStop
 
 EARTH_RADIUS_FEET = 20925646.3
@@ -173,13 +178,24 @@ def cut_patterns(
     index = stop_index if stop_index is not None else StopIndex(mca_stops)
     memo = {}
     rows = []
+    trip_times = trips_by_pattern(snapshot, gtfs_route_id)
     for (direction_id, stops), pattern_id in sorted(ids.items()):
         letter = profile.direction_letter(route_code, direction_id)
         canonical = (direction_id, stops) in canonical_patterns
-        for sequence, gtfs_stop_id in enumerate(stops):
-            stop_id, public_name, match, source = _match(
-                gtfs_stop_id, snapshot, mca_stops, public_names, sources, threshold_feet, memo, index
+        matches = [
+            _match(gtfs_stop_id, snapshot, mca_stops, public_names, sources, threshold_feet, memo, index)
+            for gtfs_stop_id in stops
+        ]
+        layovers = [
+            is_layover(
+                snapshot.stops.get(gtfs_stop_id, {}).get("stop_name"), mca_stops.get(found[0], {}).get("stop_name")
             )
+            for gtfs_stop_id, found in zip(stops, matches)
+        ]
+        kept = passenger_positions(trip_times[(direction_id, stops)], snapshot.no_service_stop_times, layovers)
+        for sequence, position in enumerate(kept):
+            gtfs_stop_id = stops[position]
+            stop_id, public_name, match, source = matches[position]
             lat, lng = _stop_coordinates(snapshot, gtfs_stop_id) if match != "unmatched" else (None, None)
             rows.append(
                 PatternStop(

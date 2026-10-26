@@ -18,6 +18,7 @@ from redash.transit_naming.snapshot import GtfsSnapshot, ResolvedRoute
 ROUTE_FIELDS = ("route_id", "route_short_name", "route_long_name", "route_type", "route_color", "route_text_color")
 TRIP_FIELDS = ("route_id", "trip_id", "direction_id", "shape_id", "trip_headsign")
 STOP_FIELDS = ("stop_id", "stop_name", "stop_lat", "stop_lon")
+STOP_TIME_FIELDS = ("trip_id", "stop_sequence", "stop_id", "pickup_type", "drop_off_type")
 SHAPE_FIELDS = ("shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence")
 
 
@@ -56,15 +57,28 @@ def read_snapshot(source_name, content, safe_url, with_patterns=False, with_shap
     trips = ()
     stop_times = {}
     stops = {}
+    no_service = {}
     if with_patterns:
         trips = tuple(_rows(archive, members, "trips", budget, TRIP_FIELDS))
-        for row in _rows(archive, members, "stop_times", budget, ("trip_id", "stop_sequence", "stop_id")):
-            stop_times.setdefault(row["trip_id"], []).append((int(row["stop_sequence"]), row["stop_id"]))
+        for row in _rows(archive, members, "stop_times", budget, STOP_TIME_FIELDS):
+            sequence = int(row["stop_sequence"])
+            stop_times.setdefault(row["trip_id"], []).append((sequence, row["stop_id"]))
+            if row["pickup_type"] == "1" and row["drop_off_type"] == "1":
+                no_service.setdefault(row["trip_id"], set()).add(sequence)
         for sequence in stop_times.values():
             sequence.sort()
         stops = {row["stop_id"]: row for row in _rows(archive, members, "stops", budget, STOP_FIELDS)}
     shapes = _shapes(archive, members, budget) if with_shapes else {}
-    return GtfsSnapshot(source_name, hashlib.sha256(content).hexdigest(), routes, trips, stop_times, stops, shapes)
+    return GtfsSnapshot(
+        source_name,
+        hashlib.sha256(content).hexdigest(),
+        routes,
+        trips,
+        stop_times,
+        stops,
+        shapes,
+        {trip_id: frozenset(sequences) for trip_id, sequences in no_service.items()},
+    )
 
 
 def _resolved(gtfs_route_id, row, snapshot, provenance_value):

@@ -12,6 +12,7 @@ class GtfsSnapshot:
     stop_times_by_trip: dict = field(default_factory=dict)
     stops: dict = field(default_factory=dict)
     shapes: dict = field(default_factory=dict)
+    no_service_stop_times: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
