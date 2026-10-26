@@ -1,95 +1,76 @@
-import json
-import re
-from collections.abc import Awaitable, Callable, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Sequence
 from importlib import import_module
 from typing import Any
 
-from veodyn_api.errors import ApiError
-from veodyn_api.schemas.ai import AiDatasetIn
 from veodyn_api.schemas.ai_chat_context import COMMUNITY, Edition
-from veodyn_api.schemas.catalog import DatasetOut
-from veodyn_api.services.ai_sql import QUERYABLE_TABLE_RE, UngroundedSql, validate_generic_sql, validate_sql
-from veodyn_api.services.ai_text import picked_id, text_of
 from veodyn_api.services.ai_viz_catalog import DEFAULT_CATALOG, VizCatalog
-from veodyn_api.services.ai_viz_choice import VIZ_FIELD_DESCRIPTION
-from veodyn_api.services.chat.help_filter import for_edition
-from veodyn_api.services.chat.help_index import HelpIndex, load_index, shown_id
-from veodyn_api.services.chat.parameter_rules import PARAMETERS_SCHEMA, check_parameters
-from veodyn_api.services.chat.saved_query_params import params_problem
-from veodyn_api.services.chat.viz_choice_check import missing_viz_choice
-from veodyn_api.services.chat.viz_options_check import options_problem
-
-MAX_NAMED_TABLES = 20
-LIBRARY_KINDS = ("query", "dashboard")
-MAX_SEARCH_TAGS = 5
-MAX_LIBRARY_SEARCHES = 5
-MAX_HELP_LINKS = 3
-MAX_HELP_SUGGESTIONS = 5
-MAX_RESOURCE_CALL_CHARS = 4_000
-SECOND_REFUSAL = (
-    " This is the second refusal in this turn: stop writing SQL and tell the analyst what you could not do."
+from veodyn_api.services.chat.dashboard_proposal_tool import PROPOSE_DASHBOARD
+from veodyn_api.services.chat.help_link_tool import LINK_HELP
+from veodyn_api.services.chat.library_tools import (
+    MAX_LIBRARY_SEARCHES,
+    OPEN_DASHBOARD,
+    SEARCH_LIBRARY,
+    SHOW_VISUALIZATION,
 )
-CANNOT_QUERY_YET = "chat cannot query this data source yet"
+from veodyn_api.services.chat.query_target import (
+    CANNOT_QUERY_YET,
+    MAX_NAMED_TABLES,
+    SECOND_REFUSAL,
+    checked_body,
+    resolve_target,
+)
+from veodyn_api.services.chat.query_tools import DESCRIBE_DATA_SOURCE, LIST_DATA_SOURCES, PROPOSE_QUERY, RUN_QUERY
+from veodyn_api.services.chat.tool_types import (
+    ChatTool,
+    ClientCall,
+    Completer,
+    DataSourceInfo,
+    Handler,
+    Immediate,
+    SaveDraft,
+    ToolContext,
+    positive_id,
+    schema_integer,
+    schema_string,
+)
 
-
-@dataclass(frozen=True)
-class ClientCall:
-    call_id: str
-    tool: str
-    args: dict[str, Any]
-
-
-@dataclass(frozen=True)
-class Immediate:
-    content: str
-    is_error: bool
-    draft: dict[str, Any] | None = None
-    frame: tuple[str, dict[str, Any]] | None = None
-
-
-SaveDraft = Callable[[str, str | None, dict[str, Any]], Awaitable[tuple[str, int]]]
-
-
-@dataclass(frozen=True)
-class DataSourceInfo:
-    syntax: str
-    view_only: bool | None = None
-    resources: dict[str, tuple[str, ...]] | None = None
-
-
-@dataclass
-class ToolContext:
-    datasets: tuple[DatasetOut, ...]
-    data_source_id: Callable[[], Awaitable[int]]
-    data_source_info: Callable[[int], DataSourceInfo | None]
-    save_draft: SaveDraft
-    query_draft_exists: Callable[[str], Awaitable[bool]]
-    catalog: VizCatalog = DEFAULT_CATALOG
-    refusals: int = field(default=0)
-    help_links: int = field(default=0)
-    library_searches: int = field(default=0)
-    edition: Edition | None = None
-    features: tuple[str, ...] | None = None
-
-
-Handler = Callable[[str, dict[str, Any], ToolContext], Awaitable[ClientCall | Immediate]]
-Completer = Callable[[ClientCall, dict[str, Any], ToolContext], Awaitable[Immediate]]
-
-
-@dataclass(frozen=True)
-class ChatTool:
-    name: str
-    definition: dict[str, Any]
-    handler: Handler
-    result_kind: str | None = None
-    complete: Completer | None = None
-    mcp_drop: tuple[str, ...] = ()
-    chat_only: bool = False
-    proposal: bool = False
-    mcp_runnable: bool = False
-    requires_pack: bool = False
-    requires_feature: str | None = None
+__all__ = [
+    "CANNOT_QUERY_YET",
+    "DESCRIBE_DATA_SOURCE",
+    "LINK_HELP",
+    "LIST_DATA_SOURCES",
+    "MAX_LIBRARY_SEARCHES",
+    "MAX_NAMED_TABLES",
+    "SECOND_REFUSAL",
+    "checked_body",
+    "resolve_target",
+    "OPEN_DASHBOARD",
+    "PROPOSE_DASHBOARD",
+    "PROPOSE_QUERY",
+    "RUN_QUERY",
+    "SEARCH_LIBRARY",
+    "SHOW_VISUALIZATION",
+    "VIZ_CHOICE_FIELD",
+    "ChatTool",
+    "ClientCall",
+    "Completer",
+    "DataSourceInfo",
+    "Handler",
+    "Immediate",
+    "SaveDraft",
+    "ToolContext",
+    "completer_for",
+    "is_offered",
+    "positive_id",
+    "prepare_call",
+    "register_chat_tool",
+    "registered_tools",
+    "result_kind_for",
+    "schema_integer",
+    "schema_string",
+    "tool_definitions",
+    "tool_named",
+]
 
 
 _TOOLS: dict[str, ChatTool] = {}
@@ -163,710 +144,6 @@ async def prepare_call(block: dict[str, Any], ctx: ToolContext) -> ClientCall | 
     return await tool.handler(str(block.get("id") or ""), arguments if isinstance(arguments, dict) else {}, ctx)
 
 
-def _resolve(ctx: ToolContext, arguments: dict[str, Any]) -> DatasetOut | Immediate:
-    wanted = text_of(arguments.get("datasetTable"), 255).lower()
-    queryable = [one for one in ctx.datasets if QUERYABLE_TABLE_RE.match(one.id)]
-    exact = [one for one in queryable if one.id.lower() == wanted]
-    bare = [one for one in queryable if one.id.lower().rpartition(".")[2] == wanted.rpartition(".")[2]]
-    if wanted and exact:
-        return exact[0]
-    if wanted and len(bare) == 1:
-        return bare[0]
-    names = ", ".join(one.id for one in queryable[:MAX_NAMED_TABLES]) or "none"
-    return Immediate(f"there is no table called {wanted!r}. The tables you may read are: {names}", is_error=True)
-
-
-def _checked_sql(ctx: ToolContext, arguments: dict[str, Any], dataset: DatasetOut) -> str | Immediate:
-    try:
-        return validate_sql(text_of(arguments.get("sql"), 50_000), AiDatasetIn(table=dataset.id, columns=[]))
-    except UngroundedSql as refused:
-        ctx.refusals += 1
-        message = f"the SQL was refused because {refused}. Rewrite it."
-        return Immediate(message + (SECOND_REFUSAL if ctx.refusals >= 2 else ""), is_error=True)
-
-
-@dataclass(frozen=True)
-class Target:
-    data_source_id: int
-    dataset: DatasetOut | None
-    info: DataSourceInfo | None
-
-
-async def resolve_target(ctx: ToolContext, arguments: dict[str, Any]) -> Target | Immediate:
-    dataset_table = arguments.get("datasetTable")
-    explicit_id = arguments.get("dataSourceId")
-    if isinstance(dataset_table, str) and dataset_table.strip():
-        if explicit_id is not None:
-            return Immediate(
-                "give either datasetTable (the warehouse catalog) or dataSourceId (another data source), not both",
-                is_error=True,
-            )
-        dataset = _resolve(ctx, arguments)
-        if isinstance(dataset, Immediate):
-            return dataset
-        try:
-            warehouse_id = await ctx.data_source_id()
-        except ApiError as unresolvable:
-            return Immediate(f"the query cannot run on this instance: {unresolvable.message}", is_error=True)
-        return Target(data_source_id=warehouse_id, dataset=dataset, info=None)
-
-    source_id = positive_id(explicit_id)
-    if source_id is None:
-        return Immediate(
-            "give datasetTable to query the warehouse catalog, or dataSourceId (from list_data_sources) for "
-            "another data source",
-            is_error=True,
-        )
-    try:
-        existing_warehouse_id: int | None = await ctx.data_source_id()
-    except ApiError:
-        existing_warehouse_id = None
-    if existing_warehouse_id is not None and source_id == existing_warehouse_id:
-        return Immediate("this id is the warehouse; give datasetTable to query it, not dataSourceId", is_error=True)
-    info = ctx.data_source_info(source_id)
-    if info is None or not info.syntax:
-        return Immediate(
-            "call list_data_sources first so this data source's kind is known before querying it", is_error=True
-        )
-    if info.view_only:
-        return Immediate(
-            "this data source is view-only for the analyst's account; ad-hoc queries cannot run against it",
-            is_error=True,
-        )
-    if info.syntax not in ("sql", "json"):
-        return Immediate(CANNOT_QUERY_YET, is_error=True)
-    return Target(data_source_id=source_id, dataset=None, info=info)
-
-
-def checked_body(ctx: ToolContext, arguments: dict[str, Any], target: Target) -> str | Immediate:
-    if target.dataset is not None:
-        if arguments.get("resourceCall") is not None:
-            return Immediate("this data source takes sql, not resourceCall", is_error=True)
-        return _checked_sql(ctx, arguments, target.dataset)
-
-    assert target.info is not None
-    if target.info.syntax == "sql":
-        if arguments.get("resourceCall") is not None:
-            return Immediate("this data source takes sql, not resourceCall", is_error=True)
-        try:
-            return validate_generic_sql(text_of(arguments.get("sql"), 50_000))
-        except UngroundedSql as refused:
-            ctx.refusals += 1
-            message = f"the SQL was refused because {refused}. Rewrite it."
-            return Immediate(message + (SECOND_REFUSAL if ctx.refusals >= 2 else ""), is_error=True)
-
-    if arguments.get("sql") is not None:
-        return Immediate("this data source takes resourceCall, not sql", is_error=True)
-    call = arguments.get("resourceCall")
-    if not isinstance(call, dict):
-        return Immediate("give resourceCall: {resource, params} for this data source", is_error=True)
-    resource = text_of(call.get("resource"), 128)
-    if not resource:
-        return Immediate("resourceCall.resource must name a resource this data source documents", is_error=True)
-    registry = target.info.resources
-    if registry is None:
-        return Immediate(
-            "call describe_data_source for this data source before writing a resourceCall; its resource names "
-            "are not known yet",
-            is_error=True,
-        )
-    if resource not in registry:
-        names = ", ".join(sorted(registry)) or "none"
-        message = f"there is no resource called {resource!r} on this data source. Available: {names}"
-        return Immediate(message, is_error=True)
-    params = call.get("params")
-    params = params if isinstance(params, dict) else {}
-    declared = registry[resource]
-    unexpected = sorted(set(params) - set(declared))
-    if unexpected:
-        allowed = ", ".join(declared) or "none"
-        return Immediate(
-            f"resourceCall.params named {unexpected[0]!r}, which this resource does not take. Allowed: {allowed}",
-            is_error=True,
-        )
-    serialized = json.dumps({"resource": resource, "params": params}, separators=(",", ":"))
-    if len(serialized) > MAX_RESOURCE_CALL_CHARS:
-        message = f"resourceCall is too large (over {MAX_RESOURCE_CALL_CHARS} characters); keep params small"
-        return Immediate(message, is_error=True)
-    return serialized
-
-
-async def _run_query(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
-    target = await resolve_target(ctx, arguments)
-    if isinstance(target, Immediate):
-        return target
-    body = checked_body(ctx, arguments, target)
-    if isinstance(body, Immediate):
-        return body
-    unchosen = missing_viz_choice(arguments, ctx.catalog)
-    if unchosen is not None:
-        return Immediate(unchosen, is_error=True)
-    return ClientCall(
-        call_id=call_id,
-        tool="run_query",
-        args={
-            "dataSourceId": target.data_source_id,
-            "sql": body,
-            "purpose": text_of(arguments.get("purpose"), 200),
-            "vizChoiceId": ctx.catalog.viz_choice(arguments.get("vizChoiceId")),
-        },
-    )
-
-
-async def _propose_query(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
-    target = await resolve_target(ctx, arguments)
-    if isinstance(target, Immediate):
-        return target
-    body = checked_body(ctx, arguments, target)
-    if isinstance(body, Immediate):
-        return body
-    unchosen = missing_viz_choice(arguments, ctx.catalog)
-    if unchosen is not None:
-        return Immediate(unchosen, is_error=True)
-    viz_options = arguments.get("vizOptions", {})
-    options_refusal = options_problem(viz_options, "vizOptions")
-    if options_refusal is not None:
-        return Immediate(options_refusal, is_error=True)
-    default_name = target.dataset.name if target.dataset is not None else f"data source {target.data_source_id}"
-    payload: dict[str, Any] = {
-        "name": text_of(arguments.get("name"), 255) or default_name,
-        "description": text_of(arguments.get("description"), 4_000),
-        "sql": body,
-        "dataSourceId": target.data_source_id,
-        "vizChoiceId": ctx.catalog.viz_choice(arguments.get("vizChoiceId")),
-        "vizOptions": viz_options,
-    }
-    if target.dataset is not None:
-        payload["datasetTable"] = target.dataset.id
-    parameters = arguments.get("parameters")
-    if parameters is not None:
-        problem = check_parameters(body, parameters)
-        if problem is not None:
-            return Immediate(problem, is_error=True)
-        payload["parameters"] = parameters
-    draft_id, version = await ctx.save_draft("query", text_of(arguments.get("draftId"), 64) or None, payload)
-    return Immediate(
-        json.dumps(
-            {
-                "draftId": draft_id,
-                "version": version,
-                "saved": False,
-                "note": "The analyst sees this as a card with a Save button. Nothing is saved until they click it.",
-            }
-        ),
-        is_error=False,
-        draft={"draftId": draft_id, "version": version, "kind": "query", "payload": payload},
-    )
-
-
-MAX_DASHBOARD_ITEMS = 12
-MAX_DASHBOARD_NAME_CHARS = 200
-MAX_DASHBOARD_DESCRIPTION_CHARS = 1_000
-MAX_ITEM_TITLE_CHARS = 500
-MAX_ITEM_TEXT_CHARS = 4_000
-
-
-async def _dashboard_item(raw: Any, ctx: ToolContext) -> dict[str, Any] | Immediate:
-    if not isinstance(raw, dict):
-        return Immediate("each item must be an object", is_error=True)
-    title = text_of(raw.get("title"), MAX_ITEM_TITLE_CHARS)
-    kind = raw.get("kind")
-    params = raw.get("params")
-    if params is not None and kind != "existing":
-        return Immediate(
-            "params go only on an existing item, a saved query you ran with run_saved_query", is_error=True
-        )
-    if kind == "text":
-        text = raw.get("text")
-        text = text.strip() if isinstance(text, str) else ""
-        if not text or len(text) > MAX_ITEM_TEXT_CHARS:
-            return Immediate(f"a text item needs text of 1 to {MAX_ITEM_TEXT_CHARS} characters", is_error=True)
-        return {"kind": "text", "text": text}
-    if kind == "draft":
-        draft_id = text_of(raw.get("queryDraftId"), 64)
-        if not draft_id or not await ctx.query_draft_exists(draft_id):
-            return Immediate(
-                "queryDraftId must be a query you proposed earlier in this conversation, with at least one version",
-                is_error=True,
-            )
-        item: dict[str, Any] = {"kind": "draft", "queryDraftId": draft_id}
-    elif kind == "existing":
-        query_id = positive_id(raw.get("queryId"))
-        visualization_id = positive_id(raw.get("visualizationId"))
-        if query_id is None or visualization_id is None:
-            return Immediate(
-                "an existing item needs queryId and visualizationId, both from a search result", is_error=True
-            )
-        item = {"kind": "existing", "queryId": query_id, "visualizationId": visualization_id}
-        problem = None if params is None else params_problem(params)
-        if problem is not None:
-            return Immediate(f"params for query {query_id}: {problem}", is_error=True)
-        if params:
-            item["parameters"] = params
-    else:
-        return Immediate('each item\'s kind must be "draft", "existing" or "text"', is_error=True)
-    if title:
-        item["title"] = title
-    return item
-
-
-async def _propose_dashboard(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
-    name = text_of(arguments.get("name"), MAX_DASHBOARD_NAME_CHARS)
-    if not name:
-        return Immediate("name must be a short title for the dashboard", is_error=True)
-    raw_items = arguments.get("items")
-    if not isinstance(raw_items, list) or not raw_items:
-        return Immediate("items must list at least one query for the dashboard", is_error=True)
-    if len(raw_items) > MAX_DASHBOARD_ITEMS:
-        return Immediate(f"items may name at most {MAX_DASHBOARD_ITEMS} queries", is_error=True)
-    items: list[dict[str, Any]] = []
-    for raw in raw_items:
-        item = await _dashboard_item(raw, ctx)
-        if isinstance(item, Immediate):
-            return item
-        items.append(item)
-    payload = {
-        "name": name,
-        "description": text_of(arguments.get("description"), MAX_DASHBOARD_DESCRIPTION_CHARS),
-        "items": items,
-    }
-    draft_id, version = await ctx.save_draft("dashboard", text_of(arguments.get("draftId"), 64) or None, payload)
-    return Immediate(
-        json.dumps(
-            {
-                "draftId": draft_id,
-                "version": version,
-                "saved": False,
-                "note": "The analyst sees this as a card with a Save button. Nothing is saved until they click it.",
-            }
-        ),
-        is_error=False,
-        draft={"draftId": draft_id, "version": version, "kind": "dashboard", "payload": payload},
-    )
-
-
-async def _list_data_sources(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
-    return ClientCall(call_id=call_id, tool="list_data_sources", args={})
-
-
-async def _describe_data_source(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
-    source_id = positive_id(arguments.get("dataSourceId"))
-    if source_id is None:
-        return Immediate("dataSourceId must be the id of a data source from list_data_sources", is_error=True)
-    return ClientCall(call_id=call_id, tool="describe_data_source", args={"dataSourceId": source_id})
-
-
-def positive_id(value: Any) -> int | None:
-    number = picked_id(value)
-    return number if number is not None and number > 0 else None
-
-
-def _strings(value: Any, limit: int) -> list[str]:
-    return (
-        [text_of(one, limit) for one in value if isinstance(one, str) and one.strip()]
-        if isinstance(value, list)
-        else []
-    )
-
-
-async def _search_library(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
-    text = text_of(arguments.get("text"), 200)
-    tags = _strings(arguments.get("tags"), 64)[:MAX_SEARCH_TAGS]
-    asked = arguments.get("kinds")
-    kinds = [kind for kind in LIBRARY_KINDS if not isinstance(asked, list) or kind in asked]
-    if not kinds:
-        return Immediate(f"kinds must name at least one of {', '.join(LIBRARY_KINDS)}", is_error=True)
-    if ctx.library_searches >= MAX_LIBRARY_SEARCHES:
-        return Immediate(
-            f"you already searched the library {MAX_LIBRARY_SEARCHES} times in this turn. Stop searching and answer "
-            "from what you found: give the counts and the tag groups, and offer to narrow it down.",
-            is_error=True,
-        )
-    archived = arguments.get("archived", False)
-    if not isinstance(archived, bool):
-        return Immediate("archived must be true or false", is_error=True)
-    ctx.library_searches += 1
-    sort = "recent" if arguments.get("sort") == "recent" else "match"
-    return ClientCall(
-        call_id=call_id,
-        tool="search_library",
-        args={"text": text, "kinds": kinds, "tags": tags, "sort": sort, "archived": archived},
-    )
-
-
-async def _show_visualization(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
-    query_id = positive_id(arguments.get("queryId"))
-    if query_id is None:
-        return Immediate("queryId must be the id of a query from a search result", is_error=True)
-    raw = arguments.get("visualizationId")
-    visualization_id = positive_id(raw)
-    if raw is not None and visualization_id is None:
-        return Immediate("visualizationId must be the id of one of the query's visualizations", is_error=True)
-    return ClientCall(
-        call_id=call_id,
-        tool="show_visualization",
-        args={"queryId": query_id, "visualizationId": visualization_id},
-    )
-
-
-async def _open_dashboard(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
-    dashboard_id = positive_id(arguments.get("dashboardId"))
-    if dashboard_id is None:
-        return Immediate("dashboardId must be the id of a dashboard from a search result", is_error=True)
-    return ClientCall(call_id=call_id, tool="open_dashboard", args={"dashboardId": dashboard_id})
-
-
-def _suggested_pages(wanted: str, index: HelpIndex | None) -> list[str]:
-    words = {word for word in re.split(r"[^a-z0-9]+", wanted.lower()) if len(word) >= 3}
-    scored = [
-        (sum(word in f"{page.id} {page.title}".lower() for word in words), shown_id(page.id))
-        for page in (index.pages if index else ())
-    ]
-    best = max((score for score, _ in scored), default=0)
-    return [page_id for score, page_id in scored if best and score == best][:MAX_HELP_SUGGESTIONS]
-
-
-async def _link_help(call_id: str, arguments: dict[str, Any], ctx: ToolContext) -> ClientCall | Immediate:
-    index = for_edition(load_index(), ctx.edition)
-    if index is None:
-        return Immediate("the documentation is unavailable on this instance; do not link to it", is_error=True)
-    if ctx.help_links >= MAX_HELP_LINKS:
-        return Immediate(
-            f"you already linked {MAX_HELP_LINKS} documentation sections in this turn. Stop linking and answer.",
-            is_error=True,
-        )
-    asked = arguments.get("page")
-    if not isinstance(asked, str) or not asked.strip():
-        return Immediate("page must name a page from the documentation index; `/` is the introduction", is_error=True)
-    wanted = text_of(asked, 200).strip("/")
-    page = index.page(wanted)
-    if page is None:
-        suggestions = _suggested_pages(wanted, index)
-        hint = f" Pages that may fit: {', '.join(suggestions)}." if suggestions else " No page is close to it."
-        return Immediate(f"there is no documentation page {wanted!r}.{hint} Use a page from the index.", is_error=True)
-    anchor = text_of(arguments.get("section"), 200).lstrip("#") or None
-    section = page.section(anchor) if anchor else None
-    if anchor and section is None:
-        anchors = ", ".join(one.anchor for one in page.sections) or "none"
-        return Immediate(
-            f"the page {shown_id(page.id)!r} has no section {anchor!r}. Its sections are: {anchors}", is_error=True
-        )
-    ctx.help_links += 1
-    section_title = section.title if section else None
-    result = {
-        "linked": True,
-        "page": page.id,
-        "section": anchor,
-        "pageTitle": page.title,
-        "sectionTitle": section_title,
-    }
-    card = {
-        "callId": call_id,
-        "page": page.id,
-        "pageTitle": page.title,
-        "anchor": anchor,
-        "sectionTitle": section_title,
-        "reason": text_of(arguments.get("reason"), 200),
-    }
-    return Immediate(json.dumps(result), is_error=False, frame=("help_link", card))
-
-
-def schema_string(description: str) -> dict[str, str]:
-    return {"type": "string", "description": description}
-
-
-def schema_integer(description: str) -> dict[str, str]:
-    return {"type": "integer", "description": description}
-
-
-_SOURCE_TARGET_PROPERTIES: dict[str, Any] = {
-    "datasetTable": schema_string(
-        "The `table` of one catalog entry, copied exactly. Give this for the warehouse; omit it when giving "
-        "dataSourceId instead."
-    ),
-    "dataSourceId": schema_integer(
-        "The id of a data source from list_data_sources, for any source other than the warehouse. Omit when "
-        "giving datasetTable instead."
-    ),
-    "sql": schema_string(
-        "One SELECT statement (a leading WITH is fine). Required with datasetTable, or with a dataSourceId whose "
-        'syntax is "sql" (from list_data_sources/describe_data_source).'
-    ),
-    "resourceCall": {
-        "type": "object",
-        "description": (
-            '{resource, params} for a dataSourceId whose syntax is "json". resource and the allowed params '
-            "come from describe_data_source, called earlier in this turn."
-        ),
-        "properties": {
-            "resource": schema_string("A resource name describe_data_source listed for this data source."),
-            "params": {"type": "object", "description": "Only the params that resource documents."},
-        },
-    },
-}
-
-RUN_QUERY = ChatTool(
-    name="run_query",
-    definition={
-        "name": "run_query",
-        "description": (
-            "Run one read-only query in the analyst's browser under their own permissions, against the warehouse "
-            "catalog or another data source. Returns the row count, statistics over the full result and at most "
-            "50 sample rows. The analyst sees the full result drawn with vizChoiceId."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                **_SOURCE_TARGET_PROPERTIES,
-                "purpose": schema_string("What this query finds out, in a few words the analyst will see."),
-                "vizChoiceId": schema_string(VIZ_FIELD_DESCRIPTION),
-            },
-            "required": ["purpose", "vizChoiceId"],
-        },
-    },
-    handler=_run_query,
-    mcp_drop=("vizChoiceId", "purpose"),
-    result_kind="query_result",
-)
-
-PROPOSE_QUERY = ChatTool(
-    name="propose_query",
-    definition={
-        "name": "propose_query",
-        "description": (
-            "Offer a query the analyst can save to the platform, against the warehouse catalog or another data "
-            "source. Nothing is saved until they click Save. Pass draftId to revise a query you proposed earlier "
-            "in this conversation."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "draftId": schema_string("The draftId of an earlier proposal to revise. Omit for a new one."),
-                "name": schema_string("A short name for the saved query."),
-                "description": schema_string("One sentence on what the query answers."),
-                **_SOURCE_TARGET_PROPERTIES,
-                "vizChoiceId": schema_string(VIZ_FIELD_DESCRIPTION),
-                "vizOptions": {
-                    "type": "object",
-                    "description": (
-                        "Options for the chosen visualization type, from describe_visualization_type. "
-                        "Omit for the defaults."
-                    ),
-                },
-                "parameters": PARAMETERS_SCHEMA,
-            },
-            "required": ["name", "vizChoiceId"],
-        },
-    },
-    handler=_propose_query,
-    proposal=True,
-)
-
-LIST_DATA_SOURCES = ChatTool(
-    name="list_data_sources",
-    definition={
-        "name": "list_data_sources",
-        "description": (
-            'List the data sources the analyst can query: id, name, type, syntax ("sql" or "json"; chat '
-            "cannot query any other syntax yet) and whether the source is view-only for them. Call this before "
-            "querying anything outside the warehouse catalog."
-        ),
-        "input_schema": {"type": "object", "properties": {}},
-    },
-    handler=_list_data_sources,
-    result_kind="data_sources",
-)
-
-DESCRIBE_DATA_SOURCE = ChatTool(
-    name="describe_data_source",
-    definition={
-        "name": "describe_data_source",
-        "description": (
-            'Learn how to query one data source from list_data_sources: its tables and columns for a "sql" '
-            'syntax source, or its named resources and their params for a "json" syntax source. Call this '
-            "before run_query or propose_query against that dataSourceId."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {"dataSourceId": schema_integer("The id of a data source from list_data_sources.")},
-            "required": ["dataSourceId"],
-        },
-    },
-    handler=_describe_data_source,
-    result_kind="data_source_schema",
-)
-
-SEARCH_LIBRARY = ChatTool(
-    name="search_library",
-    definition={
-        "name": "search_library",
-        "description": (
-            "Search the saved queries and dashboards the analyst can see, by text in their names and descriptions "
-            "and by tag. Leave text empty and give no tags to browse everything of a kind. Returns at most 50 "
-            "dashboards and 10 queries with ids, descriptions, tags and whether a query has a stored result, and "
-            "queryCount and dashboardCount: how many matched in all. `more` means more matched than are listed. "
-            "A browse also returns tagCounts, the tags in use with how many items carry each: narrow by one of "
-            "those tags rather than guessing words. Each item's updatedAt is when it was last edited; a stored "
-            "result being refreshed does not change it."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "text": schema_string("Words to look for. Empty or left out to browse."),
-                "kinds": {
-                    "type": "array",
-                    "items": {"type": "string", "enum": list(LIBRARY_KINDS)},
-                    "description": "Which kinds to search. Both when omitted.",
-                },
-                "tags": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Only items carrying all of these tags.",
-                },
-                "sort": {
-                    "type": "string",
-                    "enum": ["match", "recent"],
-                    "description": "recent lists the most recently edited queries first. match when omitted.",
-                },
-                "archived": {
-                    "type": "boolean",
-                    "description": (
-                        "true lists archived queries and dashboards instead of live ones, to find one to restore. "
-                        "Each item then carries archived: true. false when omitted."
-                    ),
-                },
-            },
-        },
-    },
-    handler=_search_library,
-    result_kind="library",
-)
-
-SHOW_VISUALIZATION = ChatTool(
-    name="show_visualization",
-    definition={
-        "name": "show_visualization",
-        "description": (
-            "Show one of a saved query's visualizations to the analyst, drawn from the query's latest stored result. "
-            "It never runs the query. Returns the query's SQL, its visualizations, when the result was retrieved, "
-            "the row count, column statistics and at most 50 sample rows."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "queryId": schema_integer("The id of a query from a search result or a dashboard widget."),
-                "visualizationId": schema_integer(
-                    "The id of one of the query's visualizations. Omit to show its main chart."
-                ),
-            },
-            "required": ["queryId"],
-        },
-    },
-    handler=_show_visualization,
-    result_kind="saved_visualization",
-)
-
-OPEN_DASHBOARD = ChatTool(
-    name="open_dashboard",
-    definition={
-        "name": "open_dashboard",
-        "description": (
-            "Read a dashboard's widgets in full: each one's id, kind (chart or text), title, query and visualization, "
-            "text, position, parameter mappings and last edit, plus whether the analyst may edit the dashboard. "
-            "The analyst gets a link to the dashboard. Use show_visualization to show a widget's chart."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {"dashboardId": schema_integer("The id of a dashboard from a search result.")},
-            "required": ["dashboardId"],
-        },
-    },
-    handler=_open_dashboard,
-    result_kind="dashboard",
-)
-
-PROPOSE_DASHBOARD = ChatTool(
-    name="propose_dashboard",
-    definition={
-        "name": "propose_dashboard",
-        "description": (
-            "Offer a dashboard of charts the analyst can save to the platform. Nothing is saved until they click "
-            "Save. Each item is a query proposed earlier in this conversation (queryDraftId) or an already-saved "
-            "query and one of its visualizations (queryId, visualizationId), or a text note (kind text, with text). "
-            "Give an existing item the params you ran it with in run_saved_query, or its widget shows the query's "
-            "saved defaults instead of what you previewed. Pass draftId to revise a dashboard "
-            "you proposed earlier in this conversation."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "draftId": schema_string(
-                    "The draftId of an earlier dashboard proposal to revise. Omit for a new one."
-                ),
-                "name": schema_string("A short name for the dashboard."),
-                "description": schema_string("One sentence on what the dashboard shows."),
-                "items": {
-                    "type": "array",
-                    "minItems": 1,
-                    "maxItems": MAX_DASHBOARD_ITEMS,
-                    "description": "1 to 12 items to put on the dashboard, charts and text notes.",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "kind": {"type": "string", "enum": ["draft", "existing", "text"]},
-                            "text": schema_string("For kind text: markdown shown in a text widget, at most 4000."),
-                            "queryDraftId": schema_string(
-                                "For kind draft: the draftId of a query you proposed earlier in this conversation."
-                            ),
-                            "queryId": schema_integer(
-                                "For kind existing: the id of an already-saved query, from a search result."
-                            ),
-                            "visualizationId": schema_integer(
-                                "For kind existing: one of that query's visualization ids."
-                            ),
-                            "params": {
-                                "type": "object",
-                                "description": (
-                                    "For kind existing: the parameter values by name you gave run_saved_query for "
-                                    "this query, kept on the widget. Omit to use the query's saved defaults."
-                                ),
-                            },
-                            "title": schema_string(
-                                "A label for this item on the dashboard. Omit to use the query's own name."
-                            ),
-                        },
-                        "required": ["kind"],
-                    },
-                },
-            },
-            "required": ["name", "items"],
-        },
-    },
-    handler=_propose_dashboard,
-    proposal=True,
-)
-
-LINK_HELP = ChatTool(
-    name="link_help",
-    definition={
-        "name": "link_help",
-        "description": (
-            "Show the analyst a link to a section of the Veodyn documentation. Use it for questions about how the "
-            "platform works. The analyst sees the link as a card; do not write URLs yourself."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "page": schema_string("A page from the documentation index, copied exactly. `/` is the introduction."),
-                "section": schema_string("An anchor of that page from the index, without `#`. Omit to link the page."),
-                "reason": schema_string("What the analyst will find there, in a few words."),
-            },
-            "required": ["page", "reason"],
-        },
-    },
-    handler=_link_help,
-)
-
 for _tool in (
     RUN_QUERY,
     PROPOSE_QUERY,
@@ -880,7 +157,8 @@ for _tool in (
 ):
     register_chat_tool(_tool)
 
-from veodyn_api.services.chat import saved_query_tool as _saved_query_tool  # noqa: E402, F401
+
+import_module("veodyn_api.services.chat.saved_query_tool")
 
 import_module("veodyn_api.services.chat.query_edit_tool")
 import_module("veodyn_api.services.chat.viz_tools")

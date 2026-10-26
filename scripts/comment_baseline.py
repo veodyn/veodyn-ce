@@ -166,7 +166,6 @@ BASELINE = {
     "api/veodyn_api/services/captures.py": 62,
     "api/veodyn_api/services/catalog.py": 73,
     "api/veodyn_api/services/chat/bus.py": 12,
-    "api/veodyn_api/services/chat/tools.py": 1,
     "api/veodyn_api/services/clickhouse.py": 85,
     "api/veodyn_api/services/connector_registry.py": 1,
     "api/veodyn_api/services/dataset_profile.py": 47,
@@ -622,7 +621,7 @@ BASELINE = {
     "app/src/components/chat/proposal-kit/write-proposed-query.require-column.real.test.tsx": 25,
     "app/src/components/chat/proposal-kit/written-query-disclosure.tsx": 10,
     "app/src/components/dashboard/add-widget-dialog.tsx": 14,
-    "app/src/components/dashboard/add-widget-layout.ts": 5,
+    "app/src/components/dashboard/add-widget-layout.ts": 4,
     "app/src/components/dashboard/add-widget-param-mapping.tsx": 3,
     "app/src/components/dashboard/annotation-dialog.test.tsx": 28,
     "app/src/components/dashboard/annotation-dialog.tsx": 17,
@@ -1278,7 +1277,7 @@ BASELINE = {
     "ci/init-prod.yaml": 26,
     "ci/redash-test.yaml": 234,
     "ci/scan-secrets.yaml": 153,
-    "ci/veodyn-de.yaml": 302,
+    "ci/veodyn-de.yaml": 289,
     "compose.yaml": 205,
     "compose/fixtures/historical.sql": 28,
     "compose/fixtures/sidecar.sql": 55,
@@ -1675,6 +1674,6 @@ BASELINE = {
     "validator/validator_service/validation.py": 44,
 }
 
-FILES_WITH_COMMENTS = 1674
-COMMENT_LINES = 42800
-FILES_SCANNED = 2789
+FILES_WITH_COMMENTS = 1673
+COMMENT_LINES = 42785
+FILES_SCANNED = 2815
