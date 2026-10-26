@@ -120,12 +120,6 @@ const nextConfig: NextConfig = {
   // Self-contained server bundle for the Docker image (see Dockerfile)
   output: "standalone",
 
-  async redirects() {
-    return [
-      { source: "/data-catalog", destination: "/data", permanent: true },
-      { source: "/data-catalog/:path*", destination: "/data/:path*", permanent: true },
-    ];
-  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders() },
