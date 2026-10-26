@@ -187,7 +187,8 @@ def cut_patterns(
             for gtfs_stop_id in stops
         ]
         layovers = [
-            is_layover(
+            profile.trim_layover_named_ends
+            and is_layover(
                 snapshot.stops.get(gtfs_stop_id, {}).get("stop_name"), mca_stops.get(found[0], {}).get("stop_name")
             )
             for gtfs_stop_id, found in zip(stops, matches)

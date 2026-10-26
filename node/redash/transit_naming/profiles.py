@@ -125,6 +125,7 @@ class Profile:
     pattern_codes: dict = field(default_factory=dict)
     departures_stop_lookup_max: int = 50
     time_format: str = "h:mma"
+    trim_layover_named_ends: bool = True
     overrides: dict = field(default_factory=dict)
     streets: object = None
     source_file: str = ""

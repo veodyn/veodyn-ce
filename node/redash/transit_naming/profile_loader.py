@@ -47,6 +47,7 @@ TOP_KEYS = {
     "stop_name",
     "headsign",
     "time_format",
+    "trim_layover_named_ends",
     "inherit_default",
 }
 ROUTE_NAME_KEYS = {
@@ -205,6 +206,18 @@ def _extra_trip_routes(data, carrier, file):
     return extra
 
 
+def _trim_layover_named_ends(data, carrier, file):
+    value = data.get("trim_layover_named_ends", True)
+    if not isinstance(value, bool):
+        raise ProfileError(
+            f"trim_layover_named_ends must be true or false, got {value!r}",
+            carrier,
+            file,
+            field="trim_layover_named_ends",
+        )
+    return value
+
+
 def _direction_map(data):
     return {str(k): str(v) for k, v in (data or {}).items()}
 
@@ -240,6 +253,7 @@ def parse_profile_yaml(text, file, default_data=None):
         pattern_codes={str(k): tuple(str(c) for c in v) for k, v in pattern_codes.items()},
         departures_stop_lookup_max=int(data.get("departures_stop_lookup_max", 50)),
         time_format=str(data.get("time_format", "h:mma")),
+        trim_layover_named_ends=_trim_layover_named_ends(data, carrier, file),
         source_file=file,
         is_default=os.path.basename(file) == DEFAULT_FILE,
         inherits_default=bool(data.get("inherit_default")),

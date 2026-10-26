@@ -1,9 +1,13 @@
+import tempfile
+from dataclasses import replace
 from unittest import TestCase
 
 from redash.transit_naming.gtfs_routes import read_snapshot
 from redash.transit_naming.patterns import cut_patterns
+from redash.transit_naming.profile_loader import CORE_PROFILE_DIR, load_profiles
+from redash.transit_naming.profiles import ProfileError
 from redash.transit_naming.snapshot import GtfsSnapshot
-from tests.query_runner.transit_naming_fixtures import MT_STOPS_BY_ID, metro_profile
+from tests.query_runner.transit_naming_fixtures import MT_STOPS_BY_ID, MT_YAML, metro_profile, write_profile_dir
 from tests.query_runner.transit_naming_gtfs_fixtures import BUS_MEMBERS, build_archive
 
 PROFILE = metro_profile()
@@ -28,8 +32,11 @@ def snapshot(trips, stop_times, no_service=None):
     )
 
 
-def cut(snap, mca_stops=MT_STOPS_BY_ID, names=NAMES):
-    return cut_patterns("MT", "MTR", "R", snap, mca_stops, names, PROFILE)
+KEEPING_PROFILE = replace(PROFILE, trim_layover_named_ends=False)
+
+
+def cut(snap, mca_stops=MT_STOPS_BY_ID, names=NAMES, profile=PROFILE):
+    return cut_patterns("MT", "MTR", "R", snap, mca_stops, names, profile)
 
 
 def stops_of(rows, pattern_id):
@@ -96,6 +103,60 @@ class TestLayoverNamedStops(TestCase):
         times = [(1, "1166"), (2, "13574"), (3, "9800"), (4, "9801")]
         rows = cut(snapshot([trip("a", "S")], {"a": times}, {"a": {4}}))
         self.assertEqual(stops_of(rows, "S"), [(0, "1166"), (1, "13574")])
+
+
+class TestTrimLayoverNamedEndsSwitch(TestCase):
+    def test_trimming_is_the_default(self):
+        self.assertTrue(PROFILE.trim_layover_named_ends)
+
+    def test_a_served_layover_named_terminus_is_kept_when_the_switch_is_off(self):
+        times = [(1, "1166"), (2, "13574"), (3, "19022"), (4, "9800")]
+        rows = cut(snapshot([trip("a", "S")], {"a": times}), profile=KEEPING_PROFILE)
+        self.assertEqual(stops_of(rows, "S"), [(0, "1166"), (1, "13574"), (2, "19022"), (3, "9800")])
+
+    def test_a_served_layover_named_origin_is_kept_when_the_switch_is_off(self):
+        times = [(1, "9800"), (2, "1166"), (3, "13574")]
+        rows = cut(snapshot([trip("a", "S")], {"a": times}), profile=KEEPING_PROFILE)
+        self.assertEqual(stops_of(rows, "S"), [(0, "9800"), (1, "1166"), (2, "13574")])
+
+    def test_a_no_service_stop_still_drops_when_the_switch_is_off(self):
+        times = [(1, "1166"), (2, "13574"), (3, "9800"), (4, "9801")]
+        rows = cut(snapshot([trip("a", "S")], {"a": times}, {"a": {3, 4}}), profile=KEEPING_PROFILE)
+        self.assertEqual(stops_of(rows, "S"), [(0, "1166"), (1, "13574")])
+
+    def test_a_no_service_layover_named_end_drops_even_when_the_switch_is_off(self):
+        times = [(1, "1166"), (2, "13574"), (3, "19022"), (4, "9800")]
+        rows = cut(snapshot([trip("a", "S")], {"a": times}, {"a": {4}}), profile=KEEPING_PROFILE)
+        self.assertEqual(stops_of(rows, "S"), [(0, "1166"), (1, "13574"), (2, "19022")])
+
+    def test_the_default_still_trims_the_same_pattern(self):
+        times = [(1, "1166"), (2, "13574"), (3, "19022"), (4, "9800")]
+        rows = cut(snapshot([trip("a", "S")], {"a": times}))
+        self.assertEqual(stops_of(rows, "S"), [(0, "1166"), (1, "13574"), (2, "19022")])
+
+
+class TestTrimLayoverNamedEndsOption(TestCase):
+    ANCHOR = "pattern_codes: {}"
+
+    def load(self, option):
+        text = MT_YAML.replace(self.ANCHOR, self.ANCHOR + "\n" + option) if option else MT_YAML
+        with tempfile.TemporaryDirectory() as pack:
+            write_profile_dir(pack, {"MT.yaml": text})
+            return load_profiles([CORE_PROFILE_DIR, pack]).profiles["MT"].trim_layover_named_ends
+
+    def test_absent_means_trim(self):
+        self.assertTrue(self.load(""))
+
+    def test_false_turns_trimming_off(self):
+        self.assertFalse(self.load("trim_layover_named_ends: false"))
+
+    def test_true_is_read(self):
+        self.assertTrue(self.load("trim_layover_named_ends: true"))
+
+    def test_a_non_boolean_is_refused(self):
+        with self.assertRaises(ProfileError) as raised:
+            self.load('trim_layover_named_ends: "no"')
+        self.assertEqual(raised.exception.field, "trim_layover_named_ends")
 
 
 STOP_TIMES_WITH_FLAGS = (
