@@ -4,6 +4,7 @@ from typing import Any, cast
 import pytest
 from sqlalchemy import Engine, text
 
+from tests.chat_stubs import text_turn
 from tests.test_chat_routes import Harness, harness, headers, model  # noqa: F401
 from veodyn_api.schemas.ai_chat_context import ChatSubjectDetailIn, ChatTurnIn
 from veodyn_api.services.chat.prompt import CHAT_RULES, chat_system
@@ -62,6 +63,8 @@ def test_a_thread_is_created_with_each_subject_kind(chat: Harness, subject: dict
     assert response.status_code == 201, response.text
     assert response.json()["subject"] == subject
     assert response.json()["title"] == ""
+    chat.model.turns.append(text_turn("ok"))
+    chat.wait_for(chat.turn(response.json()["id"]), "turn_done")
     listed = chat.client.get("/ai/chat/threads", headers=headers()).json()["threads"]
     assert listed[0]["subject"] == subject
 

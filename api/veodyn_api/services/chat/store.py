@@ -3,7 +3,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
 from veodyn_api.errors import ApiError, ErrorId
@@ -44,7 +44,7 @@ def create_thread(
 def list_threads(db: Session, owner: str, *, offset: int, limit: int) -> list[AiChatThread]:
     statement = (
         select(AiChatThread)
-        .where(AiChatThread.owner_subject == owner)
+        .where(AiChatThread.owner_subject == owner, exists().where(AiChatTurn.thread_id == AiChatThread.id))
         .order_by(AiChatThread.pinned.desc(), AiChatThread.last_turn_at.desc(), AiChatThread.id)
         .offset(offset)
         .limit(limit)

@@ -80,8 +80,8 @@ def test_every_route_needs_the_relay_key_and_a_user_token(harness: Harness) -> N
 
 def test_threads_are_created_listed_renamed_pinned_and_deleted(harness: Harness) -> None:
     client = harness.client
-    first = harness.thread()
-    second = harness.thread()
+    first = harness.talked()
+    second = harness.talked()
     assert client.patch(f"/ai/chat/threads/{first}", json={"pinned": True}, headers=headers()).json()["pinned"]
     renamed = client.patch(f"/ai/chat/threads/{second}", json={"title": "Speeds"}, headers=headers())
     assert renamed.json()["title"] == "Speeds"
@@ -90,6 +90,18 @@ def test_threads_are_created_listed_renamed_pinned_and_deleted(harness: Harness)
     assert listing["nextOffset"] is None
     assert client.delete(f"/ai/chat/threads/{first}", headers=headers()).status_code == 204
     assert [one["id"] for one in client.get("/ai/chat/threads", headers=headers()).json()["threads"]] == [second]
+
+
+def test_a_thread_is_listed_once_its_first_turn_is_sent(harness: Harness) -> None:
+    client = harness.client
+    harness.model.turns.append(text_turn("hi"))
+    thread = harness.thread()
+    assert client.get("/ai/chat/threads", headers=headers()).json()["threads"] == []
+    opened = client.get(f"/ai/chat/threads/{thread}", headers=headers())
+    assert opened.status_code == 200, opened.text
+    assert opened.json()["turns"] == []
+    harness.wait_for(harness.turn(thread), "turn_done")
+    assert [one["id"] for one in client.get("/ai/chat/threads", headers=headers()).json()["threads"]] == [thread]
 
 
 def test_another_users_ids_are_not_found(harness: Harness) -> None:

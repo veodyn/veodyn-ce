@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from veodyn_api.errors import ApiError, ErrorId
-from veodyn_api.models.ai_chat import AiChatDraft, AiChatTurn
+from veodyn_api.models.ai_chat import AiChatDraft, AiChatThread, AiChatTurn
 from veodyn_api.services.chat import store
 
 OWNER = "7"
@@ -46,10 +46,16 @@ def test_every_reader_hides_another_owners_rows(db: Session) -> None:
     assert store.list_threads(db, OTHER, offset=0, limit=50) == []
 
 
+def started(db: Session) -> AiChatThread:
+    thread = store.create_thread(db, OWNER)
+    store.start_turn(db, thread, "hello")
+    return thread
+
+
 def test_threads_list_pinned_first_then_most_recent(db: Session) -> None:
-    old = store.create_thread(db, OWNER)
-    new = store.create_thread(db, OWNER)
-    pinned = store.create_thread(db, OWNER)
+    old = started(db)
+    new = started(db)
+    pinned = started(db)
     old.last_turn_at = datetime.now(UTC) - timedelta(days=2)
     new.last_turn_at = datetime.now(UTC)
     pinned.last_turn_at = datetime.now(UTC) - timedelta(days=5)
@@ -57,6 +63,16 @@ def test_threads_list_pinned_first_then_most_recent(db: Session) -> None:
     db.commit()
     assert [one.id for one in store.list_threads(db, OWNER, offset=0, limit=50)] == [pinned.id, new.id, old.id]
     assert [one.id for one in store.list_threads(db, OWNER, offset=1, limit=1)] == [new.id]
+
+
+def test_a_thread_is_listed_only_once_it_has_a_turn(db: Session) -> None:
+    empty = store.create_thread(db, OWNER, subject={"kind": "query", "queryId": 3})
+    talked = started(db)
+    assert [one.id for one in store.list_threads(db, OWNER, offset=0, limit=50)] == [talked.id]
+    assert store.list_threads(db, OWNER, offset=1, limit=50) == []
+    assert store.thread_for_owner(db, OWNER, empty.id).id == empty.id
+    store.start_turn(db, empty, "what does it show?")
+    assert {one.id for one in store.list_threads(db, OWNER, offset=0, limit=50)} == {empty.id, talked.id}
 
 
 def test_the_first_message_names_the_thread(db: Session) -> None:

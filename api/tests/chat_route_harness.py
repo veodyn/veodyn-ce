@@ -5,7 +5,7 @@ from typing import Any
 import redis
 from fastapi.testclient import TestClient
 
-from tests.chat_stubs import ScriptedChatModel, sign
+from tests.chat_stubs import ScriptedChatModel, sign, text_turn
 
 RELAY_KEY = "relay-secret"
 SQL = "SELECT avg(speed_mph) FROM regional_speeds"
@@ -40,6 +40,12 @@ class Harness:
         response = self.client.post("/ai/chat/threads", headers=headers(subject))
         assert response.status_code == 201, response.text
         return str(response.json()["id"])
+
+    def talked(self, subject: str = "7") -> str:
+        self.model.turns.append(text_turn("ok"))
+        thread = self.thread(subject)
+        self.wait_for(self.turn(thread, subject=subject), "turn_done")
+        return thread
 
     def turn(self, thread_id: str, text: str = "how fast?", subject: str = "7") -> str:
         response = self.client.post(
