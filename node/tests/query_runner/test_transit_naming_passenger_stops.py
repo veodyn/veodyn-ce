@@ -7,7 +7,12 @@ from redash.transit_naming.patterns import cut_patterns
 from redash.transit_naming.profile_loader import CORE_PROFILE_DIR, load_profiles
 from redash.transit_naming.profiles import ProfileError
 from redash.transit_naming.snapshot import GtfsSnapshot
-from tests.query_runner.transit_naming_fixtures import MT_STOPS_BY_ID, MT_YAML, metro_profile, write_profile_dir
+from tests.query_runner.transit_naming_fixtures import (
+    MT_STOPS_BY_ID,
+    MT_YAML,
+    metro_profile,
+    write_profile_dir,
+)
 from tests.query_runner.transit_naming_gtfs_fixtures import BUS_MEMBERS, build_archive
 
 PROFILE = metro_profile()
