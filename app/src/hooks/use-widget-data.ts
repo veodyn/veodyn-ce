@@ -1,12 +1,13 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMockDataStore } from '@/stores/mock-data-store'
 import { USE_REAL_API } from '@/services/redash/config'
 import * as execution from '@/services/redash/execution'
 import type { MockDashboardWidget } from '@/lib/mock-data'
 import { required } from '@/lib/required'
+import { widgetParameters } from '@/lib/parameters/dashboard-parameters'
 
 /**
  * Resolve the data behind a dashboard visualization widget.
@@ -20,8 +21,9 @@ import { required } from '@/lib/required'
  */
 export function useWidgetData(
   widget: MockDashboardWidget,
-  parameters: Record<string, unknown> = {}
+  given?: Record<string, unknown>
 ) {
+  const parameters = useMemo(() => given ?? widgetParameters(widget, {}), [given, widget])
   const store = useMockDataStore()
   const queryClient = useQueryClient()
   const viz = widget.visualization
