@@ -1,7 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { START_FAILED_MESSAGE } from '@/hooks/use-start-chat'
 import { renderWithProviders } from '@/test/utils'
 import { CreateWithAiButton } from './create-with-ai-button'
 import { CreateWithAiButton as ShimmedButton } from '@/components/ai/create-chat/create-with-ai-button'
@@ -16,14 +15,8 @@ vi.mock('@/services/ai/chat-client', async (importOriginal) => ({
 }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
 
-const toastError = vi.hoisted(() => vi.fn())
-vi.mock('@/components/shared/toast-provider', () => ({
-  useToast: () => ({ error: toastError, success: vi.fn(), info: vi.fn(), warning: vi.fn() }),
-}))
-
 beforeEach(() => {
   vi.clearAllMocks()
-  client.createThread.mockResolvedValue({ id: 'new-thread' })
 })
 
 describe('CreateWithAiButton', () => {
@@ -35,12 +28,12 @@ describe('CreateWithAiButton', () => {
   })
 
   it.each(['query', 'dashboard', 'snippet', 'kpi', 'report', 'message'] as const)(
-    'opens a chat thread about a new %s without a first turn',
+    'opens the chat about a new %s without creating a thread',
     async (kind) => {
       renderWithProviders(<CreateWithAiButton kind={kind} />, { config: { ai: { enabled: true } } })
       await userEvent.click(screen.getByRole('button', { name: 'Create with AI' }))
-      await waitFor(() => expect(push).toHaveBeenCalledWith('/chat/new-thread'))
-      expect(client.createThread).toHaveBeenCalledWith({ kind: 'new', newKind: kind }, expect.any(AbortSignal))
+      await waitFor(() => expect(push).toHaveBeenCalledWith(`/chat?about=new&newKind=${kind}`))
+      expect(client.createThread).not.toHaveBeenCalled()
       expect(client.postTurn).not.toHaveBeenCalled()
     }
   )
@@ -51,14 +44,6 @@ describe('CreateWithAiButton', () => {
     expect(screen.queryByRole('link', { name: /chat/i })).not.toBeInTheDocument()
   })
 
-  it('tells the user when the thread could not be created', async () => {
-    client.createThread.mockRejectedValue(new Error('down'))
-    renderWithProviders(<CreateWithAiButton kind="query" />, { config: { ai: { enabled: true } } })
-    await userEvent.click(screen.getByRole('button', { name: 'Create with AI' }))
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith(START_FAILED_MESSAGE))
-    expect(push).not.toHaveBeenCalled()
-  })
-
   it('is served from the old path for the enterprise pack', () => {
     expect(ShimmedButton).toBe(CreateWithAiButton)
   })
@@ -67,9 +52,9 @@ describe('CreateWithAiButton', () => {
     renderWithProviders(<CreateWithAiButton kind="query" isDirty />, { config: { ai: { enabled: true } } })
     await userEvent.click(screen.getByRole('button', { name: 'Create with AI' }))
     expect(await screen.findByText('Leave without saving?')).toBeInTheDocument()
-    expect(client.createThread).not.toHaveBeenCalled()
+    expect(push).not.toHaveBeenCalled()
     await userEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
-    await waitFor(() => expect(push).toHaveBeenCalled())
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/chat?about=new&newKind=query'))
   })
 
   it('renders nothing in mock mode, where the chat has no backend', () => {

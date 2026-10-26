@@ -11,11 +11,12 @@ import { renderQueryEditorPage } from './query-editor-page-test-fixtures'
 vi.stubEnv('NEXT_PUBLIC_REDASH_URL', 'http://redash.test')
 
 const createThread = vi.hoisted(() => vi.fn())
+const push = vi.hoisted(() => vi.fn())
 vi.mock('@/services/ai/chat-client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/ai/chat-client')>()),
   createThread,
 }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
 
 // Monaco does not run in jsdom, so the editor is a plain textarea here. Every
 // assertion below is about the SQL the page holds, never Monaco internals.
@@ -203,11 +204,9 @@ describe('QueryEditorPage with AI enabled', () => {
     expect(screen.queryByRole('textbox', { name: 'Generate SQL with AI' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create with AI' })).toBeInTheDocument()
 
-    createThread.mockResolvedValue({ id: 'new-thread' })
     await user.click(screen.getByRole('button', { name: 'Create with AI' }))
-    await waitFor(() =>
-      expect(createThread).toHaveBeenCalledWith({ kind: 'new', newKind: 'query' }, expect.any(AbortSignal))
-    )
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/chat?about=new&newKind=query'))
+    expect(createThread).not.toHaveBeenCalled()
   })
 })
 

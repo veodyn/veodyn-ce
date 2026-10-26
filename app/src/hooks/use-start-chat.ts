@@ -3,6 +3,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { chatAboutHref } from '@/lib/chat/subject-href'
 import type { ChatThreadSubject } from '@/lib/chat/wire'
 import { createThread, deleteThread, postTurn } from '@/services/ai/chat-client'
 import { CHAT_THREADS_KEY } from './use-chat'
@@ -10,13 +11,17 @@ import { CHAT_THREADS_KEY } from './use-chat'
 export const START_FAILED_MESSAGE = 'The conversation could not be started. Try again.'
 
 export interface StartChat {
-  start: (text: string) => void
-  startAbout: (subject: ChatThreadSubject) => Promise<void>
+  start: (text: string, subject?: ChatThreadSubject) => void
   starting: boolean
   notice: string | null
 }
 
-export function useStartChat(onFailure?: () => void): StartChat {
+export function useOpenChatAbout(): (subject: ChatThreadSubject) => void {
+  const router = useRouter()
+  return useCallback((subject: ChatThreadSubject) => router.push(chatAboutHref(subject)), [router])
+}
+
+export function useStartChat(): StartChat {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [starting, setStarting] = useState(false)
@@ -25,18 +30,19 @@ export function useStartChat(onFailure?: () => void): StartChat {
 
   useEffect(() => () => inFlight.current?.abort(), [])
 
-  const begin = useCallback(
-    (subject: ChatThreadSubject | undefined, firstTurn: string | null): Promise<void> => {
-      if (inFlight.current) return Promise.resolve()
+  const start = useCallback(
+    (text: string, subject?: ChatThreadSubject) => {
+      const firstTurn = text.trim()
+      if (!firstTurn || inFlight.current) return
       const controller = new AbortController()
       inFlight.current = controller
       setStarting(true)
       setNotice(null)
       let threadId: string | null = null
-      return createThread(subject, controller.signal)
+      void createThread(subject, controller.signal)
         .then(async (thread) => {
           threadId = thread.id
-          if (firstTurn !== null) await postTurn(thread.id, firstTurn, controller.signal)
+          await postTurn(thread.id, firstTurn, controller.signal)
           void queryClient.invalidateQueries({ queryKey: CHAT_THREADS_KEY })
           router.push(`/chat/${thread.id}`)
         })
@@ -46,21 +52,10 @@ export function useStartChat(onFailure?: () => void): StartChat {
           inFlight.current = null
           setNotice(START_FAILED_MESSAGE)
           setStarting(false)
-          onFailure?.()
         })
     },
-    [router, queryClient, onFailure]
+    [router, queryClient]
   )
 
-  const start = useCallback(
-    (text: string) => {
-      const trimmed = text.trim()
-      if (trimmed) void begin(undefined, trimmed)
-    },
-    [begin]
-  )
-
-  const startAbout = useCallback((subject: ChatThreadSubject) => begin(subject, null), [begin])
-
-  return { start, startAbout, starting, notice }
+  return { start, starting, notice }
 }

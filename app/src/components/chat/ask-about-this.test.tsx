@@ -34,35 +34,34 @@ describe('AskAboutThis', () => {
     expect(screen.getByRole('button', { name: 'Ask about Rail boardings in chat' })).toBeInTheDocument()
   })
 
-  it('opens a thread about the object', async () => {
+  it('opens the chat about the object without creating a thread', async () => {
     const subject = { kind: 'widget', dashboardId: 4, widgetId: 21 } as const
     renderWithProviders(<AskAboutThis subject={subject} label="Trend" />, ON)
     await userEvent.click(screen.getByRole('button', { name: 'Ask about Trend in chat' }))
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/chat/new-thread'))
-    expect(client.createThread).toHaveBeenCalledWith(subject, expect.any(AbortSignal))
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/chat?about=widget&dashboardId=4&widgetId=21'))
+    expect(client.createThread).not.toHaveBeenCalled()
     expect(client.postTurn).not.toHaveBeenCalled()
   })
 
   it('starts directly when the page is clean', async () => {
     renderWithProviders(<AskAboutThis subject={{ kind: 'query', queryId: 7 }} label="Rail" isDirty={false} />, ON)
     await userEvent.click(screen.getByRole('button', { name: 'Ask about Rail in chat' }))
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/chat/new-thread'))
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/chat?about=query&queryId=7'))
   })
 
   it('asks before leaving a dirty page and starts only on confirm', async () => {
     renderWithProviders(<AskAboutThis subject={{ kind: 'query', queryId: 7 }} label="Rail" isDirty />, ON)
     await userEvent.click(screen.getByRole('button', { name: 'Ask about Rail in chat' }))
     expect(await screen.findByText('Leave without saving?')).toBeInTheDocument()
-    expect(client.createThread).not.toHaveBeenCalled()
     expect(push).not.toHaveBeenCalled()
     await userEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/chat/new-thread'))
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/chat?about=query&queryId=7'))
   })
 
   it('does nothing when the user keeps editing', async () => {
     renderWithProviders(<AskAboutThis subject={{ kind: 'query', queryId: 7 }} label="Rail" isDirty />, ON)
     await userEvent.click(screen.getByRole('button', { name: 'Ask about Rail in chat' }))
     await userEvent.click(await screen.findByRole('button', { name: 'Keep editing' }))
-    expect(client.createThread).not.toHaveBeenCalled()
+    expect(push).not.toHaveBeenCalled()
   })
 })

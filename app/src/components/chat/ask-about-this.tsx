@@ -2,10 +2,9 @@
 
 import { MessageSquareText } from 'lucide-react'
 import { IconButton } from '@/components/shared/icon-button'
-import { useToast } from '@/components/shared/toast-provider'
 import { useAiChatEnabled } from '@/hooks/use-chat'
 import { useDiscardGate } from './use-discard-gate'
-import { START_FAILED_MESSAGE, useStartChat } from '@/hooks/use-start-chat'
+import { useOpenChatAbout } from '@/hooks/use-start-chat'
 import type { ChatThreadSubject } from '@/lib/chat/wire'
 
 interface AskAboutThisProps {
@@ -19,8 +18,7 @@ interface AskAboutThisProps {
 
 export function AskAboutThis({ subject, label, variant = 'outline', size = 'icon', className, isDirty = false }: AskAboutThisProps) {
   const enabled = useAiChatEnabled()
-  const toast = useToast()
-  const { startAbout, starting } = useStartChat(() => toast.error(START_FAILED_MESSAGE))
+  const openAbout = useOpenChatAbout()
   const { gate, dialog } = useDiscardGate(isDirty)
 
   if (!enabled) return null
@@ -33,8 +31,7 @@ export function AskAboutThis({ subject, label, variant = 'outline', size = 'icon
         variant={variant}
         size={size}
         className={className}
-        disabled={starting}
-        onClick={() => gate(() => void startAbout(subject))}
+        onClick={() => gate(() => openAbout(subject))}
       >
         <MessageSquareText className="h-4 w-4" aria-hidden="true" />
       </IconButton>

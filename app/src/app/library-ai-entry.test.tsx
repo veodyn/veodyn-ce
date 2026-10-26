@@ -11,7 +11,7 @@
 // halves of this suite are src/app/kpis/library-conventions.test.tsx and
 // src/app/reports/library-conventions.test.tsx, which make the same two
 // assertions.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ComponentType } from 'react'
@@ -27,13 +27,14 @@ import { QuerySnippetsPage } from './query-snippets/query-snippets-page'
 vi.stubEnv('NEXT_PUBLIC_REDASH_URL', 'http://redash.test')
 
 const createThread = vi.hoisted(() => vi.fn())
+const push = vi.hoisted(() => vi.fn())
 vi.mock('@/services/ai/chat-client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/ai/chat-client')>()),
   createThread,
 }))
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push }),
   useSearchParams: () => new URLSearchParams(''),
 }))
 
@@ -68,8 +69,6 @@ function renderPage(Page: ComponentType, aiEnabled: boolean) {
     </ConfigProvider>
   )
 }
-
-beforeEach(() => createThread.mockResolvedValue({ id: 'new-thread' }))
 
 afterEach(() => resetStores())
 
@@ -106,9 +105,8 @@ describe('the Create-with-AI entry point on the library pages', () => {
       )
 
       await user.click(aiButton)
-      await waitFor(() =>
-        expect(createThread).toHaveBeenCalledWith({ kind: 'new', newKind }, expect.any(AbortSignal))
-      )
+      await waitFor(() => expect(push).toHaveBeenCalledWith(`/chat?about=new&newKind=${newKind}`))
+      expect(createThread).not.toHaveBeenCalled()
     }
   )
 })
