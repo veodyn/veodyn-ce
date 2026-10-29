@@ -3,7 +3,12 @@ import re
 from functools import lru_cache
 
 from redash.transit_naming import provenance
-from redash.transit_naming.casing import is_uppercase, recase
+from redash.transit_naming.casing import (
+    capitals_are_a_minority,
+    is_shouted_word,
+    is_uppercase,
+    recase,
+)
 from redash.transit_naming.directions import (
     DIRECTION_WORDS,
     bound,
@@ -18,7 +23,7 @@ WHITESPACE = re.compile(r"\s+")
 TRAILING_LINE_REFERENCE = re.compile(r"\s*-\s*Metro\s+\w+(?:\s*(?:&|,|/|and)\s*\w+)*\s*-?\s*Lines?\s*$", re.IGNORECASE)
 NAMED_PLACE = re.compile(r"park & ride|\b(?:terminal|dock|bay|transit center|plaza|station)\b", re.IGNORECASE)
 PARK_AND_RIDE = re.compile(r"\bpark(?:\s*&\s*|(?:\s+|\s*-\s*)(?:and|n|'n')(?:\s+|\s*-\s*))ride\b", re.IGNORECASE)
-SPACED_SLASH = re.compile(r"\s*/\s*")
+SPACED_SLASH = re.compile(r"\s*[/\\]\s*")
 BUS_STOP = re.compile(r"\bbus stop\b", re.IGNORECASE)
 STATION = re.compile(r"\bstation\b", re.IGNORECASE)
 ENDS_WITH_STATION = re.compile(r"\bstation\s*$", re.IGNORECASE)
@@ -61,8 +66,12 @@ def _cased(text, rules, uppercase=None):
 
 def _street_casing(original, rules):
     uppercase = is_uppercase(original) if original else None
-    kept = frozenset(UPPERCASE_WORD.findall(original)) | rules.keep_upper if uppercase is False else None
-    return uppercase, kept
+    if uppercase is not False:
+        return uppercase, None
+    recased = capitals_are_a_minority(original)
+    capitals = UPPERCASE_WORD.findall(original)
+    kept = {word for word in capitals if not (recased and is_shouted_word(word, rules.keep_upper))}
+    return uppercase, frozenset(kept) | rules.keep_upper
 
 
 def _street_cased(text, rules, casing):

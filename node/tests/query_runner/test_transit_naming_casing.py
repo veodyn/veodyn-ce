@@ -95,6 +95,53 @@ class TestMixedCaseNamesKeepTheirCapitals(TestCase):
         self.assertEqual(public("LAX City Bus Center", METRO), "LAX City Bus Center")
 
 
+class TestShoutedWordsInMixedCaseNames(TestCase):
+    def test_a_shouted_word_of_five_or_more_letters_with_two_vowels_is_title_cased(self):
+        self.assertEqual(public("Rodeo/OBAMA", METRO), "Rodeo/Obama")
+        self.assertEqual(public("Main St/ORANGE Grove Av", METRO), "Main St/Orange Grove Av")
+
+    def test_a_shouted_word_from_the_street_fields_is_title_cased(self):
+        name = name_stop(stop("Canoga/ROCKETDYNE Driveway", on="Canoga Av", cross="ROCKETDYNE Driveway"), METRO)
+        self.assertEqual(name.public_name, "Canoga Av/Rocketdyne Driveway")
+
+    def test_a_shouted_street_field_is_title_cased_like_the_name(self):
+        name = name_stop(stop("Rodeo/OBAMA", on="Rodeo Rd", cross="OBAMA BLVD"), METRO)
+        self.assertEqual(name.public_name, "Rodeo Rd/Obama Bl")
+
+    def test_a_name_mostly_in_capitals_keeps_them(self):
+        self.assertEqual(
+            public("WESTWOOD PLAZA & STRATHMORE (Gateway Plaza)", METRO), "WESTWOOD PLAZA & STRATHMORE (Gateway Plaza)"
+        )
+
+    def test_short_or_vowel_poor_capitals_read_as_acronyms_and_stay(self):
+        self.assertEqual(public("Exposition/LATTC", METRO), "Exposition/LATTC")
+        self.assertEqual(public("Temple City Bl/RR XING", METRO), "Temple City Bl/RR XING")
+        self.assertEqual(public("Westwood/UCLA", METRO), "Westwood/UCLA")
+
+    def test_a_listed_acronym_stays_whatever_its_shape(self):
+        self.assertEqual(public("Katella/ARTIC Station", OCTA), "Katella/ARTIC Station")
+
+
+class TestMcNamesAreOneWord(TestCase):
+    def test_a_spaced_mc_joins_its_name(self):
+        self.assertEqual(public("Jefferson Blvd/Mc Clintock Ave", METRO), "Jefferson Bl/McClintock Av")
+
+    def test_a_shouted_tail_after_mc_is_recased(self):
+        self.assertEqual(public("Mc CLUNG/Main", METRO), "McClung/Main")
+        self.assertEqual(public("MC NAB-MAIN"), "McNab/Main")
+
+    def test_the_street_fields_join_the_same_way(self):
+        name = name_stop(stop("Jefferson/Mc Clintock", on="Jefferson Blvd", cross="Mc Clintock Ave"), METRO)
+        self.assertEqual(name.public_name, "Jefferson Bl/McClintock Av")
+
+    def test_mc_before_a_number_or_a_short_word_is_left_alone(self):
+        self.assertEqual(public("Mc 5/Main", METRO), "Mc 5/Main")
+
+    def test_an_mc_abbreviation_or_acronym_in_a_mixed_case_name_is_left_alone(self):
+        self.assertEqual(public("Rodeo MC Hall/Main", METRO), "Rodeo MC Hall/Main")
+        self.assertEqual(public("Main/MCAD Station", METRO), "Main/MCAD Station")
+
+
 class TestCasingReviewFindings(TestCase):
     def test_accented_letters_stay_inside_their_words(self):
         self.assertEqual(public("César Chávez/Main Street", METRO), "César Chávez/Main St")
@@ -185,4 +232,4 @@ class TestProfileOptions(TestCase):
         self.assertIn("split_on", self.refused('  split_on: "/"'))
 
     def test_the_revision_moved_with_the_style_guide_rules(self):
-        self.assertEqual(CORE_REVISION, "2026.10.23.3")
+        self.assertEqual(CORE_REVISION, "2026.10.29.1")

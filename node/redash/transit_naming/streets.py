@@ -4,7 +4,13 @@ from math import cos, floor, hypot, isfinite, radians
 
 from redash.transit_naming.profiles import ProfileError
 from redash.transit_naming.stops import normalize_part
-from redash.transit_naming.suffixes import STREET_REFERENCE, Decision, classify
+from redash.transit_naming.suffixes import (
+    NO_STREET,
+    STREET_REFERENCE,
+    STREET_REFERENCE_CONFLICT,
+    Decision,
+    classify,
+)
 
 LEADING_DIRECTIONS = frozenset({"north", "south", "east", "west", "n", "s", "e", "w"})
 METERS_PER_DEGREE = 111_320
@@ -101,4 +107,6 @@ class StreetIndex:
                     suffixes.add(suffix)
         if len(suffixes) == 1:
             return Decision(next(iter(suffixes)), STREET_REFERENCE)
-        return Decision(abstained="street_reference_conflict" if suffixes else "no_street")
+        if suffixes:
+            return Decision(abstained=STREET_REFERENCE_CONFLICT, candidates=frozenset(suffixes))
+        return Decision(abstained=NO_STREET)

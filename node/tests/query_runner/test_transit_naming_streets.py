@@ -100,6 +100,20 @@ class TestStreetReference(TestCase):
         name = name_stops(stops, profile, build_index(stops, profile))[0]
         self.assertEqual(name.public_name, "Haster Way/Orangewood Av")
 
+    def test_the_stop_donors_settle_a_reference_conflict_among_its_candidates(self):
+        streets = CROSSING + [east_west("Orangewood Street", 70)]
+        stops = [stop("1", "HASTER-ORANGEWOOD"), stop("2", "Haster Way-Orangewood Street", north_m=20)]
+        profile = profiles(streets, BOTH_OPTIONS).for_carrier("MT", "Metro")
+        name = name_stops(stops, profile, build_index(stops, profile))[0]
+        self.assertEqual(name.public_name, "Haster St/Orangewood St")
+
+    def test_a_donor_suffix_the_reference_did_not_find_is_not_used_in_a_conflict(self):
+        streets = CROSSING + [east_west("Orangewood Street", 70)]
+        stops = [stop("1", "HASTER-ORANGEWOOD"), stop("2", "Haster Way-Orangewood Drive", north_m=20)]
+        profile = profiles(streets, BOTH_OPTIONS).for_carrier("MT", "Metro")
+        name = name_stops(stops, profile, build_index(stops, profile))[0]
+        self.assertEqual(name.public_name, "Haster St/Orangewood")
+
     def test_a_reference_alone_needs_no_stop_load(self):
         profile = profiles(CROSSING).for_carrier("MT", "Metro")
 

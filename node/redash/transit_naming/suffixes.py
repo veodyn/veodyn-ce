@@ -16,6 +16,9 @@ INDEX_TTL_SECONDS = 6 * 3600
 SAME_INTERSECTION = "same_intersection"
 UNIQUE_STREET = "unique_street"
 STREET_REFERENCE = "street_reference"
+STREET_REFERENCE_CONFLICT = "street_reference_conflict"
+NO_STREET = "no_street"
+NO_DONOR = "no_donor"
 METHOD_ORDER = (STREET_REFERENCE, SAME_INTERSECTION, UNIQUE_STREET)
 EARTH_RADIUS_M = 6_371_000
 
@@ -25,6 +28,7 @@ class Decision:
     suffix: str = ""
     method: str = ""
     abstained: str = ""
+    candidates: frozenset = frozenset()
 
 
 def source_hash(base_url, api_key):
@@ -131,7 +135,7 @@ class SuffixIndex:
             return Decision(abstained="same_intersection_conflict")
         donors = self.by_base.get(base, ())
         if not donors:
-            return Decision(abstained="no_donor")
+            return Decision(abstained=NO_DONOR)
         if len({suffix for suffix, _, _ in donors}) > 1:
             return Decision(abstained="several_suffixes")
         nearest = min(_meters(lat, lng, d_lat, d_lng) for _, d_lat, d_lng in donors)
@@ -146,13 +150,17 @@ def build_index(stops, profile):
 
 def _decide(base, other, coordinates, profile, index):
     rules = profile.stop_name
+    reference = None
     if rules.street_reference is not None:
-        decision = profile.streets.decide(base, *coordinates, rules.street_reference.within_m)
-        if decision.suffix or decision.abstained != "no_street":
-            return decision
-    if rules.complete_suffixes is not None and index is not None:
-        return index.decide(base, other, *coordinates, rules.complete_suffixes)
-    return Decision(abstained="no_donor")
+        reference = profile.streets.decide(base, *coordinates, rules.street_reference.within_m)
+        if reference.suffix or reference.abstained not in (NO_STREET, STREET_REFERENCE_CONFLICT):
+            return reference
+    if rules.complete_suffixes is None or index is None:
+        return reference or Decision(abstained=NO_DONOR)
+    donor = index.decide(base, other, *coordinates, rules.complete_suffixes)
+    if reference is not None and reference.abstained == STREET_REFERENCE_CONFLICT:
+        return donor if donor.suffix in reference.candidates else reference
+    return donor
 
 
 def complete_name(stop, name, profile, index):

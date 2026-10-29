@@ -1,7 +1,7 @@
 import hashlib
 from dataclasses import dataclass, field, replace
 
-CORE_REVISION = "2026.10.23.3"
+CORE_REVISION = "2026.10.29.1"
 
 JOIN_STRATEGIES = ("short_name", "route_id_prefix")
 BRAND_SOURCES = ("gtfs_route_long_name", "brand_bands", "carrier_display_name")

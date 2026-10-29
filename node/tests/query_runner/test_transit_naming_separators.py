@@ -65,6 +65,23 @@ class TestWordSeparators(TestCase):
         self.assertEqual(named("Streeter + Sierra", plus), ("Streeter/Sierra", "intersection"))
 
 
+class TestBackslashesInPlaceNames(TestCase):
+    def test_a_station_takes_the_slash_separator(self):
+        self.assertEqual(
+            named("Harbor Transitway \\ Harbor Fwy Station", METRO),
+            ("Harbor Transitway/Harbor Fwy Station", "station"),
+        )
+        self.assertEqual(
+            named("Harbor Transitway \\ 37th St \\ USC", METRO), ("Harbor Transitway/37th St/USC", "unparsed")
+        )
+
+    def test_a_named_place_takes_the_slash_separator(self):
+        self.assertEqual(
+            named("Orangethorpe \\ East Entry Park & Ride", METRO),
+            ("Orangethorpe/East Entry Park & Ride", "named_place"),
+        )
+
+
 class TestAmpersandJoinsStreetsIsOptIn(TestCase):
     def test_off_by_default(self):
         self.assertEqual(named("Melrose & Wilton", METRO), ("Melrose & Wilton", "named_place"))
