@@ -10,7 +10,6 @@ from redash.transit_naming.stop_shapes import (
     INTERSECTION_JOINS,
     LOWERCASE_JOINS,
     PARENTHESES,
-    STATION,
     STREET,
     shape,
     split_note,
