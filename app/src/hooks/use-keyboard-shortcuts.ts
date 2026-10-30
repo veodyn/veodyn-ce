@@ -9,6 +9,7 @@ interface ShortcutMap {
 export function useKeyboardShortcuts(shortcuts: ShortcutMap) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (!e.key) return
       const key = [
         e.ctrlKey || e.metaKey ? 'mod' : '',
         e.shiftKey ? 'shift' : '',
