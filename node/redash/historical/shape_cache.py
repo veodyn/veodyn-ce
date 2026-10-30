@@ -10,21 +10,21 @@ LOCK_KEY_PREFIX = "historical:lock:"
 SHAPE_TTL_SECONDS = 7 * 24 * 60 * 60
 
 
-def _shape_key(query_id):
-    return f"{SHAPE_KEY_PREFIX}{query_id}"
+def _shape_key(table_name):
+    return f"{SHAPE_KEY_PREFIX}{table_name}"
 
 
-def get_cached_shape(query_id):
+def get_cached_shape(table_name):
     """Returns a frozenset of column names, or None on a cache miss."""
-    raw = redis_connection.get(_shape_key(query_id))
+    raw = redis_connection.get(_shape_key(table_name))
     if raw is None:
         return None
     text = raw.decode("utf-8") if isinstance(raw, bytes) else raw
     return frozenset(text.split(",")) if text else frozenset()
 
 
-def set_cached_shape(query_id, column_names):
-    redis_connection.set(_shape_key(query_id), ",".join(sorted(column_names)), ex=SHAPE_TTL_SECONDS)
+def set_cached_shape(table_name, column_names):
+    redis_connection.set(_shape_key(table_name), ",".join(sorted(column_names)), ex=SHAPE_TTL_SECONDS)
 
 
 @contextmanager

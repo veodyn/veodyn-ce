@@ -70,7 +70,7 @@ class TestCaptureQueryResult(BaseTestCase):
     def test_fast_path_skips_ddl_when_shape_cached(self):
         client = _mock_client(existing_columns={"speed": "Nullable(Float64)", "vehicle_id": "Nullable(String)"})
         client.query_json.return_value = {"data": [{"table_name": "historical.q_query_1"}]}
-        shape_cache.set_cached_shape(self.query.id, frozenset({"speed", "vehicle_id"}))
+        shape_cache.set_cached_shape("historical.q_query_1", frozenset({"speed", "vehicle_id"}))
 
         with patch.object(settings, "HISTORICAL_CLICKHOUSE_URL", "http://clickhouse:8123"):
             _capture_query_result(self.query_result.id, self.data_source.id, self.query.id, client=client)
@@ -81,7 +81,7 @@ class TestCaptureQueryResult(BaseTestCase):
     def test_drift_triggers_add_column_then_updates_cache(self):
         client = _mock_client(existing_columns={"speed": "Nullable(Float64)"})
         client.query_json.return_value = {"data": [{"table_name": "historical.q_query_1"}]}
-        shape_cache.set_cached_shape(self.query.id, frozenset({"speed"}))
+        shape_cache.set_cached_shape("historical.q_query_1", frozenset({"speed"}))
 
         with patch.object(settings, "HISTORICAL_CLICKHOUSE_URL", "http://clickhouse:8123"):
             _capture_query_result(self.query_result.id, self.data_source.id, self.query.id, client=client)
@@ -89,7 +89,23 @@ class TestCaptureQueryResult(BaseTestCase):
         alter_calls = [c for c in client.execute.call_args_list if "ADD COLUMN" in c.args[0]]
         self.assertEqual(len(alter_calls), 1)
         self.assertIn("`vehicle_id`", alter_calls[0].args[0])
-        self.assertEqual(shape_cache.get_cached_shape(self.query.id), frozenset({"speed", "vehicle_id"}))
+        self.assertEqual(shape_cache.get_cached_shape("historical.q_query_1"), frozenset({"speed", "vehicle_id"}))
+
+    def test_a_shape_cached_for_another_database_does_not_skip_creating_the_table(self):
+        warmed = _mock_client(existing_columns={"speed": "Nullable(Float64)", "vehicle_id": "Nullable(String)"})
+        warmed.query_json.return_value = {"data": [{"table_name": "historical.q_query_1"}]}
+        client = _mock_client(existing_columns=None)
+        client.database = "historical_dev"
+        client.query_json.return_value = {"data": []}
+
+        with patch.object(settings, "HISTORICAL_CLICKHOUSE_URL", "http://clickhouse:8123"):
+            _capture_query_result(self.query_result.id, self.data_source.id, self.query.id, client=warmed)
+            _capture_query_result(self.query_result.id, self.data_source.id, self.query.id, client=client)
+
+        create_calls = [
+            c for c in client.execute.call_args_list if "CREATE TABLE IF NOT EXISTS historical_dev.q_" in c.args[0]
+        ]
+        self.assertEqual(len(create_calls), 1)
 
     def test_capture_query_result_swallows_exceptions_and_records_statsd(self):
         with patch("redash.historical.tasks._build_client", side_effect=RuntimeError("boom")):

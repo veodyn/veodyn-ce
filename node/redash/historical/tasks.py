@@ -106,12 +106,12 @@ def _capture_query_result(query_result_id, data_source_id, query_id, client):
         incoming_columns[ch_name] = schema.map_column_type(col.get("type"), sample)
 
     incoming_shape = frozenset(incoming_columns.keys())
-    cached_shape = shape_cache.get_cached_shape(query_id)
+    cached_shape = shape_cache.get_cached_shape(table_name)
 
     if cached_shape is None or cached_shape != incoming_shape:
         with shape_cache.table_lock(table_name):
             _reconcile_table_schema(client, table_name, incoming_columns, column_name_map, retention_days)
-            shape_cache.set_cached_shape(query_id, incoming_shape)
+            shape_cache.set_cached_shape(table_name, incoming_shape)
 
     captured_at = schema.format_clickhouse_datetime(query_result.retrieved_at or datetime.now(timezone.utc))
 
