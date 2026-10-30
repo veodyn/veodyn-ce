@@ -29,12 +29,18 @@ archive_fetch = http_fetch
 _profile_set = {}
 
 
-def load_profile_set(reload=False):
+def base_profile_set():
     dirs = tuple(profile_dirs())
-    if reload or dirs not in _profile_set:
+    if dirs not in _profile_set:
         _profile_set.clear()
         _profile_set[dirs] = load_profiles(dirs)
-    return _profile_set[dirs].with_overrides(override_table().current())
+    return _profile_set[dirs]
+
+
+def load_profile_set(reload=False):
+    if reload:
+        _profile_set.clear()
+    return base_profile_set().with_overrides(override_table().current())
 
 
 def cache_dir():

@@ -1,6 +1,7 @@
 import re
 
 from redash.transit_naming import provenance
+from redash.transit_naming.casing import recase
 from redash.transit_naming.profile_loader import HEX_COLOR
 from redash.transit_naming.snapshot import MODE_BY_ROUTE_TYPE, RouteName
 from redash.transit_naming.stops import normalize_text
@@ -9,6 +10,7 @@ CARRIER_UNSET_COLOR = "000000"
 RAIL_MODES = ("light_rail", "heavy_rail")
 LETTER_LINE = re.compile(r"^(?:\S+ )*(?P<letter>[A-Z]) Line$")
 LETTER_IN_NAME = re.compile(r"\b([A-Z]) Line\b")
+DESCRIPTIVE_WORD_LETTERS = 4
 
 
 def parse_route_number(route_code, carrier_code):
@@ -20,6 +22,20 @@ def parse_route_number(route_code, carrier_code):
         stripped = remainder.lstrip("0")
         return stripped or "0"
     return remainder
+
+
+def _descriptive_name(route, route_code):
+    code = route_code.replace(" ", "").upper()
+    for key in ("route_name", "line_name"):
+        name = " ".join(str(route.get(key) or "").split())
+        words = name.split(" ")
+        if (
+            len(words) > 1
+            and name.replace(" ", "").upper() != code
+            and any(len(word) >= DESCRIPTIVE_WORD_LETTERS for word in words)
+        ):
+            return name
+    return ""
 
 
 def _band_for(number, bands):
@@ -143,6 +159,11 @@ def name_route(route, profile, resolved, side_channel=None):
             brand=brand, route_number=number, carrier_display_name=profile.carrier_display_name
         )
         source = brand_source = provenance.RULE
+    if source == provenance.RULE and resolved is None and entry is None and not any(c.isdigit() for c in number):
+        descriptive = _descriptive_name(route, route_code)
+        if descriptive:
+            public_name = recase(descriptive, profile.stop_name.keep_upper)
+            source = provenance.RULE
     override = profile.override_for("route", route_code)
     if override is not None and override.public_name:
         public_name = override.public_name

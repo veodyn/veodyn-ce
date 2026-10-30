@@ -43,3 +43,17 @@ def get_configuration_schema_for_query_runner_type(query_runner_type):
 def import_query_runners(query_runner_imports):
     for runner_import in query_runner_imports:
         __import__(runner_import)
+
+
+def warm_query_runners():
+    warmed = 0
+    for query_runner_class in list(query_runners.values()):
+        try:
+            query_runner_class.warm_worker()
+            warmed += 1
+        except Exception:
+            logger.exception(
+                "Warming the %s query runner failed; its jobs will load on demand.", query_runner_class.type()
+            )
+    logger.info("Warmed %d query runner(s) before forking work horses.", warmed)
+    return warmed

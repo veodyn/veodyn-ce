@@ -11,6 +11,7 @@ from supervisor_checks import check_runner
 from supervisor_checks.check_modules import base
 
 from redash import rq_redis_connection
+from redash.query_runner.registry import warm_query_runners
 from redash.tasks import (
     periodic_job_definitions,
     rq_scheduler,
@@ -36,6 +37,7 @@ def worker(queues):
     # will already be available to the forked work horses and they won't need
     # to spend valuable time re-doing that on every fork.
     configure_mappers()
+    warm_query_runners()
 
     if not queues:
         queues = default_queues

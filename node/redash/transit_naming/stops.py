@@ -25,6 +25,7 @@ NAMED_PLACE = re.compile(r"park & ride|\b(?:terminal|dock|bay|transit center|pla
 PARK_AND_RIDE = re.compile(r"\bpark(?:\s*&\s*|(?:\s+|\s*-\s*)(?:and|n|'n')(?:\s+|\s*-\s*))ride\b", re.IGNORECASE)
 SPACED_SLASH = re.compile(r"\s*[/\\]\s*")
 BUS_STOP = re.compile(r"\bbus stop\b", re.IGNORECASE)
+BETWEEN = re.compile(r"\bbetween\b", re.IGNORECASE)
 STATION = re.compile(r"\bstation\b", re.IGNORECASE)
 ENDS_WITH_STATION = re.compile(r"\bstation\s*$", re.IGNORECASE)
 WORD = re.compile(r"[A-Za-z0-9.]+")
@@ -181,7 +182,7 @@ def _from_raw(raw, body, rules, direction, mode, retired):
     streets = pair and all(_looks_like_street(part, rules) for part in parts)
     place = bool(NAMED_PLACE.search(body))
     separator = _street_separator(rules.split_on, rules.split_words, rules.ampersand_joins_streets)
-    if streets or (pair and not place and separator and separator.search(body)):
+    if not BETWEEN.search(body) and (streets or (pair and not place and separator and separator.search(body))):
         return _intersection(parts[0], parts[1], rules, direction, mode, retired)
     kind = "named_place" if place or ("&" in body and len(parts) > 1) else "unparsed"
     public_name = _tight_separators(body, rules)

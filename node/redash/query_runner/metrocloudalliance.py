@@ -30,6 +30,7 @@ from redash.query_runner.connector_validation import (
 from redash.query_runner.metrocloudalliance_departures import flatten_departures
 from redash.query_runner.metrocloudalliance_public import (
     PUBLIC_COLUMN_NAMES,
+    base_profile_set,
     expand_stop_key,
     run_public_resource,
 )
@@ -45,6 +46,10 @@ class MetroCloudAlliance(BaseResourceRunner):
     empty_columns = EMPTY_COLUMNS
     default_resource = "carriers"
     noop_query = '{"resource": "carriers"}'
+
+    @classmethod
+    def warm_worker(cls):
+        base_profile_set()
 
     # Resources whose vendor endpoint 400s on a missing param rather than
     # treating it as unset - checked in _fetch before the request goes out,

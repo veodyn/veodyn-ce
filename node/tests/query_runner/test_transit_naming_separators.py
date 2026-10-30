@@ -90,6 +90,14 @@ class TestAmpersandJoinsStreetsIsOptIn(TestCase):
         joined = with_rules(ampersand_joins_streets=True)
         self.assertEqual(named("Melrose & Wilton", joined), ("Melrose/Wilton", "intersection"))
 
+    def test_a_stop_described_between_two_streets_stays_whole(self):
+        joined = with_rules(ampersand_joins_streets=True)
+        self.assertEqual(
+            named("Allington St between Palo Verde & Canehill", joined),
+            ("Allington St between Palo Verde & Canehill", "named_place"),
+        )
+        self.assertEqual(named("Allington St between Palo Verde Ave & Canehill St", joined)[1], "named_place")
+
     def test_a_place_word_still_wins(self):
         joined = with_rules(ampersand_joins_streets=True)
         self.assertEqual(

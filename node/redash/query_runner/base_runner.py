@@ -46,6 +46,10 @@ class BaseQueryRunner:
     def enabled(cls):
         return True
 
+    @classmethod
+    def warm_worker(cls):
+        return None
+
     @property
     def host(self):
         """Returns this query runner's configured host.
