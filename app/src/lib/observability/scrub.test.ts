@@ -3,8 +3,8 @@ import { scrubEvent, scrubProperties } from './scrub'
 
 describe('scrubProperties', () => {
   it('keeps allow-listed shape-only keys', () => {
-    const out = scrubProperties({ route: '/dashboards/5', errorId: 'E_UP_003', status: 502 })
-    expect(out).toEqual({ route: '/dashboards/5', errorId: 'E_UP_003', status: 502 })
+    const out = scrubProperties({ route: '/dashboards/5', errorId: 'E_UP_003', status: 502, errorName: 'ApiError' })
+    expect(out).toEqual({ route: '/dashboards/5', errorId: 'E_UP_003', status: 502, errorName: 'ApiError' })
   })
 
   it('redacts anything not on the allow-list, because it may be query data', () => {

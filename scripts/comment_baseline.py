@@ -1113,7 +1113,6 @@ BASELINE = {
     "app/src/lib/observability/consoleForwarding.ts": 2,
     "app/src/lib/observability/errorForwarding.ts": 2,
     "app/src/lib/observability/events.ts": 5,
-    "app/src/lib/observability/querySeam.ts": 10,
     "app/src/lib/observability/replayMasking.ts": 24,
     "app/src/lib/observability/scrub.test.ts": 6,
     "app/src/lib/observability/scrub.ts": 6,
@@ -1673,6 +1672,6 @@ BASELINE = {
     "validator/validator_service/validation.py": 44,
 }
 
-FILES_WITH_COMMENTS = 1673
-COMMENT_LINES = 42785
-FILES_SCANNED = 2815
+FILES_WITH_COMMENTS = 1671
+COMMENT_LINES = 42768
+FILES_SCANNED = 2825

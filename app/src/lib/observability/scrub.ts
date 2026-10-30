@@ -11,6 +11,7 @@ export const SAFE_KEYS: ReadonlySet<string> = new Set([
   'org',
   'route',
   'errorId',
+  'errorName',
   'status',
   'level',
   'queryKey',
