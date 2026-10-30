@@ -137,3 +137,15 @@ class TestShapesTheGateFound(TestCase):
         self.assertEqual(
             named("Elm St & Oak St (Elm Avenue near Harbor Station)")[0], "Elm St/Oak St (Elm Av near Harbor Station)"
         )
+
+    def test_a_house_number_compass_in_a_note_loses_its_period(self):
+        self.assertEqual(named("Lakeside Market (264 S. Elm Route 59)")[0], "Lakeside Market (264 S Elm Route 59)")
+
+    def test_every_station_in_a_name_keeps_its_spelling(self):
+        self.assertEqual(
+            named("9th Street/Lakeside Station near Harbor Station")[0],
+            "9th Street/Lakeside Station near Harbor Station",
+        )
+
+    def test_an_address_in_a_note_follows_the_address_rules(self):
+        self.assertEqual(named("Elm St & Oak St (8330 West Elm Rd)")[0], "Elm St/Oak St (8330 W Elm Rd)")

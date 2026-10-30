@@ -14,7 +14,7 @@ from redash.transit_naming.stop_shapes import (
     STREET,
     shape,
     split_note,
-    station_chain_start,
+    station_segments,
     stop_evidence,
     tokenize,
 )
@@ -76,11 +76,11 @@ def _lettered(words):
 
 def _segment_failures(text, evidence):
     tokens = tokenize(text, evidence)
-    keep_from = station_chain_start(tokens, evidence)
+    protected = station_segments(tokens, evidence)
     found = set()
     for position, token in enumerate(tokens[::2]):
         kind = evidence.kind(token.strip())
-        if position >= keep_from or kind == STATION:
+        if position in protected:
             continue
         if kind in (STREET, ADDRESS):
             found.update(_street_rules(token.strip(), kind))

@@ -140,15 +140,16 @@ def _address(core, normalize):
     return " ".join(words)
 
 
-def station_chain_start(tokens, evidence):
-    segments = tokens[::2]
-    stations = [i for i, token in enumerate(segments) if evidence.kind(token.strip()) == STATION]
-    if not stations:
-        return len(segments)
-    start = stations[-1]
-    while start > 0 and tokens[2 * start - 1].strip() in ("/", "\\"):
-        start -= 1
-    return start
+def station_segments(tokens, evidence):
+    protected = set()
+    for position, token in enumerate(tokens[::2]):
+        if evidence.kind(token.strip()) != STATION:
+            continue
+        protected.add(position)
+        while position > 0 and tokens[2 * position - 1].strip() in ("/", "\\"):
+            position -= 1
+            protected.add(position)
+    return protected
 
 
 def render_parentheses(text, evidence, normalize):
@@ -160,6 +161,15 @@ def render(text, evidence, normalize):
     return render_parentheses(_render_tokens(body, evidence, normalize) + note, evidence, normalize)
 
 
+def _render_segment(token, evidence, normalize):
+    lead = token[: len(token) - len(token.lstrip())]
+    trail = token[len(token.rstrip()) :]
+    core = NUMBERED_COMPASS_PERIOD.sub(r"\1", token.strip())
+    kind = evidence.kind(core)
+    rendered = _address(core, normalize) if kind == ADDRESS else normalize(core) if kind == STREET else core
+    return lead + rendered + trail
+
+
 def _render_tokens(text, evidence, normalize):
     tokens = tokenize(text, evidence)
     out = []
@@ -167,25 +177,19 @@ def _render_tokens(text, evidence, normalize):
         if i % 2:
             out.append(_join(token))
             continue
-        lead = token[: len(token) - len(token.lstrip())]
-        trail = token[len(token.rstrip()) :]
-        core = NUMBERED_COMPASS_PERIOD.sub(r"\1", token.strip())
-        kind = evidence.kind(core)
-        rendered = _address(core, normalize) if kind == ADDRESS else normalize(core) if kind == STREET else core
-        out.append(lead + rendered + trail)
+        out.append(_render_segment(token, evidence, normalize))
     return "".join(out)
 
 
 def station_name(name, evidence, normalize):
     tokens = tokenize(name, evidence)
-    keep_from = station_chain_start(tokens, evidence)
+    protected = station_segments(tokens, evidence)
     out = []
     for i, token in enumerate(tokens):
         if i % 2:
             out.append(_join(token))
-        elif i // 2 < keep_from and evidence.kind(token.strip()) in (STREET, ADDRESS):
-            lead = token[: len(token) - len(token.lstrip())]
-            out.append(lead + normalize(token.strip()) + token[len(token.rstrip()) :])
+        elif i // 2 not in protected:
+            out.append(_render_segment(token, evidence, normalize))
         else:
             out.append(token)
     return "".join(out)
