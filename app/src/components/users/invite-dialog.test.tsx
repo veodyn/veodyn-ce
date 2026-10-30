@@ -69,4 +69,26 @@ describe('InviteDialog', () => {
     expect(onInvited).toHaveBeenCalledOnce()
     expect(await screen.findByDisplayValue(/\/invite\/token-123$/)).toBeInTheDocument()
   })
+
+  it('shows the user as created when the invite went by email and no link came back', async () => {
+    const user = userEvent.setup()
+    let posts = 0
+    server.use(
+      http.post('/api/node/users', () => {
+        posts += 1
+        return HttpResponse.json({ id: 20, name: 'New Analyst', email: 'new@example.com', email_sent: true })
+      })
+    )
+
+    renderWithProviders(<InviteDialog open onOpenChange={() => {}} onInvited={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText(/john doe/i), 'New Analyst')
+    await user.type(screen.getByPlaceholderText(/user@example.com/i), 'new@example.com')
+    await user.click(screen.getByRole('button', { name: /create/i }))
+
+    expect(await screen.findByText(/invitation email was sent/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^create$/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /done/i })).toBeInTheDocument()
+    expect(posts).toBe(1)
+  })
 })

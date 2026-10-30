@@ -25,8 +25,7 @@ export function InviteDialog({ open, onOpenChange, onInvited }: InviteDialogProp
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [isSending, setIsSending] = useState(false)
-  const [inviteLink, setInviteLink] = useState<string | null>(null)
-  const [emailSent, setEmailSent] = useState(false)
+  const [created, setCreated] = useState<{ inviteLink: string | null; emailSent: boolean } | null>(null)
 
   const handleSend = async () => {
     if (!name.trim() || !email.trim()) {
@@ -39,8 +38,10 @@ export function InviteDialog({ open, onOpenChange, onInvited }: InviteDialogProp
         'users',
         { name, email }
       )
-      setInviteLink(result.invite_link ? toLocalLink(result.invite_link) : null)
-      setEmailSent(result.email_sent ?? false)
+      setCreated({
+        inviteLink: result.invite_link ? toLocalLink(result.invite_link) : null,
+        emailSent: result.email_sent ?? false,
+      })
       onInvited()
     } catch {
       toast.error('Failed to create user')
@@ -52,8 +53,7 @@ export function InviteDialog({ open, onOpenChange, onInvited }: InviteDialogProp
   const resetAndClose = () => {
     setName('')
     setEmail('')
-    setInviteLink(null)
-    setEmailSent(false)
+    setCreated(null)
     onOpenChange(false)
   }
 
@@ -64,13 +64,23 @@ export function InviteDialog({ open, onOpenChange, onInvited }: InviteDialogProp
           <DialogTitle>New User</DialogTitle>
         </DialogHeader>
         <div className="max-h-[70vh] space-y-4 overflow-y-auto">
-          {inviteLink !== null ? (
+          {created !== null ? (
             <div className="space-y-3 py-2">
-              <p className="text-sm text-muted-foreground">
-                User created. Share this invite link so they can set their password.
-                {emailSent ? ' An invitation email was also sent.' : ''}
-              </p>
-              <InputWithCopy value={inviteLink} />
+              {created.inviteLink !== null ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    User created. Share this invite link so they can set their password.
+                    {created.emailSent ? ' An invitation email was also sent.' : ''}
+                  </p>
+                  <InputWithCopy value={created.inviteLink} />
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {created.emailSent
+                    ? 'User created. An invitation email was sent so they can set their password.'
+                    : 'User created.'}
+                </p>
+              )}
             </div>
           ) : (
             <div className="space-y-4 py-2">
@@ -108,7 +118,7 @@ export function InviteDialog({ open, onOpenChange, onInvited }: InviteDialogProp
           )}
         </div>
         <DialogFooter>
-          {inviteLink ? (
+          {created !== null ? (
             <Button onClick={resetAndClose}>Done</Button>
           ) : (
             <>
