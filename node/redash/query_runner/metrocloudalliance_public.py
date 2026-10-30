@@ -100,14 +100,16 @@ PUBLIC_COLUMN_NAMES = {
 }
 
 
+def _routes(params, fetch):
+    route_code = params.get("route_code")
+    if not route_code:
+        return fetch("routes", {"carrier_code": _carrier(params)})
+    routes = fetch("routes", {"carrier_code": _carrier(params), "route_code": route_code})
+    return [route for route in routes if str(route.get("route_code")) == str(route_code)]
+
+
 def public_routes(params, fetch, profiles, archive_fetcher=None):
-    routes = fetch(
-        "routes",
-        {
-            "carrier_code": _carrier(params),
-            **({"route_code": params["route_code"]} if params.get("route_code") else {}),
-        },
-    )
+    routes = _routes(params, fetch)
     profile = _profile(profiles, params, routes)
     resolver = _resolver(profile, False, archive_fetcher)
     return [
@@ -146,13 +148,7 @@ def public_stops(params, fetch, profiles, archive_fetcher=None, source=None, kee
 
 
 def public_route_stops(params, fetch, profiles, archive_fetcher=None, source=None):
-    routes = fetch(
-        "routes",
-        {
-            "carrier_code": _carrier(params),
-            **({"route_code": params["route_code"]} if params.get("route_code") else {}),
-        },
-    )
+    routes = _routes(params, fetch)
     stops = [s for s in fetch("stops", {"carrier_code": _carrier(params)})]
     profile = _profile(profiles, params, routes)
     resolver = _resolver(profile, True, archive_fetcher)
