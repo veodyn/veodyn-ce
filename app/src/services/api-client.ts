@@ -11,6 +11,8 @@
  * - Automatic JSON parsing
  */
 
+import { readCappedJson } from './capped-body'
+
 let apiKey: string | null = null
 
 function getCsrfToken(): string | null {
@@ -24,6 +26,7 @@ interface RequestOptions {
   data?: unknown
   headers?: Record<string, string>
   signal?: AbortSignal
+  maxBytes?: number
 }
 
 async function request<T = unknown>(
@@ -130,7 +133,7 @@ async function request<T = unknown>(
     return undefined as T
   }
 
-  // Mirrors axios interceptor: response => response.data
+  if (options.maxBytes !== undefined) return readCappedJson<T>(response, options.maxBytes, options.signal)
   return response.json()
 }
 

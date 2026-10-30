@@ -7,9 +7,11 @@ import { IconButton } from '@/components/shared/icon-button'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { isResultTooLargeMessage } from '@/lib/chat/result-cap'
 import type { RunView } from '@/lib/chat/thread-model'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
+import { ResultTooLarge, RESULT_TOO_LARGE_LABEL } from './result-too-large'
 import { ResultView } from './result-view'
 import { ToolCardTitle, ToolFailure } from './tool-card-parts'
 
@@ -33,6 +35,8 @@ interface RunCardProps {
 
 export function RunCard({ run, data, visualization, error, selected, onSelect, onRerun }: RunCardProps) {
   const message = error ?? run.error
+  const tooLarge = isResultTooLargeMessage(message)
+  const failure = tooLarge ? <ResultTooLarge /> : message ? <ToolFailure>{message}</ToolFailure> : null
   const canRerun = run.dataSourceId > 0 || run.saved !== undefined
   return (
     <Card size="sm" className={cn('w-full', selected && 'ring-2 ring-primary')}>
@@ -41,7 +45,7 @@ export function RunCard({ run, data, visualization, error, selected, onSelect, o
           <span className="truncate">{run.purpose || 'Query'}</span>
         </ToolCardTitle>
         <p className="text-xs text-muted-foreground" aria-live="polite">
-          {runStatusLabel(run)}
+          {tooLarge ? RESULT_TOO_LARGE_LABEL : runStatusLabel(run)}
         </p>
         <CardAction>
           <IconButton tooltip="Open beside the chat" variant="ghost" size="icon-sm" onClick={onSelect}>
@@ -57,7 +61,7 @@ export function RunCard({ run, data, visualization, error, selected, onSelect, o
             Run again to draw the chart
           </Button>
         ) : null}
-        {message ? <ToolFailure>{message}</ToolFailure> : null}
+        {failure}
         {run.saved ? (
           <Link href={`/queries/${run.saved.queryId}`} className="self-start text-sm text-muted-foreground hover:underline">
             Open the saved query

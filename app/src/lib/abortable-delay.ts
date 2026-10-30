@@ -1,7 +1,11 @@
+export function abortError(): DOMException {
+  return new DOMException('Aborted', 'AbortError')
+}
+
 export function abortableDelay(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
-      reject(new DOMException('Aborted', 'AbortError'))
+      reject(abortError())
       return
     }
     const timer = setTimeout(() => {
@@ -10,7 +14,7 @@ export function abortableDelay(ms: number, signal?: AbortSignal): Promise<void> 
     }, ms)
     function onAbort() {
       clearTimeout(timer)
-      reject(new DOMException('Aborted', 'AbortError'))
+      reject(abortError())
     }
     signal?.addEventListener('abort', onAbort, { once: true })
   })

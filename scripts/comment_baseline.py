@@ -1190,7 +1190,7 @@ BASELINE = {
     "app/src/plugins/index.ts": 36,
     "app/src/plugins/plugin-boundary.test.ts": 58,
     "app/src/services/api-client.test.ts": 3,
-    "app/src/services/api-client.ts": 49,
+    "app/src/services/api-client.ts": 48,
     "app/src/services/catalog/client.ts": 25,
     "app/src/services/favorites/client.test.ts": 17,
     "app/src/services/favorites/client.ts": 29,
@@ -1673,5 +1673,5 @@ BASELINE = {
 }
 
 FILES_WITH_COMMENTS = 1671
-COMMENT_LINES = 42768
-FILES_SCANNED = 2825
+COMMENT_LINES = 42767
+FILES_SCANNED = 2840

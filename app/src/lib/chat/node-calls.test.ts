@@ -166,7 +166,7 @@ describe('library reads', () => {
     const { transport, get } = fakeTransport()
     get.mockResolvedValue({ query_result: RESULT })
     expect(await nodeCalls.getQueryResult(transport, 9, SIGNAL)).toEqual(RESULT)
-    expect(get).toHaveBeenCalledWith('query_results/9', undefined, SIGNAL)
+    expect(get).toHaveBeenCalledWith('query_results/9', undefined, SIGNAL, undefined)
   })
 
   it('reads either tag vocabulary envelope from the scope path', async () => {
@@ -222,7 +222,16 @@ describe('execution', () => {
     )
     expect(onJob).toHaveBeenCalledWith('j9')
     expect(get).toHaveBeenNthCalledWith(1, 'jobs/j9', undefined, SIGNAL)
-    expect(get).toHaveBeenLastCalledWith('query_results/9', undefined, SIGNAL)
+    expect(get).toHaveBeenLastCalledWith('query_results/9', undefined, SIGNAL, undefined)
+  })
+
+  it('a result byte cap reaches only the result download', async () => {
+    const { transport, get, post } = fakeTransport()
+    post.mockResolvedValue({ job: { id: 'j' } })
+    get.mockResolvedValueOnce({ job: { status: 3, query_result_id: 9 } }).mockResolvedValueOnce({ query_result: RESULT })
+    await nodeCalls.executeAdhoc(transport, 4, 'SELECT 1', { signal: SIGNAL, maxResultBytes: 1024 })
+    expect(get).toHaveBeenNthCalledWith(1, 'jobs/j', undefined, SIGNAL)
+    expect(get).toHaveBeenLastCalledWith('query_results/9', undefined, SIGNAL, { maxBytes: 1024 })
   })
 
   it('reads the job result id under the older field names', async () => {
@@ -230,7 +239,7 @@ describe('execution', () => {
     post.mockResolvedValue({ job: { id: 'j' } })
     get.mockResolvedValueOnce({ job: { status: 3, result: 7 } }).mockResolvedValueOnce({ query_result: RESULT })
     await nodeCalls.executeAdhoc(transport, 4, 'SELECT 1')
-    expect(get).toHaveBeenLastCalledWith('query_results/7', undefined, undefined)
+    expect(get).toHaveBeenLastCalledWith('query_results/7', undefined, undefined, undefined)
   })
 
   it('fails with the job error, on cancel, and on no result id', async () => {

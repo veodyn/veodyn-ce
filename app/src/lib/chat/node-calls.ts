@@ -32,6 +32,7 @@ export interface ExecuteOptions {
   parameters?: Record<string, unknown>
   maxAge?: number
   applyAutoLimit?: boolean
+  maxResultBytes?: number
   signal?: AbortSignal
   onJob?: (jobId: string) => void
 }
@@ -152,9 +153,16 @@ export async function getDashboard(
 export async function getQueryResult(
   transport: RedashTransport,
   resultId: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  maxBytes?: number
 ): Promise<RedashQueryResult> {
-  const res = await transport.get<{ query_result: RedashQueryResult }>(`query_results/${resultId}`, undefined, signal)
+  const limits = maxBytes === undefined ? undefined : { maxBytes }
+  const res = await transport.get<{ query_result: RedashQueryResult }>(
+    `query_results/${resultId}`,
+    undefined,
+    signal,
+    limits
+  )
   return res.query_result
 }
 
@@ -197,7 +205,7 @@ async function resolveExecution(
   if (res.job) {
     opts.onJob?.(res.job.id)
     const resultId = await pollJob(transport, res.job.id, opts.signal)
-    return getQueryResult(transport, resultId, opts.signal)
+    return getQueryResult(transport, resultId, opts.signal, opts.maxResultBytes)
   }
   throw new Error('Unexpected response from query execution')
 }

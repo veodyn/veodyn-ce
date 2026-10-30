@@ -1,34 +1,33 @@
 'use client'
 
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { getVisualization, MapProvidersContext, validateVisualization, type ReadinessContext } from '@veodyn/viz'
+import { MapProvidersContext, validateVisualization } from '@veodyn/viz'
 import { useOptionalConfig } from '@/components/config/config-provider'
-import { chatVisualization } from '@/components/chat/result-view'
 import { isContributedRequest, runContributedTool, type ContributedToolRequest } from '@/features/chat-tools'
 import { resolveKpiCheck, type DraftPreviewLookup } from '@/lib/chat/kpi-check'
 import { browserSidecarTransport } from '@/lib/chat/sidecar-transport'
 import { resolveSnippetCheck } from '@/lib/chat/snippet-check'
 import { resolveDashboardEdit } from '@/lib/chat/dashboard-edit'
-import { readinessNotice } from '@/lib/chat/readiness'
-import type { AnyToolRequest, ChatToolRequest, ChatToolRequestOf } from '@/lib/chat/frames'
+import type { AnyToolRequest, ChatToolRequestOf } from '@/lib/chat/frames'
 import { runLibraryTool, type LibraryToolRequest } from '@/lib/chat/library-tools'
 import { isOperationRequest, runOperationTool, type OperationToolRequest } from '@/lib/chat/operation-tools'
 import { resolveQueryEdit } from '@/lib/chat/query-edit'
-import {
-  runAdhocQuery,
-  runSavedQuery,
-  savedRunResult,
-  type RunOutcome,
-  type RunSpec,
-  type SavedRunSpec,
-} from '@/lib/chat/saved-query-run'
+import { runErrorMessage } from '@/lib/chat/result-cap'
+import type { RunOutcome, RunSpec } from '@/lib/chat/saved-query-run'
 import { postToolResultSafely } from '@/lib/chat/post-result'
-import { shapeResult } from '@/lib/chat/shape-result'
 import { browserTransport } from '@/lib/chat/transport'
 import { failedResult, type ChatToolResult, type OpenToolResult } from '@/lib/chat/tool-results'
 import { resolveVizChange, runDescribeVizType } from '@/lib/chat/viz-tools'
 import type { MockVisualization, QueryResultData } from '@/lib/mock-data'
-import { readQueryError } from '@/lib/query-error'
+import {
+  isRegisteredType,
+  isVizRequest,
+  perform,
+  resultFor,
+  savedSpec,
+  without,
+  type VizRequest,
+} from './tool-executor-run'
 
 export type ResultSink = (callId: string, result: ChatToolResult | OpenToolResult) => void
 
@@ -41,61 +40,6 @@ export interface ToolExecutor {
 }
 
 type Outcome = { aborted: true } | { aborted: false; run: RunOutcome } | { aborted: false; error: Error }
-
-function without<T>(values: Record<string, T>, key: string): Record<string, T> {
-  if (!(key in values)) return values
-  const next = { ...values }
-  delete next[key]
-  return next
-}
-
-function perform(spec: RunSpec, signal: AbortSignal): Promise<RunOutcome> {
-  if (spec.kind === 'saved') return runSavedQuery(spec, browserTransport, signal)
-  return runAdhocQuery(spec, browserTransport, signal)
-}
-
-function noticeFor(spec: RunSpec, run: RunOutcome, context: ReadinessContext): string | undefined {
-  if (spec.kind === 'saved') {
-    return run.visualization
-      ? readinessNotice(run.visualization.type, run.visualization.options, context)
-      : undefined
-  }
-  if (!spec.vizChoiceId) return undefined
-  const drawn = chatVisualization(spec.vizChoiceId, run.data)
-  return readinessNotice(drawn.type, drawn.options, context)
-}
-
-function resultFor(spec: RunSpec, run: RunOutcome, context: ReadinessContext): ChatToolResult {
-  const notice = noticeFor(spec, run, context)
-  if (spec.kind === 'saved') return savedRunResult(run, spec.queryId, notice)
-  return { ...shapeResult(run.data, run.dataSourceId), ...(notice ? { notice } : {}) }
-}
-
-function isRegisteredType(type: string): boolean {
-  return getVisualization(type) !== undefined
-}
-
-type VizRequest = ChatToolRequestOf<
-  'describe_visualization_type' | 'propose_visualization' | 'update_visualization' | 'delete_visualization'
->
-
-function isVizRequest(request: ChatToolRequest): request is VizRequest {
-  return (
-    request.tool === 'describe_visualization_type' ||
-    request.tool === 'propose_visualization' ||
-    request.tool === 'update_visualization' ||
-    request.tool === 'delete_visualization'
-  )
-}
-
-function savedSpec(request: ChatToolRequestOf<'run_saved_query'>): RunSpec {
-  const spec: SavedRunSpec = {
-    queryId: request.args.queryId,
-    parameters: request.args.parameters,
-    visualizationId: request.args.visualizationId,
-  }
-  return { kind: 'saved', ...spec }
-}
 
 export function useToolExecutor(draftPreview?: DraftPreviewLookup): ToolExecutor {
   const [results, setResults] = useState<Record<string, QueryResultData>>({})
@@ -126,7 +70,7 @@ export function useToolExecutor(draftPreview?: DraftPreviewLookup): ToolExecutor
       return { aborted: false, run: outcome }
     } catch (error) {
       if (controller.signal.aborted) return { aborted: true }
-      const message = readQueryError(error).message
+      const message = runErrorMessage(error)
       setErrors((current) => ({ ...current, [callId]: message }))
       return { aborted: false, error: new Error(message) }
     } finally {
@@ -136,16 +80,20 @@ export function useToolExecutor(draftPreview?: DraftPreviewLookup): ToolExecutor
 
   const executeSpec = useCallback(
     (turnId: string, callId: string, spec: RunSpec) => {
+      const controller = new AbortController()
+      controllers.current.add(controller)
       void run(callId, spec)
-        .then((outcome) => {
+        .then(async (outcome) => {
           if (outcome.aborted) return undefined
           const result =
             'run' in outcome
-              ? resultFor(spec, outcome.run, { mapProviders })
+              ? await resultFor(spec, outcome.run, { mapProviders }, controller.signal)
               : failedResult('query_result', outcome.error)
+          if (controller.signal.aborted) return undefined
           return postToolResultSafely(turnId, callId, result)
         })
         .catch(() => undefined)
+        .finally(() => controllers.current.delete(controller))
     },
     [run, mapProviders]
   )

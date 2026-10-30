@@ -2,6 +2,7 @@ import type { MockQuery, MockVisualization, QueryResultData } from '@/lib/mock-d
 import { resolveParameterValues } from '@/lib/parameters/dynamic-dates'
 import { NOT_AVAILABLE, pickVisualization } from './library-results'
 import * as nodeCalls from './node-calls'
+import { CHAT_RESULT_MAX_BYTES } from './result-cap'
 import type { AdhocRunSpec, SavedRunSpec } from './run-spec'
 import { shapeResult } from './shape-result'
 import type { RedashTransport } from './transport'
@@ -42,6 +43,7 @@ export async function runSavedQuery(
       new Date()
     ),
     maxAge: 0,
+    maxResultBytes: CHAT_RESULT_MAX_BYTES,
     signal,
   })
   const picked = pickVisualization(query, spec.visualizationId)
@@ -59,15 +61,20 @@ export async function runAdhocQuery(
 ): Promise<RunOutcome> {
   const result = await nodeCalls.executeAdhoc(transport, spec.dataSourceId, spec.sql, {
     applyAutoLimit: true,
+    maxResultBytes: CHAT_RESULT_MAX_BYTES,
     signal,
   })
   return { data: result.data, dataSourceId: spec.dataSourceId, visualization: null }
 }
 
-export function savedRunResult(outcome: RunOutcome, queryId: number, notice?: string): ChatQueryResult {
+export function withRunContext(shaped: ChatQueryResult, savedQueryId?: number, notice?: string): ChatQueryResult {
   return {
-    ...shapeResult(outcome.data, outcome.dataSourceId),
-    savedQueryId: queryId,
+    ...shaped,
+    ...(savedQueryId === undefined ? {} : { savedQueryId }),
     ...(notice ? { notice } : {}),
   }
+}
+
+export function savedRunResult(outcome: RunOutcome, queryId: number, notice?: string): ChatQueryResult {
+  return withRunContext(shapeResult(outcome.data, outcome.dataSourceId), queryId, notice)
 }
