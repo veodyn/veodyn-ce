@@ -14,9 +14,9 @@ def bu_stop(stop_id, name, modes="BUS"):
 
 
 BU_STOPS = [
-    bu_stop("10", "OLIVE AVE/GLENOAKS BLVD"),
-    bu_stop("11", "Burbank Downtown Metrolink Station"),
-    bu_stop("12", "San Fernando Blvd/Magnolia Blvd"),
+    bu_stop("10", "OAK AVE/ELM BLVD"),
+    bu_stop("11", "Downtown Transit Center"),
+    bu_stop("12", "Main St/First St"),
     bu_stop("99", "Quiet Stop", modes=""),
 ]
 MEMBERS = {
@@ -32,10 +32,10 @@ def pattern(route_code, pattern_code, name):
 
 def patterns(params):
     return [
-        pattern("BU001", "BU001 N", "NORTH BURBANK - EMPIRE CENTER   "),
-        pattern("BU001", "BU001 S", "DOWNTOWN BURBANK METROLINK"),
+        pattern("BU001", "BU001 N", "NORTH SIDE - CIVIC CENTER   "),
+        pattern("BU001", "BU001 S", "DOWNTOWN TRANSIT CENTER"),
         pattern("BU001", "BU0011N", "BU001"),
-        pattern("BU002", "BU002 E", "MEDIA DISTRICT"),
+        pattern("BU002", "BU002 E", "EAST SIDE"),
     ]
 
 
@@ -65,15 +65,15 @@ class TestRouteStopsFromMcaPatterns(PublicResourceCase):
     def test_each_pattern_carries_its_recased_name_as_the_headsign(self):
         rows, _ = self.rows()
         headsigns = {r["pattern_id"]: r["headsign"] for r in rows}
-        self.assertEqual(headsigns["BU001 N"], "North Burbank - Empire Center")
-        self.assertEqual(headsigns["BU001 S"], "Downtown Burbank Metrolink")
+        self.assertEqual(headsigns["BU001 N"], "North Side - Civic Center")
+        self.assertEqual(headsigns["BU001 S"], "Downtown Transit Center")
         self.assertEqual(headsigns["BU0011N"], "")
 
     def test_stops_are_the_pattern_members_mca_lists_with_their_public_names(self):
         rows, _ = self.rows()
         north = [r for r in rows if r["pattern_id"] == "BU001 N"]
         self.assertEqual(sorted(r["stop_id"] for r in north), ["10", "11", "99"])
-        self.assertIn("Olive Av/Glenoaks Bl", {r["public_name"] for r in north})
+        self.assertIn("Oak Av/Elm Bl", {r["public_name"] for r in north})
         self.assertEqual({r["direction"] for r in north}, {"N"})
 
     def test_the_pattern_list_is_asked_for_once_per_route(self):
