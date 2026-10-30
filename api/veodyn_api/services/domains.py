@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from veodyn_api import registry
 from veodyn_api.schemas.catalog import DomainHubOut
+from veodyn_api.services.capture_sources import registry_table
 from veodyn_api.services.clickhouse import ClickHouseClient, WarehouseDatabaseMissing, WarehouseTableMissing
 from veodyn_api.services.redash import RedashClient
 
@@ -88,7 +89,8 @@ def _dataset_ids(warehouse: ClickHouseClient, query_ids: list[int], default_data
     wanted = ",".join(str(int(query_id)) for query_id in query_ids)
     try:
         rows = warehouse.query(
-            f"SELECT table_name FROM historical._catalog FINAL WHERE query_id IN ({wanted}) ORDER BY table_name"
+            f"SELECT table_name FROM {registry_table(default_database)} FINAL "
+            f"WHERE query_id IN ({wanted}) ORDER BY table_name"
         )
     except (WarehouseTableMissing, WarehouseDatabaseMissing):
         return []

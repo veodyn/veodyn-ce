@@ -2,16 +2,18 @@ from datetime import datetime, timezone
 
 from redash.historical.schema import slugify_query_name
 
-CATALOG_TABLE = "historical._catalog"
+
+def catalog_table(client):
+    return f"{client.database}._catalog"
 
 
 def ensure_database(client):
-    client.execute("CREATE DATABASE IF NOT EXISTS historical")
+    client.execute(f"CREATE DATABASE IF NOT EXISTS {client.database}")
 
 
 def ensure_catalog_table(client):
     client.execute(
-        f"CREATE TABLE IF NOT EXISTS {CATALOG_TABLE} (\n"
+        f"CREATE TABLE IF NOT EXISTS {catalog_table(client)} (\n"
         "    query_id UInt32,\n"
         "    table_name String,\n"
         "    query_name String,\n"
@@ -26,7 +28,7 @@ def ensure_catalog_table(client):
 
 def _lookup_table_name(client, query_id):
     result = client.query_json(
-        f"SELECT table_name FROM {CATALOG_TABLE} FINAL WHERE query_id = {int(query_id)} LIMIT 1"
+        f"SELECT table_name FROM {catalog_table(client)} FINAL WHERE query_id = {int(query_id)} LIMIT 1"
     )
     rows = result.get("data", [])
     return rows[0]["table_name"] if rows else None
@@ -46,10 +48,10 @@ def get_or_create_table_name(client, query_id, query_name, data_source_id):
     if existing:
         return existing
 
-    table_name = "historical.{}".format(slugify_query_name(query_name, query_id))
+    table_name = "{}.{}".format(client.database, slugify_query_name(query_name, query_id))
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     client.insert_jsoneachrow(
-        CATALOG_TABLE,
+        catalog_table(client),
         [
             {
                 "query_id": int(query_id),

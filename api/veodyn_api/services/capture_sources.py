@@ -11,6 +11,12 @@ from typing import Any
 from veodyn_api.registry import DatasetSource
 from veodyn_api.services.clickhouse import ClickHouseClient, WarehouseDatabaseMissing, WarehouseTableMissing
 
+DEFAULT_REGISTRY_DATABASE = "historical"
+
+
+def registry_table(default_database: str) -> str:
+    return f"{default_database or DEFAULT_REGISTRY_DATABASE}._catalog"
+
 
 def split_qualified(qualified: str, default_database: str) -> tuple[str, str]:
     database, _, table = qualified.partition(".")
@@ -58,7 +64,8 @@ def capture_sources(client: ClickHouseClient, default_database: str) -> list[Dat
     """
     try:
         rows = client.query(
-            "SELECT query_id, table_name, query_name FROM historical._catalog FINAL ORDER BY query_name, query_id"
+            f"SELECT query_id, table_name, query_name FROM {registry_table(default_database)} FINAL "
+            "ORDER BY query_name, query_id"
         )
     except (WarehouseTableMissing, WarehouseDatabaseMissing):
         return []

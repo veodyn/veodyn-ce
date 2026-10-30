@@ -9,6 +9,7 @@ from tests import BaseTestCase
 
 def _mock_client(existing_columns=None):
     client = MagicMock()
+    client.database = "historical"
     client.get_columns.return_value = existing_columns
     return client
 
