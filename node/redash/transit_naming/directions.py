@@ -15,7 +15,9 @@ BOUND_MARKERS = (
         r"\s*\(\s*(?P<bound>north|south|east|west|[nsew]\s*/?\s*b)(?:bound)?(?:\s+direction)?\s*\)\s*$",
         re.IGNORECASE,
     ),
-    re.compile(r"\s+(?P<bound>[NSEW]/?B)$", re.IGNORECASE),
+    re.compile(r"\s+(?P<bound>[NSEW]/?B|(?:north|south|east|west)bound)$", re.IGNORECASE),
+    re.compile(r"^(?P<bound>[NSEW]/?B|(?:north|south|east|west)bound)\s+", re.IGNORECASE),
+    re.compile(r"\s+(?P<bound>[NSEW]/?B|(?:north|south|east|west)bound)(?=\s*\([^()]*\)\s*$)", re.IGNORECASE),
 )
 COMPASS_POINTS = {letter: word.removesuffix("bound") for letter, word in BOUNDS.items()}
 POSITION_NOTE = re.compile(
@@ -53,6 +55,7 @@ def bound(text):
 def split_bound(raw):
     for marker in BOUND_MARKERS:
         match = marker.search(raw)
-        if match and raw[: match.start()].strip():
-            return raw[: match.start()].strip(), bound(match.group("bound"))
+        body = (raw[: match.start()] + " " + raw[match.end() :]).strip() if match else ""
+        if match and body:
+            return " ".join(body.split()), bound(match.group("bound"))
     return raw, ""
