@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw/server'
-import { renderWithProviders, resetStores } from '@/test/utils'
+import { renderWithProviders, resetStores, signInAsAdmin } from '@/test/utils'
+import { useAuthStore } from '@/stores/auth-store'
 import { QueryResultTable } from '@veodyn/viz/components/query/query-result-table'
 
 vi.mock('@/services/redash/config', () => ({ USE_REAL_API: true }))
@@ -25,7 +26,10 @@ function serveFormats(settings: Record<string, string>) {
 }
 
 afterEach(() => resetStores())
-beforeEach(() => serveFormats({ date_format: 'DD/MM/YY', time_format: 'HH:mm' }))
+beforeEach(() => {
+  signInAsAdmin()
+  serveFormats({ date_format: 'DD/MM/YY', time_format: 'HH:mm' })
+})
 
 describe('date columns in a result grid', () => {
   it('renders in the configured date format', async () => {
@@ -46,6 +50,25 @@ describe('date columns in a result grid', () => {
     renderWithProviders(<QueryResultTable data={data} />)
 
     await waitFor(() => expect(screen.getByText('2026-02-18 14:05:09')).toBeInTheDocument())
+  })
+
+  it('renders a non-admin the formats the session carries, without asking for org settings', async () => {
+    signInAsAdmin({ isAdmin: false, permissions: ['view_query'] })
+    useAuthStore.setState({
+      clientConfig: { ...useAuthStore.getState().clientConfig, dateFormat: 'YYYY-MM-DD', dateTimeFormat: 'YYYY-MM-DD HH:mm:ss' },
+    })
+    let asked = false
+    server.use(
+      http.get('/api/node/settings/organization', () => {
+        asked = true
+        return HttpResponse.json({ message: 'forbidden' }, { status: 403 })
+      })
+    )
+
+    renderWithProviders(<QueryResultTable data={data} />)
+
+    await waitFor(() => expect(screen.getByText('2026-02-18 14:05:09')).toBeInTheDocument())
+    expect(asked).toBe(false)
   })
 
   it('leaves a text column alone, whatever it happens to contain', async () => {

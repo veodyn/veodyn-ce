@@ -963,7 +963,6 @@ BASELINE = {
     "app/src/hooks/use-favorites.ts": 65,
     "app/src/hooks/use-federated-search.test.tsx": 13,
     "app/src/hooks/use-federated-search.ts": 6,
-    "app/src/hooks/use-formats.ts": 7,
     "app/src/hooks/use-groups.test.tsx": 8,
     "app/src/hooks/use-groups.ts": 24,
     "app/src/hooks/use-mutation-readback.test.tsx": 6,
