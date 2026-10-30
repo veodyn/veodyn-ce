@@ -3,7 +3,8 @@ from unittest import TestCase
 from redash.transit_naming import provenance
 from redash.transit_naming.headsigns import normalize_headsign
 from redash.transit_naming.profiles import HeadsignRules
-from redash.transit_naming.stops import name_stop, normalize_part, stop_row
+from redash.transit_naming.stop_rows import stop_row
+from redash.transit_naming.stops import name_stop, normalize_part
 from tests.query_runner.transit_naming_fixtures import MT_STOPS_BY_ID, metro_profile
 
 PROFILE = metro_profile()

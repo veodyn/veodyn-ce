@@ -5,7 +5,8 @@ from redash.query_runner import metrocloudalliance_public as public
 from redash.transit_naming import provenance
 from redash.transit_naming.locations import location_rows
 from redash.transit_naming.profiles import Override
-from redash.transit_naming.stops import name_stop, stop_row
+from redash.transit_naming.stop_rows import stop_row
+from redash.transit_naming.stops import name_stop
 from tests.query_runner.test_metrocloudalliance_public import (
     PREDICTIONS,
     ROUTES,

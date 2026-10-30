@@ -21,7 +21,7 @@ from redash.transit_naming.patterns import (
 from redash.transit_naming.profile_loader import load_profiles, profile_dirs
 from redash.transit_naming.routes import name_route, parse_route_number, route_row
 from redash.transit_naming.snapshot import PatternStop, RouteName, StopName
-from redash.transit_naming.stops import stop_row
+from redash.transit_naming.stop_rows import stop_row
 from redash.transit_naming.suffixes import CarrierIndexes
 from redash.transit_naming.trip_routes import TRIP_ROUTE_COLUMNS, trip_route_rows
 

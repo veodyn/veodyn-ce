@@ -18,6 +18,14 @@ from redash.transit_naming.directions import (
     strip_position_notes,
 )
 from redash.transit_naming.snapshot import StopName
+from redash.transit_naming.street_segments import (
+    has_segments,
+    split_note,
+    street_before_a_station,
+    streets_beside_landmarks,
+    two_streets,
+    without_la_periods,
+)
 
 WHITESPACE = re.compile(r"\s+")
 TRAILING_LINE_REFERENCE = re.compile(r"\s*-\s*Metro\s+\w+(?:\s*(?:&|,|/|and)\s*\w+)*\s*-?\s*Lines?\s*$", re.IGNORECASE)
@@ -62,7 +70,7 @@ def _split_parts(body, rules):
 
 def _cased(text, rules, uppercase=None):
     cased = recase(_tidy(text), rules.keep_upper, uppercase, rules.split_on)
-    return PARK_AND_RIDE.sub("Park & Ride", cased)
+    return without_la_periods(PARK_AND_RIDE.sub("Park & Ride", cased))
 
 
 def _street_casing(original, rules):
@@ -164,14 +172,26 @@ def _station(body, rules):
     name = STATION.sub("Station", _without_line_reference(body, rules))
     if not STATION.search(name) and not BUS_STOP.search(name):
         name = name + rules.station_suffix
-    return _tight_separators(_tidy(name), rules)
+    return street_before_a_station(_tight_separators(_tidy(name), rules), lambda part: _normalize_street(part, rules))
+
+
+def _guide_streets(text, rules):
+    return streets_beside_landmarks(
+        text, lambda piece: normalize_part(piece, rules), lambda word: word.lower() in _suffix_lookup(rules)
+    )
+
+
+def _normalize_street(part, rules):
+    words = [word.capitalize() if is_shouted_word(word, rules.keep_upper) else word for word in part.split(" ")]
+    normalized = normalize_part(" ".join(words), rules)
+    return _guide_streets(normalized, rules) if has_segments(normalized) else normalized
 
 
 def _intersection(left, right, rules, direction, mode, retired):
     left, left_direction = _split_direction(left, rules)
     right, right_direction = _split_direction(right, rules)
     direction = direction or left_direction or right_direction
-    left, right = normalize_part(left, rules), normalize_part(right, rules)
+    left, right = _normalize_street(left, rules), _normalize_street(right, rules)
     public_name = f"{left}{rules.separator}{right}"
     return StopName(public_name, left, right, direction, "intersection", mode, retired, provenance.RULE)
 
@@ -184,8 +204,12 @@ def _from_raw(raw, body, rules, direction, mode, retired):
     separator = _street_separator(rules.split_on, rules.split_words, rules.ampersand_joins_streets)
     if not BETWEEN.search(body) and (streets or (pair and not place and separator and separator.search(body))):
         return _intersection(parts[0], parts[1], rules, direction, mode, retired)
+    core, note = split_note(body)
+    joined = None if BETWEEN.search(core) else two_streets(core, lambda part: _looks_like_street(part, rules))
+    if joined:
+        return _intersection(joined[0], joined[1] + note, rules, direction, mode, retired)
     kind = "named_place" if place or ("&" in body and len(parts) > 1) else "unparsed"
-    public_name = _tight_separators(body, rules)
+    public_name = _guide_streets(_tight_separators(body, rules), rules)
     source = provenance.RULE if public_name != raw else provenance.PASSTHROUGH
     return StopName(public_name, "", "", direction, kind, mode, retired, source)
 
@@ -256,30 +280,3 @@ def name_stop(stop, profile):
             original_public_name=result.public_name,
         )
     return result
-
-
-def stop_row(stop, name, revision, digest):
-    return {
-        "carrier_code": stop.get("carrier_code"),
-        "stop_id": stop.get("stop_id"),
-        "uuid": stop.get("uuid"),
-        "511_id": stop.get("511_id"),
-        "public_name": name.public_name,
-        "raw_name": stop.get("stop_name"),
-        "on_street": name.on_street,
-        "cross_street": name.cross_street,
-        "direction": name.direction or None,
-        "relation_to_cross_street": stop.get("relation_to_cross_street") or None,
-        "stop_kind": name.stop_kind,
-        "mode": name.mode,
-        "retired": name.retired,
-        "lat": stop.get("lat"),
-        "lng": stop.get("lng"),
-        "city": stop.get("city"),
-        "accessible": stop.get("accessible"),
-        "public_name_source": name.public_name_source,
-        "normalization_revision": revision,
-        "gtfs_digest": digest,
-        "original_public_name": name.original_public_name or name.public_name,
-        "suffix_completion": name.suffix_completion,
-    }

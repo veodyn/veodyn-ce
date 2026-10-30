@@ -3,7 +3,8 @@ from unittest import TestCase
 
 from redash.transit_naming import provenance
 from redash.transit_naming.profile_loader import CORE_PROFILE_DIR, build_profile_set
-from redash.transit_naming.stops import name_stop, stop_row
+from redash.transit_naming.stop_rows import stop_row
+from redash.transit_naming.stops import name_stop
 from redash.transit_naming.suffixes import build_index, donor_entries, name_stops
 from tests.query_runner.transit_naming_fixtures import (
     MT_STOPS,
