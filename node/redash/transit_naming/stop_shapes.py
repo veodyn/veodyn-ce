@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from math import isfinite
 
 STREET = "STREET"
 ADDRESS = "ADDRESS"
@@ -10,6 +11,7 @@ PARK_AND_RIDE = "Park & Ride"
 PARK_AND_RIDE_TOKEN = "Park\u0000Ride"
 HARD_JOIN = re.compile(r"(\s*[/\\&@+]\s*|\s*-\s+|\s+-\s*|(?<=[a-z]{2})-(?=[A-Z][a-z]))")
 WORD_JOIN = re.compile(r"(\s+(?:between|opposite|near|after|before|and|at|opp)\s+)", re.IGNORECASE)
+PARENTHESES = re.compile(r"\(([^()]*)\)")
 TRAILING_NOTE = re.compile(r"\s*\([^()]*\)\s*$")
 INTERSECTION_JOINS = frozenset({"/", "\\", "&", "@", "+", "and", "at"})
 LOWERCASE_JOINS = frozenset({"and", "at", "between", "near", "opposite", "opp", "after", "before"})
@@ -138,12 +140,13 @@ def _address(core, normalize):
     return " ".join(words)
 
 
+def render_parentheses(text, evidence, normalize):
+    return PARENTHESES.sub(lambda match: "(" + _render_tokens(match.group(1), evidence, normalize) + ")", text)
+
+
 def render(text, evidence, normalize):
     body, note = split_note(text)
-    rendered = _render_tokens(body, evidence, normalize)
-    if note:
-        rendered += " (" + _render_tokens(note.strip()[1:-1], evidence, normalize) + ")"
-    return rendered
+    return render_parentheses(_render_tokens(body, evidence, normalize) + note, evidence, normalize)
 
 
 def lowercase_joins(text, evidence):
@@ -188,6 +191,8 @@ def stop_evidence(stop, profile):
     try:
         lat, lng = float(stop.get("lat")), float(stop.get("lng"))
     except (TypeError, ValueError):
+        return Evidence(suffixes, keep_whole, abbreviations)
+    if not (isfinite(lat) and isfinite(lng) and -90 <= lat <= 90 and -180 <= lng <= 180):
         return Evidence(suffixes, keep_whole, abbreviations)
     if profile.streets is None or reference is None:
         return Evidence(suffixes, keep_whole, abbreviations)

@@ -73,3 +73,6 @@ class TestTheClassifierReadsStreetsByEvidence(TestCase):
 
     def test_a_long_designation_on_a_segment_read_as_a_landmark_still_fails(self):
         self.assertEqual(rules("Lakeside Mall/Elm Boulevard North Gate Plaza Boulevard"), ["S2"])
+
+    def test_a_street_rule_broken_inside_a_note_fails(self):
+        self.assertEqual(rules("Elm St/Oak St (Pine Avenue)"), ["S2"])

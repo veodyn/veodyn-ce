@@ -20,6 +20,7 @@ from redash.transit_naming.directions import (
 from redash.transit_naming.snapshot import StopName
 from redash.transit_naming.stop_shapes import (
     render,
+    render_parentheses,
     split_note,
     station_name,
     stop_evidence,
@@ -183,13 +184,13 @@ def _normalize_street(part, rules, evidence):
     normalized = normalize_part(" ".join(words), rules)
     if len(tokenize(normalized, evidence)) > 1:
         normalized = render(normalized, evidence, lambda piece: normalize_part(piece, rules))
-    return normalized + note
+    return normalized + render_parentheses(note, evidence, lambda piece: normalize_part(piece, rules))
 
 
 def _intersection(left, right, rules, direction, mode, retired, evidence, note=""):
     left, left_direction = _split_direction(left, rules)
     right, right_direction = _split_direction(right, rules)
-    right = right + note
+    right = right + render_parentheses(note, evidence, lambda piece: normalize_part(piece, rules))
     direction = direction or left_direction or right_direction
     left, right = _normalize_street(left, rules, evidence), _normalize_street(right, rules, evidence)
     public_name = f"{left}{rules.separator}{right}"

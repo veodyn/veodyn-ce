@@ -102,3 +102,23 @@ class TestShapesTheGateFound(TestCase):
         self.assertEqual(
             named("1389 S. Larch & Oak Av @ Lakeside Market")[0], "1389 S Larch & Oak Av @ Lakeside Market"
         )
+
+    def test_streets_inside_any_parentheses_follow_the_street_rules(self):
+        self.assertEqual(named("Elm St & Oak St (Pine Avenue)")[0], "Elm St/Oak St (Pine Av)")
+        self.assertEqual(named("Lakeside Library (Elm Road) near School")[0], "Lakeside Library (Elm Rd) near School")
+
+    def test_a_stop_with_coordinates_that_are_not_numbers_is_still_named(self):
+        from tests.query_runner.test_transit_naming_streets import CROSSING, profiles
+
+        metro = profiles(CROSSING).for_carrier("MT", "Metro")
+        name = name_stop(
+            {
+                "stop_id": "x",
+                "stop_name": "Library near Haster St",
+                "lat": "NaN",
+                "lng": "Infinity",
+                "transit_modes": "BUS",
+            },
+            metro,
+        )
+        self.assertEqual(name.public_name, "Library near Haster St")

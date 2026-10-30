@@ -9,6 +9,7 @@ from redash.transit_naming.stop_shapes import (
     ADDRESS,
     INTERSECTION_JOINS,
     LOWERCASE_JOINS,
+    PARENTHESES,
     STATION,
     STREET,
     shape,
@@ -94,6 +95,14 @@ def check_stop(name, evidence):
     for join in tokens[1::2]:
         word = join.strip()
         if word.lower() in LOWERCASE_JOINS and word != word.lower():
+            found.add("S9")
+    for inner in PARENTHESES.findall(name):
+        inner_tokens = tokenize(inner, evidence)
+        for token in inner_tokens[::2]:
+            kind = evidence.kind(token.strip())
+            if kind in (STREET, ADDRESS):
+                found.update(_street_rules(token.strip(), kind))
+        if any(j.strip().lower() in LOWERCASE_JOINS and j.strip() != j.strip().lower() for j in inner_tokens[1::2]):
             found.add("S9")
     if ACRONYM_PERIODS.search(name):
         found.add("S7")
