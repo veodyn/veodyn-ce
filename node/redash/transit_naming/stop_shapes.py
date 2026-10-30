@@ -140,30 +140,24 @@ def _address(core, normalize):
     return " ".join(words)
 
 
-def names_a_station(text, evidence):
-    return any(evidence.kind(token) == STATION for token in tokenize(text, evidence)[::2])
+def station_chain_start(tokens, evidence):
+    segments = tokens[::2]
+    stations = [i for i, token in enumerate(segments) if evidence.kind(token.strip()) == STATION]
+    if not stations:
+        return len(segments)
+    start = stations[-1]
+    while start > 0 and tokens[2 * start - 1].strip() in ("/", "\\"):
+        start -= 1
+    return start
 
 
 def render_parentheses(text, evidence, normalize):
-    def inner(match):
-        content = match.group(1)
-        return (
-            match.group(0)
-            if names_a_station(content, evidence)
-            else f"({_render_tokens(content, evidence, normalize)})"
-        )
-
-    return PARENTHESES.sub(inner, text)
+    return PARENTHESES.sub(lambda match: f"({station_name(match.group(1), evidence, normalize)})", text)
 
 
 def render(text, evidence, normalize):
     body, note = split_note(text)
     return render_parentheses(_render_tokens(body, evidence, normalize) + note, evidence, normalize)
-
-
-def lowercase_joins(text, evidence):
-    tokens = tokenize(text, evidence)
-    return "".join(_join(token) if i % 2 else token for i, token in enumerate(tokens))
 
 
 def _render_tokens(text, evidence, normalize):
@@ -184,10 +178,17 @@ def _render_tokens(text, evidence, normalize):
 
 def station_name(name, evidence, normalize):
     tokens = tokenize(name, evidence)
-    join = tokens[1].strip().lower() if len(tokens) >= 3 else ""
-    if join in INTERSECTION_JOINS - {"/", "\\"} and evidence.kind(tokens[0]) == STREET:
-        name = normalize(tokens[0].strip()) + "".join(tokens[1:])
-    return lowercase_joins(name, evidence)
+    keep_from = station_chain_start(tokens, evidence)
+    out = []
+    for i, token in enumerate(tokens):
+        if i % 2:
+            out.append(_join(token))
+        elif i // 2 < keep_from and evidence.kind(token.strip()) in (STREET, ADDRESS):
+            lead = token[: len(token) - len(token.lstrip())]
+            out.append(lead + normalize(token.strip()) + token[len(token.rstrip()) :])
+        else:
+            out.append(token)
+    return "".join(out)
 
 
 def without_acronym_periods(text):

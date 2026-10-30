@@ -128,3 +128,12 @@ class TestShapesTheGateFound(TestCase):
             named("Elm St & Oak St (9th Street/Lakeside Center Station)")[0],
             "Elm St/Oak St (9th Street/Lakeside Center Station)",
         )
+
+    def test_a_street_beside_a_station_in_parentheses_follows_the_rules(self):
+        self.assertEqual(
+            named("Elm St & Oak St (Lakeside Hall At Harbor Station)")[0],
+            "Elm St/Oak St (Lakeside Hall at Harbor Station)",
+        )
+        self.assertEqual(
+            named("Elm St & Oak St (Elm Avenue near Harbor Station)")[0], "Elm St/Oak St (Elm Av near Harbor Station)"
+        )

@@ -12,9 +12,9 @@ from redash.transit_naming.stop_shapes import (
     PARENTHESES,
     STATION,
     STREET,
-    names_a_station,
     shape,
     split_note,
+    station_chain_start,
     stop_evidence,
     tokenize,
 )
@@ -74,39 +74,38 @@ def _lettered(words):
     return len(words) == 2 and words[1].rstrip(".").lower() in {"st", "av", "bl", "dr", "rd"}
 
 
+def _segment_failures(text, evidence):
+    tokens = tokenize(text, evidence)
+    keep_from = station_chain_start(tokens, evidence)
+    found = set()
+    for position, token in enumerate(tokens[::2]):
+        kind = evidence.kind(token.strip())
+        if position >= keep_from or kind == STATION:
+            continue
+        if kind in (STREET, ADDRESS):
+            found.update(_street_rules(token.strip(), kind))
+        elif _ends_in_a_long_designation(token):
+            found.add("S2")
+    if any(join.strip().lower() in LOWERCASE_JOINS and join.strip() != join.strip().lower() for join in tokens[1::2]):
+        found.add("S9")
+    return found
+
+
 def check_stop(name, evidence):
     if not name or not name.strip():
         return ["UNKNOWN"], ""
     core, _ = split_note(name)
     tokens = tokenize(core, evidence)
-    found = set()
     kinds = [evidence.kind(token) for token in tokens[::2]]
+    found = _segment_failures(core, evidence)
     if (
         len(tokens) == 3
         and tokens[1].strip().lower() in INTERSECTION_JOINS - {"/", "\\"}
         and kinds == [STREET, STREET]
     ):
         found.add("S1")
-    if STATION not in kinds:
-        for token, kind in zip(tokens[::2], kinds):
-            if kind in (STREET, ADDRESS):
-                found.update(_street_rules(token.strip(), kind))
-            elif _ends_in_a_long_designation(token):
-                found.add("S2")
-    for join in tokens[1::2]:
-        word = join.strip()
-        if word.lower() in LOWERCASE_JOINS and word != word.lower():
-            found.add("S9")
     for inner in PARENTHESES.findall(name):
-        if names_a_station(inner, evidence):
-            continue
-        inner_tokens = tokenize(inner, evidence)
-        for token in inner_tokens[::2]:
-            kind = evidence.kind(token.strip())
-            if kind in (STREET, ADDRESS):
-                found.update(_street_rules(token.strip(), kind))
-        if any(j.strip().lower() in LOWERCASE_JOINS and j.strip() != j.strip().lower() for j in inner_tokens[1::2]):
-            found.add("S9")
+        found |= _segment_failures(inner, evidence)
     if ACRONYM_PERIODS.search(name):
         found.add("S7")
     if PARK_AND_RIDE_VARIANT.search(name):

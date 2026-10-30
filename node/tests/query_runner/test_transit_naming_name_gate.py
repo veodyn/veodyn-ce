@@ -79,3 +79,7 @@ class TestTheClassifierReadsStreetsByEvidence(TestCase):
 
     def test_a_station_name_inside_a_note_passes(self):
         self.assertEqual(rules("Elm St/Oak St (9th Street/Lakeside Center Station)"), [])
+
+    def test_rules_still_apply_beside_a_station_in_a_note(self):
+        self.assertEqual(rules("Elm St/Oak St (Elm Avenue near Harbor Station)"), ["S2"])
+        self.assertEqual(rules("Elm St/Oak St (Lakeside Hall At Harbor Station)"), ["S9"])
