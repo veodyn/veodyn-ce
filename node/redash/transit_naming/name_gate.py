@@ -12,6 +12,7 @@ from redash.transit_naming.stop_shapes import (
     PARENTHESES,
     STATION,
     STREET,
+    names_a_station,
     shape,
     split_note,
     stop_evidence,
@@ -97,6 +98,8 @@ def check_stop(name, evidence):
         if word.lower() in LOWERCASE_JOINS and word != word.lower():
             found.add("S9")
     for inner in PARENTHESES.findall(name):
+        if names_a_station(inner, evidence):
+            continue
         inner_tokens = tokenize(inner, evidence)
         for token in inner_tokens[::2]:
             kind = evidence.kind(token.strip())

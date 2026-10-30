@@ -140,8 +140,20 @@ def _address(core, normalize):
     return " ".join(words)
 
 
+def names_a_station(text, evidence):
+    return any(evidence.kind(token) == STATION for token in tokenize(text, evidence)[::2])
+
+
 def render_parentheses(text, evidence, normalize):
-    return PARENTHESES.sub(lambda match: "(" + _render_tokens(match.group(1), evidence, normalize) + ")", text)
+    def inner(match):
+        content = match.group(1)
+        return (
+            match.group(0)
+            if names_a_station(content, evidence)
+            else f"({_render_tokens(content, evidence, normalize)})"
+        )
+
+    return PARENTHESES.sub(inner, text)
 
 
 def render(text, evidence, normalize):

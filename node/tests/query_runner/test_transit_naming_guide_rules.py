@@ -122,3 +122,9 @@ class TestShapesTheGateFound(TestCase):
             metro,
         )
         self.assertEqual(name.public_name, "Library near Haster St")
+
+    def test_a_station_name_inside_parentheses_keeps_its_spelling(self):
+        self.assertEqual(
+            named("Elm St & Oak St (9th Street/Lakeside Center Station)")[0],
+            "Elm St/Oak St (9th Street/Lakeside Center Station)",
+        )
