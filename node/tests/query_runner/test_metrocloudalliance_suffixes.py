@@ -190,7 +190,7 @@ class TestIndexInRedis(SuffixResourceCase):
 
 
 class TestCarrierWithoutTheOption(PublicResourceCase):
-    IGNORED = ("normalization_revision", "gtfs_digest", "original_public_name", "suffix_completion")
+    IGNORED = ("normalization_revision", "gtfs_digest", "original_public_name", "suffix_completion", "headsign")
 
     def urls(self):
         shared_corner = dict(MT_STOPS[1], carrier_code="SM", stop_id="220", uuid="uuid-sm-220")

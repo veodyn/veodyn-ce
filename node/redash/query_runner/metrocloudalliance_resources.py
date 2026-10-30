@@ -147,6 +147,23 @@ RESOURCES = {
         ],
         "example": '{"resource": "lines", "params": {"carrier_code": "<code>", "transit_mode": "light rail"}}',
     },
+    "patterns": {
+        "path": "v2/transitnetwork/patterns",
+        "doc_params": [
+            "carrier_code (optional): string",
+            "route_code (optional): string - accepted but not applied by the vendor; filter the rows",
+        ],
+        "doc_returns": [
+            "carrier_name: string",
+            "carrier_code: string",
+            "route_code: string",
+            "route_name: string",
+            "pattern_id: integer",
+            "pattern_code: string - stops of one pattern: stops with carrier_code and pattern_code",
+            "pattern_name: string",
+        ],
+        "example": '{"resource": "patterns", "params": {"carrier_code": "<code>"}}',
+    },
     "routes": {
         "path": "v2/transitnetwork/routes",
         "doc_params": [

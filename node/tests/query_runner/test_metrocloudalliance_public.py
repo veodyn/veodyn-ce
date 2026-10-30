@@ -31,9 +31,12 @@ from tests.query_runner.transit_naming_gtfs_fixtures import (
 PREDICTIONS = "https://api.metrocloudalliance.com/v2/realtime/predictions"
 ROUTES = "https://api.metrocloudalliance.com/v2/transitnetwork/routes"
 STOPS = "https://api.metrocloudalliance.com/v2/transitnetwork/stops"
+PATTERNS = "https://api.metrocloudalliance.com/v2/transitnetwork/patterns"
 
 
 def responder(by_url):
+    by_url = {PATTERNS: [], **by_url}
+
     def get(url, params=None, timeout=None):
         payload = by_url[url](params or {}) if callable(by_url[url]) else by_url[url]
         response = Mock()

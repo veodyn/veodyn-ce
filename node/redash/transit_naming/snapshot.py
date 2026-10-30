@@ -75,3 +75,4 @@ class PatternStop:
     direction_id: object = None
     lat: object = None
     lng: object = None
+    headsign: str = ""

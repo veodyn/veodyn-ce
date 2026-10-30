@@ -38,6 +38,7 @@ PUBLIC_RESOURCES = {
         "doc_returns": [
             "carrier_code, route_code, direction, pattern_id, is_canonical, sequence, stop_id, gtfs_stop_id, public_name",
             "stop_match: id | coordinate | unmatched; sequence_source: gtfs_stop_times | mca_pattern (sequence null)",
+            "headsign: string - the recased MCA pattern name for a carrier without a GTFS feed, empty otherwise",
             "normalization_revision, gtfs_digest",
             "direction_id: integer, GTFS's; lat, lng: float from stops.txt by gtfs_stop_id, null when unmatched",
         ],

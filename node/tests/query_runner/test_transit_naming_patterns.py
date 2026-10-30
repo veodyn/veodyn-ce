@@ -113,6 +113,7 @@ class TestCutPatterns(TestCase):
                 "direction_id",
                 "lat",
                 "lng",
+                "headsign",
             ],
         )
 

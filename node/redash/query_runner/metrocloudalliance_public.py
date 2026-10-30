@@ -11,11 +11,11 @@ from redash.transit_naming.locations import (
     location_member_filter,
     location_rows,
 )
+from redash.transit_naming.mca_patterns import mca_route_patterns
 from redash.transit_naming.override_table import override_table
 from redash.transit_naming.patterns import (
     StopIndex,
     cut_patterns,
-    mca_pattern_membership,
     pattern_row,
 )
 from redash.transit_naming.profile_loader import load_profiles, profile_dirs
@@ -178,19 +178,7 @@ def public_route_stops(params, fetch, profiles, archive_fetcher=None, source=Non
                 stop_index=index,
             )
         else:
-            patterns = []
-            for pattern_code in profile.pattern_codes.get(route_code, ()):
-                members = fetch("stops", {"carrier_code": _carrier(params), "pattern_code": pattern_code})
-                patterns.extend(
-                    mca_pattern_membership(
-                        profile.carrier_code,
-                        route_code,
-                        pattern_code,
-                        [m for m in members if str(m.get("stop_id")) in live],
-                        names,
-                        sources,
-                    )
-                )
+            patterns = mca_route_patterns(fetch, _carrier(params), route_code, profile, live, names, sources)
         rows.extend(
             pattern_row(p, profiles.revision, resolver.digest)
             for p in patterns

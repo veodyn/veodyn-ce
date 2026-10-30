@@ -264,4 +264,5 @@ def pattern_row(p, revision, digest):
         "direction_id": p.direction_id,
         "lat": p.lat,
         "lng": p.lng,
+        "headsign": p.headsign,
     }
