@@ -7,6 +7,7 @@ from redash.transit_naming.patterns import mca_pattern_membership
 from redash.transit_naming.routes import parse_route_number
 
 DASH_RUN = re.compile(r"\s*-{2,}\s*")
+DESTINATION_WORDS = "(?:via|to|from|and)"
 LEADING_TO = re.compile(r"^to\s+", re.IGNORECASE)
 
 
@@ -14,8 +15,9 @@ def _without_route_designation(text, route_code):
     number = parse_route_number(route_code, route_code[:2])
     if not number:
         return text
-    designation = rf"^(?:.*?\b(?:bus|line|route)\s+)?0*{re.escape(number)}\b[\s:-]*"
-    return re.sub(designation, "", text, count=1, flags=re.IGNORECASE)
+    prefix = rf"(?:(?:(?!{DESTINATION_WORDS}\b)[A-Za-z]+\s+){{0,3}}?(?:bus|line|route)\s+)?"
+    stripped = re.sub(rf"^{prefix}0*{re.escape(number)}\b[\s:-]*", "", text, count=1, flags=re.IGNORECASE)
+    return stripped or text
 
 
 def pattern_headsign(name, route_code, brand, keep_upper=frozenset()):

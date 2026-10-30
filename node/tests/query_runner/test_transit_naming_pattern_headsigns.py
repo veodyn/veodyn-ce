@@ -44,3 +44,7 @@ class TestPatternNamesBecomeDestinations(TestCase):
             pattern_headsign("Norwalk Square-Pioneer-Studebaker  (Clockwise Loop)", "NT002", "Norwalk Transit"),
             "Norwalk Square-Pioneer-Studebaker (Clockwise Loop)",
         )
+
+    def test_a_route_mentioned_inside_the_destination_stays(self):
+        self.assertEqual(pattern_headsign("Downtown via Route 9", "RA009", "RTA"), "Downtown via Route 9")
+        self.assertEqual(pattern_headsign("Route 9", "RA009", "RTA"), "Route 9")
