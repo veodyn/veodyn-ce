@@ -69,13 +69,17 @@ class TestNameStop(TestCase):
         )
 
     def test_unparsed_passes_through_and_an_override_fixes_it(self):
-        name = name_stop(bare_stop("Hungtington Dr and Golden West Ave W"), metro_profile(with_overrides=False))
+        name = name_stop(bare_stop("Lakeside Mall Gate 3"), metro_profile(with_overrides=False))
         self.assertEqual(
             (name.public_name, name.stop_kind, name.public_name_source),
-            ("Hungtington Dr and Golden West Ave W", "unparsed", provenance.PASSTHROUGH),
+            ("Lakeside Mall Gate 3", "unparsed", provenance.PASSTHROUGH),
         )
         name = name_stop(MT_STOPS_BY_ID["3000001"], PROFILE)
         self.assertEqual((name.public_name, name.public_name_source), ("Pico/Rimpau", provenance.OVERRIDE))
+
+    def test_two_streets_joined_by_and_are_an_intersection(self):
+        name = name_stop(bare_stop("Hungtington Dr and Golden West Ave W"), metro_profile(with_overrides=False))
+        self.assertEqual((name.public_name, name.stop_kind), ("Hungtington Dr/Golden West Av W", "intersection"))
 
     def test_retired_is_empty_modes_and_no_predictions(self):
         name = name_stop(MT_STOPS_BY_ID["10270"], PROFILE)

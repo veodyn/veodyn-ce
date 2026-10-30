@@ -71,8 +71,8 @@ class TestCornerNotesLeaveTheName(TestCase):
         name = name_stop(stop("Soto St & Valley Blvd (Northbound) (4218)"), METRO)
         self.assertEqual((name.public_name, name.direction), ("Soto St/Valley Bl", "Northbound"))
 
-    def test_periods_stay_on_words_that_are_not_designations(self):
-        self.assertEqual(name_stop(stop("Broadway & L.B. Blvd."), METRO).public_name, "Broadway/L.B. Bl")
+    def test_acronyms_lose_their_periods_with_the_designations(self):
+        self.assertEqual(name_stop(stop("Broadway & L.B. Blvd."), METRO).public_name, "Broadway/LB Bl")
 
     def test_a_mixed_case_word_is_not_a_corner(self):
         self.assertEqual(name_stop(stop("Main St/Se Plaza Dr"), METRO).public_name, "Main St/Se Plaza Dr")

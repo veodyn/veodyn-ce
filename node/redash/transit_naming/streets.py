@@ -66,6 +66,19 @@ def _named(name, rules):
     return named
 
 
+def _whole_names(name, rules):
+    words = name.split()
+    spellings = [words]
+    if len(words) > 2 and words[0].lower() in LEADING_DIRECTIONS:
+        spellings.append(words[1:])
+    named = set()
+    for spelling in spellings:
+        kind, base, _ = classify(normalize_part(" ".join(spelling), rules), rules)
+        if kind in ("bare", "whole"):
+            named.add(base)
+    return named
+
+
 def _cells(west, south, east, north):
     for x in range(floor(west / CELL_DEGREES), floor(east / CELL_DEGREES) + 1):
         for y in range(floor(south / CELL_DEGREES), floor(north / CELL_DEGREES) + 1):
@@ -82,20 +95,45 @@ def _meters_to_segment(lat, lng, start, end):
     return hypot(ax + t * dx, ay + t * dy)
 
 
+def _segments(line):
+    for start, end in zip(line, line[1:]):
+        bounds = (min(start[0], end[0]), min(start[1], end[1]), max(start[0], end[0]), max(start[1], end[1]))
+        yield start, end, bounds
+
+
 class StreetIndex:
     def __init__(self, streets, rules):
+        self.rules = rules
         self.cells = defaultdict(list)
+        self.whole_cells = defaultdict(list)
         for name, line in streets:
-            for base, suffix in _named(name, rules):
-                for start, end in zip(line, line[1:]):
-                    bounds = (
-                        min(start[0], end[0]),
-                        min(start[1], end[1]),
-                        max(start[0], end[0]),
-                        max(start[1], end[1]),
-                    )
-                    for cell in _cells(*bounds):
-                        self.cells[cell].append((base, suffix, start, end))
+            named = _named(name, rules)
+            whole = _whole_names(name, rules)
+            for start, end, bounds in _segments(line):
+                for cell in _cells(*bounds):
+                    self.cells[cell].extend((base, suffix, start, end) for base, suffix in named)
+                    self.whole_cells[cell].extend((full, start, end) for full in whole)
+
+    def _near(self, cells, lat, lng, within_m):
+        lat_reach = within_m / METERS_PER_DEGREE
+        lng_reach = lat_reach / max(cos(radians(lat)), 0.01)
+        for cell in _cells(lng - lng_reach, lat - lat_reach, lng + lng_reach, lat + lat_reach):
+            for entry in cells.get(cell, ()):
+                if _meters_to_segment(lat, lng, entry[-2], entry[-1]) <= within_m:
+                    yield entry
+
+    def knows(self, name, lat, lng, within_m):
+        kind, base, suffix = classify(normalize_part(name, self.rules), self.rules)
+        if kind == "suffixed":
+            return any(
+                (member, member_suffix) == (base, suffix)
+                for member, member_suffix, _, _ in self._near(self.cells, lat, lng, within_m)
+            )
+        if kind not in ("bare", "whole"):
+            return False
+        return any(member == base for member, _, _, _ in self._near(self.cells, lat, lng, within_m)) or any(
+            full == base for full, _, _ in self._near(self.whole_cells, lat, lng, within_m)
+        )
 
     def decide(self, base, lat, lng, within_m):
         lat_reach = within_m / METERS_PER_DEGREE

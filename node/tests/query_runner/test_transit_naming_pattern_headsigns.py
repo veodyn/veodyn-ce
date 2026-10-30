@@ -48,3 +48,6 @@ class TestPatternNamesBecomeDestinations(TestCase):
     def test_a_route_mentioned_inside_the_destination_stays(self):
         self.assertEqual(pattern_headsign("Downtown via Route 9", "RA009", "RTA"), "Downtown via Route 9")
         self.assertEqual(pattern_headsign("Route 9", "RA009", "RTA"), "Route 9")
+
+    def test_a_destination_starts_with_a_capital_once_its_prefix_is_dropped(self):
+        self.assertEqual(pattern_headsign("Route 30 to los Lagos & Elm", "SV030", "Valley"), "Los Lagos & Elm")

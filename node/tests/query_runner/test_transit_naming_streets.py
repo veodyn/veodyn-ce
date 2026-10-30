@@ -160,3 +160,28 @@ class TestStreetReferenceFile(TestCase):
         first = profiles(CROSSING).revision
         second = profiles(CROSSING + [east_west("Orangewood Street", 70)]).revision
         self.assertNotEqual(first, second)
+
+
+class TestTheReferenceKnowsItsStreets(TestCase):
+    def index(self, streets):
+        return profiles(streets).for_carrier("MT", "Metro").streets
+
+    def test_a_suffixed_name_matches_only_the_same_street_and_suffix(self):
+        index = self.index(CROSSING)
+        self.assertTrue(index.knows("Haster St", at(0), east(0), 100))
+        self.assertFalse(index.knows("Haster Pl", at(0), east(0), 100))
+
+    def test_a_bare_name_matches_a_street_of_that_base(self):
+        self.assertTrue(self.index(CROSSING).knows("Orangewood", at(0), east(0), 100))
+
+    def test_a_street_named_without_a_suffix_matches_by_its_whole_name(self):
+        index = self.index([east_west("West Route 66", 20)])
+        self.assertTrue(index.knows("Route 66", at(0), east(0), 100))
+        self.assertFalse(index.knows("Route 6", at(0), east(0), 100))
+
+    def test_a_place_does_not_match_a_street_sharing_its_first_words(self):
+        index = self.index([east_west("Civic Center Drive", 20)])
+        self.assertFalse(index.knows("Civic Center Plaza", at(0), east(0), 100))
+
+    def test_a_street_out_of_range_is_not_known(self):
+        self.assertFalse(self.index(CROSSING).knows("Haster St", at(0), east(400), 100))

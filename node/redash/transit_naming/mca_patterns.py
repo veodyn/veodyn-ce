@@ -32,7 +32,8 @@ def pattern_headsign(name, route_code, brand, keep_upper=frozenset()):
         return ""
     body, direction = split_bound(text)
     text = body if direction else text
-    return " ".join(LEADING_TO.sub("", text).split())
+    text = " ".join(LEADING_TO.sub("", text).split())
+    return text[:1].upper() + text[1:]
 
 
 def _headsign(pattern, route_code, profile):

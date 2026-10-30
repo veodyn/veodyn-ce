@@ -52,11 +52,11 @@ class TestStreetsInsideLongerNames(TestCase):
         self.assertEqual(named("COLORADO AVE & 17TH ST (17TH ST STATION)")[0], "Colorado Av/17th St (17th St Station)")
 
     def test_a_compass_point_opening_a_name_is_spelled_out(self):
-        self.assertEqual(named("S. Main Dr @ Via Del Rio")[0], "South Main Dr @ Via Del Rio")
+        self.assertEqual(named("S. Main Dr @ Via Del Rio")[0], "South Main Dr/Via Del Rio")
         self.assertEqual(named("Main St & W Hotel")[0], "Main St & W Hotel")
         self.assertEqual(named("Main St @ S. Mark Taper Foundation")[0], "Main St @ S. Mark Taper Foundation")
-        self.assertEqual(named("S. Avenida Del Vista @ Via Del Rio")[0], "South Avenida Del Vista @ Via Del Rio")
-        self.assertEqual(named("N Avenue 50 @ Library")[0], "North Avenue 50 @ Library")
+        self.assertEqual(named("S. Avenida Del Vista @ Library")[0], "South Avenida Del Vista @ Library")
+        self.assertEqual(named("N Avenue 50 @ Library")[0], "North Av 50 @ Library")
         self.assertEqual(named("E St & 5th St")[0], "E St/5th St")
 
     def test_the_street_before_a_station_follows_the_street_rules_and_the_station_keeps_its_name(self):
@@ -64,7 +64,7 @@ class TestStreetsInsideLongerNames(TestCase):
         self.assertEqual(named("La Cienega Blvd/Jefferson Blvd Station")[0], "La Cienega Blvd/Jefferson Blvd Station")
 
     def test_a_compass_point_before_a_numbered_street_is_spelled_out(self):
-        self.assertEqual(named("N. 5th after Tropical")[0], "North 5th After Tropical")
+        self.assertEqual(named("N. 5th after Tropical")[0], "North 5th after Tropical")
 
     def test_a_lettered_avenue_keeps_its_hyphen(self):
         self.assertEqual(named("SIERRA HWY/AVE. J-7")[0], "Sierra Hwy/Av J-7")
@@ -79,4 +79,26 @@ class TestStreetsInsideLongerNames(TestCase):
     def test_a_hyphen_spaced_on_one_side_still_ends_the_street(self):
         self.assertEqual(
             named("Las Virgenes Road- AE Wright Middle School")[0], "Las Virgenes Rd- AE Wright Middle School"
+        )
+
+
+class TestShapesTheGateFound(TestCase):
+    def test_an_address_abbreviates_its_compass_point(self):
+        self.assertEqual(named("8330 West Elm Rd")[0], "8330 W Elm Rd")
+
+    def test_a_hyphen_inside_a_note_does_not_split_the_street(self):
+        self.assertEqual(named("W. Elm Road (Drop-Off Only)")[0], "West Elm Rd (Drop-Off Only)")
+
+    def test_join_words_inside_a_station_name_are_lower_case(self):
+        self.assertEqual(named("Lakeside Hall At Harbor Station")[0], "Lakeside Hall at Harbor Station")
+
+    def test_a_slash_inside_a_note_does_not_split_the_name(self):
+        self.assertEqual(named("Elm Road (Lakeside/Harbor Dealerships)")[0], "Elm Rd (Lakeside/Harbor Dealerships)")
+
+    def test_a_travel_marker_before_a_second_note_still_leaves(self):
+        self.assertEqual(named("Elm Av/Oak Ave (NB) (Lakeside Plaza)")[0], "Elm Av/Oak Av (Lakeside Plaza)")
+
+    def test_a_compass_letter_after_a_house_number_loses_its_period(self):
+        self.assertEqual(
+            named("1389 S. Larch & Oak Av @ Lakeside Market")[0], "1389 S Larch & Oak Av @ Lakeside Market"
         )

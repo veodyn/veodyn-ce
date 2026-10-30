@@ -18,13 +18,14 @@ from redash.transit_naming.directions import (
     strip_position_notes,
 )
 from redash.transit_naming.snapshot import StopName
-from redash.transit_naming.street_segments import (
-    has_segments,
+from redash.transit_naming.stop_shapes import (
+    render,
     split_note,
-    street_before_a_station,
-    streets_beside_landmarks,
+    station_name,
+    stop_evidence,
+    tokenize,
     two_streets,
-    without_la_periods,
+    without_acronym_periods,
 )
 
 WHITESPACE = re.compile(r"\s+")
@@ -70,7 +71,7 @@ def _split_parts(body, rules):
 
 def _cased(text, rules, uppercase=None):
     cased = recase(_tidy(text), rules.keep_upper, uppercase, rules.split_on)
-    return without_la_periods(PARK_AND_RIDE.sub("Park & Ride", cased))
+    return without_acronym_periods(PARK_AND_RIDE.sub("Park & Ride", cased))
 
 
 def _street_casing(original, rules):
@@ -168,48 +169,47 @@ def _tight_separators(text, rules):
     return SPACED_SLASH.sub(rules.separator, text)
 
 
-def _station(body, rules):
+def _station(body, rules, evidence):
     name = STATION.sub("Station", _without_line_reference(body, rules))
     if not STATION.search(name) and not BUS_STOP.search(name):
         name = name + rules.station_suffix
-    return street_before_a_station(_tight_separators(_tidy(name), rules), lambda part: _normalize_street(part, rules))
+    tidy = _tight_separators(_tidy(name), rules)
+    return station_name(tidy, evidence, lambda part: _normalize_street(part, rules, evidence))
 
 
-def _guide_streets(text, rules):
-    return streets_beside_landmarks(
-        text, lambda piece: normalize_part(piece, rules), lambda word: word.lower() in _suffix_lookup(rules)
-    )
-
-
-def _normalize_street(part, rules):
-    words = [word.capitalize() if is_shouted_word(word, rules.keep_upper) else word for word in part.split(" ")]
+def _normalize_street(part, rules, evidence):
+    core, note = split_note(part)
+    words = [word.capitalize() if is_shouted_word(word, rules.keep_upper) else word for word in core.split(" ")]
     normalized = normalize_part(" ".join(words), rules)
-    return _guide_streets(normalized, rules) if has_segments(normalized) else normalized
+    if len(tokenize(normalized, evidence)) > 1:
+        normalized = render(normalized, evidence, lambda piece: normalize_part(piece, rules))
+    return normalized + note
 
 
-def _intersection(left, right, rules, direction, mode, retired):
+def _intersection(left, right, rules, direction, mode, retired, evidence, note=""):
     left, left_direction = _split_direction(left, rules)
     right, right_direction = _split_direction(right, rules)
+    right = right + note
     direction = direction or left_direction or right_direction
-    left, right = _normalize_street(left, rules), _normalize_street(right, rules)
+    left, right = _normalize_street(left, rules, evidence), _normalize_street(right, rules, evidence)
     public_name = f"{left}{rules.separator}{right}"
     return StopName(public_name, left, right, direction, "intersection", mode, retired, provenance.RULE)
 
 
-def _from_raw(raw, body, rules, direction, mode, retired):
-    parts = _split_parts(body, rules)
+def _from_raw(raw, body, rules, direction, mode, retired, evidence):
+    core, note = split_note(body)
+    parts = _split_parts(core, rules)
     pair = len(parts) == 2 and all(parts)
     streets = pair and all(_looks_like_street(part, rules) for part in parts)
-    place = bool(NAMED_PLACE.search(body))
+    place = bool(NAMED_PLACE.search(core))
     separator = _street_separator(rules.split_on, rules.split_words, rules.ampersand_joins_streets)
-    if not BETWEEN.search(body) and (streets or (pair and not place and separator and separator.search(body))):
-        return _intersection(parts[0], parts[1], rules, direction, mode, retired)
-    core, note = split_note(body)
-    joined = None if BETWEEN.search(core) else two_streets(core, lambda part: _looks_like_street(part, rules))
+    if not BETWEEN.search(core) and (streets or (pair and not place and separator and separator.search(core))):
+        return _intersection(parts[0], parts[1], rules, direction, mode, retired, evidence, note)
+    joined = two_streets(body, evidence)
     if joined:
-        return _intersection(joined[0], joined[1] + note, rules, direction, mode, retired)
+        return _intersection(joined[0], joined[1], rules, direction, mode, retired, evidence)
     kind = "named_place" if place or ("&" in body and len(parts) > 1) else "unparsed"
-    public_name = _guide_streets(_tight_separators(body, rules), rules)
+    public_name = render(_tight_separators(body, rules), evidence, lambda piece: normalize_part(piece, rules))
     source = provenance.RULE if public_name != raw else provenance.PASSTHROUGH
     return StopName(public_name, "", "", direction, kind, mode, retired, source)
 
@@ -257,15 +257,16 @@ def name_stop(stop, profile):
     cross_street = _street_cased(stop.get("cross_street"), rules, casing)
     body, parsed_direction = _split_direction(raw, rules)
     direction = bound(_tidy(stop.get("street_direction"))) or parsed_direction
+    evidence = stop_evidence(stop, profile)
     street_pair = on_street and cross_street and on_street.lower() != cross_street.lower()
     if mode == "rail" or ENDS_WITH_STATION.search(_without_line_reference(body, rules)):
-        public_name = _station(body, rules)
+        public_name = _station(body, rules, evidence)
         source = provenance.RULE if public_name != original else provenance.PASSTHROUGH
         result = StopName(public_name, "", "", direction, "station", mode, retired, source)
     elif street_pair and _streets_spell_the_raw_name(on_street, cross_street, raw, rules):
-        result = _intersection(on_street, cross_street, rules, direction, mode, retired)
+        result = _intersection(on_street, cross_street, rules, direction, mode, retired, evidence)
     else:
-        result = _from_raw(original, body, rules, direction, mode, retired)
+        result = _from_raw(original, body, rules, direction, mode, retired, evidence)
     override = profile.override_for("stop", stop.get("stop_id"))
     if override is not None and override.public_name:
         result = StopName(
