@@ -8,6 +8,7 @@
  * {name, type}[], normalize to the typed shape the schema browser expects.
  */
 
+import { isSchemaNotSupported, schemaJobMessage, type SchemaJobError } from './schema-job'
 import { redashApi, ApiError } from '@/services/api-client'
 import type { SchemaTable } from '@/lib/mock-data'
 import { mapSchemaTable } from './normalize-schema'
@@ -153,14 +154,15 @@ async function pollSchemaJob(jobId: string, signal?: AbortSignal): Promise<Schem
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
 
     const { job } = await redashApi.get<{
-      job: RedashJob & { result?: RedashSchemaTableRaw[] }
+      job: Omit<RedashJob, 'error'> & { error?: SchemaJobError; result?: RedashSchemaTableRaw[] }
     }>(`jobs/${jobId}`, { signal })
 
     if (job.status === JOB_STATUS.SUCCESS) {
       return Array.isArray(job.result) ? job.result.map(mapSchemaTable) : []
     }
     if (job.status === JOB_STATUS.FAILURE) {
-      throw new Error(job.error || 'Schema refresh failed')
+      if (isSchemaNotSupported(job.error)) return []
+      throw new Error(schemaJobMessage(job.error) || 'Schema refresh failed')
     }
     if (job.status === JOB_STATUS.CANCELLED) {
       throw new Error('Schema refresh cancelled')

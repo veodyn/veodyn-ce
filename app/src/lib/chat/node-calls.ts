@@ -1,3 +1,4 @@
+import { isSchemaNotSupported, schemaJobMessage, type SchemaJobError } from '@/services/redash/schema-job'
 import { abortableDelay } from '@/lib/abortable-delay'
 import type { MockDashboard, MockQuery, SchemaTable } from '@/lib/mock-data'
 import type { TagSuggestion } from '@/lib/tags'
@@ -60,7 +61,7 @@ export function getDataSource(
   return orNull(transport.get<RedashDataSource>(`data_sources/${id}`, undefined, signal))
 }
 
-type SchemaJob = RedashJob & { result?: RedashSchemaTableRaw[] }
+type SchemaJob = Omit<RedashJob, 'error'> & { error?: SchemaJobError; result?: RedashSchemaTableRaw[] }
 
 async function pollSchemaJob(transport: RedashTransport, jobId: string, signal?: AbortSignal): Promise<SchemaTable[]> {
   const start = Date.now()
@@ -70,7 +71,10 @@ async function pollSchemaJob(transport: RedashTransport, jobId: string, signal?:
     if (job.status === JOB_STATUS.SUCCESS) {
       return Array.isArray(job.result) ? job.result.map(mapSchemaTable) : []
     }
-    if (job.status === JOB_STATUS.FAILURE) throw new Error(job.error || 'Schema refresh failed')
+    if (job.status === JOB_STATUS.FAILURE) {
+      if (isSchemaNotSupported(job.error)) return []
+      throw new Error(schemaJobMessage(job.error) || 'Schema refresh failed')
+    }
     if (job.status === JOB_STATUS.CANCELLED) throw new Error('Schema refresh cancelled')
     await abortableDelay(JOB_POLL_INTERVAL_MS, signal)
   }

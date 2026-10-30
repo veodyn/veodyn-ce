@@ -73,6 +73,18 @@ describe('data sources', () => {
     await expect(nodeCalls.getSchema(transport, 1, false, SIGNAL)).rejects.toThrow('Schema refresh cancelled')
   })
 
+  it('answers no tables for a data source whose runner cannot list a schema', async () => {
+    const { transport, get } = fakeTransport()
+    get
+      .mockResolvedValueOnce({ job: { id: 'j' } })
+      .mockResolvedValueOnce({ job: { status: 4, error: { code: 1, message: 'not supported' } } })
+    expect(await nodeCalls.getSchema(transport, 15, false, SIGNAL)).toEqual([])
+    get
+      .mockResolvedValueOnce({ job: { id: 'j' } })
+      .mockResolvedValueOnce({ job: { status: 4, error: { code: 2, message: 'Error retrieving schema' } } })
+    await expect(nodeCalls.getSchema(transport, 15, false, SIGNAL)).rejects.toThrow('Error retrieving schema')
+  })
+
   it('times a schema job out after thirty seconds', async () => {
     const { transport, get } = fakeTransport()
     get.mockImplementation(async (path: string) =>
