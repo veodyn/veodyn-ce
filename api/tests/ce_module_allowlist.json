@@ -181,6 +181,7 @@
     "services/publish_engine.py",
     "services/publish_produce.py",
     "services/publish_record.py",
+    "services/publish_retention.py",
     "services/publish_source.py",
     "services/publish_validator.py",
     "services/published_feed_binding_checks.py",

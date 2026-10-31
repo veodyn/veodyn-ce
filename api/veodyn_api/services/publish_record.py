@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from veodyn_api.models.publish_attempt import PublishAttempt
 from veodyn_api.models.published_feed import PublishedFeed
 from veodyn_api.services.finding_json import findings_as_json
+from veodyn_api.services.publish_retention import prune_without_failing_the_attempt
 from veodyn_api.services.published_feed_validator import Finding, ValidationOutcome
 
 
@@ -99,6 +100,7 @@ def record(
         )
     )
     db.commit()
+    prune_without_failing_the_attempt(db, feed.org_slug, feed.slug)
     return AttemptResult(decision=decision, reason=reason, findings=findings)
 
 

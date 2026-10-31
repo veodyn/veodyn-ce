@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import PositiveInt, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -60,6 +61,8 @@ class Settings(BaseSettings):
     # member file's url, so empty fails a gbfs publish closed rather than
     # serving a document that points nowhere.
     feed_public_origin: str = ""
+
+    publish_attempt_retention_days: PositiveInt | None = None
 
     # Dotted module paths, comma separated, imported at startup by both the API
     # and the worker. Importing a module is what registers whatever it
@@ -127,6 +130,11 @@ class Settings(BaseSettings):
     ai_foundry_resource: str = ""
     ai_chat_model: str = ""
     ai_chat_max_output_tokens: int = 16000
+
+    @field_validator("publish_attempt_retention_days", mode="before")
+    @classmethod
+    def _a_blank_retention_keeps_every_attempt(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
 
 
 @lru_cache
