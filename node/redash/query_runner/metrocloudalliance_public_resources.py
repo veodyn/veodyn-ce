@@ -102,4 +102,14 @@ PUBLIC_RESOURCES = {
         "doc_returns": ["carrier_code, source_file, is_default, gtfs_sources, overrides, revision"],
         "example": '{"resource": "naming_profiles"}',
     },
+    "name_overrides": {
+        "path": "",
+        "doc_params": ["none - checks every correction in the override table"],
+        "doc_returns": [
+            "kind, carrier_code, target_id, public_name, note",
+            "status: applied | no_match; matched_stop_id",
+            "hint: why a correction matched nothing, naming the stop when target_id is a 511 id",
+        ],
+        "example": '{"resource": "name_overrides"}',
+    },
 }

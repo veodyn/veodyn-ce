@@ -12,6 +12,10 @@ from redash.transit_naming.locations import (
     location_rows,
 )
 from redash.transit_naming.mca_patterns import mca_route_patterns
+from redash.transit_naming.override_status import (
+    OVERRIDE_STATUS_COLUMNS,
+    override_status,
+)
 from redash.transit_naming.override_table import override_table
 from redash.transit_naming.patterns import (
     StopIndex,
@@ -103,6 +107,7 @@ PUBLIC_COLUMN_NAMES = {
     "public_departures": [column.split(":")[0] for column in PUBLIC_DEPARTURE_COLUMNS],
     "public_stop_locations": list(LOCATION_COLUMNS),
     "naming_profiles": ["carrier_code", "source_file", "is_default", "gtfs_sources", "overrides", "revision"],
+    "name_overrides": list(OVERRIDE_STATUS_COLUMNS),
 }
 
 
@@ -276,4 +281,6 @@ def run_public_resource(resource, params, fetch, now=None, archive_fetcher=None,
         return public_trip_routes(params, fetch, profiles, archive_fetcher)
     if resource == "public_departures":
         return public_departures(params, fetch, profiles, now, archive_fetcher, source)
+    if resource == "name_overrides":
+        return override_status(profiles.extra_overrides, fetch)
     return naming_profiles(profiles)
