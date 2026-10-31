@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from veodyn_api.models.published_feed import PublishedFeed
 from veodyn_api.services.publish_engine import current_artifact
+from veodyn_api.services.publish_record import clear_the_pointer
 
 
 def take_the_feed_off_the_air(db: Session, feed: PublishedFeed) -> None:
@@ -32,4 +33,4 @@ def take_the_feed_off_the_air(db: Session, feed: PublishedFeed) -> None:
     """
     served = current_artifact(db, feed)
     if served is not None:
-        served.is_current = False
+        clear_the_pointer(db, served)

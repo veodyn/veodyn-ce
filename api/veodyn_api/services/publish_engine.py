@@ -54,6 +54,7 @@ from veodyn_api.services.publish_record import (
     AttemptResult,
     AttemptSource,
     a_header_timestamp_that_never_goes_backwards,
+    clear_the_pointer,
     current_artifact,
     of_current_revision,
     previous_artifact_of_revision,
@@ -187,12 +188,7 @@ def run_attempt(
 
     try:
         if served is not None:
-            # Cleared before the new row is added, since one current artifact per
-            # feed is a unique index; the flush puts the UPDATE ahead of the
-            # INSERT. `served` rather than `previous`, so an artifact left current
-            # by an older revision is cleared too.
-            served.is_current = False
-            db.flush()
+            clear_the_pointer(db, served)
 
         return record(
             db,

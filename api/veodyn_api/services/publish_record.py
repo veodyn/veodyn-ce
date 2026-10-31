@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from veodyn_api.models.publish_attempt import PublishAttempt
@@ -32,6 +32,18 @@ def current_artifact(db: Session, feed: PublishedFeed) -> PublishAttempt | None:
             PublishAttempt.is_current.is_(True),
         )
     ).scalar_one_or_none()
+
+
+def clear_the_pointer(db: Session, served: PublishAttempt) -> None:
+    db.execute(
+        update(PublishAttempt)
+        .where(
+            PublishAttempt.org_slug == served.org_slug,
+            PublishAttempt.slug == served.slug,
+            PublishAttempt.attempt_id == served.attempt_id,
+        )
+        .values(is_current=False)
+    )
 
 
 def of_current_revision(artifact: PublishAttempt | None, feed: PublishedFeed) -> PublishAttempt | None:
@@ -126,6 +138,5 @@ def record_and_retire_if_the_binding_says_to(
     if feed.retire_on_failure:
         served = the_artifact_this_attempt_is_entitled_to_retire(db, feed, source)
         if served is not None:
-            served.is_current = False
-            db.flush()
+            clear_the_pointer(db, served)
     return record(db, feed, source, decision, reason, outcome)
