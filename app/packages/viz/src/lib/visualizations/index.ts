@@ -15,6 +15,7 @@ import './core'
 // not theorised. Installation lives with the two consumers instead: see
 // src/plugins/index.ts.
 export { CORE_VISUALIZATIONS } from './core'
+export { BASEMAP_DARK_STYLE, BASEMAP_LIGHT_STYLE } from './basemap-styles'
 // Re-exported so a plugin can declare a Visual builder tile without importing
 // from '@/components/visualizations/*'. VisualizationChoice.Thumbnail needs
 // this type, so without it the only way to supply a tile was to cross the

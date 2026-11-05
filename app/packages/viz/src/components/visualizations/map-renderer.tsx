@@ -7,9 +7,8 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import type { MockVisualization, QueryResultData } from '../../types/viz-data'
 import type { RedashMapOptions } from '../../services/redash/visualization-options'
 import { resolveSeriesColor } from '../../lib/chart-colors'
+import { BASEMAP_DARK_STYLE, BASEMAP_LIGHT_STYLE } from '../../lib/visualizations/basemap-styles'
 
-const LIGHT_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
-const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
 
 // The basemap follows the app's theme scope, not prefers-color-scheme. This
 // file used to subscribe to the media query directly, on the grounds that
@@ -137,7 +136,7 @@ export function MapRenderer({ visualization, data }: MapRendererProps) {
           zoom: view.zoom,
         }}
         style={{ position: 'absolute', inset: 0 }}
-        mapStyle={isDark ? DARK_STYLE : LIGHT_STYLE}
+        mapStyle={isDark ? BASEMAP_DARK_STYLE : BASEMAP_LIGHT_STYLE}
       >
         {markers.map((m) => (
           <Marker
