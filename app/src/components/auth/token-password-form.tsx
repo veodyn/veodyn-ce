@@ -143,8 +143,7 @@ export function TokenPasswordForm({ token, mode }: TokenPasswordFormProps) {
         )}
 
         {state.type === 'form' && (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* User info */}
+          <form method="post" onSubmit={handleSubmit} className="space-y-4">
             <div className="rounded-md bg-muted px-3 py-2.5 text-sm">
               <p className="font-medium">{state.user.name}</p>
               <p className="text-muted-foreground">{state.user.email}</p>

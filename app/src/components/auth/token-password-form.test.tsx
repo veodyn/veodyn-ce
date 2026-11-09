@@ -54,6 +54,14 @@ describe('TokenPasswordForm', () => {
     expect(screen.getByRole('button', { name: 'Set new password' })).toBeDisabled()
   })
 
+  it('posts the new password if submitted natively, so it never lands in the URL', async () => {
+    validateResetToken()
+    const { container } = renderTokenForm({ token: 'reset-token', mode: 'reset' })
+
+    await screen.findByText('Test User')
+    expect(container.querySelector('form')).toHaveAttribute('method', 'post')
+  })
+
   it('blocks a password shorter than six characters', async () => {
     const user = userEvent.setup()
     let postCount = 0

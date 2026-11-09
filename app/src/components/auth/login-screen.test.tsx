@@ -84,6 +84,14 @@ describe('required field marking', () => {
   })
 })
 
+describe('a submit that lands before the page hydrates', () => {
+  it('posts the credentials, so the browser never writes them into the URL', () => {
+    const { container } = renderWithProviders(<LoginScreen />, { authenticated: false })
+
+    expect(container.querySelector('form')).toHaveAttribute('method', 'post')
+  })
+})
+
 describe('safeNextPath', () => {
   it('keeps a same-origin path', () => {
     expect(safeNextPath('/queries?tab=my')).toBe('/queries?tab=my')

@@ -117,7 +117,7 @@ export function LoginScreen({ next }: { next?: string | null }) {
           {useRealApi ? 'Sign in to your account' : 'Sign in (mock mode, no backend required)'}
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form method="post" onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor={emailFieldId} className="mb-1 block" required>
               Email
