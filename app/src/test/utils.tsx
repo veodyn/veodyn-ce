@@ -84,6 +84,7 @@ const STUB_ROUTER: AppRouterInstance = {
   forward: () => refuses('forward'),
   refresh: () => refuses('refresh'),
   prefetch: () => {},
+  bfcacheId: 'test-router',
 }
 
 export function renderWithProviders(
