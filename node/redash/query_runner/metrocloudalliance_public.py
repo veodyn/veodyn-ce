@@ -234,7 +234,9 @@ def public_departures(params, fetch, profiles, now, archive_fetcher=None, source
     routes = fetch("routes", {"carrier_code": _carrier(params)})
     profile = _profile(profiles, params, routes)
     resolver = _resolver(profile, False, archive_fetcher)
-    by_number = {name.route_number: name for _, name in _route_names(routes, profile, resolver).values()}
+    named = _route_names(routes, profile, resolver)
+    by_number = {name.route_number: name for _, name in named.values()}
+    by_code = {route_code: name for route_code, (_, name) in named.items()}
     indexes = CarrierIndexes(
         profiles.base_revision,
         source,
@@ -245,7 +247,7 @@ def public_departures(params, fetch, profiles, now, archive_fetcher=None, source
     for stop_id in sorted({str(r["stop_id"]) for r in rows if r.get("stop_id")})[: profile.departures_stop_lookup_max]:
         for stop in fetch("stops", {"carrier_code": _carrier(params), "stop_id": stop_id}):
             stop_names[str(stop["stop_id"])] = indexes.name(stop, profile)
-    return enrich_departures(rows, by_number, stop_names, profile, profiles.revision, resolver.digest)
+    return enrich_departures(rows, by_number, stop_names, profile, profiles.revision, resolver.digest, by_code)
 
 
 def naming_profiles(profiles):

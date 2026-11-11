@@ -2,7 +2,7 @@ import re
 
 from redash.transit_naming import provenance
 from redash.transit_naming.casing import recase
-from redash.transit_naming.profile_loader import HEX_COLOR
+from redash.transit_naming.route_rules_loader import HEX_COLOR
 from redash.transit_naming.snapshot import MODE_BY_ROUTE_TYPE, RouteName
 from redash.transit_naming.stops import normalize_text
 

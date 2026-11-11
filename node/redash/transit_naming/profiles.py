@@ -1,6 +1,8 @@
 import hashlib
 from dataclasses import dataclass, field, replace
 
+from redash.transit_naming.compass import MAP
+
 CORE_REVISION = "2026.10.29.1"
 
 JOIN_STRATEGIES = ("short_name", "route_id_prefix")
@@ -122,6 +124,7 @@ class Profile:
     extra_trip_routes: dict = field(default_factory=dict)
     direction_map: dict = field(default_factory=dict)
     direction_map_by_route: dict = field(default_factory=dict)
+    direction_from: str = MAP
     pattern_codes: dict = field(default_factory=dict)
     departures_stop_lookup_max: int = 50
     time_format: str = "h:mma"
@@ -139,9 +142,10 @@ class Profile:
     def override_for(self, kind, key):
         return self.overrides.get((kind, str(key)))
 
-    def direction_letter(self, route_code, direction_id):
+    def direction_letter(self, route_code, direction_id, inferred=None):
+        key = str(direction_id)
         by_route = self.direction_map_by_route.get(route_code, {})
-        return by_route.get(str(direction_id)) or self.direction_map.get(str(direction_id)) or str(direction_id)
+        return by_route.get(key) or (inferred or {}).get(key) or self.direction_map.get(key) or key
 
 
 def overrides_digest(listed):

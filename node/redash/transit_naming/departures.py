@@ -21,25 +21,40 @@ PUBLIC_DEPARTURE_COLUMNS = [
     "public_stop_name_source: string - provenance",
     "normalization_revision: string",
     "gtfs_digest: string",
+    "route_code: string - the departure's route code, as public_routes lists it",
 ]
 
 
-def _route_from_raw(raw_route, carrier, profile):
+def _route_code(raw_route, profile):
     number = str(raw_route or "")
+    return f"{profile.carrier_code}{number.zfill(3) if number.isdigit() else number}"
+
+
+def _route_from_raw(raw_route, carrier, profile):
     route = {
         "carrier_code": carrier,
-        "route_code": f"{profile.carrier_code}{number.zfill(3) if number.isdigit() else number}",
-        "route_name": number,
+        "route_code": _route_code(raw_route, profile),
+        "route_name": str(raw_route or ""),
     }
     return name_route(route, profile, None)
 
 
-def enrich_departures(rows, route_names, stop_names, profile, revision, digest):
+def _departure_route_code(pattern_code, raw_route, longest_first, code_by_number, profile):
+    pattern = str(pattern_code or "")
+    named = next((code for code in longest_first if pattern.startswith(code)), None) if pattern else None
+    return named or code_by_number.get(raw_route) or _route_code(raw_route, profile)
+
+
+def enrich_departures(rows, route_names, stop_names, profile, revision, digest, routes_by_code=None):
+    by_code = routes_by_code or {}
+    longest_first = sorted(by_code, key=len, reverse=True)
+    code_by_number = {name.route_number: code for code, name in by_code.items()}
     out = []
     for row in rows:
         item = {RENAMED.get(key, key): value for key, value in row.items()}
         raw_route = str(item.get("raw_route") or "")
-        route = route_names.get(raw_route)
+        route_code = _departure_route_code(item.get("pattern_code"), raw_route, longest_first, code_by_number, profile)
+        route = by_code.get(route_code) or route_names.get(raw_route)
         if route is None:
             route = _route_from_raw(raw_route, item.get("carrier"), profile)
         route_source = route.public_name_source
@@ -74,6 +89,7 @@ def enrich_departures(rows, route_names, stop_names, profile, revision, digest):
                 "public_stop_name_source": stop_source,
                 "normalization_revision": revision,
                 "gtfs_digest": digest,
+                "route_code": route_code,
             }
         )
         out.append(item)

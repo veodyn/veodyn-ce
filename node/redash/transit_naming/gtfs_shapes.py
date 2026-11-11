@@ -1,6 +1,7 @@
 import json
 import math
 
+from redash.transit_naming.compass import inferred_directions
 from redash.transit_naming.headsigns import normalize_headsign
 from redash.transit_naming.patterns import (
     _pattern_ids,
@@ -67,6 +68,7 @@ def path_rows(carrier_code, route_code, gtfs_route_id, snapshot, profile, digest
     ids = _pattern_ids(sequences)
     canonical_patterns = canonical_keys(snapshot, gtfs_route_id, sequences)
     attributes = _trip_attributes(snapshot, gtfs_route_id)
+    inferred = inferred_directions(profile, snapshot, gtfs_route_id)
     rows = []
     for key, pattern_id in sorted(ids.items()):
         direction_id, stops = key
@@ -80,7 +82,7 @@ def path_rows(carrier_code, route_code, gtfs_route_id, snapshot, profile, digest
                 "pattern_id": pattern_id,
                 "is_canonical": key in canonical_patterns,
                 "direction_id": direction_number(direction_id),
-                "direction": profile.direction_letter(route_code, direction_id),
+                "direction": profile.direction_letter(route_code, direction_id, inferred),
                 "headsign": normalize_headsign(most_common_smallest(headsigns), profile.headsign),
                 "shape_id": shape_id,
                 "trip_count": len(trips),

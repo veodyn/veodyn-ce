@@ -2,6 +2,8 @@ import math
 from collections import Counter
 
 from redash.transit_naming import provenance
+from redash.transit_naming.compass import inferred_directions
+from redash.transit_naming.coordinates import finite_point
 from redash.transit_naming.passenger_stops import (
     is_layover,
     passenger_positions,
@@ -20,14 +22,6 @@ def distance_feet(lat1, lng1, lat2, lng2):
     return 2 * EARTH_RADIUS_FEET * math.asin(math.sqrt(h))
 
 
-def _coordinates(record, lat_key, lng_key):
-    try:
-        point = float(record.get(lat_key)), float(record.get(lng_key))
-    except (TypeError, ValueError):
-        return None
-    return point if math.isfinite(point[0]) and math.isfinite(point[1]) else None
-
-
 CELL_DEGREES = 0.01
 FEET_PER_CELL = CELL_DEGREES * 364000.0
 
@@ -36,7 +30,7 @@ class StopIndex:
     def __init__(self, mca_stops):
         self.cells = {}
         for stop in mca_stops.values():
-            point = _coordinates(stop, "lat", "lng")
+            point = finite_point(stop, "lat", "lng")
             if point is not None:
                 self.cells.setdefault(self._cell(point), []).append((point, stop))
 
@@ -60,7 +54,7 @@ class StopIndex:
 
 
 def _stop_coordinates(snapshot, gtfs_stop_id):
-    point = _coordinates(snapshot.stops.get(gtfs_stop_id, {}), "stop_lat", "stop_lon")
+    point = finite_point(snapshot.stops.get(gtfs_stop_id, {}), "stop_lat", "stop_lon")
     return point if point is not None else (None, None)
 
 
@@ -69,7 +63,7 @@ def direction_number(direction_id):
 
 
 def _nearest(gtfs_stop, index, threshold_feet):
-    origin = _coordinates(gtfs_stop, "stop_lat", "stop_lon")
+    origin = finite_point(gtfs_stop, "stop_lat", "stop_lon")
     if origin is None:
         return None
     return index.nearest(origin[0], origin[1], threshold_feet)
@@ -179,8 +173,9 @@ def cut_patterns(
     memo = {}
     rows = []
     trip_times = trips_by_pattern(snapshot, gtfs_route_id)
+    inferred = inferred_directions(profile, snapshot, gtfs_route_id)
     for (direction_id, stops), pattern_id in sorted(ids.items()):
-        letter = profile.direction_letter(route_code, direction_id)
+        letter = profile.direction_letter(route_code, direction_id, inferred)
         canonical = (direction_id, stops) in canonical_patterns
         matches = [
             _match(gtfs_stop_id, snapshot, mca_stops, public_names, sources, threshold_feet, memo, index)
