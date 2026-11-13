@@ -214,6 +214,46 @@ describe('AnnotationDialog', () => {
     expect(createMutate).not.toHaveBeenCalled()
   })
 
+  it('flags an empty label as the invalid field, links its message and moves focus to it', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+
+    fireEvent.change(screen.getByLabelText('Start (UTC)*'), { target: { value: '2026-04-01T09:00' } })
+    await user.click(screen.getByRole('button', { name: /add annotation/i }))
+
+    const label = screen.getByLabelText(/label/i)
+    expect(label).toHaveAttribute('aria-invalid', 'true')
+    expect(label).toHaveAccessibleDescription('Label is required.')
+    expect(label).toHaveFocus()
+    expect(screen.getByLabelText('Start (UTC)*')).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('flags a missing start as the invalid field and moves focus to it', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+
+    await user.type(screen.getByLabelText(/label/i), 'No start time')
+    await user.click(screen.getByRole('button', { name: /add annotation/i }))
+
+    const start = screen.getByLabelText('Start (UTC)*')
+    expect(start).toHaveAttribute('aria-invalid', 'true')
+    expect(start).toHaveAccessibleDescription('Start must be a valid date and time.')
+    expect(start).toHaveFocus()
+    expect(screen.getByLabelText(/label/i)).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('announces a refused write as an alert without blaming a field', async () => {
+    const user = userEvent.setup()
+    createRejects('Method Not Allowed')
+    renderDialog()
+
+    await fillAndSubmit(user, 'Signal outage')
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/was not saved/i)
+    expect(screen.getByLabelText(/label/i)).not.toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('Start (UTC)*')).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
   // Two gates in series, and this is the one the dialog owns. Whether the
   // instance offers AI at all is config; whether this build has a feature that
   // answers is the registry, stubbed at the top of this file with a contributor

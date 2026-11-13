@@ -135,4 +135,24 @@ describe('ApiKeyPanel', () => {
       )
     )
   })
+
+  it('raises an error toast when the clipboard rejects the write', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'))
+    renderWithProviders(
+      <>
+        <ApiKeyPanel userId="7" apiKey={KEY} canRegenerate onRegenerated={() => {}} />
+        <Toaster />
+      </>
+    )
+
+    await user.click(screen.getByRole('button', { name: /copy api key/i }))
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-sonner-toast][data-type="error"]')).toHaveTextContent(
+        /could not copy/i
+      )
+    )
+    expect(document.querySelector('[data-sonner-toast][data-type="success"]')).toBeNull()
+  })
 })

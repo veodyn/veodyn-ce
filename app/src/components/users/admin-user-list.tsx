@@ -6,6 +6,7 @@ import { UserPlus, AlertCircle } from 'lucide-react'
 
 import { useAuthStore } from '@/stores/auth-store'
 import { redashApi } from '@/services/api-client'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useToast } from '@/components/shared/toast-provider'
 import Link from 'next/link'
 import { ItemsTable, type Column } from '@/components/shared/items-table'
@@ -63,6 +64,9 @@ export function AdminUserList() {
   const [filter, setFilter] = useState<UserFilter>('active')
   const [page, setPage] = useState(1)
   const [showInvite, setShowInvite] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<RedashUser | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -117,14 +121,18 @@ export function AdminUserList() {
     }
   }
 
-  const handleDelete = async (user: RedashUser) => {
-    if (!confirm(`Delete ${user.name}? This cannot be undone.`)) return
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return
+    setIsDeleting(true)
     try {
-      await redashApi.delete(`users/${user.id}`)
-      toast.success(`${user.name} has been deleted`)
+      await redashApi.delete(`users/${pendingDelete.id}`)
+      toast.success(`${pendingDelete.name} has been deleted`)
       load()
     } catch {
       toast.error('Failed to delete user')
+    } finally {
+      setIsDeleting(false)
+      setDeleteOpen(false)
     }
   }
 
@@ -196,7 +204,10 @@ export function AdminUserList() {
                   user={u}
                   onEnable={handleEnable}
                   onDisable={handleDisable}
-                  onDelete={handleDelete}
+                  onDelete={(target) => {
+                    setPendingDelete(target)
+                    setDeleteOpen(true)
+                  }}
                 />
               ),
           } as Column<RedashUser>,
@@ -294,6 +305,17 @@ export function AdminUserList() {
       />
 
       <InviteDialog open={showInvite} onOpenChange={setShowInvite} onInvited={load} />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeleteOpen(false)
+        }}
+        title="Delete user?"
+        description={`Delete ${pendingDelete?.name ?? 'this user'}? This cannot be undone.`}
+        isPending={isDeleting}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   )
 }

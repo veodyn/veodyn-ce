@@ -44,6 +44,8 @@ export function ChoroplethEditor({ options: rawOptions, columns, onChange }: Cho
   const valueColumnId = useId()
   const mapTypeId = useId()
   const geometryColumnId = useId()
+  const targetFieldErrorId = useId()
+  const geometryColumnErrorId = useId()
 
   // Absent means the bundled map, matching the renderer, so a saved choropleth
   // shows the source it is actually drawing from.
@@ -114,7 +116,12 @@ export function ChoroplethEditor({ options: rawOptions, columns, onChange }: Cho
         <div>
           <Label htmlFor={targetFieldId} className="mb-1 block">Matched Against (map property)</Label>
           <Select value={options.targetField || ''} onValueChange={(v) => update('targetField', v)}>
-            <SelectTrigger id={targetFieldId} className="w-full h-8">
+            <SelectTrigger
+              id={targetFieldId}
+              className="w-full h-8"
+              aria-invalid={!options.targetField}
+              aria-describedby={options.targetField ? undefined : targetFieldErrorId}
+            >
               <SelectValue placeholder="Select map property..." />
             </SelectTrigger>
             <SelectContent>
@@ -130,7 +137,7 @@ export function ChoroplethEditor({ options: rawOptions, columns, onChange }: Cho
             // half of the join: with targetField unset the model matches
             // nothing, and the map says "No regions matched the key column"
             // while the key column may be perfectly fine.
-            <p className="text-xs text-destructive mt-1">Required. Until a map property is picked, nothing can match and the map draws empty.</p>
+            <p id={targetFieldErrorId} className="text-xs text-destructive mt-1">Required. Until a map property is picked, nothing can match and the map draws empty.</p>
           )}
         </div>
       )}
@@ -153,7 +160,12 @@ export function ChoroplethEditor({ options: rawOptions, columns, onChange }: Cho
         <div>
           <Label htmlFor={geometryColumnId} className="mb-1 block">Geometry Column (GeoJSON)</Label>
           <Select value={options.geometryColumn || ''} onValueChange={(v) => update('geometryColumn', v)}>
-            <SelectTrigger id={geometryColumnId} className="w-full h-8">
+            <SelectTrigger
+              id={geometryColumnId}
+              className="w-full h-8"
+              aria-invalid={!options.geometryColumn}
+              aria-describedby={options.geometryColumn ? undefined : geometryColumnErrorId}
+            >
               <SelectValue placeholder="Select column..." />
             </SelectTrigger>
             <SelectContent>
@@ -166,7 +178,7 @@ export function ChoroplethEditor({ options: rawOptions, columns, onChange }: Cho
           {options.geometryColumn ? (
             <p className="text-xs text-muted-foreground mt-1">Each cell holds one region as GeoJSON, either a bare geometry or a whole Feature. Rows the app cannot read are left out of the map.</p>
           ) : (
-            <p className="text-xs text-destructive mt-1">Required. The boundaries live in this column, so until one is picked nothing can be drawn.</p>
+            <p id={geometryColumnErrorId} className="text-xs text-destructive mt-1">Required. The boundaries live in this column, so until one is picked nothing can be drawn.</p>
           )}
         </div>
       ) : (

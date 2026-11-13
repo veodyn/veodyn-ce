@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { Check, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { IconButton } from '@/components/shared/icon-button'
+import { CopyIcon, CopyStatus, copyTooltip } from '@/components/shared/copy-status'
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 
 interface CodeBlockProps {
   code: string
@@ -21,13 +21,7 @@ interface CodeBlockProps {
  * hiding was a style rather than a decision about the affordance.
  */
 export function CodeBlock({ code, language = 'sql', className }: CodeBlockProps) {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+  const { status, copy } = useCopyToClipboard()
 
   return (
     <div className={cn('relative group', className)}>
@@ -35,22 +29,16 @@ export function CodeBlock({ code, language = 'sql', className }: CodeBlockProps)
         <code data-language={language}>{code}</code>
       </pre>
       <IconButton
-        // The tooltip is already open when the click lands, so it is also where
-        // the confirmation belongs: the tick alone leaves a reader guessing
-        // whether it copied or merely acknowledged.
-        tooltip={copied ? 'Copied' : 'Copy code'}
+        tooltip={copyTooltip(status, 'Copy code')}
         type="button"
         variant="outline"
         size="icon-sm"
-        onClick={handleCopy}
+        onClick={() => copy(code)}
         className="absolute top-2 right-2"
       >
-        {copied ? (
-          <Check className="h-3.5 w-3.5 text-status-fresh" />
-        ) : (
-          <Copy className="h-3.5 w-3.5" />
-        )}
+        <CopyIcon status={status} className="h-3.5 w-3.5" />
       </IconButton>
+      <CopyStatus status={status} />
     </div>
   )
 }

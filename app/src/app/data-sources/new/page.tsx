@@ -1,12 +1,13 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useId, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { DataSourceLogo } from '@/components/data-sources/data-source-logo'
 import { schemaFields, invalidJsonMessage } from '@/components/forms/schema-fields'
 import { DynamicForm, useDynamicFormState } from '@/components/forms/dynamic-form'
+import { FieldError, useFieldErrors } from '@/components/forms/field-errors'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -24,6 +25,7 @@ export default function NewDataSourcePage() {
   const [search, setSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
   const form = useDynamicFormState()
+  const fieldErrors = useFieldErrors()
   const nameId = useId()
   const searchId = useId()
 
@@ -34,8 +36,13 @@ export default function NewDataSourcePage() {
     t.name.toLowerCase().includes(search.toLowerCase())
   )
 
-  const handleCreate = async () => {
-    if (!selectedType || !name.trim()) return
+  const handleCreate = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!selectedType) return
+    if (!name.trim()) {
+      fieldErrors.fail({ [nameId]: 'Give the data source a name.' })
+      return
+    }
 
     // A shape error in a JSON field (default_devices, say) is already shown
     // inline by DynamicForm as the user types; this is where it actually
@@ -111,28 +118,38 @@ export default function NewDataSourcePage() {
     <PageContainer width="narrow">
       <PageHeader title={`New ${selectedTypeSchema?.name ?? ''} Data Source`} />
       <Card className="p-6">
-        <div>
-          <Label htmlFor={nameId} className="mb-1 block" required>Name</Label>
-          <Input
-            id={nameId}
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Data source name"
-            required
-            aria-required="true"
-          />
-        </div>
-        <DynamicForm fields={fields} values={form.values} onChange={form.onChange} />
-        {error && (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
-        )}
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => setSelectedType(null)}>Back</Button>
-          <Button onClick={handleCreate} disabled={!name.trim() || createDataSource.isPending}>Create</Button>
-        </div>
+        <form noValidate onSubmit={handleCreate} className="contents">
+          <div>
+            <Label htmlFor={nameId} className="mb-1 block" required>Name</Label>
+            <Input
+              id={nameId}
+              type="text"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value)
+                fieldErrors.clear(nameId)
+              }}
+              placeholder="Data source name"
+              required
+              aria-required="true"
+              {...fieldErrors.fieldProps(nameId)}
+            />
+            <FieldError fieldId={nameId} message={fieldErrors.errors[nameId]} />
+          </div>
+          <DynamicForm fields={fields} values={form.values} onChange={form.onChange} />
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => {
+              setSelectedType(null)
+              fieldErrors.reset()
+            }}>Back</Button>
+            <Button type="submit" disabled={createDataSource.isPending}>Create</Button>
+          </div>
+        </form>
       </Card>
     </PageContainer>
   )

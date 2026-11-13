@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import { Toaster } from '@/components/ui/sonner'
@@ -156,21 +156,20 @@ describe('GroupDetail rename', () => {
 })
 
 describe('GroupDetail delete', () => {
-  it('sends nothing and stays on the page when the confirmation is declined', async () => {
+  it('asks in an in-app dialog, and sends nothing when it is cancelled', async () => {
     const user = userEvent.setup()
     signInAsAdmin()
     const { writes } = serveGroup({ members: [JANE] })
     const onBack = renderDetail()
 
-    // Not stubbed to a bare false: jsdom's own confirm() answers undefined,
-    // which the component would also read as "cancelled", so a build that
-    // dropped the guard entirely would still pass the assertions below.
-    confirmSpy.mockReturnValue(false)
-
     await user.click(await screen.findByRole('button', { name: /delete group/i }))
 
-    expect(confirmSpy).toHaveBeenCalledOnce()
-    expect(confirmSpy.mock.calls[0][0]).toMatch(/data team/i)
+    expect(confirmSpy).not.toHaveBeenCalled()
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/data team/i)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
     expect(deletes(writes)).toEqual([])
     expect(onBack).not.toHaveBeenCalled()
     expect(screen.getByRole('tab', { name: 'Members (1)' })).toBeInTheDocument()
@@ -182,8 +181,9 @@ describe('GroupDetail delete', () => {
     const { writes } = serveGroup({ members: [JANE] })
     const onBack = renderDetail()
 
-    confirmSpy.mockReturnValue(true)
     await user.click(await screen.findByRole('button', { name: /delete group/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
 
     await waitFor(() =>
       expect(deletes(writes)).toEqual([
@@ -208,12 +208,13 @@ describe('GroupDetail delete', () => {
     // group that does not exist.
     expect(writes).toEqual([])
 
-    confirmSpy.mockReturnValue(true)
     await user.click(screen.getByRole('button', { name: /delete group/i }))
 
-    // The last thing said before an irreversible delete has to describe what
-    // is actually being deleted.
-    expect(confirmSpy.mock.calls[0][0]).toBe('Delete group "Data Team"? This cannot be undone.')
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent('Delete group "Data Team"?')
+    expect(dialog).toHaveTextContent('This cannot be undone.')
+    expect(dialog).not.toHaveTextContent(/platform team/i)
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(toastOfType('success')).toHaveTextContent(/"Data Team" deleted/i))
     expect(toastOfType('success')).not.toHaveTextContent(/platform team/i)
     expect(onBack).toHaveBeenCalledOnce()
@@ -225,8 +226,9 @@ describe('GroupDetail delete', () => {
     serveGroup({ members: [JANE], failDelete: true })
     const onBack = renderDetail()
 
-    confirmSpy.mockReturnValue(true)
     await user.click(await screen.findByRole('button', { name: /delete group/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
 
     await waitFor(() => expect(toastOfType('error')).toHaveTextContent(/failed to delete group/i))
     // Navigating away on a failed delete would show the list still containing

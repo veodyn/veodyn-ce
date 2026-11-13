@@ -1,10 +1,12 @@
 'use client'
 
-import { useId, useState, useEffect, useCallback } from 'react'
+import { useId, useState, useEffect, useCallback, type FormEvent } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 
 import { useAuthStore } from '@/stores/auth-store'
 import { redashApi } from '@/services/api-client'
+import { FieldError, useFieldErrors } from '@/components/forms/field-errors'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useToast } from '@/components/shared/toast-provider'
 import { ItemsTable, type Column } from '@/components/shared/items-table'
 import { IconButton } from '@/components/shared/icon-button'
@@ -33,6 +35,11 @@ export function GroupList({ onSelectGroup }: GroupListProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<RedashGroup | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
+  const fieldErrors = useFieldErrors()
 
   const isAdmin = currentUser?.isAdmin ?? false
 
@@ -53,29 +60,43 @@ export function GroupList({ onSelectGroup }: GroupListProps) {
     load()
   }, [load])
 
-  const handleCreate = async () => {
-    if (!newName.trim()) return
+  const closeCreate = () => {
+    setShowCreate(false)
+    fieldErrors.reset()
+  }
+
+  const handleCreate = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!newName.trim()) {
+      fieldErrors.fail({ [nameId]: 'Give the group a name.' })
+      return
+    }
+    setIsCreating(true)
     try {
       const newGroup = await redashApi.post<RedashGroup>('groups', { name: newName })
       toast.success(`Group "${newName}" created`)
       setNewName('')
-      setShowCreate(false)
+      closeCreate()
       load()
       if (onSelectGroup) onSelectGroup(newGroup)
     } catch {
       toast.error('Failed to create group')
+    } finally {
+      setIsCreating(false)
     }
   }
 
-  const handleDelete = async (group: RedashGroup, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!confirm(`Delete group "${group.name}"? This cannot be undone.`)) return
+  const handleDelete = async (group: RedashGroup) => {
+    setIsDeleting(true)
     try {
       await redashApi.delete(`groups/${group.id}`)
       toast.success(`Group "${group.name}" deleted`)
       load()
     } catch {
       toast.error('Failed to delete group')
+    } finally {
+      setIsDeleting(false)
+      setDeleteOpen(false)
     }
   }
 
@@ -115,7 +136,11 @@ export function GroupList({ onSelectGroup }: GroupListProps) {
               aria-label={`Delete ${g.name}`}
               variant="ghost"
               size="sm"
-              onClick={(e) => handleDelete(g, e)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setPendingDelete(g)
+                setDeleteOpen(true)
+              }}
             >
               <Trash2 className="h-3.5 w-3.5 text-destructive" />
             </IconButton>
@@ -150,35 +175,52 @@ export function GroupList({ onSelectGroup }: GroupListProps) {
         )}
       </div>
 
-      <Dialog open={showCreate} onOpenChange={(next) => { if (!next) setShowCreate(false) }}>
+      <Dialog open={showCreate} onOpenChange={(next) => { if (!next) closeCreate() }}>
         <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Create Group</DialogTitle>
-          </DialogHeader>
-          <div className="max-h-[70vh] overflow-y-auto py-2">
-            <Label htmlFor={nameId} className="mb-1 block" required>
-              Group Name
-            </Label>
-            <Input
-              id={nameId}
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="e.g. Data Team"
-              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              required
-              aria-required="true"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={!newName.trim()}>
-              Create
-            </Button>
-          </DialogFooter>
+          <form noValidate onSubmit={handleCreate} className="contents">
+            <DialogHeader>
+              <DialogTitle>Create Group</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-[70vh] overflow-y-auto py-2">
+              <Label htmlFor={nameId} className="mb-1 block" required>
+                Group Name
+              </Label>
+              <Input
+                id={nameId}
+                value={newName}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  fieldErrors.clear(nameId)
+                }}
+                placeholder="e.g. Data Team"
+                required
+                aria-required="true"
+                {...fieldErrors.fieldProps(nameId)}
+              />
+              <FieldError fieldId={nameId} message={fieldErrors.errors[nameId]} />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeCreate}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isCreating}>Create</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeleteOpen(false)
+        }}
+        title={`Delete group "${pendingDelete?.name ?? ''}"?`}
+        description="This cannot be undone."
+        isPending={isDeleting}
+        onConfirm={() => {
+          if (pendingDelete) void handleDelete(pendingDelete)
+        }}
+      />
     </div>
   )
 }

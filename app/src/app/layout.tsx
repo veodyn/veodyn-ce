@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import './globals.css'
 import { Providers } from './providers'
@@ -16,6 +16,14 @@ import { themeStyle } from '@/lib/theme-style'
 // baked in at build time, so this route must render at request time rather
 // than be frozen into the static prerender.
 export const dynamic = 'force-dynamic'
+
+export const viewport: Viewport = {
+  colorScheme: 'light dark',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#F7F5F0' },
+    { media: '(prefers-color-scheme: dark)', color: '#0B0E14' },
+  ],
+}
 
 export function generateMetadata(): Metadata {
   return {

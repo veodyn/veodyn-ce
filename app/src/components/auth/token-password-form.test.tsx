@@ -83,6 +83,75 @@ describe('TokenPasswordForm', () => {
     expect(postCount).toBe(0)
   })
 
+  it('flags the password field, links the length error and moves focus to it', async () => {
+    const user = userEvent.setup()
+    validateResetToken()
+    renderTokenForm({ token: 'reset-token', mode: 'reset' })
+
+    await screen.findByLabelText('New password*')
+    await user.type(screen.getByLabelText('New password*'), 'short')
+    await user.type(screen.getByLabelText('Confirm password*'), 'short')
+    await user.click(screen.getByRole('button', { name: 'Set new password' }))
+
+    const password = screen.getByLabelText('New password*')
+    expect(password).toHaveAttribute('aria-invalid', 'true')
+    expect(password).toHaveAccessibleDescription('Password must be at least 6 characters.')
+    expect(password).toHaveFocus()
+    expect(screen.getByLabelText('Confirm password*')).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('flags the confirm field, links the mismatch error and moves focus to it', async () => {
+    const user = userEvent.setup()
+    validateResetToken()
+    renderTokenForm({ token: 'reset-token', mode: 'reset' })
+
+    await screen.findByLabelText('New password*')
+    await user.type(screen.getByLabelText('New password*'), 'secret7')
+    await user.type(screen.getByLabelText('Confirm password*'), 'secret8')
+    await user.click(screen.getByRole('button', { name: 'Set new password' }))
+
+    const confirm = screen.getByLabelText('Confirm password*')
+    expect(confirm).toHaveAttribute('aria-invalid', 'true')
+    expect(confirm).toHaveAccessibleDescription('Passwords do not match.')
+    expect(confirm).toHaveFocus()
+    expect(screen.getByLabelText('New password*')).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('moves focus back to the field again when the same error repeats', async () => {
+    const user = userEvent.setup()
+    validateResetToken()
+    renderTokenForm({ token: 'reset-token', mode: 'reset' })
+
+    await screen.findByLabelText('New password*')
+    await user.type(screen.getByLabelText('New password*'), 'secret7')
+    await user.type(screen.getByLabelText('Confirm password*'), 'secret8')
+    await user.click(screen.getByRole('button', { name: 'Set new password' }))
+    await user.click(screen.getByLabelText('Show password', { selector: 'button' }))
+    await user.click(screen.getByRole('button', { name: 'Set new password' }))
+
+    expect(screen.getByLabelText('Confirm password*')).toHaveFocus()
+  })
+
+  it('announces a server refusal as an alert without blaming a field', async () => {
+    const user = userEvent.setup()
+    validateResetToken()
+    server.use(
+      http.post('/api/node/reset/reset-token', () =>
+        HttpResponse.json({ message: 'Token already used.' }, { status: 400 })
+      )
+    )
+    renderTokenForm({ token: 'reset-token', mode: 'reset' })
+
+    await screen.findByLabelText('New password*')
+    await user.type(screen.getByLabelText('New password*'), 'secret7')
+    await user.type(screen.getByLabelText('Confirm password*'), 'secret7')
+    await user.click(screen.getByRole('button', { name: 'Set new password' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Token already used.')
+    expect(screen.getByLabelText('New password*')).not.toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('Confirm password*')).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
   it('posts a valid password to the token endpoint', async () => {
     const user = userEvent.setup()
     let requestBody: unknown

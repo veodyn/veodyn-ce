@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import { Toaster } from '@/components/ui/sonner'
@@ -72,7 +72,7 @@ describe('AdminUserList row actions', () => {
     expect(screen.getByRole('button', { name: 'Disable' })).toBeInTheDocument()
   })
 
-  it('asks before deleting a pending invitation and sends nothing when told not to', async () => {
+  it('asks in an in-app dialog before deleting a pending invitation and sends nothing when cancelled', async () => {
     const user = userEvent.setup()
     signInAsAdmin(ROOT.id)
     const invited = userRow({ id: 5, name: 'Pending User', is_invitation_pending: true })
@@ -82,13 +82,14 @@ describe('AdminUserList row actions', () => {
     await user.click(screen.getByRole('tab', { name: 'Pending Invitations' }))
     expect(await screen.findByRole('link', { name: 'Pending User' })).toBeInTheDocument()
 
-    // Stubbed to an explicit false rather than left at jsdom's undefined, which
-    // the component would read as "cancelled" even with the guard removed.
-    confirmSpy.mockReturnValue(false)
     await user.click(screen.getByRole('button', { name: 'Delete' }))
 
-    expect(confirmSpy).toHaveBeenCalledOnce()
-    expect(confirmSpy.mock.calls[0][0]).toMatch(/pending user/i)
+    expect(confirmSpy).not.toHaveBeenCalled()
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/pending user/i)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
     expect(deletes(writes)).toEqual([])
     expect(screen.getByRole('link', { name: 'Pending User' })).toBeInTheDocument()
   })
@@ -103,8 +104,9 @@ describe('AdminUserList row actions', () => {
     await user.click(screen.getByRole('tab', { name: 'Pending Invitations' }))
     expect(await screen.findByRole('link', { name: 'Pending User' })).toBeInTheDocument()
 
-    confirmSpy.mockReturnValue(true)
     await user.click(screen.getByRole('button', { name: 'Delete' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
 
     await waitFor(() =>
       expect(deletes(writes)).toEqual([

@@ -2,7 +2,7 @@
 // `userEvent.setup()` installs, rather than asserting a `writeText` spy was
 // called: api-key-panel.test.tsx already establishes that shape, and it tests
 // what landed on the clipboard instead of what the component asked for.
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CopySchemaJson } from './copy-schema-json'
@@ -56,5 +56,27 @@ describe('CopySchemaJson', () => {
     await user.click(button)
 
     expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument()
+  })
+})
+
+describe('CopySchemaJson feedback', () => {
+  it('announces a successful copy in a status region', async () => {
+    const user = userEvent.setup()
+    render(<CopySchemaJson schema={SCHEMA} />)
+
+    await user.click(screen.getByRole('button'))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Copied')
+  })
+
+  it('shows and announces a failure when the clipboard rejects the write', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'))
+    render(<CopySchemaJson schema={SCHEMA} />)
+
+    await user.click(screen.getByRole('button'))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Copy failed')
+    expect(screen.getByRole('button', { name: 'Copy failed' })).toBeInTheDocument()
   })
 })

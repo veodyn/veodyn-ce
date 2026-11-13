@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { PageHeader } from '@/components/layout/page-header'
 import { DestinationIcon } from '@/components/destinations/destination-icon'
 import { configOptions, missingRequiredMessage } from '@/components/destinations/destination-config'
+import { FieldError, useFieldErrors } from '@/components/forms/field-errors'
 import { schemaFields } from '@/components/forms/schema-fields'
 import { DynamicForm } from '@/components/forms/dynamic-form'
 import { useToast } from '@/components/shared/toast-provider'
@@ -39,6 +40,7 @@ export function DestinationEditForm({
   const [name, setName] = useState(destination.name)
   const [values, setValues] = useState<Record<string, unknown>>(destination.options ?? {})
   const [error, setError] = useState<string | null>(null)
+  const fieldErrors = useFieldErrors()
 
   const fields = schemaFields(typeSchema?.configuration_schema)
 
@@ -49,7 +51,8 @@ export function DestinationEditForm({
 
   const handleSave = async () => {
     if (!name.trim()) {
-      fail('Give the destination a name.')
+      setError(null)
+      fieldErrors.fail({ [nameId]: 'Give the destination a name.' })
       return
     }
     const options = configOptions(fields, values)
@@ -100,10 +103,15 @@ export function DestinationEditForm({
             id={nameId}
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value)
+              fieldErrors.clear(nameId)
+            }}
             required
             aria-required="true"
+            {...fieldErrors.fieldProps(nameId)}
           />
+          <FieldError fieldId={nameId} message={fieldErrors.errors[nameId]} />
         </div>
         <DynamicForm fields={fields} values={values} onChange={setValues} />
         {error && (

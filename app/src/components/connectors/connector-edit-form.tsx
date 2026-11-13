@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/layout/page-header'
 import { editBody, editProblem, editsForConnector } from '@/components/connectors/connector-credentials'
 import { CredentialEditor } from '@/components/connectors/credential-editor'
 import { ConnectorHealthBadge, connectorHealthSentence } from '@/components/connectors/connector-health'
+import { FieldError, useFieldErrors } from '@/components/forms/field-errors'
 import { schemaFields } from '@/components/forms/schema-fields'
 import { useToast } from '@/components/shared/toast-provider'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,7 @@ export function ConnectorEditForm({
   const [name, setName] = useState(connector.name)
   const [edits, setEdits] = useState(() => editsForConnector(fields, connector.configuredFields))
   const [error, setError] = useState<string | null>(null)
+  const fieldErrors = useFieldErrors()
 
   const fail = (message: string) => {
     setError(message)
@@ -41,7 +43,8 @@ export function ConnectorEditForm({
 
   const handleSave = async () => {
     if (!name.trim()) {
-      fail('Give this connector a name.')
+      setError(null)
+      fieldErrors.fail({ [nameId]: 'Give this connector a name.' })
       return
     }
     const problem = editProblem(fields, edits, connector.configuredFields)
@@ -91,10 +94,15 @@ export function ConnectorEditForm({
             id={nameId}
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value)
+              fieldErrors.clear(nameId)
+            }}
             required
             aria-required="true"
+            {...fieldErrors.fieldProps(nameId)}
           />
+          <FieldError fieldId={nameId} message={fieldErrors.errors[nameId]} />
         </div>
         <p className="text-sm text-muted-foreground">
           Stored credentials are never read back. Say what should happen to each one: keep what this instance

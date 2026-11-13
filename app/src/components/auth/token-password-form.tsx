@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useState, useEffect } from 'react'
+import { useId, useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
 import { useConfig } from '@/components/config/config-provider'
@@ -21,6 +21,13 @@ interface UserInfo {
   email: string
 }
 
+type FieldName = 'password' | 'confirm'
+
+interface FormIssue {
+  message: string
+  field: FieldName | null
+}
+
 type PageState =
   | { type: 'loading' }
   | { type: 'error'; message: string }
@@ -33,11 +40,14 @@ export function TokenPasswordForm({ token, mode }: TokenPasswordFormProps) {
   const [state, setState] = useState<PageState>({ type: 'loading' })
   const passwordId = useId()
   const confirmId = useId()
+  const errorId = useId()
+  const passwordRef = useRef<HTMLInputElement>(null)
+  const confirmRef = useRef<HTMLInputElement>(null)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [fieldError, setFieldError] = useState<string | null>(null)
+  const [fieldError, setFieldError] = useState<FormIssue | null>(null)
 
   const endpoint = `/api/node/${mode}/${token}`
   const title = mode === 'invite' ? 'Set your password' : 'Reset your password'
@@ -64,16 +74,21 @@ export function TokenPasswordForm({ token, mode }: TokenPasswordFormProps) {
     validate()
   }, [endpoint])
 
+  useEffect(() => {
+    if (fieldError?.field === 'password') passwordRef.current?.focus()
+    if (fieldError?.field === 'confirm') confirmRef.current?.focus()
+  }, [fieldError])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setFieldError(null)
 
     if (password.length < 6) {
-      setFieldError('Password must be at least 6 characters.')
+      setFieldError({ message: 'Password must be at least 6 characters.', field: 'password' })
       return
     }
     if (password !== confirm) {
-      setFieldError('Passwords do not match.')
+      setFieldError({ message: 'Passwords do not match.', field: 'confirm' })
       return
     }
 
@@ -86,13 +101,13 @@ export function TokenPasswordForm({ token, mode }: TokenPasswordFormProps) {
       })
       const data = await res.json()
       if (!res.ok) {
-        setFieldError(data.message ?? 'Something went wrong. Please try again.')
+        setFieldError({ message: data.message ?? 'Something went wrong. Please try again.', field: null })
       } else {
         setState({ type: 'success' })
         setTimeout(() => router.replace(LANDING_PATH), 2000)
       }
     } catch {
-      setFieldError('Could not reach the server. Please try again.')
+      setFieldError({ message: 'Could not reach the server. Please try again.', field: null })
     } finally {
       setSubmitting(false)
     }
@@ -149,11 +164,14 @@ export function TokenPasswordForm({ token, mode }: TokenPasswordFormProps) {
               <p className="text-muted-foreground">{state.user.email}</p>
             </div>
 
-            {/* Field error */}
             {fieldError && (
-              <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+              <div
+                id={errorId}
+                role={fieldError.field === null ? 'alert' : undefined}
+                className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
+              >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{fieldError}</span>
+                <span>{fieldError.message}</span>
               </div>
             )}
 
@@ -167,6 +185,9 @@ export function TokenPasswordForm({ token, mode }: TokenPasswordFormProps) {
                 </InputGroupAddon>
                 <InputGroupInput
                   id={passwordId}
+                  ref={passwordRef}
+                  aria-invalid={fieldError?.field === 'password'}
+                  aria-describedby={fieldError?.field === 'password' ? errorId : undefined}
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Min. 6 characters"
                   value={password}
@@ -200,6 +221,9 @@ export function TokenPasswordForm({ token, mode }: TokenPasswordFormProps) {
                 </InputGroupAddon>
                 <InputGroupInput
                   id={confirmId}
+                  ref={confirmRef}
+                  aria-invalid={fieldError?.field === 'confirm'}
+                  aria-describedby={fieldError?.field === 'confirm' ? errorId : undefined}
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Repeat password"
                   value={confirm}

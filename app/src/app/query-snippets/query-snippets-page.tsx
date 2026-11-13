@@ -1,8 +1,9 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useId, useState, type FormEvent } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { CreateWithAiButton } from '@/components/chat/create-with-ai-button'
+import { FieldError, useFieldErrors } from '@/components/forms/field-errors'
 import { PageHeader } from '@/components/layout/page-header'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { RowActionsMenu, type RowAction } from '@/components/shared/row-actions-menu'
@@ -36,15 +37,28 @@ export function QuerySnippetsPage() {
   const triggerId = useId()
   const descriptionId = useId()
   const snippetId = useId()
+  const fieldErrors = useFieldErrors()
 
   const visible = (snippets ?? []).filter((s) =>
     matchesSearch(search, [s.trigger, s.description, s.snippet])
   )
 
-  const handleCreate = async () => {
-    if (!trigger.trim() || !snippet.trim()) return
-    await createSnippet.mutateAsync({ trigger: trigger.trim(), description: description.trim(), snippet: snippet.trim() })
+  const closeCreate = () => {
     setShowCreate(false)
+    fieldErrors.reset()
+  }
+
+  const handleCreate = async (event: FormEvent) => {
+    event.preventDefault()
+    const missing: Record<string, string> = {}
+    if (!trigger.trim()) missing[triggerId] = 'Give the snippet a trigger.'
+    if (!snippet.trim()) missing[snippetId] = 'Enter the snippet text.'
+    if (Object.keys(missing).length > 0) {
+      fieldErrors.fail(missing)
+      return
+    }
+    await createSnippet.mutateAsync({ trigger: trigger.trim(), description: description.trim(), snippet: snippet.trim() })
+    closeCreate()
     setTrigger('')
     setDescription('')
     setSnippet('')
@@ -134,54 +148,66 @@ export function QuerySnippetsPage() {
           emptyMessage="No query snippets"
         />
       </div>
-      <Dialog open={showCreate} onOpenChange={(next) => { if (!next) setShowCreate(false) }}>
+      <Dialog open={showCreate} onOpenChange={(next) => { if (!next) closeCreate() }}>
         <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>New Query Snippet</DialogTitle>
-          </DialogHeader>
-          <div className="max-h-[70vh] space-y-3 overflow-y-auto">
-            <div>
-              <Label htmlFor={triggerId} className="mb-1 block" required>Trigger</Label>
-              <Input
-                id={triggerId}
-                type="text"
-                value={trigger}
-                onChange={(e) => setTrigger(e.target.value)}
-                placeholder="e.g. last7d"
-                required
-                aria-required="true"
-              />
+          <form noValidate onSubmit={handleCreate} className="contents">
+            <DialogHeader>
+              <DialogTitle>New Query Snippet</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-[70vh] space-y-3 overflow-y-auto">
+              <div>
+                <Label htmlFor={triggerId} className="mb-1 block" required>Trigger</Label>
+                <Input
+                  id={triggerId}
+                  type="text"
+                  value={trigger}
+                  onChange={(e) => {
+                    setTrigger(e.target.value)
+                    fieldErrors.clear(triggerId)
+                  }}
+                  placeholder="e.g. last7d"
+                  required
+                  aria-required="true"
+                  {...fieldErrors.fieldProps(triggerId)}
+                />
+                <FieldError fieldId={triggerId} message={fieldErrors.errors[triggerId]} />
+              </div>
+              <div>
+                <Label htmlFor={descriptionId} className="mb-1 block">Description</Label>
+                <Input
+                  id={descriptionId}
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor={snippetId} className="mb-1 block" required>Snippet</Label>
+                <Textarea
+                  id={snippetId}
+                  className="font-mono"
+                  value={snippet}
+                  onChange={(e) => {
+                    setSnippet(e.target.value)
+                    fieldErrors.clear(snippetId)
+                  }}
+                  rows={4}
+                  required
+                  aria-required="true"
+                  {...fieldErrors.fieldProps(snippetId)}
+                />
+                <FieldError fieldId={snippetId} message={fieldErrors.errors[snippetId]} />
+              </div>
             </div>
-            <div>
-              <Label htmlFor={descriptionId} className="mb-1 block">Description</Label>
-              <Input
-                id={descriptionId}
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor={snippetId} className="mb-1 block" required>Snippet</Label>
-              <Textarea
-                id={snippetId}
-                className="font-mono"
-                value={snippet}
-                onChange={(e) => setSnippet(e.target.value)}
-                rows={4}
-                required
-                aria-required="true"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={!trigger.trim() || !snippet.trim()}>
-              Create
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeCreate}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createSnippet.isPending}>
+                Create
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

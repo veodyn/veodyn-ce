@@ -1,10 +1,11 @@
 'use client'
 
-import { useId, useState } from 'react'
-import { Check, Copy } from 'lucide-react'
+import { useId } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { IconButton } from '@/components/shared/icon-button'
+import { CopyIcon, CopyStatus, copyTooltip } from '@/components/shared/copy-status'
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 
 interface InputWithCopyProps {
   value: string
@@ -13,14 +14,8 @@ interface InputWithCopyProps {
 }
 
 export function InputWithCopy({ value, className, label }: InputWithCopyProps) {
-  const [copied, setCopied] = useState(false)
+  const { status, copy } = useCopyToClipboard()
   const inputId = useId()
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(value)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   return (
     <div className={className}>
@@ -38,18 +33,15 @@ export function InputWithCopy({ value, className, label }: InputWithCopyProps) {
           className="flex-1 h-9 px-3 bg-muted text-sm font-mono"
         />
         <IconButton
-          tooltip={copied ? 'Copied' : 'Copy to clipboard'}
+          tooltip={copyTooltip(status, 'Copy to clipboard')}
           type="button"
           variant="outline"
           size="icon-lg"
-          onClick={handleCopy}
+          onClick={() => copy(value)}
         >
-          {copied ? (
-            <Check className="h-4 w-4 text-status-fresh" />
-          ) : (
-            <Copy className="h-4 w-4" />
-          )}
+          <CopyIcon status={status} className="h-4 w-4" />
         </IconButton>
+        <CopyStatus status={status} />
       </div>
     </div>
   )

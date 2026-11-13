@@ -5,6 +5,7 @@ import { ArrowLeft, Trash2, Loader2 } from 'lucide-react'
 
 import { useAuthStore } from '@/stores/auth-store'
 import { ApiError, redashApi } from '@/services/api-client'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useToast } from '@/components/shared/toast-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,6 +31,8 @@ export function GroupDetail({ groupId, onBack }: GroupDetailProps) {
   const [loadError, setLoadError] = useState<LoadError | null>(null)
   const [name, setName] = useState('')
   const [tab, setTab] = useState<'members' | 'data_sources'>('members')
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Add data source
   const [allDataSources, setAllDataSources] = useState<Array<{ id: number; name: string }>>([])
@@ -148,15 +151,16 @@ export function GroupDetail({ groupId, onBack }: GroupDetailProps) {
 
   const handleDelete = async () => {
     if (!group) return
-    // The server's current name, not the rename field: an unsaved edit must not
-    // change what the last guard before an irreversible delete says is going.
-    if (!confirm(`Delete group "${group.name}"? This cannot be undone.`)) return
+    setIsDeleting(true)
     try {
       await redashApi.delete(`groups/${groupId}`)
       toast.success(`Group "${group.name}" deleted`)
       onBack()
     } catch {
       toast.error('Failed to delete group')
+    } finally {
+      setIsDeleting(false)
+      setConfirmingDelete(false)
     }
   }
 
@@ -264,12 +268,23 @@ export function GroupDetail({ groupId, onBack }: GroupDetailProps) {
       {/* Delete group */}
       {isAdmin && !isBuiltin && (
         <div className="pt-4 border-t">
-          <Button variant="destructive" onClick={handleDelete}>
-          <Trash2 className="h-3.5 w-3.5" />
+          <Button variant="destructive" onClick={() => setConfirmingDelete(true)}>
+            <Trash2 className="h-3.5 w-3.5" />
             Delete Group
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setConfirmingDelete(false)
+        }}
+        title="Delete group?"
+        description={`Delete group "${group.name}"? This cannot be undone.`}
+        isPending={isDeleting}
+        onConfirm={handleDelete}
+      />
     </div>
   )
 }

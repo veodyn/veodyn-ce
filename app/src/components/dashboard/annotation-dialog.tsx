@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { useAiEnabled } from '@/hooks/use-ai'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAnnotations, useCreateAnnotation, useDeleteAnnotation } from '@/hooks/use-annotations'
-import { annotationDraftError } from '@/lib/annotation-validation'
+import { annotationDraftIssue, type AnnotationDraftField } from '@/lib/annotation-validation'
 import { useFormats } from '@/hooks/use-formats'
 import { Slot } from '@/features/slots'
 
@@ -30,6 +30,10 @@ export function AnnotationDialog({ open, onClose, dashboardId, widgetId }: Annot
   const startId = useId()
   const endId = useId()
   const sourceId = useId()
+  const errorId = useId()
+  const labelRef = useRef<HTMLInputElement>(null)
+  const startRef = useRef<HTMLInputElement>(null)
+  const endRef = useRef<HTMLInputElement>(null)
   const formats = useFormats()
   const aiEnabled = useAiEnabled()
   const { data: annotations } = useAnnotations(dashboardId)
@@ -41,7 +45,7 @@ export function AnnotationDialog({ open, onClose, dashboardId, widgetId }: Annot
   const [end, setEnd] = useState('')
   const [source, setSource] = useState('manual')
   const [pinned, setPinned] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ message: string; field: AnnotationDraftField | null } | null>(null)
 
   const resetForm = () => {
     setLabel('')
@@ -52,11 +56,19 @@ export function AnnotationDialog({ open, onClose, dashboardId, widgetId }: Annot
     setError(null)
   }
 
+  useEffect(() => {
+    if (error?.field === 'label') labelRef.current?.focus()
+    if (error?.field === 'start') startRef.current?.focus()
+    if (error?.field === 'end') endRef.current?.focus()
+  }, [error])
+
+  const describedBy = (field: AnnotationDraftField) => (error?.field === field ? errorId : undefined)
+
   const handleSubmit = () => {
     const trimmedLabel = label.trim()
     // One rule, shared with the AI suggestion path (src/lib/annotation-validation.ts),
     // so an AI draft cannot enter through a gap this form would have closed.
-    const problem = annotationDraftError({ label, start, end })
+    const problem = annotationDraftIssue({ label, start, end })
     if (problem !== null) {
       setError(problem)
       return
@@ -78,9 +90,10 @@ export function AnnotationDialog({ open, onClose, dashboardId, widgetId }: Annot
         // something left to retry.
         onSuccess: () => resetForm(),
         onError: (err) =>
-          setError(
-            `This annotation was not saved. ${err instanceof Error ? err.message : 'The request was refused.'}`
-          ),
+          setError({
+            message: `This annotation was not saved. ${err instanceof Error ? err.message : 'The request was refused.'}`,
+            field: null,
+          }),
       }
     )
   }
@@ -99,6 +112,9 @@ export function AnnotationDialog({ open, onClose, dashboardId, widgetId }: Annot
               </Label>
               <Input
                 id={labelId}
+                ref={labelRef}
+                aria-invalid={error?.field === 'label'}
+                aria-describedby={describedBy('label')}
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 placeholder="What happened"
@@ -113,6 +129,9 @@ export function AnnotationDialog({ open, onClose, dashboardId, widgetId }: Annot
                 </Label>
                 <Input
                   id={startId}
+                  ref={startRef}
+                  aria-invalid={error?.field === 'start'}
+                  aria-describedby={describedBy('start')}
                   type="datetime-local"
                   value={start}
                   onChange={(e) => setStart(e.target.value)}
@@ -126,6 +145,9 @@ export function AnnotationDialog({ open, onClose, dashboardId, widgetId }: Annot
                 </Label>
                 <Input
                   id={endId}
+                  ref={endRef}
+                  aria-invalid={error?.field === 'end'}
+                  aria-describedby={describedBy('end')}
                   type="datetime-local"
                   value={end}
                   onChange={(e) => setEnd(e.target.value)}
@@ -147,7 +169,15 @@ export function AnnotationDialog({ open, onClose, dashboardId, widgetId }: Annot
                 </Label>
               </div>
             )}
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && (
+              <p
+                id={errorId}
+                role={error.field === null ? 'alert' : undefined}
+                className="text-sm text-destructive"
+              >
+                {error.message}
+              </p>
+            )}
           </div>
 
           {/* Annotating a dashboard is community; having a model propose the

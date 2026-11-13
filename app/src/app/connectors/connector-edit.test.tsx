@@ -285,4 +285,22 @@ describe('editing a configured connector', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Crier API token')
     expect(putCount).toBe(0)
   })
+
+  it('flags a cleared name on the field, links the message and focuses it', async () => {
+    const user = userEvent.setup()
+    await render()
+
+    const nameField = screen.getByRole('textbox', { name: 'Name' })
+    await user.clear(nameField)
+    await save(user)
+
+    expect(nameField).toHaveAttribute('aria-invalid', 'true')
+    expect(nameField).toHaveAccessibleDescription('Give this connector a name.')
+    expect(nameField).toHaveFocus()
+    expect(putCount).toBe(0)
+
+    await user.type(nameField, 'A')
+
+    expect(nameField).not.toHaveAttribute('aria-invalid')
+  })
 })

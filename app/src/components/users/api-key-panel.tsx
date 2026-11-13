@@ -1,10 +1,12 @@
 'use client'
 
 import { useId, useState } from 'react'
-import { Eye, EyeOff, RefreshCw, Copy, Check } from 'lucide-react'
+import { Eye, EyeOff, RefreshCw } from 'lucide-react'
 
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { useRegenerateApiKey } from '@/hooks/use-profile'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { CopyIcon, copyTooltip } from '@/components/shared/copy-status'
 import { IconButton } from '@/components/shared/icon-button'
 import { useToast } from '@/components/shared/toast-provider'
 import { Button } from '@/components/ui/button'
@@ -32,7 +34,7 @@ export function ApiKeyPanel({ userId, apiKey, canRegenerate, onRegenerated }: Ap
   // them ever share a document.
   const labelId = useId()
   const [showApiKey, setShowApiKey] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const { status: copyStatus, copy } = useCopyToClipboard()
   const [confirmingRegenerate, setConfirmingRegenerate] = useState(false)
 
   const handleRegenerateApiKey = async () => {
@@ -48,12 +50,11 @@ export function ApiKeyPanel({ userId, apiKey, canRegenerate, onRegenerated }: Ap
 
   const handleCopyApiKey = async () => {
     if (!apiKey) return
-    await navigator.clipboard.writeText(apiKey)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-    // The invite link a few rows down toasts when it is copied. The same
-    // gesture reporting two different ways reads as one of them having failed.
-    toast.success('API key copied')
+    if (await copy(apiKey)) {
+      toast.success('API key copied')
+    } else {
+      toast.error('Could not copy the API key')
+    }
   }
 
   return (
@@ -89,18 +90,14 @@ export function ApiKeyPanel({ userId, apiKey, canRegenerate, onRegenerated }: Ap
             {showApiKey ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
           </IconButton>
           <IconButton
-            tooltip={copied ? 'Copied' : 'Copy API key'}
+            tooltip={copyTooltip(copyStatus, 'Copy API key')}
             aria-label="Copy API key"
             variant="ghost"
             size="icon"
             onClick={handleCopyApiKey}
             className="rounded-none rounded-r-md border-l-border text-muted-foreground"
           >
-            {copied ? (
-              <Check className="size-3.5 text-status-fresh" />
-            ) : (
-              <Copy className="size-3.5" />
-            )}
+            <CopyIcon status={copyStatus} className="size-3.5" />
           </IconButton>
         </div>
         {canRegenerate && (

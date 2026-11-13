@@ -11,6 +11,7 @@
  * a `.dark` or `.light` further down the DOM change what a utility paints.
  */
 :root {
+  color-scheme: light;
   --background: #F7F5F0;
   --foreground: #1C1B18;
   --card: #FFFFFF;
@@ -26,10 +27,11 @@
   --accent: #EFEBE2;
   --accent-foreground: #1C1B18;
   --destructive: #B4552D;
+  --destructive-foreground: #FFFFFF;
   --border: #E5E1D8;
   --input: #E5E1D8;
-  --scrollbar-thumb: #D3CEC2;
-  --scrollbar-thumb-hover: #B6B0A2;
+  --scrollbar-thumb: #8F897B;
+  --scrollbar-thumb-hover: #6F695D;
   --ring: #475569;
   --chart-1: #485EA7;
   --chart-2: #2B7E4E;
@@ -65,6 +67,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: #0B0E14;
   --foreground: #E7E9EE;
   --card: #12161F;
@@ -80,10 +83,11 @@
   --accent: #1A1F2B;
   --accent-foreground: #E7E9EE;
   --destructive: #E06A45;
+  --destructive-foreground: #0B0E14;
   --border: rgba(255, 255, 255, 0.08);
   --input: rgba(255, 255, 255, 0.12);
-  --scrollbar-thumb: rgba(255, 255, 255, 0.16);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.4);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.6);
   --ring: #7FA9E0;
   --chart-1: #4A61AA;
   --chart-2: #2B7E4E;

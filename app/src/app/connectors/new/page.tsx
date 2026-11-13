@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useId, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Radio } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
@@ -8,6 +8,7 @@ import { credentialsToSend, missingCredentialMessage } from '@/components/connec
 import { ContentContractSummary } from '@/components/connectors/content-contract-summary'
 import { schemaFields } from '@/components/forms/schema-fields'
 import { DynamicForm, useDynamicFormState } from '@/components/forms/dynamic-form'
+import { FieldError, useFieldErrors } from '@/components/forms/field-errors'
 import { useToast } from '@/components/shared/toast-provider'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -27,6 +28,7 @@ export default function NewConnectorPage() {
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const form = useDynamicFormState()
+  const fieldErrors = useFieldErrors()
 
   const connectorType = types?.find((t) => t.connectorId === selectedId)
   const fields = schemaFields(connectorType?.credentialSchema)
@@ -35,12 +37,18 @@ export default function NewConnectorPage() {
     if (connectorId !== selectedId) {
       form.reset()
       setError(null)
+      fieldErrors.reset()
     }
     setSelectedId(connectorId)
   }
 
-  const handleCreate = async () => {
-    if (!selectedId || !name.trim()) return
+  const handleCreate = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!selectedId) return
+    if (!name.trim()) {
+      fieldErrors.fail({ [nameId]: 'Give this connector a name.' })
+      return
+    }
     const credentials = credentialsToSend(fields, form.values)
     const incomplete = missingCredentialMessage(fields, credentials)
     if (incomplete) {
@@ -97,35 +105,42 @@ export default function NewConnectorPage() {
         <>
           <PageHeader title={`New ${connectorType.displayName} Connector`} />
           <Card className="p-6">
-            <div>
-              <Label htmlFor={nameId} className="mb-1 block" required>
-                Name
-              </Label>
-              <Input
-                id={nameId}
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Connector name"
-                required
-                aria-required="true"
-              />
-            </div>
-            <DynamicForm fields={fields} values={form.values} onChange={form.onChange} />
-            <ContentContractSummary connectorType={connectorType} />
-            {error && (
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-            )}
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setSelectedId(null)}>
-                Back
-              </Button>
-              <Button onClick={handleCreate} disabled={!name.trim() || createConnector.isPending}>
-                Save and test
-              </Button>
-            </div>
+            <form noValidate onSubmit={handleCreate} className="contents">
+              <div>
+                <Label htmlFor={nameId} className="mb-1 block" required>
+                  Name
+                </Label>
+                <Input
+                  id={nameId}
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value)
+                    fieldErrors.clear(nameId)
+                  }}
+                  placeholder="Connector name"
+                  required
+                  aria-required="true"
+                  {...fieldErrors.fieldProps(nameId)}
+                />
+                <FieldError fieldId={nameId} message={fieldErrors.errors[nameId]} />
+              </div>
+              <DynamicForm fields={fields} values={form.values} onChange={form.onChange} />
+              <ContentContractSummary connectorType={connectorType} />
+              {error && (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setSelectedId(null)}>
+                  Back
+                </Button>
+                <Button type="submit" disabled={createConnector.isPending}>
+                  Save and test
+                </Button>
+              </div>
+            </form>
           </Card>
         </>
       )}

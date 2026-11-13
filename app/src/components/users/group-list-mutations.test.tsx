@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders, resetStores } from '@/test/utils'
 import { Toaster } from '@/components/ui/sonner'
@@ -35,32 +35,34 @@ function renderList(onSelectGroup = vi.fn()) {
 const deletes = (writes: Write[]) => writes.filter((w) => w.method === 'DELETE')
 
 describe('GroupList delete', () => {
-  it('asks before deleting and sends nothing when the answer is no', async () => {
+  it('asks in a dialog before deleting and sends nothing when cancelled', async () => {
     const user = userEvent.setup()
     signInAsAdmin()
     const { writes } = serveGroupList([DATA_TEAM, READONLY])
     renderList()
 
-    // Not left at jsdom's default: confirm() answers undefined there, which the
-    // component would also read as "cancelled", so a build that had dropped the
-    // guard entirely would still satisfy the assertions below.
-    confirmSpy.mockReturnValue(false)
     await user.click(await screen.findByRole('button', { name: 'Delete Data Team' }))
 
-    expect(confirmSpy).toHaveBeenCalledOnce()
-    expect(confirmSpy.mock.calls[0][0]).toMatch(/data team/i)
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent(/data team/i)
+    expect(confirmSpy).not.toHaveBeenCalled()
+    expect(deletes(writes)).toEqual([])
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(deletes(writes)).toEqual([])
     expect(screen.getByText('Data Team')).toBeInTheDocument()
   })
 
-  it('deletes the chosen group and refetches the list', async () => {
+  it('deletes the chosen group once the dialog is confirmed and refetches the list', async () => {
     const user = userEvent.setup()
     signInAsAdmin()
     const { writes } = serveGroupList([DATA_TEAM, READONLY])
     renderList()
 
-    confirmSpy.mockReturnValue(true)
     await user.click(await screen.findByRole('button', { name: 'Delete Data Team' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }))
 
     await waitFor(() =>
       expect(deletes(writes)).toEqual([
@@ -68,10 +70,9 @@ describe('GroupList delete', () => {
       ])
     )
     await waitFor(() => expect(screen.queryByText('Data Team')).not.toBeInTheDocument())
-    // The other group is what makes this a delete rather than a list that
-    // emptied itself: the absence above passes either way.
     expect(screen.getByText('Readonly')).toBeInTheDocument()
     await waitFor(() => expect(toastOfType('success')).toHaveTextContent(/"Data Team" deleted/i))
+    expect(confirmSpy).not.toHaveBeenCalled()
   })
 
   it('leaves the row in place when the delete is refused', async () => {
@@ -80,8 +81,8 @@ describe('GroupList delete', () => {
     serveGroupList([DATA_TEAM], { failDelete: true })
     renderList()
 
-    confirmSpy.mockReturnValue(true)
     await user.click(await screen.findByRole('button', { name: 'Delete Data Team' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }))
 
     await waitFor(() => expect(toastOfType('error')).toHaveTextContent(/failed to delete group/i))
     expect(screen.getByText('Data Team')).toBeInTheDocument()
@@ -97,9 +98,7 @@ describe('GroupList create', () => {
 
     await user.click(await screen.findByRole('button', { name: /new group/i }))
     const field = await screen.findByRole('textbox', { name: 'Group Name' })
-    // Nothing typed yet, so there is nothing to create. Checked after the
-    // dialog is open, so this is a disabled control rather than a missing one.
-    expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Create' })).toBeEnabled()
 
     await user.type(field, 'Platform Team')
     await user.click(screen.getByRole('button', { name: 'Create' }))
@@ -148,5 +147,40 @@ describe('GroupList create', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'Group Name' })).toHaveValue('Platform Team')
     expect(onSelectGroup).not.toHaveBeenCalled()
+  })
+
+  it('flags an empty name on the field, links the message and focuses it', async () => {
+    const user = userEvent.setup()
+    signInAsAdmin()
+    const { writes } = serveGroupList([DATA_TEAM])
+    renderList()
+
+    await user.click(await screen.findByRole('button', { name: /new group/i }))
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+
+    const field = screen.getByRole('textbox', { name: 'Group Name' })
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    expect(field).toHaveAccessibleDescription('Give the group a name.')
+    expect(field).toHaveFocus()
+    expect(writes).toEqual([])
+
+    await user.type(field, 'P')
+
+    expect(field).not.toHaveAttribute('aria-invalid')
+    expect(screen.queryByText('Give the group a name.')).toBeNull()
+  })
+
+  it('submits when Enter is pressed in the name field', async () => {
+    const user = userEvent.setup()
+    signInAsAdmin()
+    const { writes } = serveGroupList([DATA_TEAM])
+    renderList()
+
+    await user.click(await screen.findByRole('button', { name: /new group/i }))
+    await user.type(await screen.findByRole('textbox', { name: 'Group Name' }), 'Platform Team{Enter}')
+
+    await waitFor(() =>
+      expect(writes).toContainEqual({ method: 'POST', path: '/api/node/groups', body: { name: 'Platform Team' } })
+    )
   })
 })

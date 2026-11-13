@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { Check, Copy } from 'lucide-react'
 import { IconButton } from '@/components/shared/icon-button'
+import { CopyIcon, CopyStatus, copyTooltip } from '@/components/shared/copy-status'
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import type { DatasetColumn } from '@/types/catalog'
 
 /**
@@ -20,9 +20,9 @@ import type { DatasetColumn } from '@/types/catalog'
  * unsure whether it copied or merely acknowledged.
  */
 export function CopySchemaJson({ schema }: { schema: DatasetColumn[] }) {
-  const [copied, setCopied] = useState(false)
+  const { status, copy } = useCopyToClipboard()
 
-  const handleCopy = async () => {
+  const handleCopy = () => {
     // `description` is optional on the type and absent on most warehouse
     // columns. Emitted only where there is one, so a consumer reads a missing
     // key as "no description" rather than having to tell `null`, `""` and
@@ -32,24 +32,21 @@ export function CopySchemaJson({ schema }: { schema: DatasetColumn[] }) {
       type: column.type,
       ...(column.description ? { description: column.description } : {}),
     }))
-    await navigator.clipboard.writeText(JSON.stringify(asJson, null, 2))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    return copy(JSON.stringify(asJson, null, 2))
   }
 
   return (
-    <IconButton
-      tooltip={copied ? 'Copied' : 'Copy schema as JSON'}
-      type="button"
-      variant="ghost"
-      size="icon-sm"
-      onClick={handleCopy}
-    >
-      {copied ? (
-        <Check className="h-3.5 w-3.5 text-status-fresh" />
-      ) : (
-        <Copy className="h-3.5 w-3.5" />
-      )}
-    </IconButton>
+    <>
+      <IconButton
+        tooltip={copyTooltip(status, 'Copy schema as JSON')}
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        onClick={handleCopy}
+      >
+        <CopyIcon status={status} className="h-3.5 w-3.5" />
+      </IconButton>
+      <CopyStatus status={status} />
+    </>
   )
 }

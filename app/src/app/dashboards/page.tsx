@@ -1,11 +1,12 @@
 'use client'
 
-import { Suspense, useId, useState } from 'react'
+import { Suspense, useId, useState, type FormEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { CreateWithAiButton } from '@/components/chat/create-with-ai-button'
 import { PageHeader } from '@/components/layout/page-header'
+import { FieldError, useFieldErrors } from '@/components/forms/field-errors'
 import { ItemsTable, LIST_PAGE_SIZE, type Column } from '@/components/shared/items-table'
 import { ListLoadError } from '@/components/shared/list-load-error'
 import { ListPageTabs } from '@/components/shared/list-page-tabs'
@@ -48,6 +49,7 @@ function DashboardsContent() {
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
   const newNameId = useId()
+  const fieldErrors = useFieldErrors()
 
   // useAllDashboards, not useDashboards: the table sorts and counts the set it
   // is given, so a single 25-row server page would have made "sort by name"
@@ -89,8 +91,17 @@ function DashboardsContent() {
   // end of the library.
   const truncated = active?.truncated === true
 
-  const handleCreate = async () => {
-    if (!newName.trim()) return
+  const closeCreate = () => {
+    setShowCreate(false)
+    fieldErrors.reset()
+  }
+
+  const handleCreate = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!newName.trim()) {
+      fieldErrors.fail({ [newNameId]: 'Give the dashboard a name.' })
+      return
+    }
     const dashboard = await createDashboard.mutateAsync({ name: newName.trim() })
     setShowCreate(false)
     setNewName('')
@@ -214,33 +225,39 @@ function DashboardsContent() {
         )}
       </div>
 
-      <Dialog open={showCreate} onOpenChange={(next) => { if (!next) setShowCreate(false) }}>
+      <Dialog open={showCreate} onOpenChange={(next) => { if (!next) closeCreate() }}>
         <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Create a New Dashboard</DialogTitle>
-          </DialogHeader>
-          <div className="max-h-[70vh] overflow-y-auto">
-            <Label htmlFor={newNameId} className="mb-1.5 block" required>Dashboard Name</Label>
-            <Input
-              id={newNameId}
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              placeholder="Enter dashboard name..."
-              autoFocus
-              required
-              aria-required="true"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={!newName.trim() || createDashboard.isPending}>
-              Create
-            </Button>
-          </DialogFooter>
+          <form noValidate onSubmit={handleCreate} className="contents">
+            <DialogHeader>
+              <DialogTitle>Create a New Dashboard</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-[70vh] overflow-y-auto">
+              <Label htmlFor={newNameId} className="mb-1.5 block" required>Dashboard Name</Label>
+              <Input
+                id={newNameId}
+                type="text"
+                value={newName}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  fieldErrors.clear(newNameId)
+                }}
+                placeholder="Enter dashboard name..."
+                autoFocus
+                required
+                aria-required="true"
+                {...fieldErrors.fieldProps(newNameId)}
+              />
+              <FieldError fieldId={newNameId} message={fieldErrors.errors[newNameId]} />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeCreate}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createDashboard.isPending}>
+                Create
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </PageContainer>

@@ -213,4 +213,32 @@ describe('ChoroplethEditor', () => {
       mapType: 'world-countries',
     })
   })
+
+  it('links the unset map property to its Required message and flags the trigger', () => {
+    renderWithProviders(<ControlledChoroplethEditor initial={{}} onChange={vi.fn()} />)
+
+    const target = screen.getAllByRole('combobox')[TARGET]
+    expect(target).toHaveAttribute('aria-invalid', 'true')
+    expect(target).toHaveAccessibleDescription(/^Required\. Until a map property is picked/)
+  })
+
+  it('drops the invalid flag and the Required link once a map property is picked', () => {
+    renderWithProviders(
+      <ControlledChoroplethEditor initial={{ targetField: 'iso_a2' }} onChange={vi.fn()} />
+    )
+
+    const target = screen.getAllByRole('combobox')[TARGET]
+    expect(target).not.toHaveAttribute('aria-invalid', 'true')
+    expect(target).not.toHaveAccessibleDescription(/Required/)
+  })
+
+  it('links the unset geometry column to its Required message and flags the trigger', () => {
+    renderWithProviders(
+      <ControlledChoroplethEditor initial={{ boundarySource: 'column' }} onChange={vi.fn()} />
+    )
+
+    const geometry = screen.getByRole('combobox', { name: /Geometry Column/ })
+    expect(geometry).toHaveAttribute('aria-invalid', 'true')
+    expect(geometry).toHaveAccessibleDescription(/^Required\. The boundaries live in this column/)
+  })
 })

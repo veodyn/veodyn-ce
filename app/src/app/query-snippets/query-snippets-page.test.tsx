@@ -54,6 +54,41 @@ describe('QuerySnippetsPage', () => {
   })
 })
 
+describe('submitting the new snippet form', () => {
+  it('keeps Create enabled and flags every empty required field, focusing the first', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<QuerySnippetsPage />)
+
+    await user.click(screen.getByRole('button', { name: /new snippet/i }))
+    expect(screen.getByRole('button', { name: /^create$/i })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: /^create$/i }))
+
+    const trigger = screen.getByRole('textbox', { name: 'Trigger' })
+    const snippet = screen.getByRole('textbox', { name: 'Snippet' })
+    expect(trigger).toHaveAttribute('aria-invalid', 'true')
+    expect(trigger).toHaveAccessibleDescription('Give the snippet a trigger.')
+    expect(trigger).toHaveFocus()
+    expect(snippet).toHaveAttribute('aria-invalid', 'true')
+    expect(snippet).toHaveAccessibleDescription('Enter the snippet text.')
+
+    await user.type(trigger, 'x')
+
+    expect(trigger).not.toHaveAttribute('aria-invalid')
+    expect(snippet).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('creates the snippet when Enter is pressed in a single-line field', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<QuerySnippetsPage />)
+
+    await user.click(screen.getByRole('button', { name: /new snippet/i }))
+    await user.type(screen.getByRole('textbox', { name: 'Snippet' }), 'select 1')
+    await user.type(screen.getByRole('textbox', { name: 'Trigger' }), 'one{Enter}')
+
+    expect(await screen.findByText('one')).toBeInTheDocument()
+  })
+})
+
 // QuerySnippetResource.delete (node/redash/handlers/query_snippets.py:33-35)
 // calls require_admin_or_owner(snippet.user.id), which aborts 403 for anyone
 // who is neither. The row used to show a trash can to all of them, so every

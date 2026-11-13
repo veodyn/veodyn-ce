@@ -1,5 +1,6 @@
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { CodeBlock } from '@/components/shared/code-block'
 
 // This used to pin the hover reveal: `group-hover:opacity-100` plus a
@@ -17,4 +18,24 @@ it('shows the copy button without waiting to be hovered or focused', () => {
   const button = screen.getByRole('button', { name: /copy/i })
   expect(button.className).not.toMatch(/opacity-0/)
   expect(button).toBeVisible()
+})
+
+it('announces a successful copy in a status region', async () => {
+  const user = userEvent.setup()
+  render(<CodeBlock code="select 1" />)
+
+  await user.click(screen.getByRole('button', { name: 'Copy code' }))
+
+  expect(await screen.findByRole('status')).toHaveTextContent('Copied')
+})
+
+it('shows and announces a failure when the clipboard rejects the write', async () => {
+  const user = userEvent.setup()
+  vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'))
+  render(<CodeBlock code="select 1" />)
+
+  await user.click(screen.getByRole('button', { name: 'Copy code' }))
+
+  expect(await screen.findByRole('status')).toHaveTextContent('Copy failed')
+  expect(screen.getByRole('button', { name: 'Copy failed' })).toBeInTheDocument()
 })

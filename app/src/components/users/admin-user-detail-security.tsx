@@ -5,6 +5,7 @@ import { Mail, Lock, Info, Copy } from 'lucide-react'
 
 import { redashApi } from '@/services/api-client'
 import { toLocalLink } from '@/lib/link-utils'
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { useToast } from '@/components/shared/toast-provider'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/shared/icon-button'
@@ -47,6 +48,7 @@ export function AdminUserDetailSecurity({
 }: AdminUserDetailSecurityProps) {
   const toast = useToast()
   const passwordLabelId = useId()
+  const { copy } = useCopyToClipboard()
   const [showPasswordDialog, setShowPasswordDialog] = useState(false)
 
   const handlePasswordReset = async () => {
@@ -137,8 +139,11 @@ export function AdminUserDetailSecurity({
                 variant="outline"
                 size="sm"
                 onClick={async () => {
-                  await navigator.clipboard.writeText(inviteLink)
-                  toast.success('Link copied')
+                  if (await copy(inviteLink)) {
+                    toast.success('Link copied')
+                  } else {
+                    toast.error('Could not copy the link')
+                  }
                 }}
               >
                 <Copy className="h-3.5 w-3.5" />

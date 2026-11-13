@@ -31,7 +31,9 @@ describe('ConnectMcpPage', () => {
     // analytics backend, and this is where the user decides to copy the URL.
     renderPage(null)
 
-    expect(screen.getByRole('status')).toHaveTextContent(/no analytics backend configured/i)
+    expect(
+      screen.getAllByRole('status').find((el) => el.textContent !== '')
+    ).toHaveTextContent(/no analytics backend configured/i)
   })
 
   it('shows the client config carrying an API key, which is what the endpoint accepts', () => {

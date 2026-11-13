@@ -241,4 +241,22 @@ describe('editing an alert destination', () => {
 
     expect(await screen.findByText(/Unable to load this destination/)).toBeInTheDocument()
   })
+
+  it('flags a cleared name on the field, links the message and focuses it', async () => {
+    const user = userEvent.setup()
+    await renderPage()
+    const nameInput = await loadedNameInput()
+
+    await user.clear(nameInput)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput).toHaveAccessibleDescription('Give the destination a name.')
+    expect(nameInput).toHaveFocus()
+    expect(postCount).toBe(0)
+
+    await user.type(nameInput, 'O')
+
+    expect(nameInput).not.toHaveAttribute('aria-invalid')
+  })
 })
