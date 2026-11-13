@@ -28,7 +28,7 @@ def _voted_name(stop):
     return stop.get("original_public_name") or stop.get("public_name")
 
 
-def _id511(stop):
+def stop_511_id(stop):
     return str(stop.get("511_id") or "").strip()
 
 
@@ -115,14 +115,14 @@ def _location_row(id511, members, profiles):
 
 def location_member_filter(params):
     wanted = str(params.get("stop_511_id") or "").strip()
-    return (lambda stop: _id511(stop) == wanted) if wanted else None
+    return (lambda stop: stop_511_id(stop) == wanted) if wanted else None
 
 
 def location_rows(stops, profiles, params):
     keep = location_member_filter(params)
     grouped = defaultdict(list)
     for stop in stops:
-        id511 = _id511(stop)
+        id511 = stop_511_id(stop)
         if id511 and (keep is None or keep(stop)):
             grouped[id511].append(stop)
     return [_location_row(id511, grouped[id511], profiles) for id511 in sorted(grouped)]

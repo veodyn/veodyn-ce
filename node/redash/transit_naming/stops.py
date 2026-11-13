@@ -247,12 +247,16 @@ def normalize_text(text, rules):
     return " ".join(words)
 
 
+def is_retired(stop):
+    return not str(stop.get("transit_modes") or "").strip() and int(stop.get("prediction_count") or 0) == 0
+
+
 def name_stop(stop, profile):
     rules = profile.stop_name
     original = _tidy(stop.get("stop_name"))
     raw = _cased(strip_position_notes(original), rules)
     mode = _mode(stop)
-    retired = not str(stop.get("transit_modes") or "").strip() and int(stop.get("prediction_count") or 0) == 0
+    retired = is_retired(stop)
     casing = _street_casing(original, rules)
     on_street = _street_cased(stop.get("on_street"), rules, casing)
     cross_street = _street_cased(stop.get("cross_street"), rules, casing)

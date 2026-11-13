@@ -96,6 +96,21 @@ PUBLIC_RESOURCES = {
         ],
         "example": '{"resource": "public_stop_locations", "params": {"stop_511_id": "1000997"}}',
     },
+    "public_stop_merge_candidates": {
+        "path": "v2/transitnetwork/stops",
+        "doc_params": [
+            "carrier_code (optional): string - only pairs this carrier is in",
+            "within_m (optional): number - meters between the two stops, default 15, at most 50",
+        ],
+        "doc_returns": [
+            "one row per pair of stops from two carriers that look like one physical stop but are not one 511 location:",
+            "same street names in either order (or the same name), within within_m, neither retired",
+            "never proposed: same carrier, the same 511_id, or both directions known and different",
+            "carrier_a, stop_id_a, 511_id_a, public_name_a, direction_a and the same for b, ordered by carrier then stop",
+            "separation_m, reason: different_511_id | missing_511_id, normalization_revision",
+        ],
+        "example": '{"resource": "public_stop_merge_candidates", "params": {"carrier_code": "MT"}}',
+    },
     "naming_profiles": {
         "path": "",
         "doc_params": ["none - reads the loaded profile set"],

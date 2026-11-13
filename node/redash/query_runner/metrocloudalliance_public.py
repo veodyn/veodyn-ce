@@ -12,6 +12,10 @@ from redash.transit_naming.locations import (
     location_rows,
 )
 from redash.transit_naming.mca_patterns import mca_route_patterns
+from redash.transit_naming.merge_candidates import (
+    MERGE_CANDIDATE_COLUMNS,
+    merge_candidate_rows,
+)
 from redash.transit_naming.override_status import (
     OVERRIDE_STATUS_COLUMNS,
     override_status,
@@ -26,6 +30,7 @@ from redash.transit_naming.profile_loader import load_profiles, profile_dirs
 from redash.transit_naming.routes import name_route, parse_route_number, route_row
 from redash.transit_naming.snapshot import PatternStop, RouteName, StopName
 from redash.transit_naming.stop_rows import stop_row
+from redash.transit_naming.stops import is_retired
 from redash.transit_naming.suffixes import CarrierIndexes
 from redash.transit_naming.trip_routes import TRIP_ROUTE_COLUMNS, trip_route_rows
 
@@ -106,6 +111,7 @@ PUBLIC_COLUMN_NAMES = {
     "public_trip_routes": list(TRIP_ROUTE_COLUMNS),
     "public_departures": [column.split(":")[0] for column in PUBLIC_DEPARTURE_COLUMNS],
     "public_stop_locations": list(LOCATION_COLUMNS),
+    "public_stop_merge_candidates": list(MERGE_CANDIDATE_COLUMNS),
     "naming_profiles": ["carrier_code", "source_file", "is_default", "gtfs_sources", "overrides", "revision"],
     "name_overrides": list(OVERRIDE_STATUS_COLUMNS),
 }
@@ -275,6 +281,9 @@ def run_public_resource(resource, params, fetch, now=None, archive_fetcher=None,
     if resource == "public_stop_locations":
         stops = public_stops({}, fetch, profiles, archive_fetcher, source, location_member_filter(params))
         return location_rows(stops, profiles, params)
+    if resource == "public_stop_merge_candidates":
+        active = public_stops({}, fetch, profiles, archive_fetcher, source, lambda stop: not is_retired(stop))
+        return merge_candidate_rows(active, params)
     if resource == "public_route_stops":
         return public_route_stops(params, fetch, profiles, archive_fetcher, source)
     if resource == "public_route_paths":

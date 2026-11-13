@@ -2,12 +2,13 @@ import hashlib
 import json
 from collections import defaultdict
 from dataclasses import dataclass, replace
-from math import asin, cos, isfinite, radians, sin, sqrt
+from math import isfinite
 from urllib.parse import urlsplit
 
 import redis
 
 from redash.transit_naming import provenance
+from redash.transit_naming.coordinates import meters_between
 from redash.transit_naming.directions import DIRECTION_WORDS
 from redash.transit_naming.profiles import stop_overrides_digest
 from redash.transit_naming.stops import name_stop, raw_street_parts
@@ -20,7 +21,6 @@ STREET_REFERENCE_CONFLICT = "street_reference_conflict"
 NO_STREET = "no_street"
 NO_DONOR = "no_donor"
 METHOD_ORDER = (STREET_REFERENCE, SAME_INTERSECTION, UNIQUE_STREET)
-EARTH_RADIUS_M = 6_371_000
 
 
 @dataclass(frozen=True)
@@ -39,12 +39,6 @@ def source_hash(base_url, api_key):
 
 def index_key(carrier, revision, source):
     return f"transit-naming:suffix-index:{carrier}:{revision}:{source}"
-
-
-def _meters(lat_a, lng_a, lat_b, lng_b):
-    d_lat, d_lng = radians(lat_b - lat_a), radians(lng_b - lng_a)
-    haversine = sin(d_lat / 2) ** 2 + cos(radians(lat_a)) * cos(radians(lat_b)) * sin(d_lng / 2) ** 2
-    return 2 * EARTH_RADIUS_M * asin(sqrt(haversine))
 
 
 def _coordinates(stop):
@@ -127,7 +121,7 @@ class SuffixIndex:
         near = {
             suffix
             for member, suffix, d_lat, d_lng in self.by_pair.get(tuple(sorted((base, other))), ())
-            if member == base and _meters(lat, lng, d_lat, d_lng) <= completion.same_intersection_m
+            if member == base and meters_between(lat, lng, d_lat, d_lng) <= completion.same_intersection_m
         }
         if len(near) == 1:
             return Decision(next(iter(near)), SAME_INTERSECTION)
@@ -138,7 +132,7 @@ class SuffixIndex:
             return Decision(abstained=NO_DONOR)
         if len({suffix for suffix, _, _ in donors}) > 1:
             return Decision(abstained="several_suffixes")
-        nearest = min(_meters(lat, lng, d_lat, d_lng) for _, d_lat, d_lng in donors)
+        nearest = min(meters_between(lat, lng, d_lat, d_lng) for _, d_lat, d_lng in donors)
         if nearest > completion.unique_street_m:
             return Decision(abstained="out_of_range")
         return Decision(donors[0][0], UNIQUE_STREET)
