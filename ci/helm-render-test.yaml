@@ -12,6 +12,7 @@
 # cannot supply either.
 helm-render-test:
   stage: test
+  interruptible: true
   image:
     name: ${IMAGE_HELM}
     # alpine/helm sets helm itself as the entrypoint, so a `script:` line would
@@ -25,4 +26,6 @@ helm-render-test:
     - ./scripts/check-helm-render.sh
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
     - if: '$CI_COMMIT_BRANCH'

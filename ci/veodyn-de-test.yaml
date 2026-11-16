@@ -6,6 +6,7 @@
 # registry variable. That block is gone; this job now inherits nothing.
 frontend-test:
   stage: test
+  interruptible: true
   image: ${IMAGE_NODE}
   variables:
     # Public image at the major the app Dockerfile ships (node:24-alpine
@@ -41,20 +42,6 @@ frontend-test:
     - cd app
     - pnpm install --frozen-lockfile
   script:
-    - pnpm lint
-    - pnpm exec tsc --noEmit
-    # Fails if any of the 129 paths the enterprise pack owns
-    # (scripts/enterprise-paths.mjs) has come back into this tree.
-    #
-    # This replaced a ratchet that moved those paths aside, regenerated an empty
-    # feature registry and type-checked what was left. That measurement went
-    # 78 -> 0 and then the extraction carried the move out for real, at which
-    # point the ratchet had nothing to move and would have degenerated into a
-    # second `tsc --noEmit` on the line above. The two lines above are now
-    # measuring the real community tree rather than a rehearsal of it, and this
-    # is the one claim they cannot make: an enterprise module added back here
-    # would lint, type-check and test perfectly well.
-    - node scripts/check-ce-tree.mjs
     # Both reporters: `default` keeps the human-readable log, `junit` writes a
     # structured report GitLab parses into the pipeline's Tests tab.
     #
@@ -86,4 +73,53 @@ frontend-test:
         path: app/coverage/cobertura-coverage.xml
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
+.frontend-static-check:
+  stage: test
+  interruptible: true
+  image: ${IMAGE_NODE}
+  variables:
+    IMAGE_NODE: "node:24"
+  before_script: !reference [frontend-test, before_script]
+  rules: !reference [frontend-test, rules]
+
+frontend-lint:
+  extends: .frontend-static-check
+  script:
+    - pnpm lint
+    - node scripts/check-ce-tree.mjs
+
+frontend-typecheck:
+  extends: .frontend-static-check
+  script:
+    - pnpm exec tsc --noEmit
+
+viz-package:
+  stage: test
+  interruptible: true
+  image: ${IMAGE_NODE}
+  variables:
+    IMAGE_NODE: "node:24"
+  retry:
+    max: 2
+    when: script_failure
+  before_script:
+    - corepack enable
+    - cd app
+    - pnpm install --frozen-lockfile
+    - pnpm exec playwright install --with-deps chromium
+  script:
+    - pnpm test:viz-host
+  artifacts:
+    when: on_failure
+    expire_in: 1 week
+    paths:
+      - app/test-results/
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
     - if: '$CI_COMMIT_BRANCH'
