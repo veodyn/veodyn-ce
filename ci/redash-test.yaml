@@ -54,6 +54,7 @@
 # did before and stays green.
 redash-test:
   stage: test
+  interruptible: true
   image:
     name: ${IMAGE_DOCKER}
     pull_policy: always
@@ -343,5 +344,7 @@ redash-test:
         - "node/**/*"
         - "ci/redash-test.yaml"
         - ".gitlab-ci.yml"
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
     - if: '$CI_COMMIT_BRANCH'
       changes: *redash_test_paths

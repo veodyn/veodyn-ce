@@ -42,16 +42,6 @@ jobs:
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
 
-      # One warning fails this. Do not soften it.
-      - run: pnpm lint
-
-      # Separately, because `pnpm test` does not type-check.
-      - run: pnpm exec tsc --noEmit
-
-      # Fails if any of the 129 paths the enterprise pack owns has come back
-      # into this tree. Lint, tsc and the suite would all pass on one.
-      - run: node scripts/check-ce-tree.mjs
-
       # CI=true is already set by Actions, which is what caps vitest's worker
       # pool at 6 in vitest.config.ts.
       - run: pnpm exec vitest run --coverage --reporter=default --reporter=junit --outputFile=junit.xml
@@ -95,6 +85,43 @@ jobs:
 # check the DURATION first. Over ~1600s means it starved and a re-run will
 # pass. If that turns out to happen here, the fix is to lower `maxWorkers` in
 # app/vitest.config.ts to the runner's vCPU count before reaching for a retry.
+
+  frontend-lint:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: app
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: node scripts/check-ce-tree.mjs
+
+  frontend-typecheck:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: app
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc --noEmit
 
   viz-package:
     runs-on: ubuntu-24.04
