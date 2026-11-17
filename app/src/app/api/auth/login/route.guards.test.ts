@@ -37,6 +37,23 @@ function loginPage(csrf = 'csrf-123') {
 }
 
 describe('login route refusals', () => {
+  it('answers 403 for a cross-site text/plain form post without calling Redash', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { POST } = await loadRoute('https://redash.example')
+    const res = await POST(
+      new NextRequest('http://localhost/api/auth/login', {
+        method: 'POST',
+        headers: { 'content-type': 'text/plain', 'sec-fetch-site': 'cross-site', origin: 'http://127.0.0.1:8000' },
+        body: JSON.stringify(CREDENTIALS),
+      })
+    )
+
+    expect(res.status).toBe(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it.each([
     ['no body at all', {}],
     ['a missing password', { email: 'admin@example.com' }],

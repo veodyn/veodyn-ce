@@ -45,6 +45,23 @@ const DEPLOYED_PERSONAS =
   '[{"id":"operations","label":"Operations lead","email":"demo-ops@veodyn.com","description":"Admin. Sees and changes everything"},{"id":"analyst","label":"Analyst","email":"demo-analyst@veodyn.com","description":"Writes and runs queries against the catalog"},{"id":"viewer","label":"Viewer","email":"demo-viewer@veodyn.com","description":"Reads dashboards and reports"}]'
 
 describe('the demo persona sign-in route', () => {
+  it('answers 403 for a cross-site form post without calling Redash', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const { POST } = await loadRoute()
+
+    const res = await POST(
+      new NextRequest('http://localhost/api/auth/demo', {
+        method: 'POST',
+        headers: { 'content-type': 'text/plain', 'sec-fetch-site': 'cross-site' },
+        body: JSON.stringify({ persona: 'operations' }),
+      })
+    )
+
+    expect(res.status).toBe(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('loads a three-persona VEODYN_DEMO__PERSONAS of the shape a deployment sets', async () => {
     vi.stubEnv('REDASH_URL', 'http://redash.test')
     vi.stubEnv('DEMO_LOGIN_PASSWORD', 'demo-secret')
