@@ -50,6 +50,7 @@ def test_password_shaped_detector_skips_keys_that_address_a_secret():
     # three read as secret-ish to the key regex and none carries a value.
     text = (
         'existingSecret: "veodyn-de-secret"\n'
+        'existingSecretKey: "admin-password"\n'
         'SharedSecretName: "veodyn-de-secret"\n'
         'onePasswordItemPath: "vaults/k8s/items/prod-veodyn-de"\n'
     )
