@@ -99,7 +99,12 @@ def _is_regex_pattern(value, regex):
         return False
 
 
+DATE_LITERAL = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}([ T][0-9]{2}:[0-9]{2}(:[0-9]{2}(\.[0-9]{1,6})?)?)?")
+
+
 def _is_date(string):
+    if not isinstance(string, str) or not DATE_LITERAL.fullmatch(string):
+        return False
     parse(string)
     return True
 

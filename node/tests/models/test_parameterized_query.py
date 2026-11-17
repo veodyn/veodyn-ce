@@ -133,6 +133,46 @@ class TestParameterizedQuery(TestCase):
 
         self.assertEqual("foo 2000-01-01 12:00:00", query.text)
 
+    def test_accepts_the_date_formats_the_app_sends(self):
+        values = [
+            "2024-01-02",
+            "2024-01-02 03:04",
+            "2024-01-02 03:04:05",
+            "2024-01-02T03:04",
+            "2024-01-02T03:04:05",
+            "2024-01-02T03:04:05.123",
+        ]
+        for parameter_type in ["date", "datetime-local", "datetime-with-seconds"]:
+            for value in values:
+                query = ParameterizedQuery("foo '{{bar}}'", [{"name": "bar", "type": parameter_type}])
+                query.apply({"bar": value})
+                self.assertEqual("foo '{}'".format(value), query.text)
+
+    def test_rejects_date_values_carrying_anything_beyond_the_date(self):
+        values = [
+            "2020-01-01'--",
+            "2020-01-01';--",
+            "2020-01-01' or '1'='1",
+            "2020-01-01 and 1",
+            "2020-01-01/*",
+            "2020-01-01\n",
+            " 2020-01-01",
+            "01/02/2020",
+            "2020-13-45",
+            20200101,
+        ]
+        for parameter_type in ["date", "datetime-local", "datetime-with-seconds"]:
+            for value in values:
+                query = ParameterizedQuery("foo '{{bar}}'", [{"name": "bar", "type": parameter_type}])
+                with pytest.raises(InvalidParameterError):
+                    query.apply({"bar": value})
+
+    def test_rejects_date_range_ends_carrying_anything_beyond_the_date(self):
+        for parameter_type in ["date-range", "datetime-range", "datetime-range-with-seconds"]:
+            query = ParameterizedQuery("foo '{{bar.start}}' '{{bar.end}}'", [{"name": "bar", "type": parameter_type}])
+            with pytest.raises(InvalidParameterError):
+                query.apply({"bar": {"start": "2020-01-01", "end": "2020-12-31'--"}})
+
     def test_raises_on_invalid_enum_parameters(self):
         schema = [{"name": "bar", "type": "enum", "enumOptions": ["baz", "qux"]}]
         query = ParameterizedQuery("foo", schema)
