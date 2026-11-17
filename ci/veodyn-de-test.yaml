@@ -4,6 +4,22 @@
 # `default:` block attached a docker-in-docker service to every job, so it
 # started a privileged daemon it never used and could not resolve without a
 # registry variable. That block is gone; this job now inherits nothing.
+.pnpm-install:
+  before_script:
+    - corepack enable
+    - cd app
+    - pnpm config set store-dir "$CI_PROJECT_DIR/.pnpm-store"
+    - pnpm install --frozen-lockfile --prefer-offline
+  cache:
+    - &pnpm_store_cache
+      key:
+        prefix: pnpm-store
+        files:
+          - app/pnpm-lock.yaml
+      paths:
+        - .pnpm-store/
+      policy: pull
+
 frontend-test:
   stage: test
   interruptible: true
@@ -37,10 +53,10 @@ frontend-test:
   retry:
     max: 2
     when: script_failure
-  before_script:
-    - corepack enable
-    - cd app
-    - pnpm install --frozen-lockfile
+  before_script: !reference [.pnpm-install, before_script]
+  cache:
+    - <<: *pnpm_store_cache
+      policy: pull-push
   script:
     # Both reporters: `default` keeps the human-readable log, `junit` writes a
     # structured report GitLab parses into the pipeline's Tests tab.
@@ -73,9 +89,16 @@ frontend-test:
         path: app/coverage/cobertura-coverage.xml
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: &frontend_paths
+        - "app/**/*"
+        - "node/redash/handlers/**/*"
+        - "node/tests/query_runner/db_logo_manifest.txt"
+        - "ci/veodyn-de-test.yaml"
+        - ".gitlab-ci.yml"
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
       when: never
     - if: '$CI_COMMIT_BRANCH'
+      changes: *frontend_paths
 
 .frontend-static-check:
   stage: test
@@ -83,7 +106,8 @@ frontend-test:
   image: ${IMAGE_NODE}
   variables:
     IMAGE_NODE: "node:24"
-  before_script: !reference [frontend-test, before_script]
+  before_script: !reference [.pnpm-install, before_script]
+  cache: !reference [.pnpm-install, cache]
   rules: !reference [frontend-test, rules]
 
 frontend-lint:
@@ -103,14 +127,21 @@ viz-package:
   image: ${IMAGE_NODE}
   variables:
     IMAGE_NODE: "node:24"
+    PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.ms-playwright"
   retry:
     max: 2
     when: script_failure
   before_script:
-    - corepack enable
-    - cd app
-    - pnpm install --frozen-lockfile
+    - !reference [.pnpm-install, before_script]
     - pnpm exec playwright install --with-deps chromium
+  cache:
+    - *pnpm_store_cache
+    - key:
+        prefix: playwright
+        files:
+          - app/pnpm-lock.yaml
+      paths:
+        - .ms-playwright/
   script:
     - pnpm test:viz-host
   artifacts:
@@ -118,8 +149,4 @@ viz-package:
     expire_in: 1 week
     paths:
       - app/test-results/
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
-      when: never
-    - if: '$CI_COMMIT_BRANCH'
+  rules: !reference [frontend-test, rules]
