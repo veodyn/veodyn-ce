@@ -1,3 +1,5 @@
+import { redactUrl } from './redactPath'
+
 const REDACTED = '[redacted]'
 const MESSAGE_CAP = 200
 
@@ -36,15 +38,23 @@ export function scrubProperties(props: Record<string, unknown>): Record<string, 
       out[key] = value.slice(0, MESSAGE_CAP)
       continue
     }
-    // `$`-prefixed keys are posthog's own ($current_url, $exception_list).
-    // Redacting them breaks autocapture and replay stitching.
     if (key.startsWith('$') || SAFE_KEYS.has(key)) {
-      out[key] = value
+      out[key] = redactTokenPaths(value)
       continue
     }
     out[key] = REDACTED
   }
   return out
+}
+
+function redactTokenPaths(value: unknown): unknown {
+  if (typeof value === 'string') return redactUrl(value)
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    const out: Record<string, unknown> = {}
+    for (const [key, inner] of Object.entries(value)) out[key] = typeof inner === 'string' ? redactUrl(inner) : inner
+    return out
+  }
+  return value
 }
 
 export function scrubEvent<T extends { properties?: Record<string, unknown> } | null>(event: T): T {

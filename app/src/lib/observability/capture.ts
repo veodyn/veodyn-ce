@@ -1,3 +1,4 @@
+import { redactPath } from './redactPath'
 import { scrubProperties } from './scrub'
 
 export interface TelemetryUser {
@@ -81,7 +82,7 @@ export function markReady(next: TelemetryClient | null): void {
 }
 
 export function currentRoute(): string {
-  return typeof window === 'undefined' ? '' : window.location.pathname
+  return typeof window === 'undefined' ? '' : redactPath(window.location.pathname)
 }
 
 /** Already scrubbed by the time it gets here, whether live or replayed. */

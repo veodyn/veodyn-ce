@@ -2,6 +2,23 @@ import { describe, expect, it } from 'vitest'
 import { scrubEvent, scrubProperties } from './scrub'
 
 describe('scrubProperties', () => {
+  it('redacts credential path segments in route and posthog url properties', () => {
+    const out = scrubProperties({
+      route: '/reset/abc123',
+      $current_url: 'https://app.example/invite/abc123',
+      $pathname: '/dashboards/public/abc123',
+      $referrer: 'https://app.example/embed/public/abc123',
+      $set_once: { $initial_current_url: 'https://app.example/reset/abc123', $initial_referrer: '$direct' },
+    })
+    expect(out).toEqual({
+      route: '/reset/[token]',
+      $current_url: 'https://app.example/invite/[token]',
+      $pathname: '/dashboards/public/[token]',
+      $referrer: 'https://app.example/embed/public/[token]',
+      $set_once: { $initial_current_url: 'https://app.example/reset/[token]', $initial_referrer: '$direct' },
+    })
+  })
+
   it('keeps allow-listed shape-only keys', () => {
     const out = scrubProperties({ route: '/dashboards/5', errorId: 'E_UP_003', status: 502, errorName: 'ApiError' })
     expect(out).toEqual({ route: '/dashboards/5', errorId: 'E_UP_003', status: 502, errorName: 'ApiError' })
