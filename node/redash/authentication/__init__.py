@@ -124,6 +124,26 @@ def hmac_load_user_from_request(request):
     return None
 
 
+SHARE_TOKEN_ENDPOINTS = frozenset(
+    {
+        "public_dashboard",
+        "public_dashboard_widget",
+        "public_dashboard_widget_parameter_values",
+        "public_visualization",
+        "query_result",
+        "job",
+    }
+)
+
+
+def share_token_admitted(share_key, org):
+    return (
+        share_key.org_id == org.id
+        and not org.get_setting("disable_public_urls")
+        and request.endpoint in SHARE_TOKEN_ENDPOINTS
+    )
+
+
 def get_user_from_api_key(api_key, query_id):
     if not api_key:
         return None
@@ -139,7 +159,8 @@ def get_user_from_api_key(api_key, query_id):
     except models.NoResultFound:
         try:
             api_key = models.ApiKey.get_by_api_key(api_key)
-            user = models.ApiUser(api_key, api_key.org, [])
+            if share_token_admitted(api_key, org):
+                user = models.ApiUser(api_key, api_key.org, [])
         except models.NoResultFound:
             if query_id:
                 # get_by_id_and_org has no archive filter, so an archived query

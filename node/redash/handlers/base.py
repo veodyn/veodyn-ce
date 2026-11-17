@@ -52,7 +52,8 @@ class BaseResource(Resource):
 
 def record_event(org, user, options):
     if user.is_api_user():
-        options.update({"api_key": user.name, "org_id": org.id})
+        options.pop("user_name", None)
+        options.update({"user_id": None, "api_key": user.name, "org_id": org.id})
     else:
         options.update({"user_id": user.id, "user_name": user.name, "org_id": org.id})
 
