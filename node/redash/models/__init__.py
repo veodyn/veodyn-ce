@@ -1305,12 +1305,16 @@ class Dashboard(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model
         return cls.query.filter(cls.slug == slug, cls.org == org).one()
 
     def fork(self, user):
+        from redash.permissions import has_access, view_only
+
         forked_list = ["org", "layout", "dashboard_filters_enabled", "tags"]
 
         kwargs = {a: getattr(self, a) for a in forked_list}
         forked_dashboard = Dashboard(name="Copy of (#{}) {}".format(self.id, self.name), user=user, **kwargs)
 
         for w in self.widgets:
+            if w.visualization is not None and not has_access(w.visualization.query_rel, user, view_only):
+                continue
             forked_w = w.copy(forked_dashboard.id)
             fw = Widget(**forked_w)
             db.session.add(fw)

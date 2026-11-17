@@ -233,6 +233,44 @@ class TestDashboardForkResourcePost(BaseTestCase):
 
         self.assertEqual(rv.status_code, 200)
 
+    def test_fork_leaves_out_widgets_whose_query_the_forker_cannot_view(self):
+        owner = self.factory.create_admin()
+        dashboard = self.factory.create_dashboard(user=owner)
+        restricted_source = self.factory.create_data_source(group=self.factory.create_group())
+        restricted_vis = self.factory.create_visualization(
+            query_rel=self.factory.create_query(user=owner, data_source=restricted_source)
+        )
+        visible_vis = self.factory.create_visualization(query_rel=self.factory.create_query(user=owner))
+        self.factory.create_widget(dashboard=dashboard, visualization=restricted_vis)
+        self.factory.create_widget(dashboard=dashboard, visualization=visible_vis)
+        self.factory.create_widget(dashboard=dashboard, visualization=None, text="note")
+        db.session.commit()
+
+        rv = self.make_request("post", "/api/dashboards/{}/fork".format(dashboard.id))
+
+        self.assertEqual(rv.status_code, 200)
+        fork = Dashboard.query.get(rv.json["id"])
+        forked_visualization_ids = sorted(w.visualization_id or 0 for w in fork.widgets)
+        self.assertEqual(forked_visualization_ids, [0, visible_vis.id])
+        self.assertEqual([w.text for w in fork.widgets if w.visualization_id is None], ["note"])
+
+    def test_admin_fork_keeps_every_widget(self):
+        dashboard = self.factory.create_dashboard()
+        restricted_source = self.factory.create_data_source(group=self.factory.create_group())
+        restricted_vis = self.factory.create_visualization(
+            query_rel=self.factory.create_query(data_source=restricted_source)
+        )
+        self.factory.create_widget(dashboard=dashboard, visualization=restricted_vis)
+        db.session.commit()
+
+        rv = self.make_request(
+            "post", "/api/dashboards/{}/fork".format(dashboard.id), user=self.factory.create_admin()
+        )
+
+        self.assertEqual(rv.status_code, 200)
+        fork = Dashboard.query.get(rv.json["id"])
+        self.assertEqual([w.visualization_id for w in fork.widgets], [restricted_vis.id])
+
 
 class TestDashboardResourceDelete(BaseTestCase):
     def test_delete_dashboard(self):
