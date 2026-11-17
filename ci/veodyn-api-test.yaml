@@ -4,6 +4,7 @@ veodyn-api-test:
   image: ${IMAGE_PYTHON}
   variables:
     IMAGE_PYTHON: "python:3.11"
+    UV_CACHE_DIR: "$CI_PROJECT_DIR/.uv-cache"
     POSTGRES_USER: veodyn
     POSTGRES_DB: veodyn_test
     POSTGRES_HOST_AUTH_METHOD: trust
@@ -18,6 +19,13 @@ veodyn-api-test:
     - pip install --no-cache-dir uv
     - cd api
     - uv sync --frozen
+  cache:
+    - key:
+        prefix: uv-api
+        files:
+          - api/uv.lock
+      paths:
+        - .uv-cache/
   script:
     - uv run ruff check .
     - uv run ruff format --check .
@@ -27,6 +35,8 @@ veodyn-api-test:
     - diff -u openapi.json /tmp/openapi.json
     - uv run python -m veodyn_api.services.chat.help_index check ../docs/docs
   coverage: '/^TOTAL.+?(\d+\%)$/'
+  after_script:
+    - uv cache prune --ci || true
   artifacts:
     when: always
     expire_in: 1 week
@@ -37,6 +47,13 @@ veodyn-api-test:
         path: api/coverage.xml
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: &api_test_paths
+        - "api/**/*"
+        - "docs/docs/**/*"
+        - "validator/pyproject.toml"
+        - "ci/veodyn-api-test.yaml"
+        - ".gitlab-ci.yml"
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
       when: never
     - if: '$CI_COMMIT_BRANCH'
+      changes: *api_test_paths
