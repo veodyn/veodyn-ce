@@ -315,6 +315,73 @@ class TestQueryWritesAcceptOnlyEditableFields(BaseTestCase):
         self.assertEqual(rv.status_code, 400)
 
 
+class TestDropdownAccessIsCheckedPerQuery(BaseTestCase):
+    def viewable_and_restricted_dropdowns(self):
+        viewable = self.factory.create_query(
+            data_source=self.factory.create_data_source(group=self.factory.default_group)
+        )
+        restricted = self.factory.create_query(
+            data_source=self.factory.create_data_source(group=self.factory.create_group())
+        )
+        db.session.add_all([viewable, restricted])
+        return {
+            "parameters": [
+                {"name": "viewable", "type": "query", "queryId": viewable.id},
+                {"name": "restricted", "type": "query", "queryId": restricted.id},
+            ]
+        }
+
+    def test_create_refuses_a_restricted_dropdown_listed_beside_a_viewable_one(self):
+        options = self.viewable_and_restricted_dropdowns()
+
+        rv = self.make_request(
+            "post",
+            "/api/queries",
+            data={
+                "name": "Testing",
+                "query": "SELECT 1",
+                "data_source_id": self.factory.data_source.id,
+                "options": options,
+            },
+        )
+
+        self.assertEqual(rv.status_code, 403)
+
+    def test_update_refuses_a_restricted_dropdown_listed_beside_a_viewable_one(self):
+        my_query = self.factory.create_query()
+        options = self.viewable_and_restricted_dropdowns()
+
+        rv = self.make_request("post", "/api/queries/{0}".format(my_query.id), data={"options": options})
+
+        self.assertEqual(rv.status_code, 403)
+
+    def test_update_refuses_a_missing_dropdown_listed_beside_a_viewable_one(self):
+        my_query = self.factory.create_query()
+        options = self.viewable_and_restricted_dropdowns()
+        options["parameters"][1]["queryId"] = 100000
+
+        rv = self.make_request("post", "/api/queries/{0}".format(my_query.id), data={"options": options})
+
+        self.assertEqual(rv.status_code, 400)
+
+    def test_update_refuses_a_dropdown_from_another_org(self):
+        my_query = self.factory.create_query()
+        other_org = self.factory.create_org()
+        foreign = self.factory.create_query(
+            org=other_org,
+            user=self.factory.create_user(org=other_org),
+            data_source=self.factory.create_data_source(org=other_org, group=self.factory.default_group),
+        )
+
+        rv = self.make_request(
+            "post",
+            "/api/queries/{0}".format(my_query.id),
+            data={"options": {"parameters": [{"name": "foreign", "type": "query", "queryId": foreign.id}]}},
+        )
+
+        self.assertEqual(rv.status_code, 400)
+
+
 class TestQueryListResourceGet(BaseTestCase):
     def test_returns_queries(self):
         q1 = self.factory.create_query()

@@ -3,7 +3,7 @@ from flask import jsonify, request, url_for
 from flask_login import login_required
 from flask_restful import abort
 from funcy import partial, project
-from sqlalchemy.orm.exc import StaleDataError
+from sqlalchemy.orm.exc import NoResultFound, StaleDataError
 
 from redash import models, settings
 from redash.authentication.org_resolving import current_org
@@ -195,17 +195,20 @@ def require_access_to_dropdown_queries(user, query_def):
     parameters = query_def.get("options", {}).get("parameters", [])
     dropdown_query_ids = set([str(p["queryId"]) for p in parameters if p["type"] == "query"])
 
-    if dropdown_query_ids:
-        groups = models.Query.all_groups_for_query_ids(dropdown_query_ids)
+    for dropdown_query_id in dropdown_query_ids:
+        try:
+            dropdown_query = models.Query.get_by_id_and_org(dropdown_query_id, current_org)
+        except NoResultFound:
+            dropdown_query = None
 
-        if len(groups) < len(dropdown_query_ids):
+        if dropdown_query is None or dropdown_query.data_source is None:
             abort(
                 400,
                 message="You are trying to associate a dropdown query that does not have a matching group. "
                 "Please verify the dropdown query id you are trying to associate with this query.",
             )
 
-        require_access(dict(groups), user, view_only)
+        require_access(dropdown_query.data_source, user, view_only)
 
 
 class QueryListResource(BaseQueryListResource):

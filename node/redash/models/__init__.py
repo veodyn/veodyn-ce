@@ -776,15 +776,6 @@ class Query(ChangeTrackingMixin, TimestampMixin, BelongsToOrgMixin, db.Model):
     def get_by_id(cls, _id):
         return cls.query.filter(cls.id == _id).one()
 
-    @classmethod
-    def all_groups_for_query_ids(cls, query_ids):
-        query = """SELECT group_id, view_only
-                   FROM queries
-                   JOIN data_source_groups ON queries.data_source_id = data_source_groups.data_source_id
-                   WHERE queries.id in :ids"""
-
-        return db.session.execute(query, {"ids": tuple(query_ids)}).fetchall()
-
     def update_latest_result_by_query_hash(self):
         query_hash = self.query_hash
         data_source_id = self.data_source_id
