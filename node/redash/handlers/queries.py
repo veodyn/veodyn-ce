@@ -2,7 +2,7 @@ import sqlparse
 from flask import jsonify, request, url_for
 from flask_login import login_required
 from flask_restful import abort
-from funcy import partial
+from funcy import partial, project
 from sqlalchemy.orm.exc import StaleDataError
 
 from redash import models, settings
@@ -187,6 +187,10 @@ class BaseQueryListResource(BaseResource):
         return response
 
 
+CREATABLE_QUERY_FIELDS = ("name", "description", "query", "options", "schedule", "tags")
+EDITABLE_QUERY_FIELDS = CREATABLE_QUERY_FIELDS + ("data_source_id", "is_draft", "is_archived", "version")
+
+
 def require_access_to_dropdown_queries(user, query_def):
     parameters = query_def.get("options", {}).get("parameters", [])
     dropdown_query_ids = set([str(p["queryId"]) for p in parameters if p["type"] == "query"])
@@ -254,16 +258,7 @@ class QueryListResource(BaseQueryListResource):
         if existing is not None:
             return self._serialize_created(existing)
 
-        for field in [
-            "id",
-            "created_at",
-            "api_key",
-            "visualizations",
-            "latest_query_data",
-            "last_modified_by",
-        ]:
-            query_def.pop(field, None)
-
+        query_def = project(query_def, CREATABLE_QUERY_FIELDS)
         query_def["query_text"] = query_def.pop("query")
         query_def["user"] = self.current_user
         query_def["data_source"] = data_source
@@ -373,17 +368,11 @@ class QueryResource(BaseResource):
         check_unchanged(models.Query, query.id, pop_expected(query_def))
         require_access_to_dropdown_queries(self.current_user, query_def)
 
-        for field in [
-            "id",
-            "created_at",
-            "api_key",
-            "visualizations",
-            "latest_query_data",
-            "user",
-            "last_modified_by",
-            "org",
-        ]:
-            query_def.pop(field, None)
+        query_def = project(query_def, EDITABLE_QUERY_FIELDS)
+        if "is_archived" in query_def and not isinstance(query_def["is_archived"], bool):
+            abort(400, message="is_archived must be true or false.")
+        if query_def.get("is_archived") is True and not query.is_archived:
+            require_admin_or_owner(query.user_id)
 
         if "query" in query_def:
             query_def["query_text"] = query_def.pop("query")

@@ -80,12 +80,10 @@ class TestQueryResourcePost(BaseTestCase):
         query = self.factory.create_query()
 
         new_ds = self.factory.create_data_source()
-        new_qr = self.factory.create_query_result()
 
         data = {
             "name": "Testing",
             "query": "select 2",
-            "latest_query_data_id": new_qr.id,
             "data_source_id": new_ds.id,
         }
 
@@ -95,7 +93,6 @@ class TestQueryResourcePost(BaseTestCase):
         self.assertEqual(rv.json["last_modified_by"]["id"], admin.id)
         self.assertEqual(rv.json["query"], data["query"])
         self.assertEqual(rv.json["data_source_id"], data["data_source_id"])
-        self.assertEqual(rv.json["latest_query_data_id"], data["latest_query_data_id"])
 
     def test_raises_error_in_case_of_conflict(self):
         q = self.factory.create_query()
@@ -220,6 +217,102 @@ class TestQueryResourcePost(BaseTestCase):
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(rv.json["name"], "Testing")
         self.assertEqual(rv.json["last_modified_by"]["id"], user.id)
+
+
+class TestQueryWritesAcceptOnlyEditableFields(BaseTestCase):
+    def result_on_another_data_source(self):
+        other_data_source = self.factory.create_data_source(group=self.factory.create_group())
+        return self.factory.create_query_result(data_source=other_data_source)
+
+    def test_create_ignores_a_posted_result_pointer(self):
+        foreign_result = self.result_on_another_data_source()
+
+        rv = self.make_request(
+            "post",
+            "/api/queries",
+            data={
+                "name": "Testing",
+                "query": "SELECT 'never executed'",
+                "data_source_id": self.factory.data_source.id,
+                "latest_query_data_id": foreign_result.id,
+            },
+        )
+
+        self.assertEqual(rv.status_code, 200)
+        self.assertIsNone(models.Query.query.get(rv.json["id"]).latest_query_data_id)
+
+    def test_update_ignores_a_posted_result_pointer(self):
+        query = self.factory.create_query(query_text="SELECT 'never executed'")
+        pointer_before = query.latest_query_data_id
+        foreign_result = self.result_on_another_data_source()
+
+        rv = self.make_request(
+            "post",
+            "/api/queries/{0}".format(query.id),
+            data={"latest_query_data_id": foreign_result.id},
+        )
+
+        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(models.Query.query.get(query.id).latest_query_data_id, pointer_before)
+
+    def test_modify_grantee_cannot_take_ownership_through_update(self):
+        query = self.factory.create_query()
+        owner_id = query.user_id
+        grantee = self.factory.create_user()
+        models.AccessPermission.grant(obj=query, access_type=ACCESS_TYPE_MODIFY, grantee=grantee, grantor=query.user)
+
+        rv = self.make_request(
+            "post",
+            "/api/queries/{0}".format(query.id),
+            data={"name": "Renamed", "user_id": grantee.id},
+            user=grantee,
+        )
+
+        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(models.Query.query.get(query.id).user_id, owner_id)
+        self.assertNotIn("api_key", rv.json)
+
+    def test_update_ignores_a_posted_org(self):
+        query = self.factory.create_query()
+        other_org = self.factory.create_org()
+
+        rv = self.make_request("post", "/api/queries/{0}".format(query.id), data={"org_id": other_org.id})
+
+        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(models.Query.query.get(query.id).org_id, self.factory.org.id)
+
+    def test_modify_grantee_cannot_archive_through_update(self):
+        query = self.factory.create_query()
+        grantee = self.factory.create_user()
+        models.AccessPermission.grant(obj=query, access_type=ACCESS_TYPE_MODIFY, grantee=grantee, grantor=query.user)
+
+        rv = self.make_request(
+            "post",
+            "/api/queries/{0}".format(query.id),
+            data={"is_archived": True},
+            user=grantee,
+        )
+
+        self.assertEqual(rv.status_code, 403)
+        self.assertFalse(models.Query.query.get(query.id).is_archived)
+
+    def test_owner_can_archive_and_unarchive_through_update(self):
+        query = self.factory.create_query()
+
+        archived = self.make_request("post", "/api/queries/{0}".format(query.id), data={"is_archived": True})
+        self.assertEqual(archived.status_code, 200)
+        self.assertTrue(models.Query.query.get(query.id).is_archived)
+
+        restored = self.make_request("post", "/api/queries/{0}".format(query.id), data={"is_archived": False})
+        self.assertEqual(restored.status_code, 200)
+        self.assertFalse(models.Query.query.get(query.id).is_archived)
+
+    def test_update_refuses_a_non_boolean_archive_flag(self):
+        query = self.factory.create_query()
+
+        rv = self.make_request("post", "/api/queries/{0}".format(query.id), data={"is_archived": "yes"})
+
+        self.assertEqual(rv.status_code, 400)
 
 
 class TestQueryListResourceGet(BaseTestCase):
