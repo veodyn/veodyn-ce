@@ -55,6 +55,11 @@ class AlertResource(BaseResource):
         alert = get_object_or_404(models.Alert.get_by_id_and_org, alert_id, self.current_org)
         require_admin_or_owner(alert.user.id)
 
+        if "query_id" in params and str(params["query_id"]) != str(alert.query_id):
+            query = get_object_or_404(models.Query.get_by_id_and_org, params["query_id"], self.current_org)
+            require_access(query, self.current_user, view_only)
+            params["query_id"] = query.id
+
         # A rewritten condition has to be judged fresh. should_notify compares
         # the new evaluation against the state left by the OLD condition, so
         # re-arming at a new threshold could suppress the first notification

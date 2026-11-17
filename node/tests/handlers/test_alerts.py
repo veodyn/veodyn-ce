@@ -43,6 +43,49 @@ class TestAlertResourcePost(BaseTestCase):
         rv = self.make_request("post", "/api/alerts/{}".format(alert.id), data={"name": "Testing"})
         self.assertEqual(rv.status_code, 200)
 
+    def test_refuses_rebinding_to_a_query_the_owner_cannot_view(self):
+        alert = self.factory.create_alert()
+        alert.state = Alert.TRIGGERED_STATE
+        original_query_id = alert.query_id
+        data_source = self.factory.create_data_source(group=self.factory.create_group())
+        restricted = self.factory.create_query(data_source=data_source)
+        db.session.commit()
+
+        rv = self.make_request("post", "/api/alerts/{}".format(alert.id), data={"query_id": restricted.id})
+
+        self.assertEqual(rv.status_code, 403)
+        db.session.refresh(alert)
+        self.assertEqual(alert.query_id, original_query_id)
+        self.assertEqual(alert.state, Alert.TRIGGERED_STATE)
+
+    def test_rebinding_to_a_query_in_another_org_is_not_found(self):
+        alert = self.factory.create_alert()
+        original_query_id = alert.query_id
+        other_org = self.factory.create_org()
+        foreign = self.factory.create_query(
+            org=other_org,
+            user=self.factory.create_user(org=other_org),
+            data_source=self.factory.create_data_source(org=other_org),
+        )
+        db.session.commit()
+
+        rv = self.make_request("post", "/api/alerts/{}".format(alert.id), data={"query_id": foreign.id})
+
+        self.assertEqual(rv.status_code, 404)
+        db.session.refresh(alert)
+        self.assertEqual(alert.query_id, original_query_id)
+
+    def test_rebinds_to_a_query_the_owner_can_view(self):
+        alert = self.factory.create_alert()
+        other = self.factory.create_query()
+        db.session.commit()
+
+        rv = self.make_request("post", "/api/alerts/{}".format(alert.id), data={"query_id": other.id})
+
+        self.assertEqual(rv.status_code, 200)
+        db.session.refresh(alert)
+        self.assertEqual(alert.query_id, other.id)
+
 
 class TestAlertEvaluateResource(BaseTestCase):
     @patch("redash.handlers.alerts.notify_subscriptions")
