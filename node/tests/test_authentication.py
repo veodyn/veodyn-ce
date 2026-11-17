@@ -15,6 +15,7 @@ from redash import models, settings
 from redash.authentication import (
     api_key_load_user_from_request,
     get_login_url,
+    get_next_path,
     hmac_load_user_from_request,
     jwt_auth,
     org_settings,
@@ -297,6 +298,34 @@ class TestRedirectToUrlAfterLoggingIn(BaseTestCase):
             org=self.factory.org,
         )
         self.assertEqual(response.location, "/queries")
+
+
+class TestNextPathStaysOnSite(BaseTestCase):
+    def test_next_path_refuses_scheme_relative_values(self):
+        for unsafe in (
+            "//localhost//evil.example/x",
+            "////evil.example/x",
+            "/\\evil.example/x",
+            "\\\\evil.example",
+            "\\/evil.example",
+            "/\t/evil.example",
+            " //evil.example",
+        ):
+            with self.subTest(unsafe=unsafe):
+                self.assertEqual(get_next_path(unsafe), "./")
+
+    def test_next_path_keeps_same_site_paths(self):
+        for safe in ("/dashboards", "/queries/1?x=y", "queries", "/default/"):
+            with self.subTest(safe=safe):
+                self.assertEqual(get_next_path(safe), safe)
+
+    def test_login_does_not_redirect_off_site_through_a_backslash(self):
+        response = self.post_request(
+            "/login?next=/%5Cevil.example/x",
+            data={"email": self.factory.user.email, "password": "test1234"},
+            org=self.factory.org,
+        )
+        self.assertEqual(response.location, "./")
 
 
 class TestRemoteUserAuth(BaseTestCase):
