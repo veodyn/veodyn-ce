@@ -20,7 +20,7 @@ export const operationCheckResultSchema = z
     op: operationNameSchema.nullish(),
     target: operationTargetSchema.nullish(),
     params: z
-      .record(z.unknown())
+      .record(z.string(), z.unknown())
       .refine((params) => Object.keys(params).length <= MAX_OPERATION_PARAMS)
       .optional(),
     destructive: z.boolean(),

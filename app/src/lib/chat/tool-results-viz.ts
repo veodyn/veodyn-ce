@@ -15,7 +15,7 @@ export const vizTypeResultSchema = z
     kind: z.literal('visualization_type'),
     type: z.string().max(64).nullish(),
     label: z.string().max(200).nullish(),
-    options: z.array(z.record(z.unknown())).max(80).nullish(),
+    options: z.array(z.record(z.string(), z.unknown())).max(80).nullish(),
   })
   .strict()
 

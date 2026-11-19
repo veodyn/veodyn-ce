@@ -14,7 +14,7 @@ export type McpCallContext = Schemas['McpCallContextIn']
 const toolSchema = z.object({
   name: z.string(),
   description: z.string(),
-  inputSchema: z.record(z.unknown()),
+  inputSchema: z.record(z.string(), z.unknown()),
 })
 
 const toolsSchema = z.object({ tools: z.array(toolSchema) })
@@ -32,7 +32,7 @@ const clientCallSchema = z.object({
   kind: z.literal('client_call'),
   callId: z.string(),
   tool: z.string(),
-  args: z.record(z.unknown()),
+  args: z.record(z.string(), z.unknown()),
 })
 
 const callSchema = z.discriminatedUnion('kind', [doneSchema, clientCallSchema])
@@ -58,7 +58,7 @@ async function post<T>(
   path: string,
   token: string,
   body: unknown,
-  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+  schema: z.ZodType<T, unknown>,
   signal?: AbortSignal
 ): Promise<T> {
   const response = await fetch(`${endpoint()}${path}`, {

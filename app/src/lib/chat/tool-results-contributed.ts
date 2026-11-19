@@ -24,7 +24,7 @@ export const snippetCheckResultSchema = z
     mode: z.enum(['edit', 'delete']).nullish(),
     snippetId: z.number().int().positive().nullish(),
     snapshot: snippetSnapshotSchema.nullish(),
-    changes: z.record(z.unknown()).nullish(),
+    changes: z.record(z.string(), z.unknown()).nullish(),
   })
   .strict()
 

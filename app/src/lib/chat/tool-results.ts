@@ -66,7 +66,7 @@ const columnSchema = z
     distinctCapped: z.boolean(),
     min: z.unknown().optional(),
     max: z.unknown().optional(),
-    top: z.array(z.record(z.unknown())).max(3).optional(),
+    top: z.array(z.record(z.string(), z.unknown())).max(3).optional(),
   })
   .strict()
 
@@ -74,7 +74,7 @@ const rows = {
   rowCount: z.number().int().nonnegative().optional(),
   truncated: z.boolean().optional(),
   columns: z.array(columnSchema).max(500).optional(),
-  sample: z.array(z.record(z.unknown())).max(50).optional(),
+  sample: z.array(z.record(z.string(), z.unknown())).max(50).optional(),
   notice: z.string().max(300).optional(),
 }
 
@@ -268,7 +268,7 @@ export const knownToolResultSchema = z.discriminatedUnion('kind', [
   kpiCheckResultSchema,
   operationCheckResultSchema,
   downloadResultSchema,
-]) satisfies z.ZodType<ChatToolResult, z.ZodTypeDef, unknown>
+]) satisfies z.ZodType<ChatToolResult, unknown>
 
 const KNOWN_RESULT_KINDS: ReadonlySet<string> = new Set(knownToolResultSchema.options.map((option) => option.shape.kind.value))
 

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 const positive = z.number().int().positive()
-const options = z.record(z.unknown())
+const options = z.record(z.string(), z.unknown())
 
 export const MAX_VIZ_OPERATIONS = 50
 

@@ -13,9 +13,9 @@ export const MAX_QUERY_DESCRIPTION_CHARS = 4_096
 
 const id = z.number().int().positive()
 const base = { ok: z.boolean(), error: z.string().max(500).optional() }
-const parameters = z.array(z.record(z.unknown())).max(MAX_QUERY_PARAMETERS)
+const parameters = z.array(z.record(z.string(), z.unknown())).max(MAX_QUERY_PARAMETERS)
 const tags = z.array(z.string().max(64)).max(20)
-const schedule = z.record(z.unknown()).nullable()
+const schedule = z.record(z.string(), z.unknown()).nullable()
 
 const snapshotFields = {
   id,
@@ -56,6 +56,6 @@ export const queryEditResultSchema = z
     kind: z.literal('query_edit'),
     queryId: id.nullish(),
     snapshot: querySnapshotSchema.nullish(),
-    changes: z.record(z.unknown()).nullish(),
+    changes: z.record(z.string(), z.unknown()).nullish(),
   })
   .strict()

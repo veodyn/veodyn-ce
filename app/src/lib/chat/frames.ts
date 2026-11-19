@@ -16,7 +16,7 @@ export const chatProposalSchema = z
     dataSourceId: positive,
     datasetTable: z.string().min(1).max(255).optional(),
     vizChoiceId: z.string().min(1).max(64),
-    vizOptions: z.record(z.unknown()),
+    vizOptions: z.record(z.string(), z.unknown()),
     parameters: parameterListSchema.optional(),
   })
   .strict()
@@ -240,7 +240,7 @@ const openToolRequest = z
       .max(64)
       .refine((name) => !KNOWN_TOOLS.has(name))
       .transform((name) => name as OpenName),
-    args: z.record(z.unknown()),
+    args: z.record(z.string(), z.unknown()),
     resultKind: resultKind.optional(),
   })
   .strict()
@@ -308,7 +308,7 @@ const openDraft = z
       .max(64)
       .refine((kind) => !KNOWN_DRAFT_KINDS.has(kind))
       .transform((kind) => kind as OpenName),
-    payload: z.record(z.unknown()),
+    payload: z.record(z.string(), z.unknown()),
   })
   .strict()
 
@@ -343,7 +343,7 @@ const frameData = {
   turn_done: z
     .object({
       stopReason: z.string().max(64),
-      usage: z.record(z.union([z.number(), z.string().max(200)])),
+      usage: z.record(z.string(), z.union([z.number(), z.string().max(200)])),
     })
     .strict(),
   error: z.object({ id: z.string().max(128), message: z.string().max(1_000) }).strict(),

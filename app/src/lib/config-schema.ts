@@ -42,7 +42,7 @@ const aiSchema = z
     chat: booleanish.default(false),
   })
   .strict()
-  .default({})
+  .prefault({})
   .refine((ai) => !ai.enabled || ai.endpoint !== null, {
     message: 'ai.endpoint is required when ai.enabled is true',
     path: ['endpoint'],
@@ -63,7 +63,7 @@ export const veodynConfigSchema = z.object({
       docs_url: z.string().url().nullable().default(null),
     })
     .strict()
-    .default({})
+    .prefault({})
     // The bundled mark is filled in only while the name is still Veodyn's. A
     // renamed tenant with no logo of its own gets none, which BrandMark handles.
     .transform((brand) => ({
@@ -82,10 +82,10 @@ export const veodynConfigSchema = z.object({
           source: z.enum(['external', 'bundled']).default('external'),
         })
         .strict()
-        .default({}),
+        .prefault({}),
     })
     .strict()
-    .default({}),
+    .prefault({}),
   domains: z
     .array(
       z
@@ -103,7 +103,7 @@ export const veodynConfigSchema = z.object({
       providers: mapProvidersSchema.optional(),
     })
     .strict()
-    .default({}),
+    .prefault({}),
   assistant: z
     .object({
       widget_url: z.string().url().nullable().default(null),
@@ -112,7 +112,7 @@ export const veodynConfigSchema = z.object({
       title: z.string().nullable().default(null),
     })
     .strict()
-    .default({}),
+    .prefault({}),
   ai: aiSchema,
   // Surfaces an instance can switch off. Default false, not true.
   features: z
@@ -123,7 +123,7 @@ export const veodynConfigSchema = z.object({
       query_drafts: booleanish.default(false),
     })
     .strict()
-    .default({}),
+    .prefault({}),
   demo: z
     .object({
       personas: z
@@ -140,19 +140,19 @@ export const veodynConfigSchema = z.object({
         .default([]),
     })
     .strict()
-    .default({}),
+    .prefault({}),
   home: z
     .object({
       tagline: z.string().default('The data substrate for regional transportation.'),
     })
     .strict()
-    .default({}),
+    .prefault({}),
   deployment: z
     .object({
       scale: z.enum(['node', 'hub']).default('node'),
     })
     .strict()
-    .default({}),
+    .prefault({}),
   // Two sections nothing in this edition reads: the enterprise pack owns both
   // readers. The schema is `.strict()`, so an undeclared key fails to parse and
   // an enterprise config would be rejected by the community half of its own app.
@@ -161,13 +161,13 @@ export const veodynConfigSchema = z.object({
       require_separate_approver: booleanish.default(true),
     })
     .strict()
-    .default({}),
+    .prefault({}),
   wall_mode: z
     .object({
       default_dashboard: z.string().nullable().default(null),
     })
     .strict()
-    .default({}),
+    .prefault({}),
   // Which visualization types an instance offers on CREATION. Null means
   // everything this build registers; a list is an allowlist.
   //
@@ -181,22 +181,22 @@ export const veodynConfigSchema = z.object({
   visualizations: z
     .object({
       enabled: z.array(z.string()).nullable().default(null),
-      audience: z.record(z.string(), z.enum(['analyst', 'internal'])).default({}),
+      audience: z.record(z.string(), z.enum(['analyst', 'internal'])).prefault({}),
     })
     .strict()
-    .default({}),
+    .prefault({}),
   messages: z
     .object({
       enabled: booleanish.default(false),
     })
     .strict()
-    .default({}),
+    .prefault({}),
   connectors: z
     .object({
       enabled: booleanish.default(false),
     })
     .strict()
-    .default({}),
+    .prefault({}),
 })
   .strict()
   .refine((config) => !config.connectors.enabled || config.messages.enabled, {

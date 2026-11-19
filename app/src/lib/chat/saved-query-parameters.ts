@@ -10,7 +10,7 @@ export const savedQueryParameterSchema = z.union([
 ])
 
 export const savedQueryParametersSchema = z
-  .record(savedQueryParameterSchema)
+  .record(z.string(), savedQueryParameterSchema)
   .refine((value) => Object.keys(value).length <= MAX_SAVED_QUERY_PARAMETERS)
 
 export type SavedQueryParameters = z.infer<typeof savedQueryParametersSchema>

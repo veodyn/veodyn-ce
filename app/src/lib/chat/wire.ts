@@ -15,7 +15,7 @@ export type ChatAccepted = Schemas['ChatAcceptedOut']
 
 const uuid = z.string().uuid()
 const timestamp = z.string().min(1).max(64)
-const block = z.record(z.unknown())
+const block = z.record(z.string(), z.unknown())
 const frameId = z.string().regex(/^[0-9]+-[0-9]+$/)
 
 export const NEW_THREAD_KINDS = ['query', 'dashboard', 'snippet', 'kpi', 'report', 'message'] as const
