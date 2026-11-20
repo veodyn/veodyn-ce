@@ -10,8 +10,10 @@ PUBLIC_RESOURCES = {
             "public_name_source, brand_source, color_source: gtfs | alias | mca_side_channel | rule | override | passthrough",
             "normalization_revision, gtfs_digest: lineage",
             "provider_name: the rider-facing provider name, the profile's provider_name or else MCA's carrier_name",
-            "route_group: the route_code every route sharing this one's GTFS route and public name lists, "
+            "route_group: the smallest route_code among the routes that resolve to this one's GTFS route, "
             "so a rider sees them as one line",
+            "group_public_name, group_route_number: the group's name and number; a GTFS short name that joins "
+            "route numbers with a slash (235/236) names the group, otherwise the group's first route does",
         ],
         "example": '{"resource": "public_routes", "params": {"carrier_code": "MT"}}',
     },

@@ -1,4 +1,5 @@
 import re
+from dataclasses import dataclass
 
 from redash.transit_naming import provenance
 from redash.transit_naming.casing import recase
@@ -188,15 +189,41 @@ def name_route(route, profile, resolved, side_channel=None):
     )
 
 
-def route_groups(named):
+SLASH_NUMBERS = re.compile(r"^[0-9A-Za-z]{1,5}(?:/[0-9A-Za-z]{1,5})+$")
+
+
+@dataclass(frozen=True)
+class RouteGroup:
+    route_code: str
+    public_name: str
+    route_number: str
+
+
+def _combined_number(resolved, name):
+    short = "".join(str(resolved.route_short_name or "").split()) if resolved is not None else ""
+    return short if SLASH_NUMBERS.match(short) and name.route_number in short.split("/") else ""
+
+
+def _group_name(name, resolved, profile):
+    number = _combined_number(resolved, name)
+    pattern = profile.route_name.pattern
+    names = {"brand": name.brand, "carrier_display_name": profile.carrier_display_name}
+    if number and name.public_name == pattern.format(route_number=name.route_number, **names):
+        return pattern.format(route_number=number, **names), number
+    return name.public_name, name.route_number
+
+
+def route_groups(named, profile):
     members = {}
-    for route_code, (_, name) in named.items():
+    for route_code, (_, name, _) in named.items():
         if name.gtfs_route_id:
-            members.setdefault((name.gtfs_route_id, name.public_name), []).append(str(route_code))
+            members.setdefault(name.gtfs_route_id, []).append(route_code)
     groups = {}
-    for codes in members.values():
-        for code in codes:
-            groups[code] = min(codes)
+    for route_code, (_, name, _) in named.items():
+        leader = min(members.get(name.gtfs_route_id, [route_code]) if name.gtfs_route_id else [route_code], key=str)
+        _, leader_name, leader_resolved = named[leader]
+        public_name, number = _group_name(leader_name, leader_resolved, profile)
+        groups[route_code] = RouteGroup(str(leader), public_name, number)
     return groups
 
 
@@ -224,5 +251,7 @@ def route_row(route, name, revision, digest, provider_name=None, route_group=Non
         "normalization_revision": revision,
         "gtfs_digest": digest,
         "provider_name": route.get("carrier_name") if provider_name is None else provider_name,
-        "route_group": route.get("route_code") if route_group is None else route_group,
+        "route_group": route.get("route_code") if route_group is None else route_group.route_code,
+        "group_public_name": name.public_name if route_group is None else route_group.public_name,
+        "group_route_number": name.route_number if route_group is None else route_group.route_number,
     }

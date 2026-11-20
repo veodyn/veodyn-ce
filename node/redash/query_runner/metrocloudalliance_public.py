@@ -140,8 +140,8 @@ def public_routes(params, fetch, profiles, archive_fetcher=None):
     routes = _routes(params, fetch)
     profile = _profile(profiles, params, routes)
     resolver = _resolver(profile, False, archive_fetcher)
-    named = _route_names(routes, profile, resolver)
-    groups = route_groups(named)
+    named = _route_names(routes, profile, resolver, with_resolved=True)
+    groups = route_groups(named, profile)
     return [
         route_row(
             route,
@@ -149,9 +149,9 @@ def public_routes(params, fetch, profiles, archive_fetcher=None):
             profiles.revision,
             resolver.digest,
             provider_name=provider_name(profile, route.get("carrier_name")),
-            route_group=groups.get(str(route_code), route_code),
+            route_group=groups[route_code],
         )
-        for route_code, (route, name) in named.items()
+        for route_code, (route, name, _) in named.items()
     ]
 
 
