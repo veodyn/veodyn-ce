@@ -137,9 +137,9 @@ class TerminusFilter:
             logger.warning("Keeping departures of %s, its stops could not be read: %s", pattern_code, error)
             return set()
 
-    def is_arrival_at_the_end(self, row):
-        pattern_code = str(row.get("pattern_code") or "")
+    def is_arrival_at_the_end(self, row, sibling_patterns=None):
         stop_id = str(row.get("stop_id") or "")
+        pattern_code = str(row.get("pattern_code") or "") or (sibling_patterns or {}).get(_sibling_key(row), "")
         resolved = self.resolved_by_code.get(row.get("route_code"))
         if not pattern_code or not stop_id or resolved is None:
             return False
@@ -153,4 +153,17 @@ class TerminusFilter:
         return direction_id is not None and stop_id in directions[direction_id]["final"]
 
     def apply(self, rows):
-        return [row for row in rows if not self.is_arrival_at_the_end(row)]
+        siblings = _sibling_patterns(rows)
+        return [row for row in rows if not self.is_arrival_at_the_end(row, siblings)]
+
+
+def _sibling_key(row):
+    return (str(row.get("stop_id") or ""), str(row.get("route_code") or ""), str(row.get("direction") or ""))
+
+
+def _sibling_patterns(rows):
+    found = {}
+    for row in rows:
+        if row.get("pattern_code"):
+            found.setdefault(_sibling_key(row), set()).add(str(row["pattern_code"]))
+    return {key: next(iter(codes)) for key, codes in found.items() if len(codes) == 1}

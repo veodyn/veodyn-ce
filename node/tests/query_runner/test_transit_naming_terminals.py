@@ -90,6 +90,15 @@ HUB = station(
         scheduled("30", None, "E", 8),
     ],
 )
+SIBLINGS = station(
+    "600",
+    [
+        scheduled("30", "MT030 E", "E", 5),
+        {**scheduled("30", None, "E", 9), "prediction_without_schedule": True},
+        {**scheduled("30", None, "W", 10), "prediction_without_schedule": True},
+        scheduled("30", "MT030 W", "W", 6),
+    ],
+)
 
 
 def stops(params):
@@ -181,3 +190,22 @@ class TestDeparturesSkipArrivalsAtTheEnd(PublicResourceCase):
                 {PREDICTIONS: [HUB], ROUTES: routes_by_params, STOPS: failing},
             )
         self.assertIn("MT030 E", {row["pattern_code"] for row in data["rows"]})
+
+    def test_a_row_without_a_pattern_takes_the_one_pattern_its_route_and_direction_show_here(self):
+        with patch.object(public, "archive_fetch", terminal_archives()):
+            data, _ = self.run_resource(
+                '{"resource": "public_departures", "params": {"stop": "MT:600"}}',
+                {PREDICTIONS: [SIBLINGS], ROUTES: routes_by_params, STOPS: stops},
+            )
+        self.assertEqual(
+            sorted((row["pattern_code"] or "", row["direction"]) for row in data["rows"]),
+            [("", "W"), ("MT030 W", "W")],
+        )
+
+    def test_a_row_without_a_pattern_is_kept_when_two_patterns_share_its_route_and_direction(self):
+        with patch.object(public, "archive_fetch", terminal_archives()):
+            data, _ = self.run_resource(
+                '{"resource": "public_departures", "params": {"stop": "MT:600"}}',
+                {PREDICTIONS: [HUB], ROUTES: routes_by_params, STOPS: stops},
+            )
+        self.assertIn((None, "E"), {(row["pattern_code"], row["direction"]) for row in data["rows"]})
