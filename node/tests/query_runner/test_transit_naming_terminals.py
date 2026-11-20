@@ -8,6 +8,7 @@ from redash.transit_naming import terminals
 from redash.transit_naming.gtfs_routes import read_snapshot
 from redash.transit_naming.terminals import (
     TerminalIndexes,
+    _direction_of,
     terminal_index,
     warm_terminal_indexes,
 )
@@ -261,3 +262,21 @@ class TestWarmingTheIndexes(TestCase):
     def test_a_carrier_that_cannot_warm_does_not_stop_the_others(self):
         offline = archive_fetcher({BUS_URL: OSError("offline"), RAIL_URL: OSError("offline")})
         self.assertEqual(warm_terminal_indexes(metro_profiles(), self.cache.name, offline), 0)
+
+
+class TestDirectionByStopOverlap(TestCase):
+    def directions(self, first, second):
+        return {"0": {"stops": set(first), "final": set()}, "1": {"stops": set(second), "final": set()}}
+
+    def test_a_short_express_pattern_sharing_half_its_stops_still_has_a_direction(self):
+        directions = self.directions(["a", "b", "c", "d", "e", "f"], ["a", "b", "c", "x", "y", "z", "w", "v"])
+        self.assertEqual(_direction_of({"a", "b", "c", "d", "e", "f"}, directions), "0")
+
+    def test_a_line_whose_platforms_serve_both_directions_has_none(self):
+        shared = [f"s{i}" for i in range(42)]
+        directions = self.directions(shared + ["p", "q"], shared)
+        self.assertIsNone(_direction_of(set(shared + ["p", "q", "r", "t"]), directions))
+
+    def test_a_pattern_mostly_outside_both_directions_has_none(self):
+        directions = self.directions(["a", "b"], ["c"])
+        self.assertIsNone(_direction_of({"a", "b", "m", "n", "o", "u"}, directions))

@@ -7,6 +7,7 @@ from redash.transit_naming.gtfs_routes import GtfsResolver
 
 logger = logging.getLogger(__name__)
 MEMO_LIMIT = 8
+MIN_MARGIN_STOPS = 2
 BASE_DIRECTION = re.compile(r"[NSEW]")
 _memo = {}
 
@@ -138,7 +139,8 @@ def _direction_of(members, directions):
     )
     best, direction_id = overlap[0]
     runner_up = overlap[1][0] if len(overlap) > 1 else 0
-    return direction_id if best * 2 >= len(members) and best > 2 * runner_up else None
+    margin = max(MIN_MARGIN_STOPS, len(members) / 4)
+    return direction_id if best * 2 >= len(members) and best - runner_up >= margin else None
 
 
 class TerminusFilter:
