@@ -28,7 +28,7 @@ from redash.transit_naming.patterns import (
     cut_patterns,
     pattern_row,
 )
-from redash.transit_naming.places import PLACE_COLUMNS, place_rows
+from redash.transit_naming.places import MAX_PLACE_STOPS, PLACE_COLUMNS, place_rows
 from redash.transit_naming.profile_loader import load_profiles, profile_dirs
 from redash.transit_naming.routes import (
     name_route,
@@ -66,8 +66,13 @@ def cache_dir():
 
 
 STOP_KEY = re.compile(r"([A-Za-z0-9]{1,8}):([A-Za-z0-9_.\-]{1,40})")
-PLACE_KEY = re.compile(r"[A-Za-z0-9]{1,8}:[A-Za-z0-9_.\-]{1,40}(?:,[A-Za-z0-9]{1,8}:[A-Za-z0-9_.\-]{1,40}){0,19}")
+PLACE_GROUP = r"[A-Za-z0-9]{1,8}:[A-Za-z0-9_.\-]{1,40}(?:\|[A-Za-z0-9_.\-]{1,40})*"
+PLACE_KEY = re.compile(rf"{PLACE_GROUP}(?:,{PLACE_GROUP})*")
 PLACE_FETCH_WORKERS = 4
+PLACE_ERROR = (
+    'place must be "<carrier_code>:<stop_id>[|<stop_id>...]" groups joined by commas, at most '
+    f"{MAX_PLACE_STOPS} stops"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -333,11 +338,15 @@ def public_departures(params, fetch, profiles, now, archive_fetcher=None, source
 def place_stops(place):
     value = str(place or "")
     if PLACE_KEY.fullmatch(value) is None:
-        raise ValueError('place must be "<carrier_code>:<stop_id>" joined by commas, at most 20 stops')
+        raise ValueError(PLACE_ERROR)
     stops = {}
-    for key in dict.fromkeys(value.split(",")):
-        carrier, stop_id = key.split(":", 1)
-        stops.setdefault(carrier, []).append(stop_id)
+    for group in value.split(","):
+        carrier, ids = group.split(":", 1)
+        for stop_id in ids.split("|"):
+            if stop_id not in stops.setdefault(carrier, []):
+                stops[carrier].append(stop_id)
+    if sum(len(ids) for ids in stops.values()) > MAX_PLACE_STOPS:
+        raise ValueError(PLACE_ERROR)
     return stops
 
 

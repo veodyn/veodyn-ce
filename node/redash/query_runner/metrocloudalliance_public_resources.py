@@ -21,9 +21,13 @@ PUBLIC_RESOURCES = {
         "path": "v2/transitnetwork/stops",
         "doc_params": [],
         "doc_returns": [
-            "value: the place's member stops, '<carrier>:<stop_id>' joined by ',' (the value a departures picker passes)",
+            "value: the place's member stops, '<carrier>:<stop_id>|<stop_id>...' per carrier joined by ',' "
+            "(the value a departures picker passes)",
+            "keys: every 511 ID and loose stop key the place absorbed, ';' separated, so an older link still resolves",
             "name: public name and providers, for a dropdown",
-            "place: the 511 ID, or '<carrier>:<stop_id>' for a stop without one",
+            "place: the lowest 511 ID among the members, or '<carrier>:<stop_id>' when none has one. A place joins "
+            "a 511 group, the stops merge candidates pair, and stations of different carriers whose names reduce to "
+            "the same station within 300 m",
             "public_name, names, providers (rider-facing provider names), member_stops, provider_stop_ids",
             "lat, lng, stop_kind, normalization_revision",
         ],
@@ -113,8 +117,8 @@ PUBLIC_RESOURCES = {
     "public_place_departures": {
         "path": "v2/realtime/predictions",
         "doc_params": [
-            "place (required): string - a place's member stops, '<carrier_code>:<stop_id>' joined by ',' "
-            "(public_places value), at most 20",
+            "place (required): string - a place's member stops, '<carrier_code>:<stop_id>|<stop_id>...' per "
+            "carrier joined by ',' (public_places value), at most 40",
         ],
         "doc_returns": PUBLIC_DEPARTURE_COLUMNS,
         "example": '{"resource": "public_place_departures", "params": {"place": "<carrier>:<stop_id>,<carrier>:<stop_id>"}}',

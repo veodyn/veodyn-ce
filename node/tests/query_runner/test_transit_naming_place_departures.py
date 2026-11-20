@@ -89,6 +89,16 @@ class TestPlaceDepartures(PublicResourceCase):
         self.assertNotIn("MT030 E", {row["pattern_code"] for row in data["rows"]})
         self.assertIn("MT030 W", {row["pattern_code"] for row in data["rows"]})
 
+    def test_a_compact_place_lists_each_carriers_stops_once(self):
+        data, _ = self.run_place("BU:50,MT:1166|1167")
+        self.assertEqual({row["stop_id"] for row in data["rows"]}, {"50", "1166", "1167"})
+
+    def test_a_place_over_forty_stops_is_refused(self):
+        place = "MT:" + "|".join(str(n) for n in range(41))
+        with patch("redash.query_runner.metrocloudalliance.requests.get"):
+            _, error = self.runner.run_query(query(place), None)
+        self.assertIn("at most 40 stops", error)
+
     def test_a_malformed_place_is_refused(self):
         with patch("redash.query_runner.metrocloudalliance.requests.get") as get:
             data, error = self.runner.run_query(query("MT:1;DROP"), None)
