@@ -32,6 +32,7 @@ from redash.transit_naming.snapshot import PatternStop, RouteName, StopName
 from redash.transit_naming.stop_rows import stop_row
 from redash.transit_naming.stops import is_retired
 from redash.transit_naming.suffixes import CarrierIndexes
+from redash.transit_naming.terminals import TerminalIndexes, TerminusFilter
 from redash.transit_naming.trip_routes import TRIP_ROUTE_COLUMNS, trip_route_rows
 
 archive_fetch = http_fetch
@@ -240,9 +241,9 @@ def public_departures(params, fetch, profiles, now, archive_fetcher=None, source
     routes = fetch("routes", {"carrier_code": _carrier(params)})
     profile = _profile(profiles, params, routes)
     resolver = _resolver(profile, False, archive_fetcher)
-    named = _route_names(routes, profile, resolver)
-    by_number = {name.route_number: name for _, name in named.values()}
-    by_code = {route_code: name for route_code, (_, name) in named.items()}
+    named = _route_names(routes, profile, resolver, with_resolved=True)
+    by_number = {name.route_number: name for _, name, _ in named.values()}
+    by_code = {route_code: name for route_code, (_, name, _) in named.items()}
     indexes = CarrierIndexes(
         profiles.base_revision,
         source,
@@ -253,7 +254,13 @@ def public_departures(params, fetch, profiles, now, archive_fetcher=None, source
     for stop_id in sorted({str(r["stop_id"]) for r in rows if r.get("stop_id")})[: profile.departures_stop_lookup_max]:
         for stop in fetch("stops", {"carrier_code": _carrier(params), "stop_id": stop_id}):
             stop_names[str(stop["stop_id"])] = indexes.name(stop, profile)
-    return enrich_departures(rows, by_number, stop_names, profile, profiles.revision, resolver.digest, by_code)
+    enriched = enrich_departures(rows, by_number, stop_names, profile, profiles.revision, resolver.digest, by_code)
+    terminus = TerminusFilter(
+        {route_code: resolved for route_code, (_, _, resolved) in named.items() if resolved is not None},
+        TerminalIndexes(profile, cache_dir(), archive_fetcher or archive_fetch, resolver.snapshots()),
+        lambda pattern_code: fetch("stops", {"carrier_code": _carrier(params), "pattern_code": pattern_code}),
+    )
+    return terminus.apply(enriched)
 
 
 def naming_profiles(profiles):

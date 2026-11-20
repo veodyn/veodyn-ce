@@ -201,14 +201,15 @@ class TestPublicRouteStops(PublicResourceCase):
 
 
 class TestPublicDepartures(PublicResourceCase):
-    def test_three_fetches_and_public_columns(self):
+    def test_fetches_and_public_columns(self):
         data, get = self.run_resource(
             '{"resource": "public_departures", "params": {"carrier_code": "MT", "stop_id": "1166"}}',
             {PREDICTIONS: [PREDICTION_STOP], ROUTES: routes_by_params, STOPS: stops_by_params},
         )
         urls = [call.args[0] for call in get.call_args_list]
-        self.assertEqual(urls, [PREDICTIONS, ROUTES, STOPS])
+        self.assertEqual(urls, [PREDICTIONS, ROUTES, STOPS, STOPS])
         self.assertEqual(get.call_args_list[2].kwargs["params"]["stop_id"], "1166")
+        self.assertEqual(get.call_args_list[3].kwargs["params"]["pattern_code"], "MT030 E")
         row = [r for r in data["rows"] if r["raw_route"] == "30"][0]
         self.assertEqual(
             (row["public_route_name"], row["public_stop_name"]), ("Metro Local Line 30", "1st St/Main St")
