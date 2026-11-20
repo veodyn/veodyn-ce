@@ -9,8 +9,21 @@ PUBLIC_RESOURCES = {
             "route_number, brand, public_name, short_name, long_name, mode, color, text_color, gtfs_route_id",
             "public_name_source, brand_source, color_source: gtfs | alias | mca_side_channel | rule | override | passthrough",
             "normalization_revision, gtfs_digest: lineage",
+            "provider_name: the rider-facing provider name, the profile's provider_name or else MCA's carrier_name",
+            "route_group: the route_code every route sharing this one's GTFS route and public name lists, "
+            "so a rider sees them as one line",
         ],
         "example": '{"resource": "public_routes", "params": {"carrier_code": "MT"}}',
+    },
+    "public_carriers": {
+        "path": "v2/transitnetwork/carriers",
+        "doc_params": [],
+        "doc_returns": [
+            "carrier_code, carrier_name: from MCA carriers",
+            "provider_name: the rider-facing provider name, the profile's provider_name or else carrier_name",
+            "normalization_revision",
+        ],
+        "example": '{"resource": "public_carriers"}',
     },
     "public_stops": {
         "path": "v2/transitnetwork/stops",

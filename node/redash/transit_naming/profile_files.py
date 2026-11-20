@@ -6,7 +6,7 @@ import yaml
 from redash.transit_naming.profiles import OVERRIDE_KINDS, Override, ProfileError
 
 PROFILE_SUFFIXES = (".yaml", ".csv", ".streets.json")
-INHERITED_NEVER = frozenset({"carrier_code", "carrier_display_name"})
+INHERITED_NEVER = frozenset({"carrier_code", "carrier_display_name", "provider_name"})
 
 
 class StrictLoader(yaml.SafeLoader):

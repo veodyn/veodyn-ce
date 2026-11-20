@@ -192,6 +192,8 @@ class TestOverrideAndRow(TestCase):
                 "color_source",
                 "normalization_revision",
                 "gtfs_digest",
+                "provider_name",
+                "route_group",
             ],
         )
         self.assertEqual((row["route_code"], row["route_id"], row["line_code"]), ("MT094", 1, "094"))

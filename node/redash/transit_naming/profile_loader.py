@@ -28,6 +28,7 @@ DEFAULT_FILE = "default.yaml"
 TOP_KEYS = {
     "carrier_code",
     "carrier_display_name",
+    "provider_name",
     "gtfs_sources",
     "gtfs_cache_max_age_hours",
     "gtfs_max_download_bytes",
@@ -164,6 +165,7 @@ def parse_profile_yaml(text, file, default_data=None):
     return Profile(
         carrier_code=carrier,
         carrier_display_name=str(data.get("carrier_display_name", "" if data.get("inherit_default") else carrier)),
+        provider_name=str(data.get("provider_name") or ""),
         route_name=route_name_rules(data.get("route_name") or {}, carrier, file),
         stop_name=stop_name_rules(data.get("stop_name") or {}, carrier, file),
         headsign=_headsign_rules(data.get("headsign") or {}, carrier, file),

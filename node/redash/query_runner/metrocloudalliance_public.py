@@ -27,7 +27,12 @@ from redash.transit_naming.patterns import (
     pattern_row,
 )
 from redash.transit_naming.profile_loader import load_profiles, profile_dirs
-from redash.transit_naming.routes import name_route, parse_route_number, route_row
+from redash.transit_naming.routes import (
+    name_route,
+    parse_route_number,
+    route_groups,
+    route_row,
+)
 from redash.transit_naming.snapshot import PatternStop, RouteName, StopName
 from redash.transit_naming.stop_rows import stop_row
 from redash.transit_naming.stops import is_retired
@@ -106,6 +111,7 @@ def _route_names(routes, profile, resolver, with_resolved=False):
 
 PUBLIC_COLUMN_NAMES = {
     "public_routes": list(route_row({}, RouteName(*[""] * 12), "", "")),
+    "public_carriers": ["carrier_code", "carrier_name", "provider_name", "normalization_revision"],
     "public_stops": list(stop_row({}, StopName("", "", "", "", "", "", False, ""), "", "")),
     "public_route_stops": list(pattern_row(PatternStop(*[""] * 11), "", "")),
     "public_route_paths": list(PATH_COLUMNS),
@@ -126,14 +132,43 @@ def _routes(params, fetch):
     return [route for route in routes if str(route.get("route_code")) == str(route_code)]
 
 
+def provider_name(profile, carrier_name):
+    return profile.provider_name or str(carrier_name or "") or profile.carrier_code
+
+
 def public_routes(params, fetch, profiles, archive_fetcher=None):
     routes = _routes(params, fetch)
     profile = _profile(profiles, params, routes)
     resolver = _resolver(profile, False, archive_fetcher)
+    named = _route_names(routes, profile, resolver)
+    groups = route_groups(named)
     return [
-        route_row(route, name, profiles.revision, resolver.digest)
-        for route, name in _route_names(routes, profile, resolver).values()
+        route_row(
+            route,
+            name,
+            profiles.revision,
+            resolver.digest,
+            provider_name=provider_name(profile, route.get("carrier_name")),
+            route_group=groups.get(str(route_code), route_code),
+        )
+        for route_code, (route, name) in named.items()
     ]
+
+
+def public_carriers(fetch, profiles):
+    rows = []
+    for carrier in fetch("carriers", {}):
+        code = str(carrier.get("carrier_code") or "")
+        name = carrier.get("carrier_name")
+        rows.append(
+            {
+                "carrier_code": code,
+                "carrier_name": name,
+                "provider_name": provider_name(profiles.for_carrier(code, name or ""), name),
+                "normalization_revision": profiles.revision,
+            }
+        )
+    return rows
 
 
 def public_stops(params, fetch, profiles, archive_fetcher=None, source=None, keep=None):
@@ -283,6 +318,8 @@ def run_public_resource(resource, params, fetch, now=None, archive_fetcher=None,
     profiles = load_profile_set()
     if resource == "public_routes":
         return public_routes(params, fetch, profiles, archive_fetcher)
+    if resource == "public_carriers":
+        return public_carriers(fetch, profiles)
     if resource == "public_stops":
         return public_stops(params, fetch, profiles, archive_fetcher, source)
     if resource == "public_stop_locations":

@@ -188,7 +188,19 @@ def name_route(route, profile, resolved, side_channel=None):
     )
 
 
-def route_row(route, name, revision, digest):
+def route_groups(named):
+    members = {}
+    for route_code, (_, name) in named.items():
+        if name.gtfs_route_id:
+            members.setdefault((name.gtfs_route_id, name.public_name), []).append(str(route_code))
+    groups = {}
+    for codes in members.values():
+        for code in codes:
+            groups[code] = min(codes)
+    return groups
+
+
+def route_row(route, name, revision, digest, provider_name=None, route_group=None):
     return {
         "carrier_code": route.get("carrier_code"),
         "carrier_id": route.get("carrier_id"),
@@ -211,4 +223,6 @@ def route_row(route, name, revision, digest):
         "color_source": name.color_source,
         "normalization_revision": revision,
         "gtfs_digest": digest,
+        "provider_name": route.get("carrier_name") if provider_name is None else provider_name,
+        "route_group": route.get("route_code") if route_group is None else route_group,
     }
