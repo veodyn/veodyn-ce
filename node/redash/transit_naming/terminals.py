@@ -1,11 +1,13 @@
 import json
 import logging
 import os
+import re
 
 from redash.transit_naming.gtfs_routes import GtfsResolver
 
 logger = logging.getLogger(__name__)
 MEMO_LIMIT = 8
+BASE_DIRECTION = re.compile(r"[NSEW]")
 _memo = {}
 
 
@@ -155,7 +157,10 @@ class TerminusFilter:
 
     def is_arrival_at_the_end(self, row, sibling_patterns=None):
         stop_id = str(row.get("stop_id") or "")
-        pattern_code = str(row.get("pattern_code") or "") or (sibling_patterns or {}).get(_sibling_key(row), "")
+        pattern_code = str(row.get("pattern_code") or "")
+        if not pattern_code:
+            sibling = (sibling_patterns or {}).get(_sibling_key(row))
+            pattern_code = _base_pattern_code(row) if sibling is None else sibling
         resolved = self.resolved_by_code.get(row.get("route_code"))
         if not pattern_code or not stop_id or resolved is None:
             return False
@@ -173,6 +178,12 @@ class TerminusFilter:
         return [row for row in rows if not self.is_arrival_at_the_end(row, siblings)]
 
 
+def _base_pattern_code(row):
+    route_code = str(row.get("route_code") or "")
+    direction = str(row.get("direction") or "")
+    return f"{route_code} {direction}" if route_code and BASE_DIRECTION.fullmatch(direction) else ""
+
+
 def _sibling_key(row):
     return (str(row.get("stop_id") or ""), str(row.get("route_code") or ""), str(row.get("direction") or ""))
 
@@ -182,4 +193,4 @@ def _sibling_patterns(rows):
     for row in rows:
         if row.get("pattern_code"):
             found.setdefault(_sibling_key(row), set()).add(str(row["pattern_code"]))
-    return {key: next(iter(codes)) for key, codes in found.items() if len(codes) == 1}
+    return {key: next(iter(codes)) if len(codes) == 1 else "" for key, codes in found.items()}

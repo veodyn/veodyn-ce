@@ -94,6 +94,13 @@ HUB = station(
         scheduled("30", None, "E", 8),
     ],
 )
+UNPATTERNED = station(
+    "600",
+    [
+        {**scheduled("30", None, "E", 9), "prediction_without_schedule": True},
+        {**scheduled("30", None, "W", 10), "prediction_without_schedule": True},
+    ],
+)
 SIBLINGS = station(
     "600",
     [
@@ -205,6 +212,25 @@ class TestDeparturesSkipArrivalsAtTheEnd(PublicResourceCase):
             sorted((row["pattern_code"] or "", row["direction"]) for row in data["rows"]),
             [("", "W"), ("MT030 W", "W")],
         )
+
+    def test_a_row_with_no_pattern_and_no_sibling_tries_its_routes_base_pattern(self):
+        with patch.object(public, "archive_fetch", terminal_archives()):
+            data, _ = self.run_resource(
+                '{"resource": "public_departures", "params": {"stop": "MT:600"}}',
+                {PREDICTIONS: [UNPATTERNED], ROUTES: routes_by_params, STOPS: stops},
+            )
+        self.assertEqual([row["direction"] for row in data["rows"]], ["W"])
+
+    def test_a_base_pattern_mca_does_not_know_keeps_the_row(self):
+        def no_members(params):
+            return [] if params.get("pattern_code") else stops(params)
+
+        with patch.object(public, "archive_fetch", terminal_archives()):
+            data, _ = self.run_resource(
+                '{"resource": "public_departures", "params": {"stop": "MT:600"}}',
+                {PREDICTIONS: [UNPATTERNED], ROUTES: routes_by_params, STOPS: no_members},
+            )
+        self.assertEqual(sorted(row["direction"] for row in data["rows"]), ["E", "W"])
 
     def test_a_row_without_a_pattern_is_kept_when_two_patterns_share_its_route_and_direction(self):
         with patch.object(public, "archive_fetch", terminal_archives()):
