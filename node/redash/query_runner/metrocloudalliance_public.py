@@ -1,4 +1,6 @@
+import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 from redash import settings
 from redash.query_runner.metrocloudalliance_departures import flatten_departures
@@ -64,6 +66,9 @@ def cache_dir():
 
 
 STOP_KEY = re.compile(r"([A-Za-z0-9]{1,8}):([A-Za-z0-9_.\-]{1,40})")
+PLACE_KEY = re.compile(r"[A-Za-z0-9]{1,8}:[A-Za-z0-9_.\-]{1,40}(?:,[A-Za-z0-9]{1,8}:[A-Za-z0-9_.\-]{1,40}){0,19}")
+PLACE_FETCH_WORKERS = 4
+logger = logging.getLogger(__name__)
 
 
 def expand_stop_key(params):
@@ -119,6 +124,7 @@ PUBLIC_COLUMN_NAMES = {
     "public_route_paths": list(PATH_COLUMNS),
     "public_trip_routes": list(TRIP_ROUTE_COLUMNS),
     "public_departures": [column.split(":")[0] for column in PUBLIC_DEPARTURE_COLUMNS],
+    "public_place_departures": [column.split(":")[0] for column in PUBLIC_DEPARTURE_COLUMNS],
     "public_stop_locations": list(LOCATION_COLUMNS),
     "public_stop_merge_candidates": list(MERGE_CANDIDATE_COLUMNS),
     "naming_profiles": ["carrier_code", "source_file", "is_default", "gtfs_sources", "overrides", "revision"],
@@ -278,15 +284,19 @@ def public_trip_routes(params, fetch, profiles, archive_fetcher=None):
     return trip_route_rows(profile.carrier_code, resolutions, profile, resolver)
 
 
-def public_departures(params, fetch, profiles, now, archive_fetcher=None, source=None):
-    query = {
-        k: v
-        for k, v in params.items()
-        if k in ("carrier_code", "stop_id", "search_point", "search_radius", "number_of_results")
-    }
-    predictions = fetch("predictions", query)
-    rows = flatten_departures(predictions, now=now)
-    routes = fetch("routes", {"carrier_code": _carrier(params)})
+def _predictions(fetch, queries):
+    if len(queries) == 1:
+        return fetch("predictions", queries[0])
+    with ThreadPoolExecutor(max_workers=PLACE_FETCH_WORKERS) as pool:
+        return [
+            record for records in pool.map(lambda query: fetch("predictions", query), queries) for record in records
+        ]
+
+
+def carrier_departures(carrier, queries, fetch, profiles, now, archive_fetcher=None, source=None):
+    params = {"carrier_code": carrier}
+    rows = flatten_departures(_predictions(fetch, queries), now=now)
+    routes = fetch("routes", params)
     profile = _profile(profiles, params, routes)
     resolver = _resolver(profile, False, archive_fetcher)
     named = _route_names(routes, profile, resolver, with_resolved=True)
@@ -309,6 +319,56 @@ def public_departures(params, fetch, profiles, now, archive_fetcher=None, source
         lambda pattern_code: fetch("stops", {"carrier_code": _carrier(params), "pattern_code": pattern_code}),
     )
     return terminus.apply(enriched)
+
+
+def public_departures(params, fetch, profiles, now, archive_fetcher=None, source=None):
+    query = {
+        k: v
+        for k, v in params.items()
+        if k in ("carrier_code", "stop_id", "search_point", "search_radius", "number_of_results")
+    }
+    return carrier_departures(_carrier(params), [query], fetch, profiles, now, archive_fetcher, source)
+
+
+def place_stops(place):
+    value = str(place or "")
+    if PLACE_KEY.fullmatch(value) is None:
+        raise ValueError('place must be "<carrier_code>:<stop_id>" joined by commas, at most 20 stops')
+    stops = {}
+    for key in dict.fromkeys(value.split(",")):
+        carrier, stop_id = key.split(":", 1)
+        stops.setdefault(carrier, []).append(stop_id)
+    return stops
+
+
+def _departure_key(row):
+    return tuple(
+        str(row.get(field))
+        for field in (
+            "carrier",
+            "stop_id",
+            "route_code",
+            "pattern_code",
+            "direction",
+            "public_headsign",
+            "departure_at",
+            "is_realtime",
+        )
+    )
+
+
+def public_place_departures(params, fetch, profiles, now, archive_fetcher=None, source=None):
+    rows = []
+    for carrier, stop_ids in place_stops(params.get("place")).items():
+        queries = [{"carrier_code": carrier, "stop_id": stop_id} for stop_id in stop_ids]
+        try:
+            rows.extend(carrier_departures(carrier, queries, fetch, profiles, now, archive_fetcher, source))
+        except Exception as error:
+            logger.warning("Leaving %s out of place departures: %s", carrier, error)
+    unique = {}
+    for row in rows:
+        unique.setdefault(_departure_key(row), row)
+    return sorted(unique.values(), key=lambda row: str(row.get("departure_at") or ""))
 
 
 def naming_profiles(profiles):
@@ -351,6 +411,8 @@ def run_public_resource(resource, params, fetch, now=None, archive_fetcher=None,
         return public_trip_routes(params, fetch, profiles, archive_fetcher)
     if resource == "public_departures":
         return public_departures(params, fetch, profiles, now, archive_fetcher, source)
+    if resource == "public_place_departures":
+        return public_place_departures(params, fetch, profiles, now, archive_fetcher, source)
     if resource == "name_overrides":
         return override_status(profiles.extra_overrides, fetch)
     return naming_profiles(profiles)

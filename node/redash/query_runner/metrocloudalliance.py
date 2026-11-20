@@ -63,6 +63,7 @@ class MetroCloudAlliance(BaseResourceRunner):
         "public_route_paths": ("carrier_code",),
         "public_trip_routes": ("carrier_code",),
         "public_departures": ("carrier_code",),
+        "public_place_departures": ("place",),
     }
 
     @classmethod

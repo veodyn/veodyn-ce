@@ -110,6 +110,15 @@ PUBLIC_RESOURCES = {
         "doc_returns": PUBLIC_DEPARTURE_COLUMNS,
         "example": '{"resource": "public_departures", "params": {"carrier_code": "MT", "stop_id": "1166"}}',
     },
+    "public_place_departures": {
+        "path": "v2/realtime/predictions",
+        "doc_params": [
+            "place (required): string - a place's member stops, '<carrier_code>:<stop_id>' joined by ',' "
+            "(public_places value), at most 20",
+        ],
+        "doc_returns": PUBLIC_DEPARTURE_COLUMNS,
+        "example": '{"resource": "public_place_departures", "params": {"place": "<carrier>:<stop_id>,<carrier>:<stop_id>"}}',
+    },
     "public_stop_locations": {
         "path": "v2/transitnetwork/stops",
         "doc_params": [
