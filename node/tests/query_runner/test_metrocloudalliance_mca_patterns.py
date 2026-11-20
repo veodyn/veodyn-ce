@@ -1,3 +1,5 @@
+import json
+
 from tests.query_runner.test_metrocloudalliance_public import (
     PATTERNS,
     ROUTES,
@@ -6,11 +8,21 @@ from tests.query_runner.test_metrocloudalliance_public import (
 )
 from tests.query_runner.transit_naming_fixtures import mca_route, mca_stop
 
-BU_ROUTES = [mca_route("BU001", "1", 5, 501, carrier="BU"), mca_route("BU002", "2", 6, 502, carrier="BU")]
+BU_ROUTES = [
+    mca_route("BU001", "1", 5, 501, carrier="BU"),
+    mca_route("BU002", "2", 6, 502, carrier="BU"),
+    mca_route("BU003", "3", 7, 503, carrier="BU"),
+    mca_route("BU004", "4", 8, 504, carrier="BU"),
+]
 
 
-def bu_stop(stop_id, name, modes="BUS"):
-    return dict(mca_stop(stop_id, name, 34.18, -118.31, modes=modes), carrier_code="BU")
+def bu_stop(stop_id, name, modes="BUS", lines=None):
+    stop = dict(mca_stop(stop_id, name, 34.18, -118.31, modes=modes), carrier_code="BU")
+    if lines is not None:
+        stop["lines_served"] = json.dumps(
+            [{"line_id": n, "line_name": f"LINE {n}", "line_short_name": n} for n in lines]
+        )
+    return stop
 
 
 BU_STOPS = [
@@ -18,11 +30,16 @@ BU_STOPS = [
     bu_stop("11", "Downtown Transit Center"),
     bu_stop("12", "Main St/First St"),
     bu_stop("99", "Quiet Stop", modes=""),
+    bu_stop("30", "Maple Av/Cedar St", lines=["3", "03"]),
+    bu_stop("31", "Birch St/Cedar St", lines=["31"]),
+    bu_stop("32", "Willow Ct/Cedar St", lines=["3"]),
 ]
 MEMBERS = {
     "BU001 N": ["11", "10", "99"],
     "BU001 S": ["12", "11"],
     "BU0011N": ["10"],
+    "BU003 W": [],
+    "BU004 E": [],
 }
 
 
@@ -36,6 +53,8 @@ def patterns(params):
         pattern("BU001", "BU001 S", "DOWNTOWN TRANSIT CENTER"),
         pattern("BU001", "BU0011N", "BU001"),
         pattern("BU002", "BU002 E", "EAST SIDE"),
+        pattern("BU003", "BU003 W", "WEST SIDE"),
+        pattern("BU004", "BU004 E", "EAST SIDE"),
     ]
 
 
@@ -81,3 +100,18 @@ class TestRouteStopsFromMcaPatterns(PublicResourceCase):
         pattern_calls = [c for c in get.call_args_list if c.args[0] == PATTERNS]
         self.assertEqual(len(pattern_calls), 1)
         self.assertEqual(pattern_calls[0].kwargs["params"]["carrier_code"], "BU")
+
+    def test_a_route_whose_patterns_list_no_stops_falls_back_to_the_stops_that_say_they_serve_it(self):
+        rows, _ = self.rows("BU003")
+        self.assertEqual(sorted(r["stop_id"] for r in rows), ["30", "32"])
+        self.assertEqual({(r["pattern_id"], r["direction"]) for r in rows}, {("BU003", "")})
+        self.assertEqual({r["sequence_source"] for r in rows}, {"mca_lines_served"})
+        self.assertEqual({r["sequence"] for r in rows}, {None})
+
+    def test_a_route_no_stop_claims_stays_empty(self):
+        rows, _ = self.rows("BU004")
+        self.assertEqual(rows, [])
+
+    def test_a_route_with_pattern_members_ignores_lines_served(self):
+        rows, _ = self.rows()
+        self.assertNotIn("mca_lines_served", {r["sequence_source"] for r in rows})

@@ -1,3 +1,5 @@
+import json
+import logging
 import re
 from dataclasses import replace
 
@@ -9,6 +11,7 @@ from redash.transit_naming.routes import parse_route_number
 DASH_RUN = re.compile(r"\s*-{2,}\s*")
 DESTINATION_WORDS = "(?:via|to|from|and)"
 LEADING_TO = re.compile(r"^to\s+", re.IGNORECASE)
+logger = logging.getLogger(__name__)
 
 
 def _without_route_designation(text, route_code):
@@ -57,6 +60,31 @@ def route_pattern_codes(fetch, carrier_code, route_code, profile):
     return found
 
 
+def _lines_served(stop):
+    raw = stop.get("lines_served")
+    try:
+        lines = json.loads(raw) if isinstance(raw, str) else raw
+    except ValueError as error:
+        logger.warning("Stop %s has unreadable lines_served: %s", stop.get("stop_id"), error)
+        return []
+    return [line for line in lines if isinstance(line, dict)] if isinstance(lines, list) else []
+
+
+def _serves(stop, route_number):
+    return any(
+        parse_route_number(str(line.get("line_short_name") or ""), "") == route_number for line in _lines_served(stop)
+    )
+
+
+def stops_serving_route(route_code, profile, live, names, sources):
+    number = parse_route_number(str(route_code), profile.carrier_code)
+    served = [stop for stop in live.values() if number and _serves(stop, number)]
+    return [
+        replace(stop, sequence_source="mca_lines_served")
+        for stop in mca_pattern_membership(profile.carrier_code, route_code, str(route_code), served, names, sources)
+    ]
+
+
 def mca_route_patterns(fetch, carrier_code, route_code, profile, live, names, sources):
     rows = []
     for code, headsign in route_pattern_codes(fetch, carrier_code, route_code, profile):
@@ -66,4 +94,4 @@ def mca_route_patterns(fetch, carrier_code, route_code, profile, live, names, so
             replace(stop, headsign=headsign)
             for stop in mca_pattern_membership(profile.carrier_code, route_code, code, served, names, sources)
         )
-    return rows
+    return rows or stops_serving_route(route_code, profile, live, names, sources)
