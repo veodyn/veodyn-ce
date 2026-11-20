@@ -37,6 +37,7 @@ from redash.query_runner.metrocloudalliance_public import (
 from redash.query_runner.metrocloudalliance_public_resources import PUBLIC_RESOURCES
 from redash.query_runner.metrocloudalliance_resources import EMPTY_COLUMNS, RESOURCES
 from redash.transit_naming.suffixes import source_hash
+from redash.transit_naming.terminals import warm_terminal_indexes
 
 DEFAULT_BASE_URL = "https://api.metrocloudalliance.com/"
 
@@ -49,7 +50,7 @@ class MetroCloudAlliance(BaseResourceRunner):
 
     @classmethod
     def warm_worker(cls):
-        base_profile_set()
+        warm_terminal_indexes(base_profile_set(), public_naming.cache_dir(), public_naming.archive_fetch)
 
     # Resources whose vendor endpoint 400s on a missing param rather than
     # treating it as unset - checked in _fetch before the request goes out,

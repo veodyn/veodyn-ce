@@ -44,9 +44,11 @@ class TestMetroCloudAllianceWarmsItsProfiles(TestCase):
             patch.object(public, "profile_dirs", return_value=["/profiles"]),
             patch.object(public, "load_profiles", return_value=built) as load,
             patch.object(public, "override_table") as overrides,
+            patch("redash.query_runner.metrocloudalliance.warm_terminal_indexes") as warm,
         ):
             MetroCloudAlliance.warm_worker()
             self.assertIs(public._profile_set[("/profiles",)], built)
             self.assertIs(public.base_profile_set(), built)
         self.assertEqual(load.call_count, 1)
         overrides.assert_not_called()
+        self.assertIs(warm.call_args.args[0], built)

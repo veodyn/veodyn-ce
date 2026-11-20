@@ -6,7 +6,11 @@ from unittest.mock import patch
 from redash.query_runner import metrocloudalliance_public as public
 from redash.transit_naming import terminals
 from redash.transit_naming.gtfs_routes import read_snapshot
-from redash.transit_naming.terminals import TerminalIndexes, terminal_index
+from redash.transit_naming.terminals import (
+    TerminalIndexes,
+    terminal_index,
+    warm_terminal_indexes,
+)
 from tests.query_runner.test_metrocloudalliance_public import (
     PREDICTIONS,
     ROUTES,
@@ -14,7 +18,7 @@ from tests.query_runner.test_metrocloudalliance_public import (
     PublicResourceCase,
     routes_by_params,
 )
-from tests.query_runner.transit_naming_fixtures import T0, metro_profile
+from tests.query_runner.transit_naming_fixtures import T0, metro_profile, metro_profiles
 from tests.query_runner.transit_naming_gtfs_fixtures import (
     BUS_URL,
     RAIL_MEMBERS,
@@ -209,3 +213,25 @@ class TestDeparturesSkipArrivalsAtTheEnd(PublicResourceCase):
                 {PREDICTIONS: [HUB], ROUTES: routes_by_params, STOPS: stops},
             )
         self.assertIn((None, "E"), {(row["pattern_code"], row["direction"]) for row in data["rows"]})
+
+
+class TestWarmingTheIndexes(TestCase):
+    def setUp(self):
+        self.cache = tempfile.TemporaryDirectory()
+        self.addCleanup(self.cache.cleanup)
+
+    def index_files(self):
+        return [n for n in os.listdir(self.cache.name) if n.startswith("terminals-")]
+
+    def test_warming_writes_every_gtfs_carriers_index(self):
+        self.assertEqual(warm_terminal_indexes(metro_profiles(), self.cache.name, terminal_archives()), 2)
+        self.assertEqual(len(self.index_files()), 2)
+
+    def test_warming_again_finds_the_indexes_without_rebuilding(self):
+        warm_terminal_indexes(metro_profiles(), self.cache.name, terminal_archives())
+        with patch.object(TerminalIndexes, "_build", side_effect=AssertionError("rebuilt")):
+            self.assertEqual(warm_terminal_indexes(metro_profiles(), self.cache.name, terminal_archives()), 2)
+
+    def test_a_carrier_that_cannot_warm_does_not_stop_the_others(self):
+        offline = archive_fetcher({BUS_URL: OSError("offline"), RAIL_URL: OSError("offline")})
+        self.assertEqual(warm_terminal_indexes(metro_profiles(), self.cache.name, offline), 0)

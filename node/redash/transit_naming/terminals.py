@@ -112,6 +112,22 @@ class TerminalIndexes:
         return self._built
 
 
+def warm_terminal_indexes(profiles, cache_dir, fetch):
+    ready = 0
+    for profile in profiles.profiles.values():
+        if not profile.gtfs_sources:
+            continue
+        try:
+            snapshots = GtfsResolver(profile, cache_dir, fetch=fetch).snapshots()
+            missing = [s for s in snapshots.values() if not os.path.exists(_path(cache_dir, s.digest))]
+            if missing:
+                TerminalIndexes(profile, cache_dir, fetch, snapshots)._build()
+            ready += sum(1 for s in snapshots.values() if os.path.exists(_path(cache_dir, s.digest)))
+        except Exception as error:
+            logger.warning("Could not warm the final-stop index for %s: %s", profile.carrier_code, error)
+    return ready
+
+
 def _direction_of(members, directions):
     if not members:
         return None
