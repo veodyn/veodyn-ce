@@ -106,12 +106,21 @@ def _join(strategy, route_number, snapshot):
     return None, None
 
 
+def _alias_route_id(gtfs_route_id, routes):
+    if gtfs_route_id in routes:
+        return gtfs_route_id
+    prefix = gtfs_route_id.split("-")[0]
+    same_route = [route_id for route_id in routes if route_id.split("-")[0] == prefix]
+    return same_route[0] if len(same_route) == 1 else None
+
+
 def resolve_route(route_code, route_number, profile, snapshots):
     alias = profile.aliases.get(route_code)
     if alias is not None and alias.source in snapshots:
-        row = snapshots[alias.source].routes.get(alias.gtfs_route_id)
-        if row is not None:
-            return _resolved(alias.gtfs_route_id, row, snapshots[alias.source], provenance.ALIAS)
+        gtfs_route_id = _alias_route_id(alias.gtfs_route_id, snapshots[alias.source].routes)
+        if gtfs_route_id is not None:
+            row = snapshots[alias.source].routes[gtfs_route_id]
+            return _resolved(gtfs_route_id, row, snapshots[alias.source], provenance.ALIAS)
     for source in profile.gtfs_sources:
         snapshot = snapshots.get(source.name)
         if snapshot is None:

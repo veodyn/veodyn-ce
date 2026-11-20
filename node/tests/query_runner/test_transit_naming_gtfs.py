@@ -134,6 +134,19 @@ class TestResolveRoute(TestCase):
         got = resolve_route("MT950", "950", self.profile, self.snapshots)
         self.assertEqual((got.gtfs_route_id, got.provenance), ("910-13201", provenance.ALIAS))
 
+    def with_bus_routes(self, routes_txt):
+        bus = read_snapshot("bus", build_archive({**BUS_MEMBERS, "routes.txt": routes_txt}), "u")
+        return {**self.snapshots, "bus": bus}
+
+    def test_alias_follows_its_route_into_the_next_service_change(self):
+        snapshots = self.with_bus_routes(BUS_MEMBERS["routes.txt"].replace("-13201", "-13377"))
+        got = resolve_route("MT950", "950", self.profile, snapshots)
+        self.assertEqual((got.gtfs_route_id, got.provenance), ("910-13377", provenance.ALIAS))
+
+    def test_alias_with_two_candidate_rows_is_not_guessed(self):
+        doubled = BUS_MEMBERS["routes.txt"].replace("910-13201", "910-13300") + "910-13377,,J,METRO J LINE,3,,\n"
+        self.assertIsNone(resolve_route("MT950", "950", self.profile, self.with_bus_routes(doubled)))
+
     def test_unmatched_returns_none(self):
         self.assertIsNone(resolve_route("MT999", "999", self.profile, self.snapshots))
 
