@@ -17,6 +17,18 @@ PUBLIC_RESOURCES = {
         ],
         "example": '{"resource": "public_routes", "params": {"carrier_code": "MT"}}',
     },
+    "public_places": {
+        "path": "v2/transitnetwork/stops",
+        "doc_params": [],
+        "doc_returns": [
+            "value: the place's member stops, '<carrier>:<stop_id>' joined by ',' (the value a departures picker passes)",
+            "name: public name and providers, for a dropdown",
+            "place: the 511 ID, or '<carrier>:<stop_id>' for a stop without one",
+            "public_name, names, providers (rider-facing provider names), member_stops, provider_stop_ids",
+            "lat, lng, stop_kind, normalization_revision",
+        ],
+        "example": '{"resource": "public_places"}',
+    },
     "public_carriers": {
         "path": "v2/transitnetwork/carriers",
         "doc_params": [],

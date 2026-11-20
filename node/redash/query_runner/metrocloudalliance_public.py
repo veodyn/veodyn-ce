@@ -26,6 +26,7 @@ from redash.transit_naming.patterns import (
     cut_patterns,
     pattern_row,
 )
+from redash.transit_naming.places import PLACE_COLUMNS, place_rows
 from redash.transit_naming.profile_loader import load_profiles, profile_dirs
 from redash.transit_naming.routes import (
     name_route,
@@ -112,6 +113,7 @@ def _route_names(routes, profile, resolver, with_resolved=False):
 PUBLIC_COLUMN_NAMES = {
     "public_routes": list(route_row({}, RouteName(*[""] * 12), "", "")),
     "public_carriers": ["carrier_code", "carrier_name", "provider_name", "normalization_revision"],
+    "public_places": list(PLACE_COLUMNS),
     "public_stops": list(stop_row({}, StopName("", "", "", "", "", "", False, ""), "", "")),
     "public_route_stops": list(pattern_row(PatternStop(*[""] * 11), "", "")),
     "public_route_paths": list(PATH_COLUMNS),
@@ -153,6 +155,17 @@ def public_routes(params, fetch, profiles, archive_fetcher=None):
         )
         for route_code, (route, name, _) in named.items()
     ]
+
+
+def public_places(fetch, profiles, archive_fetcher=None, source=None):
+    stops = public_stops({}, fetch, profiles, archive_fetcher, source)
+    carrier_names = {str(c.get("carrier_code") or ""): c.get("carrier_name") for c in fetch("carriers", {})}
+
+    def provider_of(carrier):
+        name = carrier_names.get(carrier)
+        return provider_name(profiles.for_carrier(carrier, name or ""), name)
+
+    return place_rows(stops, profiles, provider_of)
 
 
 def public_carriers(fetch, profiles):
@@ -320,6 +333,8 @@ def run_public_resource(resource, params, fetch, now=None, archive_fetcher=None,
         return public_routes(params, fetch, profiles, archive_fetcher)
     if resource == "public_carriers":
         return public_carriers(fetch, profiles)
+    if resource == "public_places":
+        return public_places(fetch, profiles, archive_fetcher, source)
     if resource == "public_stops":
         return public_stops(params, fetch, profiles, archive_fetcher, source)
     if resource == "public_stop_locations":
