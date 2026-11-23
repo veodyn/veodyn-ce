@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import time
 from datetime import datetime, timedelta
 
 from rq.job import Job
@@ -21,12 +22,27 @@ from redash.tasks.worker import Queue
 logger = logging.getLogger(__name__)
 
 
-class StatsdRecordingScheduler(Scheduler):
-    """
-    RQ Scheduler Mixin that uses Redash's custom RQ Queue class to increment/modify metrics via Statsd
-    """
+REREGISTER_SECONDS = 60
 
+
+class StatsdRecordingScheduler(Scheduler):
     queue_class = Queue
+    clock = staticmethod(time.monotonic)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.keep_scheduled([])
+
+    def keep_scheduled(self, jobs):
+        self.periodic_jobs = list(jobs)
+        self.next_registration_check = None
+
+    def enqueue_jobs(self):
+        now = self.clock()
+        if self.periodic_jobs and (self.next_registration_check is None or now >= self.next_registration_check):
+            self.next_registration_check = now + REREGISTER_SECONDS
+            schedule_periodic_jobs(self.periodic_jobs)
+        return super().enqueue_jobs()
 
 
 rq_scheduler = StatsdRecordingScheduler(connection=rq_redis_connection, queue_name="periodic", interval=5)

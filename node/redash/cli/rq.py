@@ -27,6 +27,7 @@ manager = AppGroup(help="RQ management commands.")
 def scheduler():
     jobs = periodic_job_definitions()
     schedule_periodic_jobs(jobs)
+    rq_scheduler.keep_scheduled(jobs)
     rq_scheduler.run()
 
 
