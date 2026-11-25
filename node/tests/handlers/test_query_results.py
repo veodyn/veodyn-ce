@@ -1,5 +1,9 @@
+from mock import patch
+
+from redash import rq_redis_connection
 from redash.handlers.query_results import error_messages, run_query
 from redash.models import db
+from redash.tasks import Job
 from tests import BaseTestCase
 
 
@@ -196,6 +200,36 @@ class TestQueryResultListAPI(BaseTestCase):
 
 
 class TestQueryResultAPI(BaseTestCase):
+    def test_view_only_query_execution_uses_user_id(self):
+        ds = self.factory.create_data_source(group=self.factory.org.default_group, view_only=True)
+        query = self.factory.create_query(data_source=ds, query_text="SELECT 1")
+        user = self.factory.user
+        email = "*/ SELECT 999; --@example.org"
+        rv = self.make_request("post", "/api/users/{}".format(user.id), data={"email": email})
+        self.assertEqual(rv.status_code, 200)
+
+        rv = self.make_request(
+            "post", "/api/query_results", data={"data_source_id": ds.id, "query": "SELECT 999", "max_age": 0}
+        )
+        self.assertEqual(rv.status_code, 403)
+
+        rv = self.make_request("post", "/api/queries/{}/results".format(query.id), data={"max_age": 0})
+        self.assertEqual(rv.status_code, 200)
+        metadata = Job.fetch(rv.json["job"]["id"], connection=rq_redis_connection).args[2]
+        self.assertEqual(metadata["user_id"], user.id)
+
+    def test_query_api_execution_uses_query_identity_label(self):
+        query = self.factory.create_query(query_text="SELECT 1")
+        rv = self.make_request(
+            "post",
+            "/api/queries/{}/results?api_key={}".format(query.id, query.api_key),
+            data={"max_age": 0},
+            user=False,
+        )
+        self.assertEqual(rv.status_code, 200)
+        metadata = Job.fetch(rv.json["job"]["id"], connection=rq_redis_connection).args[2]
+        self.assertEqual(metadata["user_id"], "<ApiKey: Query {}>".format(query.id))
+
     def test_has_no_access_to_data_source(self):
         ds = self.factory.create_data_source(group=self.factory.create_group())
         query_result = self.factory.create_query_result(data_source=ds)
@@ -213,6 +247,34 @@ class TestQueryResultAPI(BaseTestCase):
     def test_has_full_access_to_data_source(self):
         ds = self.factory.create_data_source(group=self.factory.org.default_group, view_only=False)
         query_result = self.factory.create_query_result(data_source=ds)
+
+        rv = self.make_request("get", "/api/query_results/{}".format(query_result.id))
+        self.assertEqual(rv.status_code, 200)
+
+    def test_query_results_ds_denies_access_to_underlying_data_source(self):
+        sensitive_ds = self.factory.create_data_source(group=self.factory.create_group(), type="pg")
+        sensitive_query = self.factory.create_query(data_source=sensitive_ds)
+
+        qr_ds = self.factory.create_data_source(group=self.factory.org.default_group, type="results")
+
+        query_result = self.factory.create_query_result(
+            data_source=qr_ds,
+            query_text="SELECT * FROM query_{}".format(sensitive_query.id),
+        )
+
+        rv = self.make_request("get", "/api/query_results/{}".format(query_result.id))
+        self.assertEqual(rv.status_code, 403)
+
+    def test_query_results_ds_allows_access_when_user_has_underlying_access(self):
+        underlying_ds = self.factory.create_data_source(group=self.factory.org.default_group, type="pg")
+        underlying_query = self.factory.create_query(data_source=underlying_ds)
+
+        qr_ds = self.factory.create_data_source(group=self.factory.org.default_group, type="results")
+
+        query_result = self.factory.create_query_result(
+            data_source=qr_ds,
+            query_text="SELECT * FROM query_{}".format(underlying_query.id),
+        )
 
         rv = self.make_request("get", "/api/query_results/{}".format(query_result.id))
         self.assertEqual(rv.status_code, 200)
@@ -255,6 +317,50 @@ class TestQueryResultAPI(BaseTestCase):
 
         rv = self.make_request("post", "/api/queries/{}/results".format(query.id), data={"parameters": {}})
         self.assertEqual(rv.status_code, 200)
+
+    def test_prevents_execution_of_undeclared_mustache_parameters(self):
+        ds = self.factory.create_data_source(group=self.factory.org.default_group, view_only=True)
+        for template in ("SELECT {{{value}}}", "SELECT {{&value}}", "SELECT {{^flag}}{{value}}{{/flag}}"):
+            query = self.factory.create_query(data_source=ds, query_text=template, options={"parameters": []})
+            for use_api_key in (False, True):
+                with self.subTest(template=template, use_api_key=use_api_key):
+                    url = "/api/queries/{}/results".format(query.id)
+                    if use_api_key:
+                        url += "?api_key={}".format(query.api_key)
+                    with patch("redash.handlers.query_results.enqueue_query") as enqueue:
+                        with patch("redash.handlers.query_results.serialize_job", return_value={"job": {}}):
+                            rv = self.make_request(
+                                "post", url, data={"parameters": {"value": "1 UNION SELECT 2"}, "max_age": 0}
+                            )
+                    self.assertEqual(rv.status_code, 403)
+                    enqueue.assert_not_called()
+
+    def test_allows_declared_range_parameters_with_view_only_access(self):
+        ds = self.factory.create_data_source(group=self.factory.org.default_group, view_only=True)
+        for parameter_type in ("date-range", "datetime-range", "datetime-range-with-seconds"):
+            query = self.factory.create_query(
+                data_source=ds,
+                query_text="SELECT '{{period.start}}', '{{period.end}}'",
+                options={"parameters": [{"name": "period", "type": parameter_type}]},
+            )
+            for use_api_key in (False, True):
+                with self.subTest(parameter_type=parameter_type, use_api_key=use_api_key):
+                    url = "/api/queries/{}/results".format(query.id)
+                    if use_api_key:
+                        url += "?api_key={}".format(query.api_key)
+                    with patch("redash.handlers.query_results.enqueue_query") as enqueue:
+                        with patch("redash.handlers.query_results.serialize_job", return_value={"job": {}}):
+                            rv = self.make_request(
+                                "post",
+                                url,
+                                data={
+                                    "parameters": {"period": {"start": "2026-01-01", "end": "2026-01-31"}},
+                                    "max_age": 0,
+                                },
+                            )
+                    self.assertEqual(rv.status_code, 200)
+                    enqueue.assert_called_once()
+                    self.assertEqual(enqueue.call_args[0][0], "SELECT '2026-01-01', '2026-01-31'")
 
     def test_get_latest_query_result_with_apply_auto_limit(self):
         query = self.factory.create_query(

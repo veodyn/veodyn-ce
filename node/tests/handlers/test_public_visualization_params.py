@@ -277,7 +277,7 @@ class TestStatuses(PublicParamsCase):
         self.assertEqual(args[1].id, self.query.data_source.id)
         self.assertEqual(args[2], self.token)
         self.assertTrue(kwargs["is_api_key"])
-        self.assertEqual(kwargs["metadata"], {"query_id": self.query.id, "Username": "public-visualization"})
+        self.assertEqual(kwargs["metadata"], {"query_id": self.query.id})
         self.assertEqual(kwargs["job_timeout"], 40)
         self.assertEqual(kwargs["queued_ttl"], 60)
 

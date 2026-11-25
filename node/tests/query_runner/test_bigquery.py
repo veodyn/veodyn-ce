@@ -1,6 +1,10 @@
 import unittest
+import uuid
 
 from redash.query_runner.big_query import BigQuery
+
+JOB_ID = str(uuid.UUID(int=0x1234))
+QUERY_HASH = "0123456789abcdef" * 2
 
 
 class TestBigQueryQueryRunner(unittest.TestCase):
@@ -10,18 +14,16 @@ class TestBigQueryQueryRunner(unittest.TestCase):
         self.assertTrue(query_runner.should_annotate_query)
 
         metadata = {
-            "Username": "username",
+            "user_id": 42,
             "query_id": "adhoc",
-            "Job ID": "job-id",
-            "Query Hash": "query-hash",
+            "Job ID": JOB_ID,
+            "Query Hash": QUERY_HASH,
             "Scheduled": False,
         }
 
         query = "SELECT a FROM tbl"
         expect = (
-            "/* Username: username, query_id: adhoc, "
-            "Query Hash: query-hash, "
-            "Scheduled: False */ SELECT a FROM tbl"
+            "/* user_id: 42, query_id: adhoc, " f"Query Hash: {QUERY_HASH}, " "Scheduled: False */ SELECT a FROM tbl"
         )
 
         self.assertEqual(query_runner.annotate_query(query, metadata), expect)
@@ -32,10 +34,10 @@ class TestBigQueryQueryRunner(unittest.TestCase):
         self.assertFalse(query_runner.should_annotate_query)
 
         metadata = {
-            "Username": "user-name",
+            "user_id": 42,
             "query_id": "adhoc",
-            "Job ID": "job-id",
-            "Query Hash": "query-hash",
+            "Job ID": JOB_ID,
+            "Query Hash": QUERY_HASH,
             "Scheduled": False,
         }
 

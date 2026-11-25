@@ -13,7 +13,7 @@ def resolve_user(user_id, is_api_key, query_id):
             else:
                 q = models.Query.by_api_key(api_key)
 
-            return models.ApiUser(api_key, q.org, q.groups)
+            return models.ApiUser(api_key, q.org, q.groups, name="ApiKey: Query {}".format(q.id))
         else:
             return models.User.get_by_id(user_id)
     else:

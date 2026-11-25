@@ -1,7 +1,9 @@
 import logging
+import re
 from collections import defaultdict
 
 import sqlparse
+from sqlparse.exceptions import SQLParseError
 
 from redash import settings, utils
 from redash.query_runner.capture_fields import add_historical_capture_fields
@@ -12,6 +14,14 @@ from redash.query_runner.sql_statements import (
 )
 
 logger = logging.getLogger(__name__)
+
+_QUERY_ANNOTATION_FIELDS = {
+    "user_id": r"(?:[0-9]+|api|<ApiKey: (?:Query )?[0-9]+>)",
+    "query_id": r"(?:[0-9]+|adhoc)",
+    "Job ID": r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}",
+    "Query Hash": r"[0-9a-fA-F]{32}",
+    "Scheduled": r"(?:True|False)",
+}
 
 
 class InterruptException(Exception):
@@ -110,7 +120,16 @@ class BaseQueryRunner:
         if not self.should_annotate_query:
             return query
 
-        annotation = ", ".join(["{}: {}".format(k, v) for k, v in metadata.items()])
+        fields = []
+        for key, pattern in _QUERY_ANNOTATION_FIELDS.items():
+            value = metadata.get(key)
+            if type(value) in (str, int, bool) and re.fullmatch(pattern, str(value)):
+                fields.append("{}: {}".format(key, value))
+
+        if not fields:
+            return query
+
+        annotation = ", ".join(fields)
         annotated_query = "/* {} */ {}".format(annotation, query)
         return annotated_query
 
@@ -236,8 +255,10 @@ class BaseSQLQueryRunner(BaseQueryRunner):
     def apply_auto_limit(self, query_text, should_apply_auto_limit):
         queries = split_sql_statements(query_text)
         if should_apply_auto_limit:
-            # we only check for last one in the list because it is the one that we show result
             last_query = queries[-1]
-            if self.query_is_select_no_limit(last_query):
-                queries[-1] = self.add_limit_to_query(last_query)
+            try:
+                if self.query_is_select_no_limit(last_query):
+                    queries[-1] = self.add_limit_to_query(last_query)
+            except SQLParseError:
+                logger.warning("Failed to apply auto limit: statement too large for sqlparse to group")
         return combine_sql_statements(queries)

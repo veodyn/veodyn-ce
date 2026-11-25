@@ -163,7 +163,7 @@ def _enqueue(text, data_source, token, query_id):
             data_source,
             token,
             is_api_key=True,
-            metadata={"query_id": query_id, "Username": "public-visualization"},
+            metadata={"query_id": query_id},
             job_timeout=JOB_TIMEOUT,
             queued_ttl=QUEUED_TTL,
         )

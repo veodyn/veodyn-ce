@@ -24,6 +24,11 @@ from redash.permissions import (
     require_permission,
     view_only,
 )
+from redash.query_runner.query_results import (
+    extract_cached_query_ids,
+    extract_query_ids,
+    extract_query_params,
+)
 from redash.serializers import (
     serialize_job,
     serialize_query_result,
@@ -108,7 +113,7 @@ def run_query(query, parameters, data_source, query_id, should_apply_auto_limit,
             current_user.id,
             current_user.is_api_user(),
             metadata={
-                "Username": current_user.get_actual_user(),
+                "user_id": current_user.get_actual_user() if current_user.is_api_user() else current_user.id,
                 "query_id": query_id,
             },
         )
@@ -342,6 +347,20 @@ class QueryResultResource(BaseResource):
 
         if query_result:
             require_access(query_result.data_source, self.current_user, view_only)
+
+            if query_result.data_source and query_result.data_source.type == "results":
+                query_ids = set(
+                    extract_query_ids(query_result.query_text)
+                    + extract_cached_query_ids(query_result.query_text)
+                    + [int(p[0]) for p in extract_query_params(query_result.query_text)]
+                )
+                for qid in query_ids:
+                    try:
+                        source_query = models.Query.get_by_id(qid)
+                        if source_query.data_source:
+                            require_access(source_query.data_source, self.current_user, view_only)
+                    except models.NoResultFound:
+                        abort(403, message="Access denied - referenced query no longer exists.")
 
             if isinstance(self.current_user, models.ApiUser):
                 event = {

@@ -44,6 +44,16 @@ def setup_logging():
 
 setup_logging()
 
+
+def configure_sqlparse():
+    from sqlparse.engine import grouping
+
+    grouping.MAX_GROUPING_TOKENS = settings.SQLPARSE_MAX_GROUPING_TOKENS or None
+    grouping.MAX_GROUPING_DEPTH = settings.SQLPARSE_MAX_GROUPING_DEPTH or None
+
+
+configure_sqlparse()
+
 redis_connection = redis.from_url(settings.REDIS_URL)
 rq_redis_connection = redis.from_url(settings.RQ_REDIS_URL)
 mail = Mail()

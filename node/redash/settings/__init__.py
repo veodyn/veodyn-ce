@@ -483,6 +483,8 @@ SQLPARSE_FORMAT_OPTIONS = {
     "reindent": parse_boolean(os.environ.get("SQLPARSE_FORMAT_REINDENT", "true")),
     "keyword_case": os.environ.get("SQLPARSE_FORMAT_KEYWORD_CASE", "upper"),
 }
+SQLPARSE_MAX_GROUPING_TOKENS = int(os.environ.get("SQLPARSE_MAX_GROUPING_TOKENS", 10000))
+SQLPARSE_MAX_GROUPING_DEPTH = int(os.environ.get("SQLPARSE_MAX_GROUPING_DEPTH", 100))
 
 # requests
 REQUESTS_ALLOW_REDIRECTS = parse_boolean(os.environ.get("REDASH_REQUESTS_ALLOW_REDIRECTS", "false"))

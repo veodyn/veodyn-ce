@@ -4,6 +4,7 @@ from flask_login import login_required
 from flask_restful import abort
 from funcy import partial, project
 from sqlalchemy.orm.exc import NoResultFound, StaleDataError
+from sqlparse.exceptions import SQLParseError
 
 from redash import models, settings
 from redash.authentication.org_resolving import current_org
@@ -74,7 +75,12 @@ def format_sql_query(org_slug=None):
     arguments = request.get_json(force=True)
     query = arguments.get("query", "")
 
-    return jsonify({"query": sqlparse.format(query, **settings.SQLPARSE_FORMAT_OPTIONS)})
+    try:
+        formatted = sqlparse.format(query, **settings.SQLPARSE_FORMAT_OPTIONS)
+    except SQLParseError:
+        abort(400, message="Query is too large or too deeply nested to format.")
+
+    return jsonify({"query": formatted})
 
 
 class QuerySearchResource(BaseResource):

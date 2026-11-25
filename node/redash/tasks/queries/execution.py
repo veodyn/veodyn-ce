@@ -245,6 +245,8 @@ class QueryExecutor:
             return result
 
     def _annotate_query(self, query_runner):
+        if "user_id" not in self.metadata and self.user is not None:
+            self.metadata["user_id"] = self.user.get_actual_user() if self.user.is_api_user() else self.user.id
         self.metadata["Job ID"] = self.job.id
         self.metadata["Query Hash"] = self.query_hash
         self.metadata["Scheduled"] = self.is_scheduled_query
@@ -254,7 +256,7 @@ class QueryExecutor:
     def _log_progress(self, state):
         logger.info(
             "job=execute_query state=%s query_hash=%s type=%s ds_id=%d "
-            "job_id=%s queue=%s query_id=%s username=%s",  # fmt: skip
+            "job_id=%s queue=%s query_id=%s user_id=%s",  # fmt: skip
             state,
             self.query_hash,
             self.data_source.type,
@@ -262,7 +264,7 @@ class QueryExecutor:
             self.job.id,
             self.metadata.get("Queue", "unknown"),
             self.metadata.get("query_id", "unknown"),
-            self.metadata.get("Username", "unknown"),
+            self.metadata.get("user_id", "unknown"),
         )
 
     def _load_data_source(self):
