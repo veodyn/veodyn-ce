@@ -13,6 +13,7 @@ import { EditInPlace } from '@/components/shared/edit-in-place'
 import { TagsControl } from '@/components/shared/tags-control'
 import { FavoritesControl } from '@/components/shared/favorites-control'
 import { DashboardGrid } from '@/components/dashboard/dashboard-grid'
+import type { WidgetPosition } from '@/components/dashboard/layout-changes'
 import { ParametersBar } from '@/components/parameters/parameters-bar'
 import { collectDashboardParameters } from '@/lib/parameters/dashboard-parameters'
 import { AddWidgetDialog, type ParameterMapping } from '@/components/dashboard/add-widget-dialog'
@@ -111,13 +112,17 @@ export default function DashboardViewPage({ params }: { params: Promise<{ dashbo
   // which already answers yes for an admin.
   const canEdit = Boolean(dashboard.can_edit)
 
-  const handleLayoutChange = (positions: { id: number; col: number; row: number; sizeX: number; sizeY: number }[]) => {
-    const updatedWidgets = dashboard.widgets.map((w) => {
-      const pos = positions.find((p) => p.id === w.id)
-      if (!pos) return w
-      return { ...w, options: { ...w.options, position: { col: pos.col, row: pos.row, sizeX: pos.sizeX, sizeY: pos.sizeY } } }
+  const handlePositionsChange = (changed: WidgetPosition[]) => {
+    const moved = new Map(changed.map((p) => [p.id, p]))
+    const movedWidgets = dashboard.widgets.flatMap((w) => {
+      const pos = moved.get(w.id)
+      if (!pos) return []
+      return [{ ...w, options: { ...w.options, position: { col: pos.col, row: pos.row, sizeX: pos.sizeX, sizeY: pos.sizeY } } }]
     })
-    saveLayout.mutate({ dashboardId: id, widgets: updatedWidgets })
+    saveLayout.mutate(
+      { dashboardId: id, widgets: movedWidgets },
+      { onError: () => toast.error('Layout not saved. Reload the page to see the saved arrangement.') }
+    )
   }
 
   const handleAddWidget = (
@@ -202,6 +207,7 @@ export default function DashboardViewPage({ params }: { params: Promise<{ dashbo
               <EditInPlace
                 value={dashboard.name}
                 onSave={(name) => updateDashboard.mutate({ id, name })}
+                isEditable={canEdit}
                 className="font-display text-2xl font-medium"
               />
             </h1>
@@ -261,7 +267,7 @@ export default function DashboardViewPage({ params }: { params: Promise<{ dashbo
       <DashboardGrid
         widgets={dashboard.widgets}
         isEditing={isEditing}
-        onLayoutChange={handleLayoutChange}
+        onPositionsChange={handlePositionsChange}
         onEditWidget={handleEditWidget}
         onRemoveWidget={handleRemoveWidget}
         annotations={annotations}

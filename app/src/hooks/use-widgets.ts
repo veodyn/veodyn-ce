@@ -10,6 +10,7 @@ export function useCreateWidget() {
   const qc = useQueryClient()
   const store = useMockDataStore()
   return useMutation({
+    mutationKey: ['widget-create'],
     mutationFn: async ({
       dashboardId,
       ...widgetData
@@ -53,6 +54,7 @@ export function useUpdateWidget() {
   const qc = useQueryClient()
   const store = useMockDataStore()
   return useMutation({
+    mutationKey: ['widget-update'],
     mutationFn: async ({
       dashboardId,
       widgetId,
@@ -87,6 +89,7 @@ export function useDeleteWidget() {
   const qc = useQueryClient()
   const store = useMockDataStore()
   return useMutation({
+    mutationKey: ['widget-delete'],
     mutationFn: async ({
       dashboardId,
       widgetId,
@@ -110,15 +113,11 @@ export function useDeleteWidget() {
   })
 }
 
-/**
- * Persist widget positions after a drag/resize. Each widget's full merged
- * options must be provided — Redash replaces the options object wholesale,
- * so omitting parameterMappings/isHidden would drop them.
- */
 export function useSaveLayout() {
   const qc = useQueryClient()
   const store = useMockDataStore()
   return useMutation({
+    mutationKey: ['widget-layout'],
     mutationFn: async ({
       dashboardId,
       widgets,
@@ -138,9 +137,14 @@ export function useSaveLayout() {
         )
         return
       }
-      store.updateDashboard(dashboardId, { widgets })
+      const dashboard = store.dashboards.find((d) => d.id === dashboardId)
+      if (!dashboard) throw new Error('Dashboard not found')
+      const moved = new Map(widgets.map((w) => [w.id, w]))
+      store.updateDashboard(dashboardId, {
+        widgets: dashboard.widgets.map((w) => moved.get(w.id) ?? w),
+      })
     },
-    onSuccess: (_, vars) => {
+    onSettled: (_, __, vars) => {
       qc.invalidateQueries({ queryKey: ['dashboards'] })
       qc.invalidateQueries({ queryKey: ['dashboard', vars.dashboardId] })
     },

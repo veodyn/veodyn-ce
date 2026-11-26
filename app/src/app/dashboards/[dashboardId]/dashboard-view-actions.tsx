@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Pencil, Presentation, Share2 } from 'lucide-react'
+import { Presentation, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AskAboutThis } from '@/components/chat/ask-about-this'
 import { IconButton } from '@/components/shared/icon-button'
@@ -10,6 +10,7 @@ import { hasFeature } from '@/features'
 import { Slot } from '@/features/slots'
 import type { MockDashboard } from '@/lib/mock-data'
 import { DashboardRowActions } from '../dashboard-row-actions'
+import { EditDashboardButton } from './edit-dashboard-button'
 
 interface DashboardViewActionsProps {
   dashboard: MockDashboard
@@ -38,10 +39,7 @@ export function DashboardViewActions({ dashboard, onEdit, onShare }: DashboardVi
         </Button>
       )}
       <Slot id="dashboard.viewActions" props={{ dashboard }} fallback={null} />
-      <Button variant="outline" onClick={onEdit}>
-        <Pencil className="h-4 w-4" />
-        Edit
-      </Button>
+      <EditDashboardButton dashboard={dashboard} onEdit={onEdit} />
       <AskAboutThis subject={{ kind: 'dashboard', dashboardId: dashboard.id }} label={dashboard.name} />
       <IconButton tooltip="Share dashboard" variant="outline" size="icon" onClick={onShare}>
         <Share2 className="h-4 w-4" />

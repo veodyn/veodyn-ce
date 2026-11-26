@@ -7,22 +7,23 @@ import type { Annotation } from '@veodyn/viz/types/annotation'
 import { Button } from '@/components/ui/button'
 import { VisualizationWidget } from './visualization-widget'
 import { TextboxWidget } from './textbox-widget'
+import { changedPositions, type WidgetPosition } from './layout-changes'
 import 'react-grid-layout/css/styles.css'
+
+export const WIDE_LAYOUT_MIN_WIDTH = 800
 
 interface DashboardGridProps {
   widgets: MockDashboardWidget[]
   isEditing: boolean
-  onLayoutChange?: (widgetPositions: { id: number; col: number; row: number; sizeX: number; sizeY: number }[]) => void
+  onPositionsChange?: (changed: WidgetPosition[]) => void
   onEditWidget?: (widget: MockDashboardWidget) => void
   onRemoveWidget?: (widgetId: number) => void
   annotations?: Annotation[]
-  /** Dashboard-level parameter values, passed through to each widget. */
   dashboardValues?: Record<string, unknown>
-  /** Rendered through a public share token; passed through to each widget. */
   isPublic?: boolean
 }
 
-export function DashboardGrid({ widgets, isEditing, onLayoutChange, onEditWidget, onRemoveWidget, annotations, dashboardValues, isPublic = false }: DashboardGridProps) {
+export function DashboardGrid({ widgets, isEditing, onPositionsChange, onEditWidget, onRemoveWidget, annotations, dashboardValues, isPublic = false }: DashboardGridProps) {
   const { width, containerRef } = useContainerWidth({ initialWidth: 1200 })
 
   const layout = useMemo<LayoutItem[]>(
@@ -39,19 +40,13 @@ export function DashboardGrid({ widgets, isEditing, onLayoutChange, onEditWidget
     [widgets]
   )
 
-  const handleLayoutChange = useCallback(
-    (newLayout: Layout) => {
-      if (!onLayoutChange) return
-      const positions = newLayout.map((l) => ({
-        id: Number(l.i),
-        col: l.x,
-        row: l.y,
-        sizeX: l.w,
-        sizeY: l.h,
-      }))
-      onLayoutChange(positions)
+  const handleArrangeStop = useCallback(
+    (finalLayout: Layout) => {
+      if (!onPositionsChange || !isEditing || width < WIDE_LAYOUT_MIN_WIDTH) return
+      const changed = changedPositions(widgets, finalLayout)
+      if (changed.length > 0) onPositionsChange(changed)
     },
-    [onLayoutChange]
+    [onPositionsChange, isEditing, width, widgets]
   )
 
   if (widgets.length === 0) {
@@ -71,14 +66,15 @@ export function DashboardGrid({ widgets, isEditing, onLayoutChange, onEditWidget
         <ResponsiveGridLayout
           className="react-grid-layout"
           layouts={{ lg: layout }}
-          breakpoints={{ lg: 800, sm: 0 }}
+          breakpoints={{ lg: WIDE_LAYOUT_MIN_WIDTH, sm: 0 }}
           cols={{ lg: 6, sm: 1 }}
           rowHeight={50}
           margin={[15, 15] as const}
           width={width}
           dragConfig={{ enabled: isEditing, handle: '.widget-drag-handle' }}
           resizeConfig={{ enabled: isEditing }}
-          onLayoutChange={handleLayoutChange}
+          onDragStop={handleArrangeStop}
+          onResizeStop={handleArrangeStop}
         >
           {widgets.map((widget) => (
             <div key={String(widget.id)} className="min-h-0">

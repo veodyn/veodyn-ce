@@ -217,20 +217,18 @@ describe('editing and removing a widget with no backend', () => {
 })
 
 describe('saving a layout with no backend', () => {
-  // A drag reorders and resizes several widgets at once; the whole array is the
-  // unit, and the board has to show the new grid straight away.
-  it('replaces the whole widget array and re-renders the board', async () => {
+  it('moves only the widgets it is given and keeps the rest of the board', async () => {
     const { result } = await settled()
     const moved = [
       widget(2, { options: { ...widget(2).options, position: { col: 0, row: 0, sizeX: 6, sizeY: 8 } } }),
-      widget(1),
     ]
 
     await act(async () => {
       await result.current.saveLayout.mutateAsync({ dashboardId: DASHBOARD_ID, widgets: moved })
     })
 
-    await waitFor(() => expect(result.current.board.data?.widgets.map((w) => w.id)).toEqual([2, 1]))
-    expect(storedWidgets()[0].options.position.sizeX).toBe(6)
+    await waitFor(() => expect(result.current.board.data?.widgets.map((w) => w.id)).toEqual([1, 2]))
+    expect(storedWidgets()[1].options.position.sizeX).toBe(6)
+    expect(storedWidgets()[0]).toEqual(widget(1))
   })
 })

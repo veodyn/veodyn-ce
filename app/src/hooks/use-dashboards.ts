@@ -143,6 +143,7 @@ export function useCreateDashboard() {
   const qc = useQueryClient()
   const store = useMockDataStore()
   return useMutation({
+    mutationKey: ['dashboard-create'],
     mutationFn: async (data: { name: string }) => {
       if (USE_REAL_API) {
         return dashboardsService.create(data)
@@ -177,6 +178,7 @@ export function useUpdateDashboard() {
   const qc = useQueryClient()
   const store = useMockDataStore()
   return useMutation({
+    mutationKey: ['dashboard-update'],
     mutationFn: async ({ id, ...updates }: Partial<MockDashboard> & { id: number }) => {
       if (USE_REAL_API) {
         return dashboardsService.update(id, updates)
@@ -207,6 +209,7 @@ export function useShareDashboard() {
   const qc = useQueryClient()
   const store = useMockDataStore()
   return useMutation({
+    mutationKey: ['dashboard-share'],
     // An object rather than a bare id, because sharing now carries a second
     // answer (how long for) and a positional second argument would be the kind
     // of call nobody can read at the site.
@@ -230,6 +233,7 @@ export function useUnshareDashboard() {
   const qc = useQueryClient()
   const store = useMockDataStore()
   return useMutation({
+    mutationKey: ['dashboard-unshare'],
     mutationFn: async (id: number) => {
       if (USE_REAL_API) {
         return dashboardsService.unshare(id)
@@ -248,6 +252,7 @@ export function useForkDashboard() {
   const qc = useQueryClient()
   const store = useMockDataStore()
   return useMutation({
+    mutationKey: ['dashboard-fork'],
     mutationFn: async (id: number) => {
       if (USE_REAL_API) {
         // node has no dashboard-fork endpoint; composing one client-side

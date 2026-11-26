@@ -57,7 +57,6 @@ export default function PublicDashboardPage({ params }: { params: Promise<{ toke
       <DashboardGrid
         widgets={dashboard.widgets}
         isEditing={false}
-        onLayoutChange={() => {}}
         onEditWidget={() => {}}
         onRemoveWidget={() => {}}
         isPublic
